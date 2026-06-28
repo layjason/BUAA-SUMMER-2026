@@ -1,0 +1,48 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - "backend/**"
+  pull_request:
+    paths:
+      - "backend/**"
+
+jobs:
+  backend-checks:
+    name: Backend checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Set up Node.js for editorconfig-checker
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install editorconfig-checker
+        run: npm install --global editorconfig-checker
+
+      - name: Check EditorConfig
+        run: editorconfig-checker
+
+      - name: Check formatting
+        run: mvn -B -ntp spotless:check
+
+      - name: Test
+        run: mvn -B -ntp test
+
+      - name: Check SpotBugs
+        run: mvn -B -ntp spotbugs:check
