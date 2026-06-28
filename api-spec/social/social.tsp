@@ -229,6 +229,9 @@ model TeamCreateRequest {
 
   @doc("小队简介。")
   description?: string;
+
+  @doc("小队头像媒体文件标识。")
+  avatarMediaId?: EntityId;
 }
 
 @doc("小队资料。")
@@ -253,6 +256,9 @@ model TeamProfile {
 
   @doc("小队简介。")
   description?: string;
+
+  @doc("小队头像媒体文件。")
+  avatar?: MediaFile;
 
   @doc("小队状态。")
   status: TeamStatus;
