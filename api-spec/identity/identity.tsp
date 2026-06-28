@@ -11,13 +11,19 @@ enum UserKind {
   admin,
 }
 
-@doc("账号状态。")
+@doc("账号状态，控制登录权限。")
 enum AccountStatus {
-  unactivated,
-  pendingReview,
-  reviewApproved,
-  activated,
+  inactive,
+  active,
   banned,
+}
+
+@doc("商家资质审核状态。")
+enum QualificationStatus {
+  not_submitted,
+  pending,
+  approved,
+  rejected,
 }
 
 @doc("性别。")
@@ -49,25 +55,13 @@ model PersonalRegisterRequest {
   nickname: string;
 }
 
-@doc("商家注册请求，邮箱未注册且商家昵称全平台唯一，创建未激活且待审核账号，营业凭证通过 mediaId 引用。")
+@doc("商家注册请求，邮箱未注册，创建未激活账号并发送激活邮件，商家资料和资质提交走独立接口。")
 model MerchantRegisterRequest {
   @doc("商家账号注册邮箱，用于登录和接收激活邮件。")
   email: string;
 
   @doc("商家账号明文密码，服务端负责加盐哈希保存。")
   password: string;
-
-  @doc("商家主体名称。")
-  merchantName: string;
-
-  @doc("商家在平台内展示的昵称，全平台唯一。")
-  merchantNickname: string;
-
-  @doc("营业执照或营业凭证的媒体文件标识。")
-  licenseMediaId: EntityId;
-
-  @doc("商家关注或经营的活动领域。")
-  interestedActivityFields: string[];
 }
 
 @doc("令牌响应。")
@@ -103,6 +97,12 @@ model RefreshTokenRequest {
   refreshToken: string;
 }
 
+@doc("兴趣标签。")
+model InterestTagItem {
+  @doc("标签名称，例如「运动」。")
+  name: string;
+}
+
 @doc("用户公开资料。")
 model PublicUserProfile {
   @doc("用户标识。")
@@ -133,7 +133,7 @@ model PublicUserProfile {
   kind: UserKind;
 }
 
-@doc("个人资料更新请求，调用方为本人，资料被更新且昵称仍唯一，不得通过该接口修改密码和账号状态。")
+@doc("个人资料更新请求，调用方为本人，资料被部分更新且昵称仍唯一，不得通过该接口修改密码和账号状态。")
 model UpdatePersonalProfileRequest {
   @doc("新头像媒体文件标识。")
   avatarMediaId?: EntityId;
@@ -150,8 +150,26 @@ model UpdatePersonalProfileRequest {
   @doc("新个性签名。")
   signature?: string;
 
-  @doc("新的兴趣标签列表。")
+  @doc("新的兴趣标签名称列表。")
   interestTags?: string[];
+}
+
+@doc("商家资质详情。")
+model QualificationDetail {
+  @doc("资质审核状态。")
+  status: QualificationStatus;
+
+  @doc("提交时间。")
+  submittedAt?: DateTimeString;
+
+  @doc("审核时间。")
+  reviewedAt?: DateTimeString;
+
+  @doc("驳回原因。")
+  rejectReason?: string;
+
+  @doc("营业凭证图片 URL 列表。")
+  licenseImageUrls?: string[];
 }
 
 @doc("商家资料。")
@@ -171,14 +189,17 @@ model MerchantProfile {
   @doc("商家关注或经营的活动领域。")
   interestedActivityFields: string[];
 
-  @doc("营业执照或营业凭证媒体文件。")
-  licenseMedia?: MediaFile;
-
-  @doc("商家账号状态。")
+  @doc("账号状态。")
   accountStatus: AccountStatus;
+
+  @doc("资质审核状态。")
+  qualificationStatus: QualificationStatus;
+
+  @doc("资质详情，含提交/审核时间和凭证图片 URL。若无资质记录则返回 null。")
+  qualification?: QualificationDetail;
 }
 
-@doc("商家资料更新请求，调用方为商家本人，商家资料更新，营业凭证变更仍需要后台审核。")
+@doc("商家资料更新请求，调用方为商家本人，商家资料被部分更新，资质审核状态只能由后台流程改变。")
 model UpdateMerchantProfileRequest {
   @doc("新的商家主体名称。")
   merchantName?: string;
@@ -191,9 +212,6 @@ model UpdateMerchantProfileRequest {
 
   @doc("新的关注或经营活动领域。")
   interestedActivityFields?: string[];
-
-  @doc("新的营业执照或营业凭证媒体文件标识。")
-  licenseMediaId?: EntityId;
 }
 
 @doc("昵称校验结果。")
@@ -205,12 +223,30 @@ model NicknameAvailability {
   available: boolean;
 }
 
+@doc("账号激活请求。")
+model AccountActivationRequest {
+  @doc("激活邮件中的一次性激活 token。")
+  token: string;
+}
+
+@doc("重新发送激活邮件请求。")
+model ResendActivationEmailRequest {
+  @doc("需要重新接收激活邮件的账号邮箱。")
+  email: string;
+}
+
+@doc("商家资质提交请求，上传营业执照或营业凭证图片，请求为 multipart/form-data，支持多文件。")
+model QualificationSubmitRequest {
+  @doc("营业执照或营业凭证图片。")
+  licenseImages: HttpPart<bytes>[];
+}
+
 @route("/identity")
 @tag("身份与资料")
 interface IdentityOperations {
   @post
   @route("/media/license")
-  @doc("上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于商家注册的 mediaId，不得返回存储凭据。")
+  @doc("上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于后续资质提交的 mediaId，不得返回存储凭据。")
   uploadMerchantLicense(
     @multipartBody body: MediaUploadRequest,
   ): APIResponse<MediaFile>;
@@ -222,7 +258,7 @@ interface IdentityOperations {
 
   @post
   @route("/auth/register/merchant")
-  @doc("注册商家用户，营业凭证 mediaId 存在，账号进入未激活和待审核流程，商家身份必须经后台审核通过。")
+  @doc("注册商家用户，邮箱未注册，账号进入未激活状态并触发激活邮件，商家资料和资质提交走独立接口。")
   registerMerchant(@body body: MerchantRegisterRequest): APIResponse<EmptyData>;
 
   @post
@@ -231,8 +267,13 @@ interface IdentityOperations {
   login(@body body: EmailPasswordRequest): APIResponse<LoginResult>;
 
   @post
+  @route("/auth/logout")
+  @doc("登出当前用户，作废该用户所有 Refresh Token。")
+  logout(): APIResponse<EmptyData>;
+
+  @post
   @route("/auth/activate")
-  @doc("激活账号，激活 token 有效且未使用，账号激活或等待商家审核完成，token 只能使用一次。")
+  @doc("激活账号，激活 token 有效且未使用，账号从 inactive 变更为 active，token 只能使用一次。")
   activateAccount(@body body: AccountActivationRequest): APIResponse<EmptyData>;
 
   @post
@@ -253,6 +294,11 @@ interface IdentityOperations {
   checkNickname(@query nickname: string): APIResponse<NicknameAvailability>;
 
   @get
+  @route("/interest-tags")
+  @doc("获取系统预定义的所有兴趣标签列表，供用户选择。")
+  getInterestTags(): APIResponse<InterestTagItem[]>;
+
+  @get
   @route("/me/profile")
   @doc("获取本人公开资料，调用方已登录，返回当前账号资料，不返回密码、盐和敏感凭据。")
   getMyProfile(): APIResponse<PublicUserProfile>;
@@ -266,25 +312,20 @@ interface IdentityOperations {
 
   @get
   @route("/me/merchant-profile")
-  @doc("获取本人商家资料，调用方为商家用户，返回商家资料与审核状态，不返回凭据原文。")
+  @doc("获取本人商家资料，调用方为商家用户，返回商家资料与资质审核状态，不返回凭据原文。")
   getMyMerchantProfile(): APIResponse<MerchantProfile>;
 
   @patch
   @route("/me/merchant-profile")
-  @doc("更新商家资料，调用方为商家用户，资料被更新，必要时重新进入审核，审核状态只能由后台流程改变。")
+  @doc("更新商家资料，调用方为商家用户，资料被部分更新，资质审核状态只能由后台流程改变。")
   updateMerchantProfile(
     @body body: UpdateMerchantProfileRequest,
   ): APIResponse<MerchantProfile>;
-}
 
-@doc("账号激活请求。")
-model AccountActivationRequest {
-  @doc("激活邮件中的一次性激活 token。")
-  token: string;
-}
-
-@doc("重新发送激活邮件请求。")
-model ResendActivationEmailRequest {
-  @doc("需要重新接收激活邮件的账号邮箱。")
-  email: string;
+  @post
+  @route("/me/merchant-qualification")
+  @doc("提交商家资质申请，请求为 multipart/form-data，上传营业执照或营业凭证图片。若已有 pending 或 approved 的申请则拒绝重复提交，rejected 后可重新提交。仅商家用户可调用。")
+  submitMerchantQualification(
+    @multipartBody body: QualificationSubmitRequest,
+  ): APIResponse<EmptyData>;
 }
