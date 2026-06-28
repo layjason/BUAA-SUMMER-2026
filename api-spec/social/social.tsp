@@ -170,6 +170,21 @@ model FollowRelation {
   friendshipCreated: boolean;
 }
 
+@doc("黑名单项。")
+model BlacklistItem {
+  @doc("被屏蔽用户标识。")
+  userId: EntityId;
+
+  @doc("被屏蔽用户昵称。")
+  nickname: string;
+
+  @doc("被屏蔽用户头像。")
+  avatar?: MediaFile;
+
+  @doc("屏蔽时间。")
+  blockedAt: DateTimeString;
+}
+
 @doc("小队加入方式。")
 enum TeamJoinMode {
   publicJoin,
@@ -391,6 +406,11 @@ interface SocialOperations {
   @route("/friends/{friendId}")
   @doc("删除好友，双方为好友，双向好友关系解除，历史消息不因此删除。")
   deleteFriend(@path friendId: EntityId): APIResponse<EmptyData>;
+
+  @get
+  @route("/blacklist")
+  @doc("查看黑名单列表，调用方已登录，分页返回已屏蔽用户信息。")
+  listBlacklist(...PageQuery): APIResponse<PageResult<BlacklistItem>>;
 
   @post
   @route("/blacklist/{targetUserId}")
