@@ -395,17 +395,17 @@ interface SocialOperations {
   listFriends(...PageQuery): APIResponse<PageResult<FriendItem>>;
 
   @patch
-  @route("/friends/{friendId}")
+  @route("/friends/{userId}")
   @doc("更新好友备注和分组，双方为好友，更新调用方本地好友信息，不会影响对方看到的资料。")
   updateFriendRemark(
-    @path friendId: EntityId,
+    @path userId: EntityId,
     @body body: FriendRemarkUpdate,
   ): APIResponse<FriendItem>;
 
   @delete
-  @route("/friends/{friendId}")
+  @route("/friends/{userId}")
   @doc("删除好友，双方为好友，双向好友关系解除，历史消息不因此删除。")
-  deleteFriend(@path friendId: EntityId): APIResponse<EmptyData>;
+  deleteFriend(@path userId: EntityId): APIResponse<EmptyData>;
 
   @get
   @route("/blacklist")
