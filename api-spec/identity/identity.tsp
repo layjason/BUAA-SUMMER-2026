@@ -1,0 +1,290 @@
+import "@typespec/http";
+
+using TypeSpec.Http;
+
+namespace QujuApi.Identity;
+
+@doc("用户类型。")
+enum UserKind {
+  personal,
+  merchant,
+  admin,
+}
+
+@doc("账号状态。")
+enum AccountStatus {
+  unactivated,
+  pendingReview,
+  reviewApproved,
+  activated,
+  banned,
+}
+
+@doc("性别。")
+enum Gender {
+  unspecified,
+  female,
+  male,
+  other,
+}
+
+@doc("登录凭据，邮箱与密码来自用户输入，认证成功时返回 JWT，契约不传输密码哈希或盐。")
+model EmailPasswordRequest {
+  @doc("登录邮箱。")
+  email: string;
+
+  @doc("用户输入的明文密码，仅用于本次认证请求。")
+  password: string;
+}
+
+@doc("个人用户注册请求，邮箱未注册且昵称全平台唯一，创建未激活账号并发送激活邮件，服务端负责密码加盐哈希。")
+model PersonalRegisterRequest {
+  @doc("注册邮箱，用于登录和接收激活邮件。")
+  email: string;
+
+  @doc("用户设置的明文密码，服务端负责加盐哈希保存。")
+  password: string;
+
+  @doc("个人用户昵称，全平台唯一。")
+  nickname: string;
+}
+
+@doc("商家注册请求，邮箱未注册且商家昵称全平台唯一，创建未激活且待审核账号，营业凭证通过 mediaId 引用。")
+model MerchantRegisterRequest {
+  @doc("商家账号注册邮箱，用于登录和接收激活邮件。")
+  email: string;
+
+  @doc("商家账号明文密码，服务端负责加盐哈希保存。")
+  password: string;
+
+  @doc("商家主体名称。")
+  merchantName: string;
+
+  @doc("商家在平台内展示的昵称，全平台唯一。")
+  merchantNickname: string;
+
+  @doc("营业执照或营业凭证的媒体文件标识。")
+  licenseMediaId: EntityId;
+
+  @doc("商家关注或经营的活动领域。")
+  interestedActivityFields: string[];
+}
+
+@doc("令牌响应。")
+model TokenPair {
+  @doc("访问令牌，用于 Bearer 鉴权。")
+  accessToken: string;
+
+  @doc("刷新令牌，用于换取新的访问令牌。")
+  refreshToken: string;
+
+  @doc("访问令牌过期时间。")
+  expiresAt: DateTimeString;
+}
+
+@doc("登录响应。")
+model LoginResult {
+  @doc("登录用户标识。")
+  userId: EntityId;
+
+  @doc("登录用户类型。")
+  kind: UserKind;
+
+  @doc("当前账号状态。")
+  accountStatus: AccountStatus;
+
+  @doc("登录成功后签发的令牌对。")
+  tokens: TokenPair;
+}
+
+@doc("刷新令牌请求，refreshToken 未过期且未被撤销，签发新的访问令牌，不会改变账号资料。")
+model RefreshTokenRequest {
+  @doc("用于刷新访问令牌的 refreshToken。")
+  refreshToken: string;
+}
+
+@doc("用户公开资料。")
+model PublicUserProfile {
+  @doc("用户标识。")
+  userId: EntityId;
+
+  @doc("用户展示昵称。")
+  nickname: string;
+
+  @doc("用户头像媒体文件。")
+  avatar?: MediaFile;
+
+  @doc("用户性别。")
+  gender?: Gender;
+
+  @doc("用户生日。")
+  birthday?: DateString;
+
+  @doc("用户个性签名。")
+  signature?: string;
+
+  @doc("用户兴趣标签。")
+  interestTags: string[];
+
+  @doc("用户信誉分，用于报名等业务校验。")
+  reputationScore: int32;
+
+  @doc("用户类型。")
+  kind: UserKind;
+}
+
+@doc("个人资料更新请求，调用方为本人，资料被更新且昵称仍唯一，不得通过该接口修改密码和账号状态。")
+model UpdatePersonalProfileRequest {
+  @doc("新头像媒体文件标识。")
+  avatarMediaId?: EntityId;
+
+  @doc("新昵称，全平台唯一。")
+  nickname?: string;
+
+  @doc("新性别。")
+  gender?: Gender;
+
+  @doc("新生日。")
+  birthday?: DateString;
+
+  @doc("新个性签名。")
+  signature?: string;
+
+  @doc("新的兴趣标签列表。")
+  interestTags?: string[];
+}
+
+@doc("商家资料。")
+model MerchantProfile {
+  @doc("商家用户标识。")
+  userId: EntityId;
+
+  @doc("商家主体名称。")
+  merchantName: string;
+
+  @doc("商家平台展示昵称。")
+  merchantNickname: string;
+
+  @doc("商家头像媒体文件。")
+  avatar?: MediaFile;
+
+  @doc("商家关注或经营的活动领域。")
+  interestedActivityFields: string[];
+
+  @doc("营业执照或营业凭证媒体文件。")
+  licenseMedia?: MediaFile;
+
+  @doc("商家账号状态。")
+  accountStatus: AccountStatus;
+}
+
+@doc("商家资料更新请求，调用方为商家本人，商家资料更新，营业凭证变更仍需要后台审核。")
+model UpdateMerchantProfileRequest {
+  @doc("新的商家主体名称。")
+  merchantName?: string;
+
+  @doc("新的商家展示昵称。")
+  merchantNickname?: string;
+
+  @doc("新头像媒体文件标识。")
+  avatarMediaId?: EntityId;
+
+  @doc("新的关注或经营活动领域。")
+  interestedActivityFields?: string[];
+
+  @doc("新的营业执照或营业凭证媒体文件标识。")
+  licenseMediaId?: EntityId;
+}
+
+@doc("昵称校验结果。")
+model NicknameAvailability {
+  @doc("被检查的昵称。")
+  nickname: string;
+
+  @doc("该昵称是否可注册或使用。")
+  available: boolean;
+}
+
+@route("/identity")
+@tag("身份与资料")
+interface IdentityOperations {
+  @post
+  @route("/media/license")
+  @doc("上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于商家注册的 mediaId，不得返回存储凭据。")
+  uploadMerchantLicense(
+    @multipartBody body: MediaUploadRequest,
+  ): APIResponse<MediaFile>;
+
+  @post
+  @route("/auth/register/personal")
+  @doc("注册个人用户，邮箱未注册且昵称唯一，账号进入未激活状态并触发激活邮件，密码只在服务端加盐哈希保存。")
+  registerPersonal(@body body: PersonalRegisterRequest): APIResponse<EmptyData>;
+
+  @post
+  @route("/auth/register/merchant")
+  @doc("注册商家用户，营业凭证 mediaId 存在，账号进入未激活和待审核流程，商家身份必须经后台审核通过。")
+  registerMerchant(@body body: MerchantRegisterRequest): APIResponse<EmptyData>;
+
+  @post
+  @route("/auth/login")
+  @doc("邮箱密码登录，账号已激活且未封禁，返回 JWT 令牌，封禁账号不得登录。")
+  login(@body body: EmailPasswordRequest): APIResponse<LoginResult>;
+
+  @post
+  @route("/auth/activate")
+  @doc("激活账号，激活 token 有效且未使用，账号激活或等待商家审核完成，token 只能使用一次。")
+  activateAccount(@body body: AccountActivationRequest): APIResponse<EmptyData>;
+
+  @post
+  @route("/auth/activation-email")
+  @doc("重新发送激活邮件，邮箱对应账号未激活，发送新的激活链接，不暴露邮件服务凭据。")
+  resendActivationEmail(
+    @body body: ResendActivationEmailRequest,
+  ): APIResponse<EmptyData>;
+
+  @post
+  @route("/auth/refresh")
+  @doc("刷新访问令牌，刷新令牌有效，返回新的令牌对，不会绕过账号封禁校验。")
+  refreshToken(@body body: RefreshTokenRequest): APIResponse<TokenPair>;
+
+  @get
+  @route("/nicknames/availability")
+  @doc("校验昵称是否可用，nickname 非空，返回唯一性校验结果，个人昵称和商家昵称共享唯一性约束。")
+  checkNickname(@query nickname: string): APIResponse<NicknameAvailability>;
+
+  @get
+  @route("/me/profile")
+  @doc("获取本人公开资料，调用方已登录，返回当前账号资料，不返回密码、盐和敏感凭据。")
+  getMyProfile(): APIResponse<PublicUserProfile>;
+
+  @patch
+  @route("/me/profile")
+  @doc("更新个人资料，调用方为个人用户，资料字段被部分更新，昵称仍保持全平台唯一。")
+  updatePersonalProfile(
+    @body body: UpdatePersonalProfileRequest,
+  ): APIResponse<PublicUserProfile>;
+
+  @get
+  @route("/me/merchant-profile")
+  @doc("获取本人商家资料，调用方为商家用户，返回商家资料与审核状态，不返回凭据原文。")
+  getMyMerchantProfile(): APIResponse<MerchantProfile>;
+
+  @patch
+  @route("/me/merchant-profile")
+  @doc("更新商家资料，调用方为商家用户，资料被更新，必要时重新进入审核，审核状态只能由后台流程改变。")
+  updateMerchantProfile(
+    @body body: UpdateMerchantProfileRequest,
+  ): APIResponse<MerchantProfile>;
+}
+
+@doc("账号激活请求。")
+model AccountActivationRequest {
+  @doc("激活邮件中的一次性激活 token。")
+  token: string;
+}
+
+@doc("重新发送激活邮件请求。")
+model ResendActivationEmailRequest {
+  @doc("需要重新接收激活邮件的账号邮箱。")
+  email: string;
+}
