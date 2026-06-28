@@ -170,6 +170,39 @@ model FollowRelation {
   friendshipCreated: boolean;
 }
 
+@doc("关注/粉丝列表项。")
+model FollowItem {
+  @doc("用户标识。")
+  userId: EntityId;
+
+  @doc("用户昵称。")
+  nickname: string;
+
+  @doc("用户头像。")
+  avatar?: MediaFile;
+
+  @doc("关注时间。")
+  followedAt: DateTimeString;
+
+  @doc("双方是否互相关注。")
+  mutual: boolean;
+}
+
+@doc("黑名单项。")
+model BlacklistItem {
+  @doc("被屏蔽用户标识。")
+  userId: EntityId;
+
+  @doc("被屏蔽用户昵称。")
+  nickname: string;
+
+  @doc("被屏蔽用户头像。")
+  avatar?: MediaFile;
+
+  @doc("屏蔽时间。")
+  blockedAt: DateTimeString;
+}
+
 @doc("小队加入方式。")
 enum TeamJoinMode {
   publicJoin,
@@ -190,6 +223,14 @@ enum TeamStatus {
   disabled,
 }
 
+@doc("入队申请状态。")
+enum TeamJoinRequestStatus {
+  pending,
+  accepted,
+  rejected,
+  canceled,
+}
+
 @doc("小队创建请求，名称可用且人数上限为正数，创建小队并自动生成群聊，创建者成为队长。")
 model TeamCreateRequest {
   @doc("小队名称。")
@@ -206,6 +247,9 @@ model TeamCreateRequest {
 
   @doc("小队简介。")
   description?: string;
+
+  @doc("小队头像媒体文件标识。")
+  avatarMediaId?: EntityId;
 }
 
 @doc("小队资料。")
@@ -230,6 +274,9 @@ model TeamProfile {
 
   @doc("小队简介。")
   description?: string;
+
+  @doc("小队头像媒体文件。")
+  avatar?: MediaFile;
 
   @doc("小队状态。")
   status: TeamStatus;
@@ -277,7 +324,7 @@ model TeamJoinRequest {
   message?: string;
 
   @doc("入队申请状态。")
-  status: FriendRequestStatus;
+  status: TeamJoinRequestStatus;
 
   @doc("申请创建时间。")
   createdAt: DateTimeString;
@@ -287,13 +334,19 @@ model TeamJoinRequest {
 model TeamJoinRequestQuery extends PageQuery {
   @doc("入队申请状态筛选条件。")
   @query
-  status?: FriendRequestStatus;
+  status?: TeamJoinRequestStatus;
 }
 
 @doc("加入小队请求，小队存在且未满员未解散，公开小队直接加入，审核小队创建申请，黑名单关系不得加入。")
 model JoinTeamRequest {
   @doc("入队申请附言。")
   message?: string;
+}
+
+@doc("入队申请处理请求。")
+model TeamJoinRequestDecision {
+  @doc("是否同意该入队申请。")
+  accepted: boolean;
 }
 
 @doc("小队积分项。")
@@ -331,6 +384,16 @@ interface SocialOperations {
   @doc("取消关注用户，已关注目标用户，取消关注并同步互关关系，仅由互关形成的好友关系随互关解除。")
   unfollowUser(@path targetUserId: EntityId): APIResponse<FollowRelation>;
 
+  @get
+  @route("/follows")
+  @doc("获取我关注的用户列表，调用方已登录，分页返回已关注用户，按关注时间倒序。")
+  listFollows(...PageQuery): APIResponse<PageResult<FollowItem>>;
+
+  @get
+  @route("/followers")
+  @doc("获取我的粉丝列表，调用方已登录，分页返回关注我的用户，按关注时间倒序。")
+  listFollowers(...PageQuery): APIResponse<PageResult<FollowItem>>;
+
   @post
   @route("/friend-requests")
   @doc("发送好友申请，双方不是好友且不存在黑名单关系，创建待处理申请，异常关系不可重复申请。")
@@ -366,17 +429,22 @@ interface SocialOperations {
   listFriends(...PageQuery): APIResponse<PageResult<FriendItem>>;
 
   @patch
-  @route("/friends/{friendId}")
+  @route("/friends/{userId}")
   @doc("更新好友备注和分组，双方为好友，更新调用方本地好友信息，不会影响对方看到的资料。")
   updateFriendRemark(
-    @path friendId: EntityId,
+    @path userId: EntityId,
     @body body: FriendRemarkUpdate,
   ): APIResponse<FriendItem>;
 
   @delete
-  @route("/friends/{friendId}")
+  @route("/friends/{userId}")
   @doc("删除好友，双方为好友，双向好友关系解除，历史消息不因此删除。")
-  deleteFriend(@path friendId: EntityId): APIResponse<EmptyData>;
+  deleteFriend(@path userId: EntityId): APIResponse<EmptyData>;
+
+  @get
+  @route("/blacklist")
+  @doc("查看黑名单列表，调用方已登录，分页返回已屏蔽用户信息。")
+  listBlacklist(...PageQuery): APIResponse<PageResult<BlacklistItem>>;
 
   @post
   @route("/blacklist/{targetUserId}")
@@ -422,6 +490,11 @@ interface SocialOperations {
     @body body: JoinTeamRequest,
   ): APIResponse<TeamJoinRequest>;
 
+  @post
+  @route("/teams/{teamId}/leave")
+  @doc("退出兴趣小队，调用方为小队普通成员或管理员，退出小队并同步退出群聊，队长不可退出（需先转让队长或解散小队）。")
+  leaveTeam(@path teamId: EntityId): APIResponse<EmptyData>;
+
   @get
   @route("/teams/{teamId}/join-requests")
   @doc("查看小队入队申请列表，队长或管理员可按申请状态筛选。")
@@ -436,7 +509,7 @@ interface SocialOperations {
   decideTeamJoinRequest(
     @path teamId: EntityId,
     @path requestId: EntityId,
-    @body body: FriendRequestDecision,
+    @body body: TeamJoinRequestDecision,
   ): APIResponse<TeamJoinRequest>;
 
   @get
