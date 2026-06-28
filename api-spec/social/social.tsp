@@ -190,6 +190,14 @@ enum TeamStatus {
   disabled,
 }
 
+@doc("入队申请状态。")
+enum TeamJoinRequestStatus {
+  pending,
+  accepted,
+  rejected,
+  canceled,
+}
+
 @doc("小队创建请求，名称可用且人数上限为正数，创建小队并自动生成群聊，创建者成为队长。")
 model TeamCreateRequest {
   @doc("小队名称。")
@@ -277,7 +285,7 @@ model TeamJoinRequest {
   message?: string;
 
   @doc("入队申请状态。")
-  status: FriendRequestStatus;
+  status: TeamJoinRequestStatus;
 
   @doc("申请创建时间。")
   createdAt: DateTimeString;
@@ -287,13 +295,19 @@ model TeamJoinRequest {
 model TeamJoinRequestQuery extends PageQuery {
   @doc("入队申请状态筛选条件。")
   @query
-  status?: FriendRequestStatus;
+  status?: TeamJoinRequestStatus;
 }
 
 @doc("加入小队请求，小队存在且未满员未解散，公开小队直接加入，审核小队创建申请，黑名单关系不得加入。")
 model JoinTeamRequest {
   @doc("入队申请附言。")
   message?: string;
+}
+
+@doc("入队申请处理请求。")
+model TeamJoinRequestDecision {
+  @doc("是否同意该入队申请。")
+  accepted: boolean;
 }
 
 @doc("小队积分项。")
@@ -436,7 +450,7 @@ interface SocialOperations {
   decideTeamJoinRequest(
     @path teamId: EntityId,
     @path requestId: EntityId,
-    @body body: FriendRequestDecision,
+    @body body: TeamJoinRequestDecision,
   ): APIResponse<TeamJoinRequest>;
 
   @get
