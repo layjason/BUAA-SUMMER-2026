@@ -1,4 +1,5 @@
 import "@typespec/http";
+import "../ai/ai.tsp";
 
 using TypeSpec.Http;
 
@@ -81,6 +82,48 @@ model ActivityUpsertRequest {
   imageIds?: EntityId[];
 }
 
+@doc("活动草稿保存请求。草稿阶段允许只填写部分活动信息，提交审核时再校验完整性。")
+model ActivityDraftUpsertRequest {
+  @doc("活动名称。")
+  title?: string;
+
+  @doc("活动标签，用于分类、搜索和推荐。")
+  tags?: string[];
+
+  @doc("活动简介。")
+  introduction?: string;
+
+  @doc("活动开始时间。")
+  startAt?: DateTimeString;
+
+  @doc("活动结束时间。")
+  endAt?: DateTimeString;
+
+  @doc("活动地点信息。")
+  location?: LocationInfo;
+
+  @doc("活动安全须知。")
+  safetyNotice?: string;
+
+  @doc("活动人数上限。")
+  capacity?: int32;
+
+  @doc("报名截止时间。")
+  registrationDeadline?: DateTimeString;
+
+  @doc("活动费用金额，仅表示活动信息，不代表支付订单。")
+  feeAmount?: float64;
+
+  @doc("费用说明，例如免费、AA 或现场支付说明。")
+  feeDescription?: string;
+
+  @doc("参与者最低年龄要求。")
+  minAge?: int32;
+
+  @doc("活动图片媒体文件标识列表。")
+  imageIds?: EntityId[];
+}
+
 @doc("活动摘要。")
 model ActivitySummary {
   @doc("活动标识。")
@@ -147,6 +190,108 @@ model ActivityDetail {
 
   @doc("当前用户是否可以发起报名。")
   canRegister: boolean;
+
+  @doc("当前登录用户在该活动中的报名记录标识，未报名时为空。")
+  currentUserRegistrationId?: EntityId;
+
+  @doc("当前登录用户在该活动中的报名状态，未报名时为空。")
+  currentUserRegistrationStatus?: RegistrationStatus;
+
+  @doc("当前登录用户的候补排位，非候补状态时为空。")
+  currentUserWaitingRank?: int32;
+
+  @doc("当前登录用户候补确认截止时间，仅候补待确认时返回。")
+  currentUserConfirmationDeadline?: DateTimeString;
+
+  @doc("当前用户是否可以取消报名。")
+  canCancelRegistration: boolean;
+
+  @doc("当前用户是否可以确认候补释放名额。")
+  canConfirmWaitingSeat: boolean;
+
+  @doc("当前用户是否可以扫码签到。")
+  canCheckIn: boolean;
+
+  @doc("AI 内容安全审核结果快照。未执行或暂不支持 AI 审核时为空。")
+  aiContentReview?: QujuApi.Ai.AiContentReviewResult;
+
+  @doc("是否需要人工审核。")
+  manualReviewRequired: boolean;
+
+  @doc("活动审核记录，包含自动审核和人工审核记录。")
+  reviewRecords: ReviewRecord[];
+}
+
+@doc("活动草稿详情。用于草稿列表、草稿编辑回显和模板/克隆生成后的前端编辑页。")
+model ActivityDraftDetail {
+  @doc("活动草稿标识。")
+  activityId: EntityId;
+
+  @doc("活动名称。")
+  title?: string;
+
+  @doc("活动标签。")
+  tags: string[];
+
+  @doc("活动简介。")
+  introduction?: string;
+
+  @doc("活动开始时间。")
+  startAt?: DateTimeString;
+
+  @doc("活动结束时间。")
+  endAt?: DateTimeString;
+
+  @doc("活动地点。")
+  location?: LocationInfo;
+
+  @doc("活动安全须知。")
+  safetyNotice?: string;
+
+  @doc("活动人数上限。")
+  capacity?: int32;
+
+  @doc("报名截止时间。")
+  registrationDeadline?: DateTimeString;
+
+  @doc("活动费用金额。")
+  feeAmount?: float64;
+
+  @doc("费用说明。")
+  feeDescription?: string;
+
+  @doc("参与者最低年龄要求。")
+  minAge?: int32;
+
+  @doc("活动图片列表。")
+  images: MediaFile[];
+
+  @doc("活动审核状态。")
+  reviewStatus: ActivityReviewStatus;
+
+  @doc("更新时间。")
+  updatedAt: DateTimeString;
+
+  @doc("创建时间。")
+  createdAt: DateTimeString;
+}
+
+@doc("活动草稿列表项。")
+model ActivityDraftSummary {
+  @doc("活动草稿标识。")
+  activityId: EntityId;
+
+  @doc("活动名称。")
+  title?: string;
+
+  @doc("活动审核状态。")
+  reviewStatus: ActivityReviewStatus;
+
+  @doc("更新时间。")
+  updatedAt: DateTimeString;
+
+  @doc("创建时间。")
+  createdAt: DateTimeString;
 }
 
 @doc("活动模板。")
@@ -408,27 +553,39 @@ interface ActivityOperations {
   @post
   @route("/drafts")
   @doc("保存活动草稿，调用方已登录，创建或更新草稿，草稿不会进入发现列表。")
-  saveDraft(@body body: ActivityUpsertRequest): APIResponse<ActivityDetail>;
+  saveDraft(
+    @body body: ActivityDraftUpsertRequest,
+  ): APIResponse<ActivityDraftDetail>;
+
+  @get
+  @route("/drafts")
+  @doc("获取我的活动草稿列表，调用方已登录，分页返回本人创建的草稿。")
+  listDrafts(...PageQuery): APIResponse<PageResult<ActivityDraftSummary>>;
+
+  @get
+  @route("/drafts/{activityId}")
+  @doc("获取活动草稿详情，调用方为草稿发起人，用于草稿编辑页回显。")
+  getDraft(@path activityId: EntityId): APIResponse<ActivityDraftDetail>;
 
   @patch
   @route("/drafts/{activityId}")
   @doc("更新活动草稿，调用方为草稿发起人，草稿内容更新，已提交审核的活动不能按草稿规则覆盖。")
   updateDraft(
     @path activityId: EntityId,
-    @body body: ActivityUpsertRequest,
-  ): APIResponse<ActivityDetail>;
+    @body body: ActivityDraftUpsertRequest,
+  ): APIResponse<ActivityDraftDetail>;
 
   @post
   @route("/templates/{templateId}/drafts")
   @doc("基于模板创建草稿，模板存在，生成可编辑草稿，用户必须确认后才可提交审核。")
   createDraftFromTemplate(
     @path templateId: EntityId,
-  ): APIResponse<ActivityDetail>;
+  ): APIResponse<ActivityDraftDetail>;
 
   @post
   @route("/{activityId}/clone")
   @doc("克隆历史活动，活动存在且调用方有权克隆，复制基础信息为新草稿，报名数据和评价不会被复制。")
-  cloneActivity(@path activityId: EntityId): APIResponse<ActivityDetail>;
+  cloneActivity(@path activityId: EntityId): APIResponse<ActivityDraftDetail>;
 
   @post
   @route("/{activityId}/submit")
@@ -454,6 +611,11 @@ interface ActivityOperations {
   @route("/map")
   @doc("获取地图模式点位，提供地图视野或中心点范围，返回活动点位，点位只包含地图展示所需摘要。")
   getMapPoints(...ActivitySearchQuery): APIResponse<ActivityMapPoint[]>;
+
+  @get
+  @route("/mine")
+  @doc("获取我创建的活动列表，调用方已登录，分页返回本人创建的活动及审核状态，用于我的活动页查看提交处理结果。")
+  listMyActivities(...PageQuery): APIResponse<PageResult<ActivitySummary>>;
 
   @get
   @route("/{activityId}")

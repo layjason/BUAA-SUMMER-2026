@@ -252,6 +252,11 @@ interface IdentityOperations {
   ): APIResponse<MediaFile>;
 
   @post
+  @route("/media/avatar")
+  @doc("上传用户或商家头像，请求为 multipart/form-data，仅接受 usage=avatar，返回 avatar 用途的 mediaId，资料更新接口通过 avatarMediaId 引用。")
+  uploadAvatar(@multipartBody body: MediaUploadRequest): APIResponse<MediaFile>;
+
+  @post
   @route("/auth/register/personal")
   @doc("注册个人用户，邮箱未注册且昵称唯一，账号进入未激活状态并触发激活邮件，密码只在服务端加盐哈希保存。")
   registerPersonal(@body body: PersonalRegisterRequest): APIResponse<EmptyData>;

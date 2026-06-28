@@ -60,6 +60,12 @@ model SendMessageRequest {
 
   @doc("位置共享消息中的地点信息。")
   location?: LocationInfo;
+
+  @doc("被 @ 的用户标识列表。仅小队群聊中使用。")
+  mentionedUserIds?: EntityId[];
+
+  @doc("是否 @ 所有人。仅队长或管理员可用，普通成员传 true 时后端应拒绝。")
+  mentionAll?: boolean;
 }
 
 @doc("聊天消息。")
@@ -87,6 +93,12 @@ model ChatMessage {
 
   @doc("位置共享消息地点。")
   location?: LocationInfo;
+
+  @doc("该消息 @ 的用户标识列表。")
+  mentionedUserIds?: EntityId[];
+
+  @doc("该消息是否 @ 所有人。")
+  mentionAll?: boolean;
 
   @doc("消息读取状态。")
   readStatus: MessageReadStatus;
@@ -190,16 +202,18 @@ interface ChatOperations {
   ): APIResponse<MediaFile>;
 
   @post
-  @route("/media/files")
-  @doc("上传群文件，请求为 multipart/form-data，返回可关联到小队的文件 mediaId，不暴露存储凭据。")
+  @route("/teams/{teamId}/files")
+  @doc("上传群文件，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队的文件 mediaId。")
   uploadTeamFile(
+    @path teamId: EntityId,
     @multipartBody body: MediaUploadRequest,
   ): APIResponse<MediaFile>;
 
   @post
-  @route("/media/albums")
-  @doc("上传小队相册图片，请求为 multipart/form-data，返回相册图片 mediaId，删除权限由小队角色控制。")
+  @route("/teams/{teamId}/album-images")
+  @doc("上传小队相册图片，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队相册的图片 mediaId。")
   uploadTeamAlbumImage(
+    @path teamId: EntityId,
     @multipartBody body: MediaUploadRequest,
   ): APIResponse<MediaFile>;
 

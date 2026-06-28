@@ -482,6 +482,11 @@ interface SocialOperations {
     ...PageQuery,
   ): APIResponse<PageResult<TeamProfile>>;
 
+  @get
+  @route("/teams/{teamId}")
+  @doc("获取兴趣小队详情，用户可查看未解散且可见的小队资料，小队成员可据此进入群聊、活动、文件、相册和积分榜。")
+  getTeam(@path teamId: EntityId): APIResponse<TeamProfile>;
+
   @post
   @route("/teams/{teamId}/join")
   @doc("加入兴趣小队，小队未满员、未解散且无黑名单关系，公开小队加入或审核小队创建申请，加入小队同步加入群聊。")
