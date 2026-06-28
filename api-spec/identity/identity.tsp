@@ -111,8 +111,8 @@ model PublicUserProfile {
   @doc("用户展示昵称。")
   nickname: string;
 
-  @doc("用户头像 URL。")
-  avatarUrl?: string;
+  @doc("用户头像媒体文件。")
+  avatar?: MediaFile;
 
   @doc("用户性别。")
   gender?: Gender;
@@ -121,10 +121,13 @@ model PublicUserProfile {
   birthday?: DateString;
 
   @doc("用户个性签名。")
-  bio?: string;
+  signature?: string;
 
   @doc("用户兴趣标签。")
   interestTags: string[];
+
+  @doc("用户信誉分，用于报名等业务校验。")
+  reputationScore: int32;
 
   @doc("用户类型。")
   kind: UserKind;
@@ -132,8 +135,8 @@ model PublicUserProfile {
 
 @doc("个人资料更新请求，调用方为本人，资料被部分更新且昵称仍唯一，不得通过该接口修改密码和账号状态。")
 model UpdatePersonalProfileRequest {
-  @doc("新头像 URL，来自通用上传接口返回。")
-  avatarUrl?: string;
+  @doc("新头像媒体文件标识。")
+  avatarMediaId?: EntityId;
 
   @doc("新昵称，全平台唯一。")
   nickname?: string;
@@ -145,7 +148,7 @@ model UpdatePersonalProfileRequest {
   birthday?: DateString;
 
   @doc("新个性签名。")
-  bio?: string;
+  signature?: string;
 
   @doc("新的兴趣标签名称列表。")
   interestTags?: string[];
@@ -180,6 +183,9 @@ model MerchantProfile {
   @doc("商家平台展示昵称。")
   merchantNickname: string;
 
+  @doc("商家头像媒体文件。")
+  avatar?: MediaFile;
+
   @doc("商家关注或经营的活动领域。")
   interestedActivityFields: string[];
 
@@ -200,6 +206,9 @@ model UpdateMerchantProfileRequest {
 
   @doc("新的商家展示昵称。")
   merchantNickname?: string;
+
+  @doc("新头像媒体文件标识。")
+  avatarMediaId?: EntityId;
 
   @doc("新的关注或经营活动领域。")
   interestedActivityFields?: string[];
