@@ -436,6 +436,11 @@ interface SocialOperations {
     @body body: JoinTeamRequest,
   ): APIResponse<TeamJoinRequest>;
 
+  @post
+  @route("/teams/{teamId}/leave")
+  @doc("退出兴趣小队，调用方为小队普通成员或管理员，退出小队并同步退出群聊，队长不可退出（需先转让队长或解散小队）。")
+  leaveTeam(@path teamId: EntityId): APIResponse<EmptyData>;
+
   @get
   @route("/teams/{teamId}/join-requests")
   @doc("查看小队入队申请列表，队长或管理员可按申请状态筛选。")
