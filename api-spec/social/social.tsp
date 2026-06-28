@@ -170,6 +170,24 @@ model FollowRelation {
   friendshipCreated: boolean;
 }
 
+@doc("关注/粉丝列表项。")
+model FollowItem {
+  @doc("用户标识。")
+  userId: EntityId;
+
+  @doc("用户昵称。")
+  nickname: string;
+
+  @doc("用户头像。")
+  avatar?: MediaFile;
+
+  @doc("关注时间。")
+  followedAt: DateTimeString;
+
+  @doc("双方是否互相关注。")
+  mutual: boolean;
+}
+
 @doc("黑名单项。")
 model BlacklistItem {
   @doc("被屏蔽用户标识。")
@@ -365,6 +383,16 @@ interface SocialOperations {
   @route("/follows/{targetUserId}")
   @doc("取消关注用户，已关注目标用户，取消关注并同步互关关系，仅由互关形成的好友关系随互关解除。")
   unfollowUser(@path targetUserId: EntityId): APIResponse<FollowRelation>;
+
+  @get
+  @route("/follows")
+  @doc("获取我关注的用户列表，调用方已登录，分页返回已关注用户，按关注时间倒序。")
+  listFollows(...PageQuery): APIResponse<PageResult<FollowItem>>;
+
+  @get
+  @route("/followers")
+  @doc("获取我的粉丝列表，调用方已登录，分页返回关注我的用户，按关注时间倒序。")
+  listFollowers(...PageQuery): APIResponse<PageResult<FollowItem>>;
 
   @post
   @route("/friend-requests")
