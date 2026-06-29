@@ -20,14 +20,14 @@ public class AiController {
     }
 
     @PostMapping("/activity-plans")
-    public ResponseEntity<ApiResponse<Object>> generateActivityPlan(
+    public ResponseEntity<ApiResponse<AiDtos.ActivityPlanningResult>> generateActivityPlan(
             @Valid @RequestBody AiDtos.ActivityPlanningRequest request) {
-        return responseFactory.success("POST", "/ai/activity-plans");
+        return responseFactory.activityPlanningResult();
     }
 
     @PostMapping("/image-classifications")
-    public ResponseEntity<ApiResponse<Object>> classifyImages(
+    public ResponseEntity<ApiResponse<AiDtos.ImageClassificationResult>> classifyImages(
             @Valid @RequestBody AiDtos.ImageClassificationRequest request) {
-        return responseFactory.success("POST", "/ai/image-classifications");
+        return responseFactory.imageClassificationResult();
     }
 }

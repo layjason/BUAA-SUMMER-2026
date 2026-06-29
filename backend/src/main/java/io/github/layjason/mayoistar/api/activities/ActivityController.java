@@ -2,6 +2,7 @@ package io.github.layjason.mayoistar.api.activities;
 
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
+import io.github.layjason.mayoistar.api.common.PageResult;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.MediaType;
@@ -28,69 +29,69 @@ public class ActivityController {
     }
 
     @PostMapping("/drafts")
-    public ResponseEntity<ApiResponse<Object>> saveDraft(
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> saveDraft(
             @Valid @RequestBody ActivityDtos.ActivityDraftUpsertRequest request) {
-        return responseFactory.success("POST", "/activities/drafts");
+        return responseFactory.activityDraftDetail();
     }
 
     @GetMapping("/drafts")
-    public ResponseEntity<ApiResponse<Object>> listDrafts(
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivityDraftSummary>>> listDrafts(
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/activities/drafts");
+        return responseFactory.emptyPage();
     }
 
     @GetMapping("/drafts/{activityId}")
-    public ResponseEntity<ApiResponse<Object>> getDraft(@PathVariable String activityId) {
-        return responseFactory.success("GET", "/activities/drafts/" + activityId);
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> getDraft(@PathVariable String activityId) {
+        return responseFactory.activityDraftDetail();
     }
 
     @PatchMapping("/drafts/{activityId}")
-    public ResponseEntity<ApiResponse<Object>> updateDraft(
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> updateDraft(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.ActivityDraftUpsertRequest request) {
-        return responseFactory.success("PATCH", "/activities/drafts/" + activityId);
+        return responseFactory.activityDraftDetail();
     }
 
     @GetMapping("/feed")
-    public ResponseEntity<ApiResponse<Object>> getFeed(
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> getFeed(
             @RequestParam(required = false) String tab,
             @RequestParam(required = false) Double latitude,
             @RequestParam(required = false) Double longitude,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/activities/feed");
+        return responseFactory.emptyPage();
     }
 
     @GetMapping("/map")
-    public ResponseEntity<ApiResponse<Object>> getMapPoints(
+    public ResponseEntity<ApiResponse<List<ActivityDtos.ActivityMapPoint>>> getMapPoints(
             @RequestParam(required = false) Double latitude,
             @RequestParam(required = false) Double longitude,
             @RequestParam(required = false) Double radiusKm,
             @RequestParam(required = false) List<String> tags) {
-        return responseFactory.success("GET", "/activities/map");
+        return responseFactory.activityMapPoints();
     }
 
     @PostMapping(value = "/media/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Object>> uploadActivityImage(
-            @RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.success("POST", "/activities/media/images");
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
+            uploadActivityImage(@RequestPart(value = "file", required = false) MultipartFile file) {
+        return responseFactory.mediaFile("activityImage");
     }
 
     @PostMapping(value = "/media/review-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Object>> uploadActivityReviewImage(
-            @RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.success("POST", "/activities/media/review-images");
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
+            uploadActivityReviewImage(@RequestPart(value = "file", required = false) MultipartFile file) {
+        return responseFactory.mediaFile("activityReviewImage");
     }
 
     @GetMapping("/mine")
-    public ResponseEntity<ApiResponse<Object>> listMyActivities(
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> listMyActivities(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/activities/mine");
+        return responseFactory.emptyPage();
     }
 
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<Object>> searchActivities(
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> searchActivities(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) List<String> tags,
             @RequestParam(required = false) Double latitude,
@@ -98,44 +99,46 @@ public class ActivityController {
             @RequestParam(required = false) Double radiusKm,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/activities/search");
+        return responseFactory.emptyPage();
     }
 
     @GetMapping("/templates")
-    public ResponseEntity<ApiResponse<Object>> listTemplates(
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivityTemplate>>> listTemplates(
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/activities/templates");
+        return responseFactory.emptyPage();
     }
 
     @PostMapping("/templates/{templateId}/drafts")
-    public ResponseEntity<ApiResponse<Object>> createDraftFromTemplate(@PathVariable String templateId) {
-        return responseFactory.success("POST", "/activities/templates/" + templateId + "/drafts");
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> createDraftFromTemplate(
+            @PathVariable String templateId) {
+        return responseFactory.activityDraftDetail();
     }
 
     @GetMapping("/{activityId}")
-    public ResponseEntity<ApiResponse<Object>> getActivity(@PathVariable String activityId) {
-        return responseFactory.success("GET", "/activities/" + activityId);
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> getActivity(@PathVariable String activityId) {
+        return responseFactory.activityDetail();
     }
 
     @PostMapping("/{activityId}/check-in-qrcode")
-    public ResponseEntity<ApiResponse<Object>> createCheckInQrCode(@PathVariable String activityId) {
-        return responseFactory.success("POST", "/activities/" + activityId + "/check-in-qrcode");
+    public ResponseEntity<ApiResponse<ActivityDtos.CheckInQrCode>> createCheckInQrCode(
+            @PathVariable String activityId) {
+        return responseFactory.checkInQrCode();
     }
 
     @PostMapping("/{activityId}/check-ins")
-    public ResponseEntity<ApiResponse<Object>> checkIn(
+    public ResponseEntity<ApiResponse<ActivityDtos.CheckInRecord>> checkIn(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.CheckInRequest request) {
-        return responseFactory.success("POST", "/activities/" + activityId + "/check-ins");
+        return responseFactory.checkInRecord();
     }
 
     @GetMapping("/{activityId}/check-ins")
-    public ResponseEntity<ApiResponse<Object>> listCheckIns(
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.CheckInRecord>>> listCheckIns(
             @PathVariable String activityId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/activities/" + activityId + "/check-ins");
+        return responseFactory.emptyPage();
     }
 
     @GetMapping(value = "/{activityId}/check-ins/export", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
@@ -146,55 +149,58 @@ public class ActivityController {
     }
 
     @PostMapping("/{activityId}/clone")
-    public ResponseEntity<ApiResponse<Object>> cloneActivity(@PathVariable String activityId) {
-        return responseFactory.success("POST", "/activities/" + activityId + "/clone");
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> cloneActivity(
+            @PathVariable String activityId) {
+        return responseFactory.activityDraftDetail();
     }
 
     @GetMapping("/{activityId}/participants")
-    public ResponseEntity<ApiResponse<Object>> listParticipants(
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivityParticipant>>> listParticipants(
             @PathVariable String activityId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/activities/" + activityId + "/participants");
+        return responseFactory.emptyPage();
     }
 
     @GetMapping("/{activityId}/participation-state")
-    public ResponseEntity<ApiResponse<Object>> getParticipationState(@PathVariable String activityId) {
-        return responseFactory.success("GET", "/activities/" + activityId + "/participation-state");
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityParticipationState>> getParticipationState(
+            @PathVariable String activityId) {
+        return responseFactory.participationState();
     }
 
     @PostMapping("/{activityId}/registrations")
-    public ResponseEntity<ApiResponse<Object>> registerActivity(
+    public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> registerActivity(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.RegisterActivityRequest request) {
-        return responseFactory.success("POST", "/activities/" + activityId + "/registrations");
+        return responseFactory.registrationResult();
     }
 
     @PostMapping("/{activityId}/registrations/cancel")
-    public ResponseEntity<ApiResponse<Object>> cancelRegistration(@PathVariable String activityId) {
-        return responseFactory.success("POST", "/activities/" + activityId + "/registrations/cancel");
+    public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> cancelRegistration(
+            @PathVariable String activityId) {
+        return responseFactory.registrationResult();
     }
 
     @PostMapping("/{activityId}/reviews")
-    public ResponseEntity<ApiResponse<Object>> reviewActivity(
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityReview>> reviewActivity(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.ActivityReviewRequest request) {
-        return responseFactory.success("POST", "/activities/" + activityId + "/reviews");
+        return responseFactory.activityReview();
     }
 
     @PostMapping("/{activityId}/submit")
-    public ResponseEntity<ApiResponse<Object>> submitActivity(@PathVariable String activityId) {
-        return responseFactory.success("POST", "/activities/" + activityId + "/submit");
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> submitActivity(@PathVariable String activityId) {
+        return responseFactory.activityDetail();
     }
 
     @PostMapping("/{activityId}/summaries")
-    public ResponseEntity<ApiResponse<Object>> createSummary(
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivitySummaryPost>> createSummary(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.ActivitySummaryPostRequest request) {
-        return responseFactory.success("POST", "/activities/" + activityId + "/summaries");
+        return responseFactory.activitySummaryPost();
     }
 
     @PostMapping("/{activityId}/waiting-confirmations")
-    public ResponseEntity<ApiResponse<Object>> confirmWaitingSeat(
+    public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> confirmWaitingSeat(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.WaitingConfirmationRequest request) {
-        return responseFactory.success("POST", "/activities/" + activityId + "/waiting-confirmations");
+        return responseFactory.registrationResult();
     }
 }

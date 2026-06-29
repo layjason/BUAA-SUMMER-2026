@@ -3,6 +3,7 @@ package io.github.layjason.mayoistar.api.identity;
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,110 +27,111 @@ public class IdentityController {
     }
 
     @PostMapping("/auth/activate")
-    public ResponseEntity<ApiResponse<Object>> activateAccount(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> activateAccount(
             @Valid @RequestBody IdentityDtos.AccountActivationRequest request) {
-        return responseFactory.success("POST", "/identity/auth/activate");
+        return responseFactory.emptyData();
     }
 
     @PostMapping("/auth/activation-email")
-    public ResponseEntity<ApiResponse<Object>> resendActivationEmail(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> resendActivationEmail(
             @Valid @RequestBody IdentityDtos.ResendActivationEmailRequest request) {
-        return responseFactory.success("POST", "/identity/auth/activation-email");
+        return responseFactory.emptyData();
     }
 
     @PostMapping("/auth/login")
-    public ResponseEntity<ApiResponse<Object>> login(@Valid @RequestBody IdentityDtos.EmailPasswordRequest request) {
-        return responseFactory.success("POST", "/identity/auth/login");
+    public ResponseEntity<ApiResponse<IdentityDtos.LoginResult>> login(
+            @Valid @RequestBody IdentityDtos.EmailPasswordRequest request) {
+        return responseFactory.loginResult();
     }
 
     @PostMapping("/auth/logout")
-    public ResponseEntity<ApiResponse<Object>> logout() {
-        return responseFactory.success("POST", "/identity/auth/logout");
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> logout() {
+        return responseFactory.emptyData();
     }
 
     @PostMapping("/auth/password-reset")
-    public ResponseEntity<ApiResponse<Object>> resetPassword(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> resetPassword(
             @Valid @RequestBody IdentityDtos.ResetPasswordRequest request) {
-        return responseFactory.success("POST", "/identity/auth/password-reset");
+        return responseFactory.emptyData();
     }
 
     @PostMapping("/auth/password-reset-email")
-    public ResponseEntity<ApiResponse<Object>> sendPasswordResetEmail(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> sendPasswordResetEmail(
             @Valid @RequestBody IdentityDtos.PasswordResetEmailRequest request) {
-        return responseFactory.success("POST", "/identity/auth/password-reset-email");
+        return responseFactory.emptyData();
     }
 
     @PostMapping("/auth/refresh")
-    public ResponseEntity<ApiResponse<Object>> refreshToken(
+    public ResponseEntity<ApiResponse<IdentityDtos.TokenPair>> refreshToken(
             @Valid @RequestBody IdentityDtos.RefreshTokenRequest request) {
-        return responseFactory.success("POST", "/identity/auth/refresh");
+        return responseFactory.tokenPair();
     }
 
     @PostMapping("/auth/register/merchant")
-    public ResponseEntity<ApiResponse<Object>> registerMerchant(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> registerMerchant(
             @Valid @RequestBody IdentityDtos.MerchantRegisterRequest request) {
-        return responseFactory.success("POST", "/identity/auth/register/merchant");
+        return responseFactory.emptyData();
     }
 
     @PostMapping("/auth/register/personal")
-    public ResponseEntity<ApiResponse<Object>> registerPersonal(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> registerPersonal(
             @Valid @RequestBody IdentityDtos.PersonalRegisterRequest request) {
-        return responseFactory.success("POST", "/identity/auth/register/personal");
+        return responseFactory.emptyData();
     }
 
     @GetMapping("/interest-tags")
-    public ResponseEntity<ApiResponse<Object>> getInterestTags() {
-        return responseFactory.success("GET", "/identity/interest-tags");
+    public ResponseEntity<ApiResponse<List<IdentityDtos.InterestTagItem>>> getInterestTags() {
+        return responseFactory.interestTags();
     }
 
     @GetMapping("/me/merchant-profile")
-    public ResponseEntity<ApiResponse<Object>> getMyMerchantProfile() {
-        return responseFactory.success("GET", "/identity/me/merchant-profile");
+    public ResponseEntity<ApiResponse<IdentityDtos.MerchantProfile>> getMyMerchantProfile() {
+        return responseFactory.merchantProfile();
     }
 
     @PatchMapping("/me/merchant-profile")
-    public ResponseEntity<ApiResponse<Object>> updateMerchantProfile(
+    public ResponseEntity<ApiResponse<IdentityDtos.MerchantProfile>> updateMerchantProfile(
             @Valid @RequestBody IdentityDtos.UpdateMerchantProfileRequest request) {
-        return responseFactory.success("PATCH", "/identity/me/merchant-profile");
+        return responseFactory.merchantProfile();
     }
 
     @PostMapping(value = "/me/merchant-qualification", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Object>> submitMerchantQualification(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> submitMerchantQualification(
             @RequestPart(value = "licenseMediaId", required = false) String licenseMediaId) {
-        return responseFactory.success("POST", "/identity/me/merchant-qualification");
+        return responseFactory.emptyData();
     }
 
     @PostMapping("/me/password")
-    public ResponseEntity<ApiResponse<Object>> changePassword(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> changePassword(
             @Valid @RequestBody IdentityDtos.ChangePasswordRequest request) {
-        return responseFactory.success("POST", "/identity/me/password");
+        return responseFactory.emptyData();
     }
 
     @GetMapping("/me/profile")
-    public ResponseEntity<ApiResponse<Object>> getMyProfile() {
-        return responseFactory.success("GET", "/identity/me/profile");
+    public ResponseEntity<ApiResponse<IdentityDtos.PublicUserProfile>> getMyProfile() {
+        return responseFactory.publicUserProfile();
     }
 
     @PatchMapping("/me/profile")
-    public ResponseEntity<ApiResponse<Object>> updatePersonalProfile(
+    public ResponseEntity<ApiResponse<IdentityDtos.PublicUserProfile>> updatePersonalProfile(
             @Valid @RequestBody IdentityDtos.UpdatePersonalProfileRequest request) {
-        return responseFactory.success("PATCH", "/identity/me/profile");
+        return responseFactory.publicUserProfile();
     }
 
     @PostMapping(value = "/media/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Object>> uploadAvatar(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>> uploadAvatar(
             @RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.success("POST", "/identity/media/avatar");
+        return responseFactory.mediaFile("avatar");
     }
 
     @PostMapping(value = "/media/license", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Object>> uploadMerchantLicense(
-            @RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.success("POST", "/identity/media/license");
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
+            uploadMerchantLicense(@RequestPart(value = "file", required = false) MultipartFile file) {
+        return responseFactory.mediaFile("merchantLicense");
     }
 
     @GetMapping("/nicknames/availability")
-    public ResponseEntity<ApiResponse<Object>> checkNickname(@RequestParam String nickname) {
-        return responseFactory.success("GET", "/identity/nicknames/availability");
+    public ResponseEntity<ApiResponse<IdentityDtos.NicknameAvailability>> checkNickname(@RequestParam String nickname) {
+        return responseFactory.nicknameAvailability();
     }
 }

@@ -3,6 +3,7 @@ package io.github.layjason.mayoistar.api.social;
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
+import io.github.layjason.mayoistar.api.common.PageResult;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -27,197 +28,204 @@ public class SocialController {
     }
 
     @GetMapping("/blacklist")
-    public ResponseEntity<ApiResponse<Object>> listBlacklist(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.BlacklistItem>>> listBlacklist(
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/social/blacklist");
+        return responseFactory.emptyPage();
     }
 
     @PostMapping("/blacklist/{targetUserId}")
-    public ResponseEntity<ApiResponse<Object>> blockUser(@PathVariable String targetUserId) {
-        return responseFactory.success("POST", "/social/blacklist/" + targetUserId);
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> blockUser(
+            @PathVariable String targetUserId) {
+        return responseFactory.emptyData();
     }
 
     @DeleteMapping("/blacklist/{targetUserId}")
-    public ResponseEntity<ApiResponse<Object>> unblockUser(@PathVariable String targetUserId) {
-        return responseFactory.success("DELETE", "/social/blacklist/" + targetUserId);
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> unblockUser(
+            @PathVariable String targetUserId) {
+        return responseFactory.emptyData();
     }
 
     @GetMapping("/followers")
-    public ResponseEntity<ApiResponse<Object>> listFollowers(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.FollowItem>>> listFollowers(
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/social/followers");
+        return responseFactory.emptyPage();
     }
 
     @GetMapping("/follows")
-    public ResponseEntity<ApiResponse<Object>> listFollows(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.FollowItem>>> listFollows(
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/social/follows");
+        return responseFactory.emptyPage();
     }
 
     @PostMapping("/follows/{targetUserId}")
-    public ResponseEntity<ApiResponse<Object>> followUser(@PathVariable String targetUserId) {
-        return responseFactory.success("POST", "/social/follows/" + targetUserId);
+    public ResponseEntity<ApiResponse<SocialDtos.FollowRelation>> followUser(@PathVariable String targetUserId) {
+        return responseFactory.followRelation();
     }
 
     @DeleteMapping("/follows/{targetUserId}")
-    public ResponseEntity<ApiResponse<Object>> unfollowUser(@PathVariable String targetUserId) {
-        return responseFactory.success("DELETE", "/social/follows/" + targetUserId);
+    public ResponseEntity<ApiResponse<SocialDtos.FollowRelation>> unfollowUser(@PathVariable String targetUserId) {
+        return responseFactory.followRelation();
     }
 
     @PostMapping("/friend-requests")
-    public ResponseEntity<ApiResponse<Object>> createFriendRequest(
+    public ResponseEntity<ApiResponse<SocialDtos.FriendRequest>> createFriendRequest(
             @Valid @RequestBody SocialDtos.FriendRequestCreate request) {
-        return responseFactory.success("POST", "/social/friend-requests");
+        return responseFactory.friendRequest();
     }
 
     @GetMapping("/friend-requests/received")
-    public ResponseEntity<ApiResponse<Object>> listReceivedFriendRequests(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.FriendRequest>>> listReceivedFriendRequests(
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/social/friend-requests/received");
+        return responseFactory.emptyPage();
     }
 
     @GetMapping("/friend-requests/sent")
-    public ResponseEntity<ApiResponse<Object>> listSentFriendRequests(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.FriendRequest>>> listSentFriendRequests(
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/social/friend-requests/sent");
+        return responseFactory.emptyPage();
     }
 
     @PostMapping("/friend-requests/{requestId}/decision")
-    public ResponseEntity<ApiResponse<Object>> decideFriendRequest(
+    public ResponseEntity<ApiResponse<SocialDtos.FriendRequest>> decideFriendRequest(
             @PathVariable String requestId, @Valid @RequestBody SocialDtos.FriendRequestDecision request) {
-        return responseFactory.success("POST", "/social/friend-requests/" + requestId + "/decision");
+        return responseFactory.friendRequest();
     }
 
     @GetMapping("/friends")
-    public ResponseEntity<ApiResponse<Object>> listFriends(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.FriendItem>>> listFriends(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/social/friends");
+        return responseFactory.emptyPage();
     }
 
     @PatchMapping("/friends/{userId}")
-    public ResponseEntity<ApiResponse<Object>> updateFriendRemark(
+    public ResponseEntity<ApiResponse<SocialDtos.FriendItem>> updateFriendRemark(
             @PathVariable String userId, @Valid @RequestBody SocialDtos.FriendRemarkUpdate request) {
-        return responseFactory.success("PATCH", "/social/friends/" + userId);
+        return responseFactory.friendItem();
     }
 
     @DeleteMapping("/friends/{userId}")
-    public ResponseEntity<ApiResponse<Object>> deleteFriend(@PathVariable String userId) {
-        return responseFactory.success("DELETE", "/social/friends/" + userId);
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> deleteFriend(
+            @PathVariable String userId) {
+        return responseFactory.emptyData();
     }
 
     @GetMapping("/profiles/{userId}")
-    public ResponseEntity<ApiResponse<Object>> getUserProfile(@PathVariable String userId) {
-        return responseFactory.success("GET", "/social/profiles/" + userId);
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.identity.IdentityDtos.PublicUserProfile>>
+            getUserProfile(@PathVariable String userId) {
+        return responseFactory.publicUserProfile();
     }
 
     @PostMapping("/teams")
-    public ResponseEntity<ApiResponse<Object>> createTeam(@Valid @RequestBody SocialDtos.TeamCreateRequest request) {
-        return responseFactory.success("POST", "/social/teams");
+    public ResponseEntity<ApiResponse<SocialDtos.TeamProfile>> createTeam(
+            @Valid @RequestBody SocialDtos.TeamCreateRequest request) {
+        return responseFactory.teamProfile();
     }
 
     @GetMapping("/teams")
-    public ResponseEntity<ApiResponse<Object>> searchTeams(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamProfile>>> searchTeams(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) List<String> tags,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/social/teams");
+        return responseFactory.emptyPage();
     }
 
     @GetMapping("/teams/{teamId}")
-    public ResponseEntity<ApiResponse<Object>> getTeam(@PathVariable String teamId) {
-        return responseFactory.success("GET", "/social/teams/" + teamId);
+    public ResponseEntity<ApiResponse<SocialDtos.TeamProfile>> getTeam(@PathVariable String teamId) {
+        return responseFactory.teamProfile();
     }
 
     @DeleteMapping("/teams/{teamId}")
-    public ResponseEntity<ApiResponse<Object>> dissolveTeam(@PathVariable String teamId) {
-        return responseFactory.success("DELETE", "/social/teams/" + teamId);
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> dissolveTeam(
+            @PathVariable String teamId) {
+        return responseFactory.emptyData();
     }
 
     @PostMapping("/teams/{teamId}/activities")
-    public ResponseEntity<ApiResponse<Object>> createTeamActivity(
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> createTeamActivity(
             @PathVariable String teamId, @Valid @RequestBody ActivityDtos.ActivityUpsertRequest request) {
-        return responseFactory.success("POST", "/social/teams/" + teamId + "/activities");
+        return responseFactory.activityDetail();
     }
 
     @GetMapping("/teams/{teamId}/activities")
-    public ResponseEntity<ApiResponse<Object>> listTeamActivities(
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> listTeamActivities(
             @PathVariable String teamId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/social/teams/" + teamId + "/activities");
+        return responseFactory.emptyPage();
     }
 
     @GetMapping("/teams/{teamId}/activities/{activityId}")
-    public ResponseEntity<ApiResponse<Object>> getTeamActivity(
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> getTeamActivity(
             @PathVariable String teamId, @PathVariable String activityId) {
-        return responseFactory.success("GET", "/social/teams/" + teamId + "/activities/" + activityId);
+        return responseFactory.activityDetail();
     }
 
     @PostMapping("/teams/{teamId}/join")
-    public ResponseEntity<ApiResponse<Object>> joinTeam(
+    public ResponseEntity<ApiResponse<SocialDtos.TeamJoinRequest>> joinTeam(
             @PathVariable String teamId, @Valid @RequestBody SocialDtos.JoinTeamRequest request) {
-        return responseFactory.success("POST", "/social/teams/" + teamId + "/join");
+        return responseFactory.teamJoinRequest();
     }
 
     @GetMapping("/teams/{teamId}/join-requests")
-    public ResponseEntity<ApiResponse<Object>> listTeamJoinRequests(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamJoinRequest>>> listTeamJoinRequests(
             @PathVariable String teamId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/social/teams/" + teamId + "/join-requests");
+        return responseFactory.emptyPage();
     }
 
     @PostMapping("/teams/{teamId}/join-requests/{requestId}/decision")
-    public ResponseEntity<ApiResponse<Object>> decideTeamJoinRequest(
+    public ResponseEntity<ApiResponse<SocialDtos.TeamJoinRequest>> decideTeamJoinRequest(
             @PathVariable String teamId,
             @PathVariable String requestId,
             @Valid @RequestBody SocialDtos.TeamJoinRequestDecision request) {
-        return responseFactory.success("POST", "/social/teams/" + teamId + "/join-requests/" + requestId + "/decision");
+        return responseFactory.teamJoinRequest();
     }
 
     @PostMapping("/teams/{teamId}/leave")
-    public ResponseEntity<ApiResponse<Object>> leaveTeam(@PathVariable String teamId) {
-        return responseFactory.success("POST", "/social/teams/" + teamId + "/leave");
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> leaveTeam(
+            @PathVariable String teamId) {
+        return responseFactory.emptyData();
     }
 
     @GetMapping("/teams/{teamId}/members")
-    public ResponseEntity<ApiResponse<Object>> listTeamMembers(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamMember>>> listTeamMembers(
             @PathVariable String teamId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/social/teams/" + teamId + "/members");
+        return responseFactory.emptyPage();
     }
 
     @PatchMapping("/teams/{teamId}/members/{memberId}/role")
-    public ResponseEntity<ApiResponse<Object>> updateTeamMemberRole(
+    public ResponseEntity<ApiResponse<SocialDtos.TeamMember>> updateTeamMemberRole(
             @PathVariable String teamId,
             @PathVariable String memberId,
             @Valid @RequestBody SocialDtos.TeamMemberRoleUpdate request) {
-        return responseFactory.success("PATCH", "/social/teams/" + teamId + "/members/" + memberId + "/role");
+        return responseFactory.teamMember();
     }
 
     @GetMapping("/teams/{teamId}/points")
-    public ResponseEntity<ApiResponse<Object>> getTeamPointRanks(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamPointRankItem>>> getTeamPointRanks(
             @PathVariable String teamId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/social/teams/" + teamId + "/points");
+        return responseFactory.emptyPage();
     }
 
     @PostMapping("/user-reports")
-    public ResponseEntity<ApiResponse<Object>> createUserReport(
+    public ResponseEntity<ApiResponse<SocialDtos.UserReport>> createUserReport(
             @Valid @RequestBody SocialDtos.UserReportCreateRequest request) {
-        return responseFactory.success("POST", "/social/user-reports");
+        return responseFactory.userReport();
     }
 
     @GetMapping("/user-reports")
-    public ResponseEntity<ApiResponse<Object>> listMyUserReports(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.UserReport>>> listMyUserReports(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/social/user-reports");
+        return responseFactory.emptyPage();
     }
 }

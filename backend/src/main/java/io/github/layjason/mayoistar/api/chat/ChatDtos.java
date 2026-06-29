@@ -1,28 +1,22 @@
 package io.github.layjason.mayoistar.api.chat;
 
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import lombok.Data;
 
 /**
- * 即时通讯接口 DTO 占位集合。
+ * 即时通讯接口 DTO 集合。
  *
- * <p>类职责：提供与 TypeSpec 聊天接口请求模型同名的普通 DTO。
+ * <p>类职责：提供与 TypeSpec 聊天接口请求/响应模型同名的普通 DTO。
  *
  * <p>类不变量：字段使用 camelCase，必填字段使用 Jakarta Validation 表达。
  */
 public final class ChatDtos {
 
-    /**
-     * 阻止实例化 DTO 命名空间类。
-     *
-     * <p>前置条件：无。
-     *
-     * <p>后置条件：外部无法创建该工具型容器类实例。
-     *
-     * <p>不变量：该构造函数不创建任何 DTO 对象。
-     */
     private ChatDtos() {}
+
+    /* ========== 请求 DTO ========== */
 
     @Data
     public static class SendMessageRequest {
@@ -81,5 +75,70 @@ public final class ChatDtos {
     public static class VotePollRequest {
         @NotNull
         private String optionId;
+    }
+
+    /* ========== 响应 DTO ========== */
+
+    @Data
+    public static class ConversationSummary {
+        private String conversationId;
+        private String kind;
+        private String title;
+        private CommonDtos.MediaFile avatar;
+        private String lastMessagePreview;
+        private Integer unreadCount;
+        private String updatedAt;
+    }
+
+    @Data
+    public static class ChatMessage {
+        private String messageId;
+        private String conversationId;
+        private String senderId;
+        private String kind;
+        private String text;
+        private CommonDtos.MediaFile image;
+        private CommonDtos.LocationInfo location;
+        private List<String> mentionedUserIds;
+        private Boolean mentionAll;
+        private String readStatus;
+        private Boolean recalled;
+        private String sentAt;
+    }
+
+    @Data
+    public static class ChatRealtimeEvent {
+        private String kind;
+        private String conversationId;
+        private ChatMessage message;
+        private Integer conversationUnreadCount;
+        private String occurredAt;
+    }
+
+    @Data
+    public static class TeamAnnouncement {
+        private String announcementId;
+        private String teamId;
+        private String content;
+        private String publisherId;
+        private String publishedAt;
+        private Boolean readByCurrentUser;
+    }
+
+    @Data
+    public static class TeamPollOption {
+        private String optionId;
+        private String content;
+        private Integer voteCount;
+    }
+
+    @Data
+    public static class TeamPoll {
+        private String pollId;
+        private String teamId;
+        private String title;
+        private List<TeamPollOption> options;
+        private String deadline;
+        private String createdAt;
     }
 }

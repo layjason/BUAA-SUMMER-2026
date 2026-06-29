@@ -1,28 +1,22 @@
 package io.github.layjason.mayoistar.api.identity;
 
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import lombok.Data;
 
 /**
- * 身份与资料接口 DTO 占位集合。
+ * 身份与资料接口 DTO 集合。
  *
- * <p>类职责：提供与 TypeSpec 身份接口请求模型同名的普通 DTO。
+ * <p>类职责：提供与 TypeSpec 身份接口请求/响应模型同名的普通 DTO。
  *
  * <p>类不变量：字段使用 camelCase，必填字段使用 Jakarta Validation 表达。
  */
 public final class IdentityDtos {
 
-    /**
-     * 阻止实例化 DTO 命名空间类。
-     *
-     * <p>前置条件：无。
-     *
-     * <p>后置条件：外部无法创建该工具型容器类实例。
-     *
-     * <p>不变量：该构造函数不创建任何 DTO 对象。
-     */
     private IdentityDtos() {}
+
+    /* ========== 请求 DTO ========== */
 
     @Data
     public static class EmailPasswordRequest {
@@ -112,5 +106,67 @@ public final class IdentityDtos {
         private String merchantNickname;
         private String avatarMediaId;
         private List<String> interestedActivityFields;
+    }
+
+    /* ========== 响应 DTO ========== */
+
+    @Data
+    public static class TokenPair {
+        private String accessToken;
+        private String refreshToken;
+        private String expiresAt;
+    }
+
+    @Data
+    public static class LoginResult {
+        private String userId;
+        private String kind;
+        private String accountStatus;
+        private TokenPair tokens;
+    }
+
+    @Data
+    public static class PublicUserProfile {
+        private String userId;
+        private String nickname;
+        private CommonDtos.MediaFile avatar;
+        private String gender;
+        private String birthday;
+        private String signature;
+        private List<String> interestTags;
+        private Integer reputationScore;
+        private String kind;
+    }
+
+    @Data
+    public static class QualificationDetail {
+        private String status;
+        private String submittedAt;
+        private String reviewedAt;
+        private String rejectReason;
+        private List<String> licenseImageUrls;
+    }
+
+    @Data
+    public static class MerchantProfile {
+        private String userId;
+        private String merchantName;
+        private String merchantNickname;
+        private CommonDtos.MediaFile avatar;
+        private List<String> interestedActivityFields;
+        private String accountStatus;
+        private String qualificationStatus;
+        private QualificationDetail qualification;
+    }
+
+    @Data
+    public static class InterestTagItem {
+        private String name;
+    }
+
+    @Data
+    public static class NicknameAvailability {
+        private String nickname;
+        private Boolean available;
     }
 }

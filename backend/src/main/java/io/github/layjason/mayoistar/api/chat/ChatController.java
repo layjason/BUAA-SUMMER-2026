@@ -2,7 +2,9 @@ package io.github.layjason.mayoistar.api.chat;
 
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
+import io.github.layjason.mayoistar.api.common.PageResult;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,116 +29,119 @@ public class ChatController {
     }
 
     @GetMapping("/conversations")
-    public ResponseEntity<ApiResponse<Object>> listConversations(
+    public ResponseEntity<ApiResponse<PageResult<ChatDtos.ConversationSummary>>> listConversations(
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/chat/conversations");
+        return responseFactory.emptyPage();
     }
 
     @GetMapping("/conversations/{conversationId}/messages")
-    public ResponseEntity<ApiResponse<Object>> listMessages(
+    public ResponseEntity<ApiResponse<PageResult<ChatDtos.ChatMessage>>> listMessages(
             @PathVariable String conversationId,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/chat/conversations/" + conversationId + "/messages");
+        return responseFactory.emptyPage();
     }
 
     @PostMapping("/conversations/{conversationId}/messages")
-    public ResponseEntity<ApiResponse<Object>> sendMessage(
+    public ResponseEntity<ApiResponse<ChatDtos.ChatMessage>> sendMessage(
             @PathVariable String conversationId, @Valid @RequestBody ChatDtos.SendMessageRequest request) {
-        return responseFactory.success("POST", "/chat/conversations/" + conversationId + "/messages");
+        return responseFactory.chatMessage();
     }
 
     @PostMapping(value = "/media/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Object>> uploadChatImage(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>> uploadChatImage(
             @RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.success("POST", "/chat/media/images");
+        return responseFactory.mediaFile("chatImage");
     }
 
     @PostMapping("/messages/read")
-    public ResponseEntity<ApiResponse<Object>> markMessagesRead(
+    public ResponseEntity<ApiResponse<List<ChatDtos.ChatMessage>>> markMessagesRead(
             @Valid @RequestBody ChatDtos.MarkMessagesReadRequest request) {
-        return responseFactory.success("POST", "/chat/messages/read");
+        return responseFactory.chatMessages();
     }
 
     @PostMapping("/messages/{messageId}/forward")
-    public ResponseEntity<ApiResponse<Object>> forwardMessage(
+    public ResponseEntity<ApiResponse<List<ChatDtos.ChatMessage>>> forwardMessage(
             @PathVariable String messageId, @Valid @RequestBody ChatDtos.ForwardMessageRequest request) {
-        return responseFactory.success("POST", "/chat/messages/" + messageId + "/forward");
+        return responseFactory.chatMessages();
     }
 
     @PostMapping("/messages/{messageId}/recall")
-    public ResponseEntity<ApiResponse<Object>> recallMessage(@PathVariable String messageId) {
-        return responseFactory.success("POST", "/chat/messages/" + messageId + "/recall");
+    public ResponseEntity<ApiResponse<ChatDtos.ChatMessage>> recallMessage(@PathVariable String messageId) {
+        return responseFactory.chatMessage();
     }
 
     @PostMapping(value = "/teams/{teamId}/album-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Object>> uploadTeamAlbumImage(
-            @PathVariable String teamId, @RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.success("POST", "/chat/teams/" + teamId + "/album-images");
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
+            uploadTeamAlbumImage(
+                    @PathVariable String teamId, @RequestPart(value = "file", required = false) MultipartFile file) {
+        return responseFactory.mediaFile("teamAlbum");
     }
 
     @GetMapping("/teams/{teamId}/album-images")
-    public ResponseEntity<ApiResponse<Object>> listTeamAlbumImages(
-            @PathVariable String teamId,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/chat/teams/" + teamId + "/album-images");
+    public ResponseEntity<ApiResponse<PageResult<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>>
+            listTeamAlbumImages(
+                    @PathVariable String teamId,
+                    @RequestParam(required = false) Integer page,
+                    @RequestParam(required = false) Integer pageSize) {
+        return responseFactory.emptyPage();
     }
 
     @DeleteMapping("/teams/{teamId}/album-images")
-    public ResponseEntity<ApiResponse<Object>> deleteTeamAlbumImages(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> deleteTeamAlbumImages(
             @PathVariable String teamId, @Valid @RequestBody ChatDtos.DeleteTeamAlbumImagesRequest request) {
-        return responseFactory.success("DELETE", "/chat/teams/" + teamId + "/album-images");
+        return responseFactory.emptyData();
     }
 
     @PostMapping("/teams/{teamId}/announcements")
-    public ResponseEntity<ApiResponse<Object>> publishAnnouncement(
+    public ResponseEntity<ApiResponse<ChatDtos.TeamAnnouncement>> publishAnnouncement(
             @PathVariable String teamId, @Valid @RequestBody ChatDtos.TeamAnnouncementRequest request) {
-        return responseFactory.success("POST", "/chat/teams/" + teamId + "/announcements");
+        return responseFactory.teamAnnouncement();
     }
 
     @PostMapping("/teams/{teamId}/announcements/{announcementId}/read")
-    public ResponseEntity<ApiResponse<Object>> markAnnouncementRead(
+    public ResponseEntity<ApiResponse<ChatDtos.TeamAnnouncement>> markAnnouncementRead(
             @PathVariable String teamId, @PathVariable String announcementId) {
-        return responseFactory.success("POST", "/chat/teams/" + teamId + "/announcements/" + announcementId + "/read");
+        return responseFactory.teamAnnouncement();
     }
 
     @PostMapping(value = "/teams/{teamId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Object>> uploadTeamFile(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>> uploadTeamFile(
             @PathVariable String teamId, @RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.success("POST", "/chat/teams/" + teamId + "/files");
+        return responseFactory.mediaFile("teamFile");
     }
 
     @GetMapping("/teams/{teamId}/files")
-    public ResponseEntity<ApiResponse<Object>> listTeamFiles(
-            @PathVariable String teamId,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/chat/teams/" + teamId + "/files");
+    public ResponseEntity<ApiResponse<PageResult<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>>
+            listTeamFiles(
+                    @PathVariable String teamId,
+                    @RequestParam(required = false) Integer page,
+                    @RequestParam(required = false) Integer pageSize) {
+        return responseFactory.emptyPage();
     }
 
     @DeleteMapping("/teams/{teamId}/files")
-    public ResponseEntity<ApiResponse<Object>> deleteTeamFiles(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> deleteTeamFiles(
             @PathVariable String teamId, @Valid @RequestBody ChatDtos.DeleteTeamFilesRequest request) {
-        return responseFactory.success("DELETE", "/chat/teams/" + teamId + "/files");
+        return responseFactory.emptyData();
     }
 
     @PostMapping("/teams/{teamId}/polls")
-    public ResponseEntity<ApiResponse<Object>> createPoll(
+    public ResponseEntity<ApiResponse<ChatDtos.TeamPoll>> createPoll(
             @PathVariable String teamId, @Valid @RequestBody ChatDtos.TeamPollCreateRequest request) {
-        return responseFactory.success("POST", "/chat/teams/" + teamId + "/polls");
+        return responseFactory.teamPoll();
     }
 
     @PostMapping("/teams/{teamId}/polls/{pollId}/votes")
-    public ResponseEntity<ApiResponse<Object>> votePoll(
+    public ResponseEntity<ApiResponse<ChatDtos.TeamPoll>> votePoll(
             @PathVariable String teamId,
             @PathVariable String pollId,
             @Valid @RequestBody ChatDtos.VotePollRequest request) {
-        return responseFactory.success("POST", "/chat/teams/" + teamId + "/polls/" + pollId + "/votes");
+        return responseFactory.teamPoll();
     }
 
     @GetMapping("/ws/messages")
-    public ResponseEntity<ApiResponse<Object>> connectMessageWebSocket() {
-        return responseFactory.success("GET", "/chat/ws/messages");
+    public ResponseEntity<ApiResponse<ChatDtos.ChatRealtimeEvent>> connectMessageWebSocket() {
+        return responseFactory.chatRealtimeEvent();
     }
 }

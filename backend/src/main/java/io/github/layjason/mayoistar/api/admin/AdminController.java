@@ -1,7 +1,11 @@
 package io.github.layjason.mayoistar.api.admin;
 
+import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
+import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.api.identity.IdentityDtos;
+import io.github.layjason.mayoistar.api.social.SocialDtos;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,107 +27,108 @@ public class AdminController {
     }
 
     @GetMapping("/activities")
-    public ResponseEntity<ApiResponse<Object>> listActivities(
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> listActivities(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/admin/activities");
+        return responseFactory.emptyPage();
     }
 
     @GetMapping("/activities/{activityId}")
-    public ResponseEntity<ApiResponse<Object>> getActivity(@PathVariable String activityId) {
-        return responseFactory.success("GET", "/admin/activities/" + activityId);
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> getActivity(@PathVariable String activityId) {
+        return responseFactory.activityDetail();
     }
 
     @PostMapping("/activities/{activityId}/restore")
-    public ResponseEntity<ApiResponse<Object>> restoreActivity(@PathVariable String activityId) {
-        return responseFactory.success("POST", "/admin/activities/" + activityId + "/restore");
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> restoreActivity(@PathVariable String activityId) {
+        return responseFactory.activityDetail();
     }
 
     @PostMapping("/activities/{activityId}/review")
-    public ResponseEntity<ApiResponse<Object>> reviewActivity(
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> reviewActivity(
             @PathVariable String activityId, @Valid @RequestBody AdminDtos.ReviewDecisionRequest request) {
-        return responseFactory.success("POST", "/admin/activities/" + activityId + "/review");
+        return responseFactory.activityDetail();
     }
 
     @PostMapping("/activities/{activityId}/take-down")
-    public ResponseEntity<ApiResponse<Object>> takeDownActivity(
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> takeDownActivity(
             @PathVariable String activityId, @Valid @RequestBody AdminDtos.ActivityModerationRequest request) {
-        return responseFactory.success("POST", "/admin/activities/" + activityId + "/take-down");
+        return responseFactory.activityDetail();
     }
 
     @PostMapping("/auth/login")
-    public ResponseEntity<ApiResponse<Object>> login(@Valid @RequestBody AdminDtos.AdminLoginRequest request) {
-        return responseFactory.success("POST", "/admin/auth/login");
+    public ResponseEntity<ApiResponse<IdentityDtos.LoginResult>> login(
+            @Valid @RequestBody AdminDtos.AdminLoginRequest request) {
+        return responseFactory.loginResult();
     }
 
     @PostMapping("/auth/password")
-    public ResponseEntity<ApiResponse<Object>> changePassword(
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> changePassword(
             @Valid @RequestBody AdminDtos.AdminChangePasswordRequest request) {
-        return responseFactory.success("POST", "/admin/auth/password");
+        return responseFactory.emptyData();
     }
 
     @GetMapping("/merchants/{merchantId}")
-    public ResponseEntity<ApiResponse<Object>> getMerchant(@PathVariable String merchantId) {
-        return responseFactory.success("GET", "/admin/merchants/" + merchantId);
+    public ResponseEntity<ApiResponse<IdentityDtos.MerchantProfile>> getMerchant(@PathVariable String merchantId) {
+        return responseFactory.merchantProfile();
     }
 
     @PostMapping("/merchants/{merchantId}/review")
-    public ResponseEntity<ApiResponse<Object>> reviewMerchant(
+    public ResponseEntity<ApiResponse<IdentityDtos.MerchantProfile>> reviewMerchant(
             @PathVariable String merchantId, @Valid @RequestBody AdminDtos.MerchantReviewRequest request) {
-        return responseFactory.success("POST", "/admin/merchants/" + merchantId + "/review");
+        return responseFactory.merchantProfile();
     }
 
     @GetMapping("/teams")
-    public ResponseEntity<ApiResponse<Object>> listTeams(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamProfile>>> listTeams(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/admin/teams");
+        return responseFactory.emptyPage();
     }
 
     @PostMapping("/teams/{teamId}/disable")
-    public ResponseEntity<ApiResponse<Object>> disableTeam(
+    public ResponseEntity<ApiResponse<SocialDtos.TeamProfile>> disableTeam(
             @PathVariable String teamId, @Valid @RequestBody AdminDtos.TeamModerationRequest request) {
-        return responseFactory.success("POST", "/admin/teams/" + teamId + "/disable");
+        return responseFactory.teamProfile();
     }
 
     @PostMapping("/teams/{teamId}/restore")
-    public ResponseEntity<ApiResponse<Object>> restoreTeam(@PathVariable String teamId) {
-        return responseFactory.success("POST", "/admin/teams/" + teamId + "/restore");
+    public ResponseEntity<ApiResponse<SocialDtos.TeamProfile>> restoreTeam(@PathVariable String teamId) {
+        return responseFactory.teamProfile();
     }
 
     @GetMapping("/user-reports")
-    public ResponseEntity<ApiResponse<Object>> listUserReports(
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.UserReport>>> listUserReports(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/admin/user-reports");
+        return responseFactory.emptyPage();
     }
 
     @PostMapping("/user-reports/{reportId}/decision")
-    public ResponseEntity<ApiResponse<Object>> decideUserReport(
+    public ResponseEntity<ApiResponse<SocialDtos.UserReport>> decideUserReport(
             @PathVariable String reportId, @Valid @RequestBody AdminDtos.UserReportDecisionRequest request) {
-        return responseFactory.success("POST", "/admin/user-reports/" + reportId + "/decision");
+        return responseFactory.userReport();
     }
 
     @GetMapping("/users")
-    public ResponseEntity<ApiResponse<Object>> listUsers(
+    public ResponseEntity<ApiResponse<PageResult<AdminDtos.AdminUserSummary>>> listUsers(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.success("GET", "/admin/users");
+        return responseFactory.emptyPage();
     }
 
     @PostMapping("/users/{userId}/ban")
-    public ResponseEntity<ApiResponse<Object>> banUser(
+    public ResponseEntity<ApiResponse<AdminDtos.AdminUserSummary>> banUser(
             @PathVariable String userId, @Valid @RequestBody AdminDtos.BanUserRequest request) {
-        return responseFactory.success("POST", "/admin/users/" + userId + "/ban");
+        return responseFactory.adminUserSummary();
     }
 
     @PostMapping("/users/{userId}/unban")
-    public ResponseEntity<ApiResponse<Object>> unbanUser(@PathVariable String userId) {
-        return responseFactory.success("POST", "/admin/users/" + userId + "/unban");
+    public ResponseEntity<ApiResponse<AdminDtos.AdminUserSummary>> unbanUser(@PathVariable String userId) {
+        return responseFactory.adminUserSummary();
     }
 }
