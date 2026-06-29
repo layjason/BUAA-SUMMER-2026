@@ -85,9 +85,6 @@ model ChatMessage {
   @doc("文本消息内容。")
   text?: string;
 
-  @doc("表情消息编码。")
-  emojiCode?: string;
-
   @doc("图片消息媒体文件。")
   image?: MediaFile;
 
