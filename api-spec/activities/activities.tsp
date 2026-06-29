@@ -163,6 +163,30 @@ model ActivitySummary {
   capacity: int32;
 }
 
+@doc("当前登录用户相对于指定活动的参与和可操作状态。")
+model ActivityParticipationState {
+  @doc("当前用户是否可以发起报名。")
+  canRegister: boolean;
+
+  @doc("当前登录用户在该活动中的报名状态，未报名时为空。")
+  status?: RegistrationStatus;
+
+  @doc("当前登录用户的候补排位，非候补状态时为空。")
+  waitingRank?: int32;
+
+  @doc("当前登录用户候补确认截止时间，仅候补待确认时返回。")
+  confirmationDeadline?: DateTimeString;
+
+  @doc("当前用户是否可以取消报名。")
+  canCancelRegistration: boolean;
+
+  @doc("当前用户是否可以确认候补释放名额。")
+  canConfirmWaitingSeat: boolean;
+
+  @doc("当前用户是否可以扫码签到。")
+  canCheckIn: boolean;
+}
+
 @doc("活动详情。")
 model ActivityDetail {
   ...ActivitySummary;
@@ -187,30 +211,6 @@ model ActivityDetail {
 
   @doc("当前候补人数。")
   waitingCount: int32;
-
-  @doc("当前用户是否可以发起报名。")
-  canRegister: boolean;
-
-  @doc("当前登录用户在该活动中的报名记录标识，未报名时为空。")
-  currentUserRegistrationId?: EntityId;
-
-  @doc("当前登录用户在该活动中的报名状态，未报名时为空。")
-  currentUserRegistrationStatus?: RegistrationStatus;
-
-  @doc("当前登录用户的候补排位，非候补状态时为空。")
-  currentUserWaitingRank?: int32;
-
-  @doc("当前登录用户候补确认截止时间，仅候补待确认时返回。")
-  currentUserConfirmationDeadline?: DateTimeString;
-
-  @doc("当前用户是否可以取消报名。")
-  canCancelRegistration: boolean;
-
-  @doc("当前用户是否可以确认候补释放名额。")
-  canConfirmWaitingSeat: boolean;
-
-  @doc("当前用户是否可以扫码签到。")
-  canCheckIn: boolean;
 
   @doc("AI 内容安全审核结果快照。未执行或暂不支持 AI 审核时为空。")
   aiContentReview?: QujuApi.Ai.AiContentReviewResult;
@@ -621,6 +621,13 @@ interface ActivityOperations {
   @route("/{activityId}")
   @doc("获取活动详情，活动存在且调用方可见，返回完整展示信息，下架活动仅管理员或发起人可见。")
   getActivity(@path activityId: EntityId): APIResponse<ActivityDetail>;
+
+  @get
+  @route("/{activityId}/participation-state")
+  @doc("获取当前登录用户相对于指定活动的参与和可操作状态，用于活动详情页渲染报名、取消、候补确认和签到入口。")
+  getParticipationState(
+    @path activityId: EntityId,
+  ): APIResponse<ActivityParticipationState>;
 
   @post
   @route("/{activityId}/registrations")
