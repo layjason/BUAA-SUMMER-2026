@@ -80,17 +80,19 @@
 
 ### 代码风格
 
-- **Lombok 与依赖注入强制规范：**
+- Lombok 与依赖注入强制规范：
   - 全面使用 Lombok（如 @Data, @Builder, @Slf4j 等）消除样板代码，禁止手动编写 Getter/Setter 等。
-  - **实体类限制：绝对禁止在 JPA 实体类（`@Entity`）上使用 `@Data` 注解。** 为了防止双向关联导致的无限递归（StackOverflow）和意外的懒加载，实体类请仅使用 `@Getter` 和 `@Setter`，并在特殊需要时手动重写 `equals` 和 `hashCode`。
-  - **绝对禁止**在任何字段上使用 @Autowired。
-  - 所有 Spring Bean（Service/Controller/Component）**必须使用构造器注入**。具体做法：在类级别使用 @RequiredArgsConstructor，并将所有依赖字段严格声明为 private final。
-  - **例外情况**：当且仅当注入时需要使用 `@Qualifier`、`@Value` 等参数级别注解，或者构造函数内部包含特殊的初始化/校验逻辑（如 `Assert.notNull`）时，才允许手动编写显式构造函数。
+  - 实体类限制：绝对禁止在 JPA 实体类（`@Entity`）上使用 `@Data` 注解。** 为了防止双向关联导致的无限递归（StackOverflow）和意外的懒加载，实体类请仅使用 `@Getter` 和 `@Setter`，并在特殊需要时手动重写 `equals` 和 `hashCode`。
+  - 对于实现代码，请不要使用 `@Autowired` 注入依赖，以免降低可测试性，对于测试代码，可以使用 `@Autowired` 简化实现。
+  -   所有 Spring Bean使用构造器注入。在类级别使用 `@RequiredArgsConstructor`（若适用），并将所有依赖字段声明为 private final。若需要使用 `@Qualifier`、`@Value` 等参数级别注解，或者构造函数内部包含特殊的初始化/校验逻辑，则可以手动编写构造函数。
 
 #### 类型系统与架构边界
 
 - 请使用 Value Object 表示业务对象的校验状态，例如，校验后的用户名使用单独的 `Username` 类表示，从而避免遗忘校验、多次校验问题；
-- **架构隔离**：绝对禁止将 JPA `@Entity` 对象直接从 Controller 返回给前端。必须在 Service 层或 Controller 层将实体类转换为 DTO 后再返回。
+- 参数校验规范
+  - 对于可无状态校验的参数（即，不需要访问数据库、缓存等），应当在 Controller 中校验，相应的 Service 接收校验过的参数；
+  - 对于必须有状态校验的参数，不要在 Controller 中引入数据库等，而是在 Service 实现中进行校验。
+- Service 应当返回 DTO，而不要直接返回实体。
 
 #### API
 
@@ -112,7 +114,6 @@
 ### 单元测试
 
 - 对于涉及数据库 / 实体的测试，项目已经配置了 H2 内存数据库，请检查相关表是否正确创建、测试数据是否正确插入，并使用 H2 进行测试。
-- 若为了让测试通过而遇到鉴权（Spring Security）拦截，请使用 `@WithMockUser` 等标准测试注解进行 Mock，绝对禁止通过直接禁用安全配置来让测试强行通过。
 
 ## 总体要求
 
