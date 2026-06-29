@@ -7,8 +7,11 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * 个人用户资料，与 User 一对一关联。
@@ -17,7 +20,10 @@ import lombok.NoArgsConstructor;
  */
 @Entity
 @Table(name = "personal_profiles")
-@Data
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

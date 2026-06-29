@@ -7,8 +7,11 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * 活动评价，参与者对已结束活动的评分和文字评价。
@@ -17,7 +20,10 @@ import lombok.NoArgsConstructor;
  */
 @Entity
 @Table(name = "activity_reviews")
-@Data
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
