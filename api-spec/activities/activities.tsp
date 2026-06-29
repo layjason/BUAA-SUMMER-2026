@@ -208,11 +208,11 @@ model ActivitySearchQuery extends PageQuery {
 
   @doc("距离筛选中心点经度。")
   @query
-  centerLongitude?: float64;
+  longitude?: float64;
 
   @doc("距离筛选中心点纬度。")
   @query
-  centerLatitude?: float64;
+  latitude?: float64;
 
   @doc("距离筛选半径，单位米。")
   @query
