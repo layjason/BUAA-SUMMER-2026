@@ -136,6 +136,12 @@ model ForwardMessageRequest {
   targetConversationIds: EntityId[];
 }
 
+@doc("批量标记消息已读请求，调用方为消息接收方，所有消息均需对调用方可见。")
+model MarkMessagesReadRequest {
+  @doc("待标记为已读的消息标识列表。")
+  messageIds: EntityId[];
+}
+
 @doc("群公告请求，调用方为队长或管理员，公告更新，普通成员不可发布群公告。")
 model TeamAnnouncementRequest {
   @doc("群公告内容。")
@@ -161,6 +167,12 @@ model TeamAnnouncement {
 
   @doc("当前用户是否已阅读该公告。")
   readByCurrentUser: boolean;
+}
+
+@doc("批量删除群文件请求，调用方为队长或管理员，所有媒体文件均需属于该小队。")
+model DeleteTeamFilesRequest {
+  @doc("待删除的群文件媒体标识列表。")
+  mediaIds: EntityId[];
 }
 
 @doc("群投票创建请求，调用方为小队成员，创建可投票事项，选项至少两个。")
@@ -289,9 +301,12 @@ interface ChatOperations {
   >;
 
   @delete
-  @route("/teams/{teamId}/files/{mediaId}")
-  @doc("删除群文件，队长或管理员可删除指定群文件。")
-  deleteTeamFile(@path teamId: EntityId, @path mediaId: EntityId): APIResult<
+  @route("/teams/{teamId}/files")
+  @doc("批量删除群文件，队长或管理员可传入群文件媒体标识列表删除指定文件。")
+  deleteTeamFiles(
+    @path teamId: EntityId,
+    @body body: DeleteTeamFilesRequest,
+  ): APIResult<
     EmptyData,
 
       | QujuApi.Errors.Chat.TeamNotVisible
@@ -334,10 +349,10 @@ interface ChatOperations {
   >;
 
   @post
-  @route("/messages/{messageId}/read")
-  @doc("标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。")
-  markMessageRead(@path messageId: EntityId): APIResult<
-    ChatMessage,
+  @route("/messages/read")
+  @doc("批量标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。")
+  markMessagesRead(@body body: MarkMessagesReadRequest): APIResult<
+    ChatMessage[],
 
       | QujuApi.Errors.Chat.MessageNotVisible
       | QujuApi.Errors.Chat.ConversationMemberRequired
