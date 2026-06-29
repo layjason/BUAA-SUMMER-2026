@@ -1,0 +1,105 @@
+# API 约定
+
+## 更新日志
+
+- Version: 7 20260629 154647
+  - 将群相册删除接口改为批量传入数组，与群文件批量删除接口保持一致
+- Version: 6 20260629 152704
+  - 将消息已读和群文件删除接口改为批量传入数组，减少客户端多次请求与接口粒度不一致问题
+- Version: 5 20260629 152342
+  - 增加聊天消息 WebSocket 占位端点约定，并补充群公告当前用户已读状态与标记已读接口
+- Version: 4 20260629 124129
+  - 活动地理筛选 URL 参数统一改为直接传入 longitude、latitude、distanceMeters，减少前端定位参数转换
+- Version: 3 20260629 113015
+  - 分页响应增加总页数字段，明确活动评价 Markdown 图片上传约定
+- Version: 2 20260629 103507
+  - 使用 TypeSpec 表达每个 API 响应可能出现的业务错误码与英文模板消息，并明确错误码分段规则
+- Version: 1 20260628
+
+API 请求/返回类型采用 TypeSpec 表达，[参见](https://typespec.io/)，定义在 `api-spec` 目录中，使用方法参见 `api-spec/README.md`。
+
+对于所有 API，若无特别说明：
+
+- HTTP 响应代码始终为 200，除非为二进制响应体
+- 对于`GET`请求，请求体为空
+  - 若含有“URL 参数”节，请注意相关参数需要**通过URL传送**，而不是通过请求体传送！URL参数的示例：`https://gw.buaa.edu.cn/srun_portal_success?ac_id=1&theme=buaa&srun_domain=`，其中传递了`ac_id`、`theme`、`srun_domain`三个参数
+- 对于`POST`请求，请求体为 JSON
+- 响应体为 JSON，且符合如下格式：
+
+  ```typescript
+  interface APIResponse<T> {
+    code: number;
+    message: string;
+    data: T;
+  }
+  ```
+
+  - 下文中的“响应**代码**”指的是`APIResponse`的`code`属性
+  - 下文中的“响应**消息**”指的是`APIResponse`的`message`属性
+  - 下文中的“响应**数据**”指的是`APIResponse`的`data`属性
+  - TypeSpec 中使用 `APIResult<Data, BusinessErrors>` 表达响应联合类型；生成 OpenAPI 时会通过 `oneOf` 展开成功响应、通用错误响应和该接口声明的业务错误响应
+
+“响应**代码**”类别：
+
+- `<1000` 的响应代码为通用响应代码，所有请求通用
+- `>=10000` 的响应代码为业务响应代码，依据不同服务和请求而不同
+- 业务错误消息使用英文模板文案，`{}` 包裹的片段为占位符，例如 `Activity {activityId} is not visible`
+
+通用响应代码表：
+
+其中`{}`为占位符。
+
+| 代码 | 可能的响应消息                                                     | 含义                                                                                                                                                         |
+| ---- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 200  | `For Super Earth!`                                                 | 请求已被成功执行，可访问响应数据                                                                                                                             |
+| 400  | `{reason}`                                                         | 请求存在错误，具体地：传入内容无法作为 JSON 解析；传入内容能作为 JSON 解析但不符合本文Schema定义的格式。若Schema符合，但语义不符合，不返回 400，而返回业务响应代码 |
+| 401  | `Authentication is required`                                       | 请求未提供有效 Bearer Token，或 Token 已过期                                                                                                                 |
+| 403  | `Permission is denied`                                             | 请求已认证，但调用方没有执行该操作的权限                                                                                                                     |
+| 500  | `An internal server error has occurred` | 内部服务器错误                                                                                                                                               |
+
+业务响应代码命名空间：
+
+| 服务 | 响应代码范围 | TypeSpec 命名空间 |
+| ---- | ------------ | ----------------- |
+| 身份与资料 | `10000` 起 | `QujuApi.Errors.Identity` |
+| 活动 | `20000` 起 | `QujuApi.Errors.Activities` |
+| AI 辅助 | `30000` 起 | `QujuApi.Errors.Ai` |
+| 好友社群 | `40000` 起 | `QujuApi.Errors.Social` |
+| 即时通讯 | `50000` 起 | `QujuApi.Errors.Chat` |
+| 后台管理 | `60000` 起 | `QujuApi.Errors.Admin` |
+
+字段命名：camelCase
+
+分页：
+
+- 分页响应统一使用 `PageResult<T>`。
+- `items` 表示当前页数据。
+- `total` 表示匹配总数。
+- `page` 表示当前页码。
+- `pageSize` 表示每页数量。
+- `totalPages` 表示匹配总页数。
+
+地理位置筛选：
+
+- 活动列表、搜索和地图点位等 GET 接口若按当前位置或地图中心点筛选，应通过 URL query 直接传入 `longitude`、`latitude`、`distanceMeters`。
+- 创建活动仍使用 `LocationInfo` 表达活动地点，返回模型也保留 `LocationInfo` 以承载坐标、城市、详细地址和地点展示名称。
+
+媒体上传：
+
+- 文件上传接口使用 `multipart/form-data`。
+- 活动评价正文使用 Markdown 时，正文内图片应先通过活动评价图片上传接口上传，取得返回 `MediaFile.url` 后再作为 Markdown 图片链接嵌入。
+
+WebSocket：
+
+- TypeSpec 中使用 `GET /chat/ws/messages` 作为聊天消息实时 WebSocket 的占位端点，便于 OpenAPI 生成产物暴露入口；实际调用时客户端应向该路径发起 WebSocket Upgrade。
+- WebSocket 握手使用与 JSON API 相同的 Bearer Token 鉴权。
+- 连接建立后，服务端按 TypeSpec 中的 `ChatRealtimeEvent` 模型推送当前用户可见会话中的新消息事件。
+- 普通 JSON API 的统一响应包装、HTTP 响应代码固定为 200 等规则不适用于升级后的 WebSocket 数据帧。
+
+日期与时间：
+
+- 日期时间（精确到某一天的时分秒）处理：采用 ISO 8601 格式，例如：`2023-10-05T14:30:00Z`，JS 中请使用`new Date("2023-10-05T14:30:00Z")`处理
+- 日期（精确到某一天）处理：采用 ISO 8601 格式，例如：`2023-10-05`，JS 中请使用`new Date("2023-10-05")`
+- 时间（任意一天中的特定时刻）：采用从 00:00:00 开始的秒数
+
+鉴权：使用 JWT，通过 Bearer Token 传递
