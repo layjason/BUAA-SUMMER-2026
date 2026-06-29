@@ -175,6 +175,12 @@ model DeleteTeamFilesRequest {
   mediaIds: EntityId[];
 }
 
+@doc("批量删除小队相册图片请求，调用方为队长或管理员，所有媒体文件均需属于该小队相册。")
+model DeleteTeamAlbumImagesRequest {
+  @doc("待删除的小队相册图片媒体标识列表。")
+  mediaIds: EntityId[];
+}
+
 @doc("群投票创建请求，调用方为小队成员，创建可投票事项，选项至少两个。")
 model TeamPollCreateRequest {
   @doc("投票标题。")
@@ -279,11 +285,11 @@ interface ChatOperations {
   >;
 
   @delete
-  @route("/teams/{teamId}/album-images/{mediaId}")
-  @doc("删除小队相册图片，队长或管理员可删除指定相册图片。")
-  deleteTeamAlbumImage(
+  @route("/teams/{teamId}/album-images")
+  @doc("批量删除小队相册图片，队长或管理员可传入相册图片媒体标识列表删除指定图片。")
+  deleteTeamAlbumImages(
     @path teamId: EntityId,
-    @path mediaId: EntityId,
+    @body body: DeleteTeamAlbumImagesRequest,
   ): APIResult<
     EmptyData,
 
