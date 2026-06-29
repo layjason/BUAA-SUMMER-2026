@@ -23,6 +23,11 @@ enum MessageReadStatus {
   read,
 }
 
+@doc("聊天实时事件类型。")
+enum ChatRealtimeEventKind {
+  messageCreated,
+}
+
 @doc("会话摘要。")
 model ConversationSummary {
   @doc("会话标识。")
@@ -85,9 +90,6 @@ model ChatMessage {
   @doc("文本消息内容。")
   text?: string;
 
-  @doc("表情消息编码。")
-  emojiCode?: string;
-
   @doc("图片消息媒体文件。")
   image?: MediaFile;
 
@@ -110,10 +112,34 @@ model ChatMessage {
   sentAt: DateTimeString;
 }
 
+@doc("聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话的新消息。")
+model ChatRealtimeEvent {
+  @doc("实时事件类型。")
+  kind: ChatRealtimeEventKind;
+
+  @doc("发生事件的会话标识。")
+  conversationId: EntityId;
+
+  @doc("新创建的聊天消息。")
+  message: ChatMessage;
+
+  @doc("当前用户在该会话中的最新未读消息数。")
+  conversationUnreadCount: int32;
+
+  @doc("事件发生时间。")
+  occurredAt: DateTimeString;
+}
+
 @doc("消息转发请求，原消息存在且调用方可见，目标会话生成新消息，转发不会修改原消息。")
 model ForwardMessageRequest {
   @doc("转发目标会话标识列表。")
   targetConversationIds: EntityId[];
+}
+
+@doc("批量标记消息已读请求，调用方为消息接收方，所有消息均需对调用方可见。")
+model MarkMessagesReadRequest {
+  @doc("待标记为已读的消息标识列表。")
+  messageIds: EntityId[];
 }
 
 @doc("群公告请求，调用方为队长或管理员，公告更新，普通成员不可发布群公告。")
@@ -138,6 +164,21 @@ model TeamAnnouncement {
 
   @doc("公告发布时间。")
   publishedAt: DateTimeString;
+
+  @doc("当前用户是否已阅读该公告。")
+  readByCurrentUser: boolean;
+}
+
+@doc("批量删除群文件请求，调用方为队长或管理员，所有媒体文件均需属于该小队。")
+model DeleteTeamFilesRequest {
+  @doc("待删除的群文件媒体标识列表。")
+  mediaIds: EntityId[];
+}
+
+@doc("批量删除小队相册图片请求，调用方为队长或管理员，所有媒体文件均需属于该小队相册。")
+model DeleteTeamAlbumImagesRequest {
+  @doc("待删除的小队相册图片媒体标识列表。")
+  mediaIds: EntityId[];
 }
 
 @doc("群投票创建请求，调用方为小队成员，创建可投票事项，选项至少两个。")
@@ -244,11 +285,11 @@ interface ChatOperations {
   >;
 
   @delete
-  @route("/teams/{teamId}/album-images/{mediaId}")
-  @doc("删除小队相册图片，队长或管理员可删除指定相册图片。")
-  deleteTeamAlbumImage(
+  @route("/teams/{teamId}/album-images")
+  @doc("批量删除小队相册图片，队长或管理员可传入相册图片媒体标识列表删除指定图片。")
+  deleteTeamAlbumImages(
     @path teamId: EntityId,
-    @path mediaId: EntityId,
+    @body body: DeleteTeamAlbumImagesRequest,
   ): APIResult<
     EmptyData,
 
@@ -266,15 +307,23 @@ interface ChatOperations {
   >;
 
   @delete
-  @route("/teams/{teamId}/files/{mediaId}")
-  @doc("删除群文件，队长或管理员可删除指定群文件。")
-  deleteTeamFile(@path teamId: EntityId, @path mediaId: EntityId): APIResult<
+  @route("/teams/{teamId}/files")
+  @doc("批量删除群文件，队长或管理员可传入群文件媒体标识列表删除指定文件。")
+  deleteTeamFiles(
+    @path teamId: EntityId,
+    @body body: DeleteTeamFilesRequest,
+  ): APIResult<
     EmptyData,
 
       | QujuApi.Errors.Chat.TeamNotVisible
       | QujuApi.Errors.Chat.TeamMediaNotFound
       | QujuApi.Errors.Chat.TeamMediaPermissionDenied
   >;
+
+  @get
+  @route("/ws/messages")
+  @doc("聊天消息实时 WebSocket 占位端点。实际调用时客户端以 Bearer Token 完成鉴权并发起 WebSocket Upgrade，连接建立后服务端按 ChatRealtimeEvent 推送当前用户可见会话中的新消息；普通 JSON API 统一响应规则不适用于升级后的 WebSocket 数据帧。")
+  connectMessageWebSocket(): APIResult<ChatRealtimeEvent>;
 
   @get
   @route("/conversations")
@@ -306,10 +355,10 @@ interface ChatOperations {
   >;
 
   @post
-  @route("/messages/{messageId}/read")
-  @doc("标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。")
-  markMessageRead(@path messageId: EntityId): APIResult<
-    ChatMessage,
+  @route("/messages/read")
+  @doc("批量标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。")
+  markMessagesRead(@body body: MarkMessagesReadRequest): APIResult<
+    ChatMessage[],
 
       | QujuApi.Errors.Chat.MessageNotVisible
       | QujuApi.Errors.Chat.ConversationMemberRequired
@@ -350,6 +399,20 @@ interface ChatOperations {
 
       | QujuApi.Errors.Chat.TeamNotVisible
       | QujuApi.Errors.Chat.AnnouncementPermissionDenied
+  >;
+
+  @post
+  @route("/teams/{teamId}/announcements/{announcementId}/read")
+  @doc("标记群公告已读，调用方为小队成员且公告可见，更新当前用户对该公告的已读状态并返回最新公告。")
+  markAnnouncementRead(
+    @path teamId: EntityId,
+    @path announcementId: EntityId,
+  ): APIResult<
+    TeamAnnouncement,
+
+      | QujuApi.Errors.Chat.TeamNotVisible
+      | QujuApi.Errors.Chat.TeamMemberRequired
+      | QujuApi.Errors.Chat.AnnouncementNotVisible
   >;
 
   @post
