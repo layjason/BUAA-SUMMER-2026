@@ -118,14 +118,23 @@ interface AiOperations {
   @post
   @route("/activity-plans")
   @doc("生成活动策划草案，调用方已登录且未超出使用量，返回结构化草案供用户逐项修改，AI 输出不能直接替代提交审核。")
-  generateActivityPlan(
-    @body body: ActivityPlanningRequest,
-  ): APIResponse<ActivityPlanningResult>;
+  generateActivityPlan(@body body: ActivityPlanningRequest): APIResult<
+    ActivityPlanningResult,
+
+      | QujuApi.Errors.Ai.AiRateLimited
+      | QujuApi.Errors.Ai.AiServiceUnavailable
+      | QujuApi.Errors.Ai.AiOutputUnavailable
+  >;
 
   @post
   @route("/image-classifications")
   @doc("分类活动或总结图片，图片已上传，返回建议标签，标签需由人工确认后才成为最终标签。")
-  classifyImages(
-    @body body: ImageClassificationRequest,
-  ): APIResponse<ImageClassificationResult>;
+  classifyImages(@body body: ImageClassificationRequest): APIResult<
+    ImageClassificationResult,
+
+      | QujuApi.Errors.Ai.AiRateLimited
+      | QujuApi.Errors.Ai.AiServiceUnavailable
+      | QujuApi.Errors.Ai.AiOutputUnavailable
+      | QujuApi.Errors.Ai.ImageMediaUnavailable
+  >;
 }

@@ -247,85 +247,139 @@ interface IdentityOperations {
   @post
   @route("/media/license")
   @doc("上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于后续资质提交的 mediaId，不得返回存储凭据。")
-  uploadMerchantLicense(
-    @multipartBody body: MediaUploadRequest,
-  ): APIResponse<MediaFile>;
+  uploadMerchantLicense(@multipartBody body: MediaUploadRequest): APIResult<
+    MediaFile,
+
+      | QujuApi.Errors.Identity.InvalidMediaUsage
+      | QujuApi.Errors.Identity.ImageFormatInvalid
+      | QujuApi.Errors.Identity.ImageTooLarge
+  >;
 
   @post
   @route("/auth/register/personal")
   @doc("注册个人用户，邮箱未注册且昵称唯一，账号进入未激活状态并触发激活邮件，密码只在服务端加盐哈希保存。")
-  registerPersonal(@body body: PersonalRegisterRequest): APIResponse<EmptyData>;
+  registerPersonal(@body body: PersonalRegisterRequest): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Identity.EmailAlreadyRegistered
+      | QujuApi.Errors.Identity.NicknameUnavailable
+  >;
 
   @post
   @route("/auth/register/merchant")
   @doc("注册商家用户，邮箱未注册，账号进入未激活状态并触发激活邮件，商家资料和资质提交走独立接口。")
-  registerMerchant(@body body: MerchantRegisterRequest): APIResponse<EmptyData>;
+  registerMerchant(@body body: MerchantRegisterRequest): APIResult<
+    EmptyData,
+    QujuApi.Errors.Identity.EmailAlreadyRegistered
+  >;
 
   @post
   @route("/auth/login")
   @doc("邮箱密码登录，账号已激活且未封禁，返回 JWT 令牌，封禁账号不得登录。")
-  login(@body body: EmailPasswordRequest): APIResponse<LoginResult>;
+  login(@body body: EmailPasswordRequest): APIResult<
+    LoginResult,
+
+      | QujuApi.Errors.Identity.InvalidCredentials
+      | QujuApi.Errors.Identity.AccountInactive
+      | QujuApi.Errors.Identity.AccountBanned
+  >;
 
   @post
   @route("/auth/logout")
   @doc("登出当前用户，作废该用户所有 Refresh Token。")
-  logout(): APIResponse<EmptyData>;
+  logout(): APIResult<EmptyData>;
 
   @post
   @route("/auth/activate")
   @doc("激活账号，激活 token 有效且未使用，账号从 inactive 变更为 active，token 只能使用一次。")
-  activateAccount(@body body: AccountActivationRequest): APIResponse<EmptyData>;
+  activateAccount(@body body: AccountActivationRequest): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Identity.InvalidActivationToken
+      | QujuApi.Errors.Identity.AccountAlreadyActive
+  >;
 
   @post
   @route("/auth/activation-email")
   @doc("重新发送激活邮件，邮箱对应账号未激活，发送新的激活链接，不暴露邮件服务凭据。")
-  resendActivationEmail(
-    @body body: ResendActivationEmailRequest,
-  ): APIResponse<EmptyData>;
+  resendActivationEmail(@body body: ResendActivationEmailRequest): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Identity.EmailNotRegistered
+      | QujuApi.Errors.Identity.AccountAlreadyActive
+      | QujuApi.Errors.Identity.ActivationEmailRateLimited
+  >;
 
   @post
   @route("/auth/refresh")
   @doc("刷新访问令牌，刷新令牌有效，返回新的令牌对，不会绕过账号封禁校验。")
-  refreshToken(@body body: RefreshTokenRequest): APIResponse<TokenPair>;
+  refreshToken(@body body: RefreshTokenRequest): APIResult<
+    TokenPair,
+
+      | QujuApi.Errors.Identity.InvalidRefreshToken
+      | QujuApi.Errors.Identity.AccountBanned
+  >;
 
   @get
   @route("/nicknames/availability")
   @doc("校验昵称是否可用，nickname 非空，返回唯一性校验结果，个人昵称和商家昵称共享唯一性约束。")
-  checkNickname(@query nickname: string): APIResponse<NicknameAvailability>;
+  checkNickname(@query nickname: string): APIResult<NicknameAvailability>;
 
   @get
   @route("/interest-tags")
   @doc("获取系统预定义的所有兴趣标签列表，供用户选择。")
-  getInterestTags(): APIResponse<InterestTagItem[]>;
+  getInterestTags(): APIResult<InterestTagItem[]>;
 
   @get
   @route("/me/profile")
   @doc("获取本人公开资料，调用方已登录，返回当前账号资料，不返回密码、盐和敏感凭据。")
-  getMyProfile(): APIResponse<PublicUserProfile>;
+  getMyProfile(): APIResult<
+    PublicUserProfile,
+    QujuApi.Errors.Identity.UserKindMismatch
+  >;
 
   @patch
   @route("/me/profile")
   @doc("更新个人资料，调用方为个人用户，资料字段被部分更新，昵称仍保持全平台唯一。")
-  updatePersonalProfile(
-    @body body: UpdatePersonalProfileRequest,
-  ): APIResponse<PublicUserProfile>;
+  updatePersonalProfile(@body body: UpdatePersonalProfileRequest): APIResult<
+    PublicUserProfile,
+
+      | QujuApi.Errors.Identity.UserKindMismatch
+      | QujuApi.Errors.Identity.NicknameUnavailable
+      | QujuApi.Errors.Identity.MediaFileUnavailable
+  >;
 
   @get
   @route("/me/merchant-profile")
   @doc("获取本人商家资料，调用方为商家用户，返回商家资料与资质审核状态，不返回凭据原文。")
-  getMyMerchantProfile(): APIResponse<MerchantProfile>;
+  getMyMerchantProfile(): APIResult<
+    MerchantProfile,
+    QujuApi.Errors.Identity.UserKindMismatch
+  >;
 
   @patch
   @route("/me/merchant-profile")
   @doc("更新商家资料，调用方为商家用户，资料被部分更新，资质审核状态只能由后台流程改变。")
-  updateMerchantProfile(
-    @body body: UpdateMerchantProfileRequest,
-  ): APIResponse<MerchantProfile>;
+  updateMerchantProfile(@body body: UpdateMerchantProfileRequest): APIResult<
+    MerchantProfile,
+
+      | QujuApi.Errors.Identity.UserKindMismatch
+      | QujuApi.Errors.Identity.NicknameUnavailable
+      | QujuApi.Errors.Identity.MediaFileUnavailable
+  >;
 
   @post
   @route("/me/merchant-qualification")
   @doc("提交商家资质申请，请求为 multipart/form-data，上传营业执照或营业凭证图片。若已有 pending 或 approved 的申请则拒绝重复提交，rejected 后可重新提交。仅商家用户可调用。")
   submitMerchantQualification(
     @multipartBody body: QualificationSubmitRequest,
-  ): APIResponse<EmptyData>;
+  ): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Identity.UserKindMismatch
+      | QujuApi.Errors.Identity.MerchantQualificationAlreadySubmitted
+      | QujuApi.Errors.Identity.InvalidMediaUsage
+      | QujuApi.Errors.Identity.ImageFormatInvalid
+      | QujuApi.Errors.Identity.ImageTooLarge
+  >;
 }

@@ -185,31 +185,40 @@ interface ChatOperations {
   @post
   @route("/media/images")
   @doc("上传聊天图片，请求为 multipart/form-data，返回可发送的图片 mediaId，上传不等于发送消息。")
-  uploadChatImage(
-    @multipartBody body: MediaUploadRequest,
-  ): APIResponse<MediaFile>;
+  uploadChatImage(@multipartBody body: MediaUploadRequest): APIResult<
+    MediaFile,
+
+      | QujuApi.Errors.Chat.InvalidMediaUsage
+      | QujuApi.Errors.Chat.ImageFormatInvalid
+      | QujuApi.Errors.Chat.ImageTooLarge
+  >;
 
   @post
   @route("/media/files")
   @doc("上传群文件，请求为 multipart/form-data，返回可关联到小队的文件 mediaId，不暴露存储凭据。")
-  uploadTeamFile(
-    @multipartBody body: MediaUploadRequest,
-  ): APIResponse<MediaFile>;
+  uploadTeamFile(@multipartBody body: MediaUploadRequest): APIResult<
+    MediaFile,
+    QujuApi.Errors.Chat.InvalidMediaUsage
+  >;
 
   @post
   @route("/media/albums")
   @doc("上传小队相册图片，请求为 multipart/form-data，返回相册图片 mediaId，删除权限由小队角色控制。")
-  uploadTeamAlbumImage(
-    @multipartBody body: MediaUploadRequest,
-  ): APIResponse<MediaFile>;
+  uploadTeamAlbumImage(@multipartBody body: MediaUploadRequest): APIResult<
+    MediaFile,
+
+      | QujuApi.Errors.Chat.InvalidMediaUsage
+      | QujuApi.Errors.Chat.ImageFormatInvalid
+      | QujuApi.Errors.Chat.ImageTooLarge
+  >;
 
   @get
   @route("/teams/{teamId}/album-images")
   @doc("查看小队相册图片，小队成员可分页查看已上传到相册的图片。")
-  listTeamAlbumImages(
-    @path teamId: EntityId,
-    ...PageQuery,
-  ): APIResponse<PageResult<MediaFile>>;
+  listTeamAlbumImages(@path teamId: EntityId, ...PageQuery): APIResult<
+    PageResult<MediaFile>,
+    QujuApi.Errors.Chat.TeamNotVisible | QujuApi.Errors.Chat.TeamMemberRequired
+  >;
 
   @delete
   @route("/teams/{teamId}/album-images/{mediaId}")
@@ -217,36 +226,47 @@ interface ChatOperations {
   deleteTeamAlbumImage(
     @path teamId: EntityId,
     @path mediaId: EntityId,
-  ): APIResponse<EmptyData>;
+  ): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Chat.TeamNotVisible
+      | QujuApi.Errors.Chat.TeamMediaNotFound
+      | QujuApi.Errors.Chat.TeamMediaPermissionDenied
+  >;
 
   @get
   @route("/teams/{teamId}/files")
   @doc("查看群文件，小队成员可分页查看群文件列表。")
-  listTeamFiles(
-    @path teamId: EntityId,
-    ...PageQuery,
-  ): APIResponse<PageResult<MediaFile>>;
+  listTeamFiles(@path teamId: EntityId, ...PageQuery): APIResult<
+    PageResult<MediaFile>,
+    QujuApi.Errors.Chat.TeamNotVisible | QujuApi.Errors.Chat.TeamMemberRequired
+  >;
 
   @delete
   @route("/teams/{teamId}/files/{mediaId}")
   @doc("删除群文件，队长或管理员可删除指定群文件。")
-  deleteTeamFile(
-    @path teamId: EntityId,
-    @path mediaId: EntityId,
-  ): APIResponse<EmptyData>;
+  deleteTeamFile(@path teamId: EntityId, @path mediaId: EntityId): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Chat.TeamNotVisible
+      | QujuApi.Errors.Chat.TeamMediaNotFound
+      | QujuApi.Errors.Chat.TeamMediaPermissionDenied
+  >;
 
   @get
   @route("/conversations")
   @doc("获取会话列表，调用方已登录，返回好友和小队会话，小队成员变动同步影响会话可见性。")
-  listConversations(...PageQuery): APIResponse<PageResult<ConversationSummary>>;
+  listConversations(...PageQuery): APIResult<PageResult<ConversationSummary>>;
 
   @get
   @route("/conversations/{conversationId}/messages")
   @doc("获取会话消息，调用方属于会话，分页返回消息，撤回消息只展示撤回状态。")
-  listMessages(
-    @path conversationId: EntityId,
-    ...PageQuery,
-  ): APIResponse<PageResult<ChatMessage>>;
+  listMessages(@path conversationId: EntityId, ...PageQuery): APIResult<
+    PageResult<ChatMessage>,
+
+      | QujuApi.Errors.Chat.ConversationNotVisible
+      | QujuApi.Errors.Chat.ConversationMemberRequired
+  >;
 
   @post
   @route("/conversations/{conversationId}/messages")
@@ -254,17 +274,34 @@ interface ChatOperations {
   sendMessage(
     @path conversationId: EntityId,
     @body body: SendMessageRequest,
-  ): APIResponse<ChatMessage>;
+  ): APIResult<
+    ChatMessage,
+
+      | QujuApi.Errors.Chat.ConversationNotVisible
+      | QujuApi.Errors.Chat.ConversationMemberRequired
+      | QujuApi.Errors.Chat.MessageContentInvalid
+  >;
 
   @post
   @route("/messages/{messageId}/read")
   @doc("标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。")
-  markMessageRead(@path messageId: EntityId): APIResponse<ChatMessage>;
+  markMessageRead(@path messageId: EntityId): APIResult<
+    ChatMessage,
+
+      | QujuApi.Errors.Chat.MessageNotVisible
+      | QujuApi.Errors.Chat.ConversationMemberRequired
+  >;
 
   @post
   @route("/messages/{messageId}/recall")
   @doc("撤回消息，调用方为发送者且发送未超过 2 分钟，消息进入撤回状态，撤回不删除审计记录。")
-  recallMessage(@path messageId: EntityId): APIResponse<ChatMessage>;
+  recallMessage(@path messageId: EntityId): APIResult<
+    ChatMessage,
+
+      | QujuApi.Errors.Chat.MessageNotVisible
+      | QujuApi.Errors.Chat.MessageSenderRequired
+      | QujuApi.Errors.Chat.MessageRecallExpired
+  >;
 
   @post
   @route("/messages/{messageId}/forward")
@@ -272,7 +309,12 @@ interface ChatOperations {
   forwardMessage(
     @path messageId: EntityId,
     @body body: ForwardMessageRequest,
-  ): APIResponse<ChatMessage[]>;
+  ): APIResult<
+    ChatMessage[],
+
+      | QujuApi.Errors.Chat.MessageNotVisible
+      | QujuApi.Errors.Chat.ForwardTargetUnavailable
+  >;
 
   @post
   @route("/teams/{teamId}/announcements")
@@ -280,7 +322,12 @@ interface ChatOperations {
   publishAnnouncement(
     @path teamId: EntityId,
     @body body: TeamAnnouncementRequest,
-  ): APIResponse<TeamAnnouncement>;
+  ): APIResult<
+    TeamAnnouncement,
+
+      | QujuApi.Errors.Chat.TeamNotVisible
+      | QujuApi.Errors.Chat.AnnouncementPermissionDenied
+  >;
 
   @post
   @route("/teams/{teamId}/polls")
@@ -288,7 +335,13 @@ interface ChatOperations {
   createPoll(
     @path teamId: EntityId,
     @body body: TeamPollCreateRequest,
-  ): APIResponse<TeamPoll>;
+  ): APIResult<
+    TeamPoll,
+
+      | QujuApi.Errors.Chat.TeamNotVisible
+      | QujuApi.Errors.Chat.TeamMemberRequired
+      | QujuApi.Errors.Chat.PollOptionsInvalid
+  >;
 
   @post
   @route("/teams/{teamId}/polls/{pollId}/votes")
@@ -297,5 +350,11 @@ interface ChatOperations {
     @path teamId: EntityId,
     @path pollId: EntityId,
     @body body: VotePollRequest,
-  ): APIResponse<TeamPoll>;
+  ): APIResult<
+    TeamPoll,
+
+      | QujuApi.Errors.Chat.TeamNotVisible
+      | QujuApi.Errors.Chat.TeamMemberRequired
+      | QujuApi.Errors.Chat.PollUnavailable
+  >;
 }

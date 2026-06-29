@@ -4,17 +4,60 @@ using TypeSpec.Http;
 
 namespace QujuApi;
 
-@doc("平台统一 JSON 响应，code 表示平台响应代码，data 承载强类型数据，HTTP JSON 接口均使用该结构。")
+@doc("平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。")
 model APIResponse<ResponseData> {
-  @doc("平台响应代码。小于 1000 为通用响应代码，大于等于 1000 为业务响应代码。")
-  code: int32;
+  @doc("平台响应代码，成功响应固定为 200。")
+  code: 200;
 
-  @doc("平台响应消息。成功时为 For Super Earth!，失败时描述可展示原因。")
-  message: string;
+  @doc("平台响应消息，成功响应固定为 For Super Earth!。")
+  message: "For Super Earth!";
 
-  @doc("响应数据。失败时仍由具体接口定义可返回的空对象或错误上下文。")
+  @doc("响应数据。")
   data: ResponseData;
 }
+
+@doc("平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。")
+model APIErrorResponse<
+  ErrorCode extends int32,
+  ErrorMessage extends string,
+  ErrorData = EmptyData
+> {
+  @doc("平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。")
+  code: ErrorCode;
+
+  @doc("平台错误消息，业务错误使用英文模板文案。")
+  message: ErrorMessage;
+
+  @doc("错误上下文，默认无额外业务数据。")
+  data: ErrorData;
+}
+
+@doc("请求体或 URL 参数无法解析，或不符合 TypeSpec Schema。")
+model BadRequestResponse extends APIErrorResponse<400, "{reason}"> {}
+
+@doc("调用方未提供有效 Bearer Token，或 Token 已过期。")
+model UnauthorizedResponse
+  extends APIErrorResponse<401, "Authentication is required"> {}
+
+@doc("调用方已认证，但没有执行该操作的权限。")
+model ForbiddenResponse extends APIErrorResponse<403, "Permission is denied"> {}
+
+@doc("内部服务器错误。")
+model InternalServerErrorResponse
+  extends APIErrorResponse<500, "An internal server error has occurred"> {}
+
+// 所有 JSON API 共享的通用错误响应。
+alias CommonAPIError =
+  | BadRequestResponse
+  | UnauthorizedResponse
+  | ForbiddenResponse
+  | InternalServerErrorResponse;
+
+// JSON API 统一响应联合类型，包含成功响应、通用错误响应和接口声明的业务错误响应。
+alias APIResult<ResponseData, BusinessErrors = never> =
+  | APIResponse<ResponseData>
+  | CommonAPIError
+  | BusinessErrors;
 
 @doc("空响应数据，接口只需表达处理结果，无额外业务数据。")
 model EmptyData {}

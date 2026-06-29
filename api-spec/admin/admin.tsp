@@ -150,28 +150,30 @@ interface AdminOperations {
   @post
   @route("/auth/login")
   @doc("管理员登录，账号由系统预置且未禁用，返回后台 JWT，不提供管理员注册。")
-  login(
-    @body body: AdminLoginRequest,
-  ): APIResponse<QujuApi.Identity.LoginResult>;
+  login(@body body: AdminLoginRequest): APIResult<
+    QujuApi.Identity.LoginResult,
+    QujuApi.Errors.Admin.InvalidAdminCredentials
+  >;
 
   @post
   @route("/auth/password")
   @doc("管理员修改密码，旧密码正确，密码更新，密码只保存加盐哈希。")
-  changePassword(
-    @body body: AdminChangePasswordRequest,
-  ): APIResponse<EmptyData>;
+  changePassword(@body body: AdminChangePasswordRequest): APIResult<
+    EmptyData,
+    QujuApi.Errors.Admin.InvalidOldPassword
+  >;
 
   @get
   @route("/users")
   @doc("查询用户，管理员已登录，分页返回个人和商家用户，管理员不得修改用户资料和密码。")
-  listUsers(...AdminUserQuery): APIResponse<PageResult<AdminUserSummary>>;
+  listUsers(...AdminUserQuery): APIResult<PageResult<AdminUserSummary>>;
 
   @get
   @route("/user-reports")
   @doc("查询用户举报，管理员可按处理状态、举报人和被举报人筛选。")
   listUserReports(
     ...AdminUserReportQuery,
-  ): APIResponse<PageResult<QujuApi.Social.UserReport>>;
+  ): APIResult<PageResult<QujuApi.Social.UserReport>>;
 
   @post
   @route("/user-reports/{reportId}/decision")
@@ -179,20 +181,29 @@ interface AdminOperations {
   decideUserReport(
     @path reportId: EntityId,
     @body body: UserReportDecisionRequest,
-  ): APIResponse<QujuApi.Social.UserReport>;
+  ): APIResult<
+    QujuApi.Social.UserReport,
+    QujuApi.Errors.Admin.UserReportNotFound
+  >;
 
   @post
   @route("/users/{userId}/ban")
   @doc("封禁用户，目标用户存在，用户在封禁期限内不能登录，必须记录封禁原因。")
-  banUser(
-    @path userId: EntityId,
-    @body body: BanUserRequest,
-  ): APIResponse<AdminUserSummary>;
+  banUser(@path userId: EntityId, @body body: BanUserRequest): APIResult<
+    AdminUserSummary,
+
+      | QujuApi.Errors.Admin.UserNotFound
+      | QujuApi.Errors.Admin.UserAlreadyBanned
+      | QujuApi.Errors.Admin.ReviewReasonRequired
+  >;
 
   @post
   @route("/users/{userId}/unban")
   @doc("解封用户，目标用户处于封禁状态，恢复正常登录和使用权限，原有账号数据不受影响。")
-  unbanUser(@path userId: EntityId): APIResponse<AdminUserSummary>;
+  unbanUser(@path userId: EntityId): APIResult<
+    AdminUserSummary,
+    QujuApi.Errors.Admin.UserNotFound | QujuApi.Errors.Admin.UserNotBanned
+  >;
 
   @post
   @route("/merchants/{merchantId}/review")
@@ -200,14 +211,20 @@ interface AdminOperations {
   reviewMerchant(
     @path merchantId: EntityId,
     @body body: MerchantReviewRequest,
-  ): APIResponse<QujuApi.Identity.MerchantProfile>;
+  ): APIResult<
+    QujuApi.Identity.MerchantProfile,
+
+      | QujuApi.Errors.Admin.UserNotFound
+      | QujuApi.Errors.Admin.MerchantReviewStateInvalid
+      | QujuApi.Errors.Admin.ReviewReasonRequired
+  >;
 
   @get
   @route("/activities")
   @doc("查询全部活动，管理员已登录，按状态筛选活动，可查询已下架活动。")
   listActivities(
     ...AdminActivityQuery,
-  ): APIResponse<PageResult<QujuApi.Activities.ActivitySummary>>;
+  ): APIResult<PageResult<QujuApi.Activities.ActivitySummary>>;
 
   @post
   @route("/activities/{activityId}/review")
@@ -215,7 +232,13 @@ interface AdminOperations {
   reviewActivity(
     @path activityId: EntityId,
     @body body: ReviewDecisionRequest,
-  ): APIResponse<QujuApi.Activities.ActivityDetail>;
+  ): APIResult<
+    QujuApi.Activities.ActivityDetail,
+
+      | QujuApi.Errors.Admin.ActivityNotFound
+      | QujuApi.Errors.Admin.ActivityModerationStateInvalid
+      | QujuApi.Errors.Admin.ReviewReasonRequired
+  >;
 
   @post
   @route("/activities/{activityId}/take-down")
@@ -223,21 +246,30 @@ interface AdminOperations {
   takeDownActivity(
     @path activityId: EntityId,
     @body body: ActivityModerationRequest,
-  ): APIResponse<QujuApi.Activities.ActivityDetail>;
+  ): APIResult<
+    QujuApi.Activities.ActivityDetail,
+
+      | QujuApi.Errors.Admin.ActivityNotFound
+      | QujuApi.Errors.Admin.ActivityModerationStateInvalid
+      | QujuApi.Errors.Admin.ReviewReasonRequired
+  >;
 
   @post
   @route("/activities/{activityId}/restore")
   @doc("恢复活动，违规问题已处理，活动恢复可见，恢复动作保留历史下架记录。")
-  restoreActivity(
-    @path activityId: EntityId,
-  ): APIResponse<QujuApi.Activities.ActivityDetail>;
+  restoreActivity(@path activityId: EntityId): APIResult<
+    QujuApi.Activities.ActivityDetail,
+
+      | QujuApi.Errors.Admin.ActivityNotFound
+      | QujuApi.Errors.Admin.ActivityModerationStateInvalid
+  >;
 
   @get
   @route("/teams")
   @doc("查询全部小队，管理员已登录，返回小队基础信息、状态和成员统计，管理员不得直接修改小队名称、标签、公告和成员身份。")
   listTeams(
     ...AdminTeamQuery,
-  ): APIResponse<PageResult<QujuApi.Social.TeamProfile>>;
+  ): APIResult<PageResult<QujuApi.Social.TeamProfile>>;
 
   @post
   @route("/teams/{teamId}/disable")
@@ -245,10 +277,21 @@ interface AdminOperations {
   disableTeam(
     @path teamId: EntityId,
     @body body: TeamModerationRequest,
-  ): APIResponse<QujuApi.Social.TeamProfile>;
+  ): APIResult<
+    QujuApi.Social.TeamProfile,
+
+      | QujuApi.Errors.Admin.TeamNotFound
+      | QujuApi.Errors.Admin.TeamModerationStateInvalid
+      | QujuApi.Errors.Admin.ReviewReasonRequired
+  >;
 
   @post
   @route("/teams/{teamId}/restore")
   @doc("恢复小队，违规问题已处理，小队恢复正常功能，恢复动作保留历史停用记录。")
-  restoreTeam(@path teamId: EntityId): APIResponse<QujuApi.Social.TeamProfile>;
+  restoreTeam(@path teamId: EntityId): APIResult<
+    QujuApi.Social.TeamProfile,
+
+      | QujuApi.Errors.Admin.TeamNotFound
+      | QujuApi.Errors.Admin.TeamModerationStateInvalid
+  >;
 }
