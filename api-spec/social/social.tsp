@@ -6,8 +6,16 @@ namespace QujuApi.Social;
 
 @doc("好友申请来源。")
 enum FriendRequestSource {
+  @doc("通过个人资料页添加。")
   profile,
+
+  @doc("通过活动参与者列表添加。")
   activityParticipants,
+
+  @doc("通过兴趣小队添加。")
+  team,
+
+  @doc("通过扫描二维码添加。")
   qrCode,
 }
 
