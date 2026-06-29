@@ -7,6 +7,7 @@ import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,15 +17,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/admin")
 public class AdminController {
 
     private final DefaultApiResponseFactory responseFactory;
-
-    public AdminController(DefaultApiResponseFactory responseFactory) {
-        this.responseFactory = responseFactory;
-    }
 
     @GetMapping("/activities")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> listActivities(

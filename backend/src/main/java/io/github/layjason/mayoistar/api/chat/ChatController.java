@@ -5,6 +5,7 @@ import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import jakarta.validation.Valid;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,15 +19,12 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/chat")
 public class ChatController {
 
     private final DefaultApiResponseFactory responseFactory;
-
-    public ChatController(DefaultApiResponseFactory responseFactory) {
-        this.responseFactory = responseFactory;
-    }
 
     @GetMapping("/conversations")
     public ResponseEntity<ApiResponse<PageResult<ChatDtos.ConversationSummary>>> listConversations(
