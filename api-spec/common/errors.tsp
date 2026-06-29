@@ -70,6 +70,21 @@ namespace QujuApi.Errors.Identity {
       10015,
       "Activation email resend rate limit has been exceeded"
     > {}
+
+  @doc("10016：当前密码不正确。")
+  model InvalidOldPassword
+    extends APIErrorResponse<10016, "Old password is invalid"> {}
+
+  @doc("10017：密码重置 token 无效、过期或已使用。")
+  model InvalidPasswordResetToken
+    extends APIErrorResponse<10017, "Password reset token is invalid"> {}
+
+  @doc("10018：密码重置邮件发送过于频繁。")
+  model PasswordResetEmailRateLimited
+    extends APIErrorResponse<
+      10018,
+      "Password reset email rate limit has been exceeded"
+    > {}
 }
 
 namespace QujuApi.Errors.Activities {

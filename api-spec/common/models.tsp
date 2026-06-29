@@ -73,7 +73,7 @@ model PageQuery {
   pageSize?: int32 = 20;
 }
 
-@doc("分页响应，items 来自同一查询条件，total 表示匹配总数，items 长度不超过 pageSize。")
+@doc("分页响应，items 来自同一查询条件，total 表示匹配总数，totalPages 表示匹配总页数，items 长度不超过 pageSize。")
 model PageResult<Item> {
   @doc("当前页数据。")
   items: Item[];
@@ -86,6 +86,9 @@ model PageResult<Item> {
 
   @doc("每页数量。")
   pageSize: int32;
+
+  @doc("匹配总页数。")
+  totalPages: int32;
 }
 
 @doc("平台通用实体标识。")
@@ -126,7 +129,7 @@ model LocationInfo {
 
 @doc("媒体用途。")
 enum MediaUsage {
-  @doc("用户头像。")
+  @doc("用户/小队头像。")
   avatar,
 
   @doc("商家营业凭证。")
@@ -146,6 +149,9 @@ enum MediaUsage {
 
   @doc("活动总结中的图片。")
   summaryImage,
+
+  @doc("活动评价 Markdown 内链图片。")
+  activityReviewImage,
 }
 
 @doc("媒体文件元数据，文件已完成上传，业务接口可通过 mediaId 引用，不暴露存储凭据。")

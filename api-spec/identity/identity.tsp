@@ -97,6 +97,30 @@ model RefreshTokenRequest {
   refreshToken: string;
 }
 
+@doc("修改密码请求，调用方已登录且当前密码正确，密码更新后服务端可使旧令牌失效，新密码只保存加盐哈希。")
+model ChangePasswordRequest {
+  @doc("当前密码。")
+  oldPassword: string;
+
+  @doc("新密码。")
+  newPassword: string;
+}
+
+@doc("密码重置邮件请求，邮箱用于接收一次性密码重置链接，接口不得向未认证调用方暴露账号是否存在。")
+model PasswordResetEmailRequest {
+  @doc("需要接收密码重置邮件的账号邮箱。")
+  email: string;
+}
+
+@doc("重置密码请求，token 来自密码重置邮件且未过期未使用，重置成功后新密码只保存加盐哈希。")
+model ResetPasswordRequest {
+  @doc("密码重置邮件中的一次性 token。")
+  token: string;
+
+  @doc("新密码。")
+  newPassword: string;
+}
+
 @doc("兴趣标签。")
 model InterestTagItem {
   @doc("标签名称，例如「运动」。")
@@ -320,6 +344,24 @@ interface IdentityOperations {
       | QujuApi.Errors.Identity.AccountBanned
   >;
 
+  @post
+  @route("/auth/password-reset-email")
+  @doc("发送密码重置邮件，邮箱若属于个人用户或商户账号则发送一次性重置链接，响应不得向未认证调用方暴露账号是否存在。")
+  sendPasswordResetEmail(@body body: PasswordResetEmailRequest): APIResult<
+    EmptyData,
+    QujuApi.Errors.Identity.PasswordResetEmailRateLimited
+  >;
+
+  @post
+  @route("/auth/password-reset")
+  @doc("通过邮件链接重置个人用户或商户密码，重置 token 有效且未使用，密码更新后旧登录凭据失效。")
+  resetPassword(@body body: ResetPasswordRequest): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Identity.InvalidPasswordResetToken
+      | QujuApi.Errors.Identity.AccountBanned
+  >;
+
   @get
   @route("/nicknames/availability")
   @doc("校验昵称是否可用，nickname 非空，返回唯一性校验结果，个人昵称和商家昵称共享唯一性约束。")
@@ -347,6 +389,17 @@ interface IdentityOperations {
       | QujuApi.Errors.Identity.UserKindMismatch
       | QujuApi.Errors.Identity.NicknameUnavailable
       | QujuApi.Errors.Identity.MediaFileUnavailable
+  >;
+
+  @post
+  @route("/me/password")
+  @doc("修改当前登录个人用户或商户密码，当前密码正确后更新密码，密码只保存加盐哈希。")
+  changePassword(@body body: ChangePasswordRequest): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Identity.InvalidOldPassword
+      | QujuApi.Errors.Identity.UserKindMismatch
+      | QujuApi.Errors.Identity.AccountBanned
   >;
 
   @get

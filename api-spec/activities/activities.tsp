@@ -77,7 +77,7 @@ model ActivityUpsertRequest {
   @doc("参与者最低年龄要求。")
   minAge?: int32;
 
-  @doc("活动图片媒体文件标识列表。")
+  @doc("活动图片媒体文件标识列表，第一张为封面。")
   imageIds?: EntityId[];
 }
 
@@ -171,6 +171,9 @@ model ActivityTemplate {
 
   @doc("模板默认人数上限。")
   defaultCapacity: int32;
+
+  @doc("模板默认活动封面图片。")
+  defaultCoverImage: MediaFile;
 }
 
 @doc("活动搜索条件，GET 请求通过 URL 传递，返回匹配活动，多选活动类型使用重复 query 参数或逗号分隔由实现统一处理。")
@@ -259,6 +262,33 @@ model RegistrationResult {
 
   @doc("候补名额确认截止时间。")
   confirmationDeadline?: DateTimeString;
+}
+
+@doc("活动参与人，调用方为管理员、活动发起人或已加入该活动的用户时可见，不包含用户敏感凭据。")
+model ActivityParticipant {
+  @doc("报名记录标识。")
+  registrationId: EntityId;
+
+  @doc("参与者用户标识。")
+  userId: EntityId;
+
+  @doc("参与者昵称。")
+  nickname: string;
+
+  @doc("参与者头像。")
+  avatar?: MediaFile;
+
+  @doc("当前报名或签到状态。")
+  registrationStatus: RegistrationStatus;
+
+  @doc("候补排位，非候补状态时为空。")
+  waitingRank?: int32;
+
+  @doc("报名或候补创建时间。")
+  registeredAt: DateTimeString;
+
+  @doc("签到完成时间。")
+  checkedInAt?: DateTimeString;
 }
 
 @doc("候补确认请求。")
@@ -359,7 +389,7 @@ model ActivityReviewRequest {
   @doc("评分。")
   rating: int32;
 
-  @doc("评价正文。")
+  @doc("评价正文，使用 Markdown 格式；正文中的图片应先通过活动评价图片上传接口取得链接后再嵌入。")
   content?: string;
 
   @doc("评价标签。")
@@ -380,7 +410,7 @@ model ActivityReview {
   @doc("评分。")
   rating: int32;
 
-  @doc("评价正文。")
+  @doc("评价正文，使用 Markdown 格式；正文中的图片链接来自活动评价图片上传接口返回的媒体访问地址。")
   content?: string;
 
   @doc("评价标签。")
@@ -397,6 +427,17 @@ interface ActivityOperations {
   @route("/media/images")
   @doc("上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。")
   uploadActivityImage(@multipartBody body: MediaUploadRequest): APIResult<
+    MediaFile,
+
+      | QujuApi.Errors.Activities.InvalidMediaUsage
+      | QujuApi.Errors.Activities.ImageFormatInvalid
+      | QujuApi.Errors.Activities.ImageTooLarge
+  >;
+
+  @post
+  @route("/media/review-images")
+  @doc("上传活动评价 Markdown 内链图片，请求为 multipart/form-data，媒体用途必须为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。")
+  uploadActivityReviewImage(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
 
       | QujuApi.Errors.Activities.InvalidMediaUsage
@@ -507,6 +548,16 @@ interface ActivityOperations {
       | QujuApi.Errors.Activities.DuplicateRegistration
       | QujuApi.Errors.Activities.ReputationInsufficient
       | QujuApi.Errors.Activities.AgeRequirementNotMet
+  >;
+
+  @get
+  @route("/{activityId}/participants")
+  @doc("查看活动参与人列表，管理员可查看所有活动，普通用户和商户只能查看自己创建或已加入活动的参与人列表。")
+  listParticipants(@path activityId: EntityId, ...PageQuery): APIResult<
+    PageResult<ActivityParticipant>,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.ActivityPermissionDenied
   >;
 
   @post
