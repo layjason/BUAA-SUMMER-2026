@@ -6,8 +6,16 @@ namespace QujuApi.Social;
 
 @doc("好友申请来源。")
 enum FriendRequestSource {
+  @doc("通过个人资料页添加。")
   profile,
+
+  @doc("通过活动参与者列表添加。")
   activityParticipants,
+
+  @doc("通过兴趣小队添加。")
+  team,
+
+  @doc("通过扫描二维码添加。")
   qrCode,
 }
 
@@ -370,50 +378,67 @@ interface SocialOperations {
   @get
   @route("/profiles/{userId}")
   @doc("查看个人主页，用户存在且未被屏蔽，返回公开资料，不返回敏感账号信息。")
-  getUserProfile(
-    @path userId: EntityId,
-  ): APIResponse<QujuApi.Identity.PublicUserProfile>;
+  getUserProfile(@path userId: EntityId): APIResult<
+    QujuApi.Identity.PublicUserProfile,
+
+      | QujuApi.Errors.Social.UserNotVisible
+      | QujuApi.Errors.Social.BlacklistRelationExists
+  >;
 
   @post
   @route("/follows/{targetUserId}")
   @doc("关注用户，目标用户存在且不存在黑名单关系，创建关注关系，互关时可升级为好友，手动添加好友不因单方取消关注自动删除。")
-  followUser(@path targetUserId: EntityId): APIResponse<FollowRelation>;
+  followUser(@path targetUserId: EntityId): APIResult<
+    FollowRelation,
+
+      | QujuApi.Errors.Social.UserNotVisible
+      | QujuApi.Errors.Social.BlacklistRelationExists
+      | QujuApi.Errors.Social.FollowAlreadyExists
+  >;
 
   @delete
   @route("/follows/{targetUserId}")
   @doc("取消关注用户，已关注目标用户，取消关注并同步互关关系，仅由互关形成的好友关系随互关解除。")
-  unfollowUser(@path targetUserId: EntityId): APIResponse<FollowRelation>;
+  unfollowUser(@path targetUserId: EntityId): APIResult<
+    FollowRelation,
+    QujuApi.Errors.Social.UserNotVisible | QujuApi.Errors.Social.FollowNotFound
+  >;
 
   @get
   @route("/follows")
   @doc("获取我关注的用户列表，调用方已登录，分页返回已关注用户，按关注时间倒序。")
-  listFollows(...PageQuery): APIResponse<PageResult<FollowItem>>;
+  listFollows(...PageQuery): APIResult<PageResult<FollowItem>>;
 
   @get
   @route("/followers")
   @doc("获取我的粉丝列表，调用方已登录，分页返回关注我的用户，按关注时间倒序。")
-  listFollowers(...PageQuery): APIResponse<PageResult<FollowItem>>;
+  listFollowers(...PageQuery): APIResult<PageResult<FollowItem>>;
 
   @post
   @route("/friend-requests")
   @doc("发送好友申请，双方不是好友且不存在黑名单关系，创建待处理申请，异常关系不可重复申请。")
-  createFriendRequest(
-    @body body: FriendRequestCreate,
-  ): APIResponse<FriendRequest>;
+  createFriendRequest(@body body: FriendRequestCreate): APIResult<
+    FriendRequest,
+
+      | QujuApi.Errors.Social.UserNotVisible
+      | QujuApi.Errors.Social.BlacklistRelationExists
+      | QujuApi.Errors.Social.FriendshipStateInvalid
+      | QujuApi.Errors.Social.DuplicateFriendRequest
+  >;
 
   @get
   @route("/friend-requests/sent")
   @doc("查看我发送的好友申请，返回申请状态和分页结果。")
   listSentFriendRequests(
     ...FriendRequestQuery,
-  ): APIResponse<PageResult<FriendRequest>>;
+  ): APIResult<PageResult<FriendRequest>>;
 
   @get
   @route("/friend-requests/received")
   @doc("查看我收到的好友申请，返回待处理和历史申请的分页结果。")
   listReceivedFriendRequests(
     ...FriendRequestQuery,
-  ): APIResponse<PageResult<FriendRequest>>;
+  ): APIResult<PageResult<FriendRequest>>;
 
   @post
   @route("/friend-requests/{requestId}/decision")
@@ -421,12 +446,12 @@ interface SocialOperations {
   decideFriendRequest(
     @path requestId: EntityId,
     @body body: FriendRequestDecision,
-  ): APIResponse<FriendRequest>;
+  ): APIResult<FriendRequest, QujuApi.Errors.Social.FriendRequestStateInvalid>;
 
   @get
   @route("/friends")
   @doc("获取好友列表，调用方已登录，分页返回好友，删除好友后双方关系解除。")
-  listFriends(...PageQuery): APIResponse<PageResult<FriendItem>>;
+  listFriends(...PageQuery): APIResult<PageResult<FriendItem>>;
 
   @patch
   @route("/friends/{userId}")
@@ -434,44 +459,61 @@ interface SocialOperations {
   updateFriendRemark(
     @path userId: EntityId,
     @body body: FriendRemarkUpdate,
-  ): APIResponse<FriendItem>;
+  ): APIResult<FriendItem, QujuApi.Errors.Social.FriendshipStateInvalid>;
 
   @delete
   @route("/friends/{userId}")
   @doc("删除好友，双方为好友，双向好友关系解除，历史消息不因此删除。")
-  deleteFriend(@path userId: EntityId): APIResponse<EmptyData>;
+  deleteFriend(@path userId: EntityId): APIResult<
+    EmptyData,
+    QujuApi.Errors.Social.FriendshipStateInvalid
+  >;
 
   @get
   @route("/blacklist")
   @doc("查看黑名单列表，调用方已登录，分页返回已屏蔽用户信息。")
-  listBlacklist(...PageQuery): APIResponse<PageResult<BlacklistItem>>;
+  listBlacklist(...PageQuery): APIResult<PageResult<BlacklistItem>>;
 
   @post
   @route("/blacklist/{targetUserId}")
   @doc("加入黑名单，目标用户存在，阻止关注、好友申请和小队加入等关系动作，黑名单关系优先于好友关系校验。")
-  blockUser(@path targetUserId: EntityId): APIResponse<EmptyData>;
+  blockUser(@path targetUserId: EntityId): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Social.UserNotVisible
+      | QujuApi.Errors.Social.BlacklistRelationExists
+  >;
 
   @delete
   @route("/blacklist/{targetUserId}")
   @doc("移出黑名单，目标用户已在黑名单，解除屏蔽，不会自动恢复历史好友关系。")
-  unblockUser(@path targetUserId: EntityId): APIResponse<EmptyData>;
+  unblockUser(@path targetUserId: EntityId): APIResult<
+    EmptyData,
+    QujuApi.Errors.Social.BlacklistRelationNotFound
+  >;
 
   @post
   @route("/user-reports")
   @doc("举报用户，调用方填写被举报用户和举报理由，举报进入后台处理流程。")
-  createUserReport(
-    @body body: UserReportCreateRequest,
-  ): APIResponse<UserReport>;
+  createUserReport(@body body: UserReportCreateRequest): APIResult<
+    UserReport,
+
+      | QujuApi.Errors.Social.UserNotVisible
+      | QujuApi.Errors.Social.UserReportInvalid
+  >;
 
   @get
   @route("/user-reports")
   @doc("查看我提交的用户举报，返回举报理由、处理状态和处理说明。")
-  listMyUserReports(...UserReportQuery): APIResponse<PageResult<UserReport>>;
+  listMyUserReports(...UserReportQuery): APIResult<PageResult<UserReport>>;
 
   @post
   @route("/teams")
   @doc("创建兴趣小队，调用方已登录且名称合法，创建小队、队长成员和群聊，创建者自动为队长。")
-  createTeam(@body body: TeamCreateRequest): APIResponse<TeamProfile>;
+  createTeam(@body body: TeamCreateRequest): APIResult<
+    TeamProfile,
+    QujuApi.Errors.Social.TeamNameUnavailable
+  >;
 
   @get
   @route("/teams")
@@ -480,7 +522,7 @@ interface SocialOperations {
     @query keyword?: string,
     @query tags?: string[],
     ...PageQuery,
-  ): APIResponse<PageResult<TeamProfile>>;
+  ): APIResult<PageResult<TeamProfile>>;
 
   @get
   @route("/teams/{teamId}")
@@ -490,15 +532,27 @@ interface SocialOperations {
   @post
   @route("/teams/{teamId}/join")
   @doc("加入兴趣小队，小队未满员、未解散且无黑名单关系，公开小队加入或审核小队创建申请，加入小队同步加入群聊。")
-  joinTeam(
-    @path teamId: EntityId,
-    @body body: JoinTeamRequest,
-  ): APIResponse<TeamJoinRequest>;
+  joinTeam(@path teamId: EntityId, @body body: JoinTeamRequest): APIResult<
+    TeamJoinRequest,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamUnavailable
+      | QujuApi.Errors.Social.TeamFull
+      | QujuApi.Errors.Social.BlacklistRelationExists
+      | QujuApi.Errors.Social.TeamMemberAlreadyExists
+      | QujuApi.Errors.Social.DuplicateTeamJoinRequest
+  >;
 
   @post
   @route("/teams/{teamId}/leave")
   @doc("退出兴趣小队，调用方为小队普通成员或管理员，退出小队并同步退出群聊，队长不可退出（需先转让队长或解散小队）。")
-  leaveTeam(@path teamId: EntityId): APIResponse<EmptyData>;
+  leaveTeam(@path teamId: EntityId): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamMemberNotFound
+      | QujuApi.Errors.Social.TeamLeaderCannotLeave
+  >;
 
   @get
   @route("/teams/{teamId}/join-requests")
@@ -506,7 +560,12 @@ interface SocialOperations {
   listTeamJoinRequests(
     @path teamId: EntityId,
     ...TeamJoinRequestQuery,
-  ): APIResponse<PageResult<TeamJoinRequest>>;
+  ): APIResult<
+    PageResult<TeamJoinRequest>,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamPermissionDenied
+  >;
 
   @post
   @route("/teams/{teamId}/join-requests/{requestId}/decision")
@@ -515,15 +574,24 @@ interface SocialOperations {
     @path teamId: EntityId,
     @path requestId: EntityId,
     @body body: TeamJoinRequestDecision,
-  ): APIResponse<TeamJoinRequest>;
+  ): APIResult<
+    TeamJoinRequest,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamPermissionDenied
+      | QujuApi.Errors.Social.TeamFull
+      | QujuApi.Errors.Social.TeamJoinRequestStateInvalid
+  >;
 
   @get
   @route("/teams/{teamId}/members")
   @doc("获取小队成员，调用方可查看该小队，返回成员与角色，角色只能为队长、管理员、普通成员。")
-  listTeamMembers(
-    @path teamId: EntityId,
-    ...PageQuery,
-  ): APIResponse<PageResult<TeamMember>>;
+  listTeamMembers(@path teamId: EntityId, ...PageQuery): APIResult<
+    PageResult<TeamMember>,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamMemberNotFound
+  >;
 
   @post
   @route("/teams/{teamId}/activities")
@@ -531,15 +599,24 @@ interface SocialOperations {
   createTeamActivity(
     @path teamId: EntityId,
     @body body: QujuApi.Activities.ActivityUpsertRequest,
-  ): APIResponse<QujuApi.Activities.ActivityDetail>;
+  ): APIResult<
+    QujuApi.Activities.ActivityDetail,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamPermissionDenied
+      | QujuApi.Errors.Activities.InvalidActivitySchedule
+      | QujuApi.Errors.Activities.MediaFileUnavailable
+  >;
 
   @get
   @route("/teams/{teamId}/activities")
   @doc("查看小队队内活动列表，小队成员可分页查看队内活动摘要。")
-  listTeamActivities(
-    @path teamId: EntityId,
-    ...PageQuery,
-  ): APIResponse<PageResult<QujuApi.Activities.ActivitySummary>>;
+  listTeamActivities(@path teamId: EntityId, ...PageQuery): APIResult<
+    PageResult<QujuApi.Activities.ActivitySummary>,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamMemberNotFound
+  >;
 
   @get
   @route("/teams/{teamId}/activities/{activityId}")
@@ -547,7 +624,13 @@ interface SocialOperations {
   getTeamActivity(
     @path teamId: EntityId,
     @path activityId: EntityId,
-  ): APIResponse<QujuApi.Activities.ActivityDetail>;
+  ): APIResult<
+    QujuApi.Activities.ActivityDetail,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamMemberNotFound
+      | QujuApi.Errors.Social.TeamActivityNotVisible
+  >;
 
   @patch
   @route("/teams/{teamId}/members/{memberId}/role")
@@ -556,20 +639,34 @@ interface SocialOperations {
     @path teamId: EntityId,
     @path memberId: EntityId,
     @body body: TeamMemberRoleUpdate,
-  ): APIResponse<TeamMember>;
+  ): APIResult<
+    TeamMember,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamPermissionDenied
+      | QujuApi.Errors.Social.TeamMemberNotFound
+      | QujuApi.Errors.Social.TeamRoleChangeInvalid
+  >;
 
   @delete
   @route("/teams/{teamId}")
   @doc("解散小队，调用方为队长，小队解散，群聊和队内活动停止使用，解散后不再显示于发现列表。")
-  dissolveTeam(@path teamId: EntityId): APIResponse<EmptyData>;
+  dissolveTeam(@path teamId: EntityId): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamPermissionDenied
+  >;
 
   @get
   @route("/teams/{teamId}/points")
   @doc("查看小队积分榜，调用方可查看该小队，返回积分排名，排名由成员积分降序生成。")
-  getTeamPointRanks(
-    @path teamId: EntityId,
-    ...PageQuery,
-  ): APIResponse<PageResult<TeamPointRankItem>>;
+  getTeamPointRanks(@path teamId: EntityId, ...PageQuery): APIResult<
+    PageResult<TeamPointRankItem>,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamMemberNotFound
+  >;
 }
 
 @doc("小队成员角色更新请求。")

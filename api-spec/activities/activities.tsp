@@ -78,7 +78,7 @@ model ActivityUpsertRequest {
   @doc("参与者最低年龄要求。")
   minAge?: int32;
 
-  @doc("活动图片媒体文件标识列表。")
+  @doc("活动图片媒体文件标识列表，第一张为封面。")
   imageIds?: EntityId[];
 }
 
@@ -316,6 +316,9 @@ model ActivityTemplate {
 
   @doc("模板默认人数上限。")
   defaultCapacity: int32;
+
+  @doc("模板默认活动封面图片。")
+  defaultCoverImage: MediaFile;
 }
 
 @doc("活动搜索条件，GET 请求通过 URL 传递，返回匹配活动，多选活动类型使用重复 query 参数或逗号分隔由实现统一处理。")
@@ -350,11 +353,11 @@ model ActivitySearchQuery extends PageQuery {
 
   @doc("距离筛选中心点经度。")
   @query
-  centerLongitude?: float64;
+  longitude?: float64;
 
   @doc("距离筛选中心点纬度。")
   @query
-  centerLatitude?: float64;
+  latitude?: float64;
 
   @doc("距离筛选半径，单位米。")
   @query
@@ -404,6 +407,33 @@ model RegistrationResult {
 
   @doc("候补名额确认截止时间。")
   confirmationDeadline?: DateTimeString;
+}
+
+@doc("活动参与人，调用方为管理员、活动发起人或已加入该活动的用户时可见，不包含用户敏感凭据。")
+model ActivityParticipant {
+  @doc("报名记录标识。")
+  registrationId: EntityId;
+
+  @doc("参与者用户标识。")
+  userId: EntityId;
+
+  @doc("参与者昵称。")
+  nickname: string;
+
+  @doc("参与者头像。")
+  avatar?: MediaFile;
+
+  @doc("当前报名或签到状态。")
+  registrationStatus: RegistrationStatus;
+
+  @doc("候补排位，非候补状态时为空。")
+  waitingRank?: int32;
+
+  @doc("报名或候补创建时间。")
+  registeredAt: DateTimeString;
+
+  @doc("签到完成时间。")
+  checkedInAt?: DateTimeString;
 }
 
 @doc("候补确认请求。")
@@ -504,7 +534,7 @@ model ActivityReviewRequest {
   @doc("评分。")
   rating: int32;
 
-  @doc("评价正文。")
+  @doc("评价正文，使用 Markdown 格式；正文中的图片应先通过活动评价图片上传接口取得链接后再嵌入。")
   content?: string;
 
   @doc("评价标签。")
@@ -525,7 +555,7 @@ model ActivityReview {
   @doc("评分。")
   rating: int32;
 
-  @doc("评价正文。")
+  @doc("评价正文，使用 Markdown 格式；正文中的图片链接来自活动评价图片上传接口返回的媒体访问地址。")
   content?: string;
 
   @doc("评价标签。")
@@ -541,31 +571,54 @@ interface ActivityOperations {
   @post
   @route("/media/images")
   @doc("上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。")
-  uploadActivityImage(
-    @multipartBody body: MediaUploadRequest,
-  ): APIResponse<MediaFile>;
+  uploadActivityImage(@multipartBody body: MediaUploadRequest): APIResult<
+    MediaFile,
+
+      | QujuApi.Errors.Activities.InvalidMediaUsage
+      | QujuApi.Errors.Activities.ImageFormatInvalid
+      | QujuApi.Errors.Activities.ImageTooLarge
+  >;
+
+  @post
+  @route("/media/review-images")
+  @doc("上传活动评价 Markdown 内链图片，请求为 multipart/form-data，媒体用途必须为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。")
+  uploadActivityReviewImage(@multipartBody body: MediaUploadRequest): APIResult<
+    MediaFile,
+
+      | QujuApi.Errors.Activities.InvalidMediaUsage
+      | QujuApi.Errors.Activities.ImageFormatInvalid
+      | QujuApi.Errors.Activities.ImageTooLarge
+  >;
 
   @get
   @route("/templates")
   @doc("获取活动模板，无，返回可用于快速创建的模板，模板不代表已创建活动。")
-  listTemplates(...PageQuery): APIResponse<PageResult<ActivityTemplate>>;
+  listTemplates(...PageQuery): APIResult<PageResult<ActivityTemplate>>;
 
   @post
   @route("/drafts")
   @doc("保存活动草稿，调用方已登录，创建或更新草稿，草稿不会进入发现列表。")
-  saveDraft(
-    @body body: ActivityDraftUpsertRequest,
-  ): APIResponse<ActivityDraftDetail>;
+  saveDraft(@body body: ActivityDraftUpsertRequest): APIResult<
+    ActivityDraftDetail,
+
+      | QujuApi.Errors.Activities.InvalidActivitySchedule
+      | QujuApi.Errors.Activities.MediaFileUnavailable
+  >;
 
   @get
   @route("/drafts")
   @doc("获取我的活动草稿列表，调用方已登录，分页返回本人创建的草稿。")
-  listDrafts(...PageQuery): APIResponse<PageResult<ActivityDraftSummary>>;
+  listDrafts(...PageQuery): APIResult<PageResult<ActivityDraftSummary>>;
 
   @get
   @route("/drafts/{activityId}")
   @doc("获取活动草稿详情，调用方为草稿发起人，用于草稿编辑页回显。")
-  getDraft(@path activityId: EntityId): APIResponse<ActivityDraftDetail>;
+  getDraft(@path activityId: EntityId): APIResult<
+    ActivityDraftDetail,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.ActivityPermissionDenied
+  >;
 
   @patch
   @route("/drafts/{activityId}")
@@ -573,24 +626,45 @@ interface ActivityOperations {
   updateDraft(
     @path activityId: EntityId,
     @body body: ActivityDraftUpsertRequest,
-  ): APIResponse<ActivityDraftDetail>;
+  ): APIResult<
+    ActivityDraftDetail,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.ActivityPermissionDenied
+      | QujuApi.Errors.Activities.InvalidActivitySchedule
+      | QujuApi.Errors.Activities.ActivityStateNotSubmittable
+      | QujuApi.Errors.Activities.MediaFileUnavailable
+  >;
 
   @post
   @route("/templates/{templateId}/drafts")
   @doc("基于模板创建草稿，模板存在，生成可编辑草稿，用户必须确认后才可提交审核。")
-  createDraftFromTemplate(
-    @path templateId: EntityId,
-  ): APIResponse<ActivityDraftDetail>;
+  createDraftFromTemplate(@path templateId: EntityId): APIResult<
+    ActivityDraftDetail,
+    QujuApi.Errors.Activities.TemplateNotFound
+  >;
 
   @post
   @route("/{activityId}/clone")
   @doc("克隆历史活动，活动存在且调用方有权克隆，复制基础信息为新草稿，报名数据和评价不会被复制。")
-  cloneActivity(@path activityId: EntityId): APIResponse<ActivityDraftDetail>;
+  cloneActivity(@path activityId: EntityId): APIResult<
+    ActivityDraftDetail,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.ActivityPermissionDenied
+  >;
 
   @post
   @route("/{activityId}/submit")
   @doc("提交活动审核，活动信息完整，进入 AI 或人工审核流程，超过 50 人或 AI 不确定时进入人工审核。")
-  submitActivity(@path activityId: EntityId): APIResponse<ActivityDetail>;
+  submitActivity(@path activityId: EntityId): APIResult<
+    ActivityDetail,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.ActivityPermissionDenied
+      | QujuApi.Errors.Activities.ActivityStateNotSubmittable
+      | QujuApi.Errors.Activities.InvalidActivitySchedule
+  >;
 
   @get
   @route("/feed")
@@ -598,19 +672,19 @@ interface ActivityOperations {
   getFeed(
     @query tab: ActivityFeedTab,
     ...ActivitySearchQuery,
-  ): APIResponse<PageResult<ActivitySummary>>;
+  ): APIResult<PageResult<ActivitySummary>>;
 
   @get
   @route("/search")
   @doc("高级搜索活动，查询条件通过 URL 传递，返回符合条件的活动，距离筛选必须提供中心点。")
   searchActivities(
     ...ActivitySearchQuery,
-  ): APIResponse<PageResult<ActivitySummary>>;
+  ): APIResult<PageResult<ActivitySummary>>;
 
   @get
   @route("/map")
   @doc("获取地图模式点位，提供地图视野或中心点范围，返回活动点位，点位只包含地图展示所需摘要。")
-  getMapPoints(...ActivitySearchQuery): APIResponse<ActivityMapPoint[]>;
+  getMapPoints(...ActivitySearchQuery): APIResult<ActivityMapPoint[]>;
 
   @get
   @route("/mine")
@@ -620,7 +694,10 @@ interface ActivityOperations {
   @get
   @route("/{activityId}")
   @doc("获取活动详情，活动存在且调用方可见，返回完整展示信息，下架活动仅管理员或发起人可见。")
-  getActivity(@path activityId: EntityId): APIResponse<ActivityDetail>;
+  getActivity(@path activityId: EntityId): APIResult<
+    ActivityDetail,
+    QujuApi.Errors.Activities.ActivityNotVisible
+  >;
 
   @get
   @route("/{activityId}/participation-state")
@@ -635,14 +712,36 @@ interface ActivityOperations {
   registerActivity(
     @path activityId: EntityId,
     @body body: RegisterActivityRequest,
-  ): APIResponse<RegistrationResult>;
+  ): APIResult<
+    RegistrationResult,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.RegistrationClosed
+      | QujuApi.Errors.Activities.DuplicateRegistration
+      | QujuApi.Errors.Activities.ReputationInsufficient
+      | QujuApi.Errors.Activities.AgeRequirementNotMet
+  >;
+
+  @get
+  @route("/{activityId}/participants")
+  @doc("查看活动参与人列表，管理员可查看所有活动，普通用户和商户只能查看自己创建或已加入活动的参与人列表。")
+  listParticipants(@path activityId: EntityId, ...PageQuery): APIResult<
+    PageResult<ActivityParticipant>,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.ActivityPermissionDenied
+  >;
 
   @post
   @route("/{activityId}/registrations/cancel")
   @doc("取消报名，调用方已报名且未过报名截止，释放名额并触发候补递补，已结束活动不可取消报名。")
-  cancelRegistration(
-    @path activityId: EntityId,
-  ): APIResponse<RegistrationResult>;
+  cancelRegistration(@path activityId: EntityId): APIResult<
+    RegistrationResult,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.RegistrationNotFound
+      | QujuApi.Errors.Activities.RegistrationClosed
+  >;
 
   @post
   @route("/{activityId}/waiting-confirmations")
@@ -650,28 +749,44 @@ interface ActivityOperations {
   confirmWaitingSeat(
     @path activityId: EntityId,
     @body body: WaitingConfirmationRequest,
-  ): APIResponse<RegistrationResult>;
+  ): APIResult<
+    RegistrationResult,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.WaitingConfirmationUnavailable
+  >;
 
   @post
   @route("/{activityId}/check-in-qrcode")
   @doc("生成签到二维码，调用方为活动发起人且活动临近开始，返回短期有效二维码 token，二维码过期后不可签到。")
-  createCheckInQrCode(@path activityId: EntityId): APIResponse<CheckInQrCode>;
+  createCheckInQrCode(@path activityId: EntityId): APIResult<
+    CheckInQrCode,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.ActivityPermissionDenied
+  >;
 
   @post
   @route("/{activityId}/check-ins")
   @doc("扫码签到，二维码有效且用户已报名，记录签到时间，需要位置校验时必须处于活动地点附近。")
-  checkIn(
-    @path activityId: EntityId,
-    @body body: CheckInRequest,
-  ): APIResponse<CheckInRecord>;
+  checkIn(@path activityId: EntityId, @body body: CheckInRequest): APIResult<
+    CheckInRecord,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.RegistrationNotFound
+      | QujuApi.Errors.Activities.CheckInQrCodeInvalid
+      | QujuApi.Errors.Activities.CheckInLocationInvalid
+  >;
 
   @get
   @route("/{activityId}/check-ins")
   @doc("查看签到列表，调用方为活动发起人或管理员，返回报名与签到状态，列表不返回用户敏感凭据。")
-  listCheckIns(
-    @path activityId: EntityId,
-    ...PageQuery,
-  ): APIResponse<PageResult<CheckInRecord>>;
+  listCheckIns(@path activityId: EntityId, ...PageQuery): APIResult<
+    PageResult<CheckInRecord>,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.ActivityPermissionDenied
+  >;
 
   @get
   @route("/{activityId}/check-ins/export")
@@ -684,7 +799,14 @@ interface ActivityOperations {
   createSummary(
     @path activityId: EntityId,
     @body body: ActivitySummaryPostRequest,
-  ): APIResponse<ActivitySummaryPost>;
+  ): APIResult<
+    ActivitySummaryPost,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.ActivityPermissionDenied
+      | QujuApi.Errors.Activities.ActivityNotEnded
+      | QujuApi.Errors.Activities.MediaFileUnavailable
+  >;
 
   @post
   @route("/{activityId}/reviews")
@@ -692,5 +814,12 @@ interface ActivityOperations {
   reviewActivity(
     @path activityId: EntityId,
     @body body: ActivityReviewRequest,
-  ): APIResponse<ActivityReview>;
+  ): APIResult<
+    ActivityReview,
+
+      | QujuApi.Errors.Activities.ActivityNotVisible
+      | QujuApi.Errors.Activities.ActivityNotEnded
+      | QujuApi.Errors.Activities.RegistrationNotFound
+      | QujuApi.Errors.Activities.DuplicateReview
+  >;
 }
