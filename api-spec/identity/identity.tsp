@@ -265,6 +265,12 @@ model QualificationSubmitRequest {
   licenseImages: HttpPart<bytes>[];
 }
 
+@doc("头像上传请求，请求为 multipart/form-data，上传成功后服务端固定媒体用途为 avatar。")
+model AvatarUploadRequest {
+  @doc("头像文件。")
+  file: HttpPart<bytes>;
+}
+
 @route("/identity")
 @tag("身份与资料")
 interface IdentityOperations {
@@ -278,6 +284,13 @@ interface IdentityOperations {
       | QujuApi.Errors.Identity.ImageFormatInvalid
       | QujuApi.Errors.Identity.ImageTooLarge
   >;
+
+  @post
+  @route("/media/avatar")
+  @doc("上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。")
+  uploadAvatar(
+    @multipartBody body: AvatarUploadRequest,
+  ): APIResponse<MediaFile>;
 
   @post
   @route("/auth/register/personal")

@@ -35,6 +35,10 @@ model AdminUserQuery extends PageQuery {
   @doc("账号状态筛选条件。")
   @query
   status?: QujuApi.Identity.AccountStatus;
+
+  @doc("商家资质审核状态筛选条件，仅 kind=merchant 时有意义。")
+  @query
+  qualificationStatus?: QujuApi.Identity.QualificationStatus;
 }
 
 @doc("后台用户摘要。")
@@ -53,6 +57,9 @@ model AdminUserSummary {
 
   @doc("账号状态。")
   status: QujuApi.Identity.AccountStatus;
+
+  @doc("商家资质审核状态。非商家用户为空。")
+  qualificationStatus?: QujuApi.Identity.QualificationStatus;
 
   @doc("用户发布的活动数量。")
   activityCount: int32;
@@ -205,6 +212,13 @@ interface AdminOperations {
     QujuApi.Errors.Admin.UserNotFound | QujuApi.Errors.Admin.UserNotBanned
   >;
 
+  @get
+  @route("/merchants/{merchantId}")
+  @doc("获取商家资料和资质详情，管理员用于查看营业执照或营业凭证、审核状态和驳回原因。")
+  getMerchant(
+    @path merchantId: EntityId,
+  ): APIResponse<QujuApi.Identity.MerchantProfile>;
+
   @post
   @route("/merchants/{merchantId}/review")
   @doc("审核商家申请，商家处于待审核状态，通过或驳回商家身份，驳回必须填写原因。")
@@ -226,9 +240,16 @@ interface AdminOperations {
     ...AdminActivityQuery,
   ): APIResult<PageResult<QujuApi.Activities.ActivitySummary>>;
 
+  @get
+  @route("/activities/{activityId}")
+  @doc("获取后台活动详情，管理员用于查看完整活动内容、AI 风险提示、人工审核记录和处理原因。")
+  getActivity(
+    @path activityId: EntityId,
+  ): APIResponse<QujuApi.Activities.ActivityDetail>;
+
   @post
   @route("/activities/{activityId}/review")
-  @doc("人工审核活动，活动处于待审核或要求修改状态，记录审核结果，驳回或要求修改必须填写原因。")
+  @doc("管理员提交通过、驳回或要求修改的处理结果，驳回或要求修改必须填写原因。")
   reviewActivity(
     @path activityId: EntityId,
     @body body: ReviewDecisionRequest,
