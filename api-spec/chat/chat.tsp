@@ -23,6 +23,11 @@ enum MessageReadStatus {
   read,
 }
 
+@doc("聊天实时事件类型。")
+enum ChatRealtimeEventKind {
+  messageCreated,
+}
+
 @doc("会话摘要。")
 model ConversationSummary {
   @doc("会话标识。")
@@ -107,6 +112,24 @@ model ChatMessage {
   sentAt: DateTimeString;
 }
 
+@doc("聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话的新消息。")
+model ChatRealtimeEvent {
+  @doc("实时事件类型。")
+  kind: ChatRealtimeEventKind;
+
+  @doc("发生事件的会话标识。")
+  conversationId: EntityId;
+
+  @doc("新创建的聊天消息。")
+  message: ChatMessage;
+
+  @doc("当前用户在该会话中的最新未读消息数。")
+  conversationUnreadCount: int32;
+
+  @doc("事件发生时间。")
+  occurredAt: DateTimeString;
+}
+
 @doc("消息转发请求，原消息存在且调用方可见，目标会话生成新消息，转发不会修改原消息。")
 model ForwardMessageRequest {
   @doc("转发目标会话标识列表。")
@@ -135,6 +158,9 @@ model TeamAnnouncement {
 
   @doc("公告发布时间。")
   publishedAt: DateTimeString;
+
+  @doc("当前用户是否已阅读该公告。")
+  readByCurrentUser: boolean;
 }
 
 @doc("群投票创建请求，调用方为小队成员，创建可投票事项，选项至少两个。")
@@ -274,6 +300,11 @@ interface ChatOperations {
   >;
 
   @get
+  @route("/ws/messages")
+  @doc("聊天消息实时 WebSocket 占位端点。实际调用时客户端以 Bearer Token 完成鉴权并发起 WebSocket Upgrade，连接建立后服务端按 ChatRealtimeEvent 推送当前用户可见会话中的新消息；普通 JSON API 统一响应规则不适用于升级后的 WebSocket 数据帧。")
+  connectMessageWebSocket(): APIResult<ChatRealtimeEvent>;
+
+  @get
   @route("/conversations")
   @doc("获取会话列表，调用方已登录，返回好友和小队会话，小队成员变动同步影响会话可见性。")
   listConversations(...PageQuery): APIResult<PageResult<ConversationSummary>>;
@@ -347,6 +378,20 @@ interface ChatOperations {
 
       | QujuApi.Errors.Chat.TeamNotVisible
       | QujuApi.Errors.Chat.AnnouncementPermissionDenied
+  >;
+
+  @post
+  @route("/teams/{teamId}/announcements/{announcementId}/read")
+  @doc("标记群公告已读，调用方为小队成员且公告可见，更新当前用户对该公告的已读状态并返回最新公告。")
+  markAnnouncementRead(
+    @path teamId: EntityId,
+    @path announcementId: EntityId,
+  ): APIResult<
+    TeamAnnouncement,
+
+      | QujuApi.Errors.Chat.TeamNotVisible
+      | QujuApi.Errors.Chat.TeamMemberRequired
+      | QujuApi.Errors.Chat.AnnouncementNotVisible
   >;
 
   @post

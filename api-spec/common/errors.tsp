@@ -367,6 +367,13 @@ namespace QujuApi.Errors.Chat {
   @doc("50016：上传图像超过即时通讯服务允许的大小。")
   model ImageTooLarge
     extends APIErrorResponse<50016, "Image file is too large"> {}
+
+  @doc("50017：群公告不存在或调用方不可见。")
+  model AnnouncementNotVisible
+    extends APIErrorResponse<
+      50017,
+      "Announcement {announcementId} is not visible"
+    > {}
 }
 
 namespace QujuApi.Errors.Admin {
