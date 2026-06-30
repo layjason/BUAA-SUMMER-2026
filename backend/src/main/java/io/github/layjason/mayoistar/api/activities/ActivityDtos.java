@@ -34,7 +34,7 @@ public final class ActivityDtos {
         private String endAt;
 
         @NotNull
-        private Object location;
+        private CommonDtos.LocationInfo location;
 
         @NotNull
         private String safetyNotice;
@@ -58,7 +58,7 @@ public final class ActivityDtos {
         private String introduction;
         private String startAt;
         private String endAt;
-        private Object location;
+        private CommonDtos.LocationInfo location;
         private String safetyNotice;
         private Integer capacity;
         private String registrationDeadline;
@@ -87,7 +87,7 @@ public final class ActivityDtos {
         @NotNull
         private String qrCodeToken;
 
-        private Object currentLocation;
+        private CommonDtos.GeoPoint currentLocation;
     }
 
     @Data
@@ -102,7 +102,7 @@ public final class ActivityDtos {
         private List<String> imageIds;
 
         @NotNull
-        private List<Object> confirmedImageTags;
+        private List<CommonDtos.ImageTagConfirmation> confirmedImageTags;
     }
 
     @Data

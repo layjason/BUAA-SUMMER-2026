@@ -27,7 +27,7 @@ public final class ChatDtos {
 
         private String text;
         private String imageMediaId;
-        private Object location;
+        private CommonDtos.LocationInfo location;
         private List<String> mentionedUserIds;
         private Boolean mentionAll;
     }
