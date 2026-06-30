@@ -18,7 +18,6 @@ import org.springframework.stereotype.Component;
  *
  * <p>类不变量：所有 JSON 占位响应均使用统一成功包装，不访问数据库、不调用外部服务。
  */
-@RequiredArgsConstructor
 @Component
 public class DefaultApiResponseFactory {
 
