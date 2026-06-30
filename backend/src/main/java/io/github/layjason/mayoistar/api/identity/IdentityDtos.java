@@ -101,7 +101,7 @@ public final class IdentityDtos {
     public static class UpdatePersonalProfileRequest {
         private String avatarMediaId;
         private String nickname;
-        private String gender;
+        private Gender gender;
         private String birthday;
         private String signature;
         private List<String> interestTags;
@@ -125,35 +125,59 @@ public final class IdentityDtos {
 
     @Data
     public static class TokenPair {
+        @NotNull
         private String accessToken;
+
+        @NotNull
         private String refreshToken;
+
+        @NotNull
         private String expiresAt;
     }
 
     @Data
     public static class LoginResult {
+        @NotNull
         private String userId;
+
+        @NotNull
         private UserKind kind;
+
+        @NotNull
         private AccountStatus accountStatus;
+
+        @NotNull
         private TokenPair tokens;
     }
 
     @Data
     public static class PublicUserProfile {
+        @NotNull
         private String userId;
+
+        @NotNull
         private String nickname;
+
         private CommonDtos.MediaFile avatar;
         private Gender gender;
         private String birthday;
         private String signature;
+
+        @NotNull
         private List<String> interestTags;
+
+        @NotNull
         private Integer reputationScore;
+
+        @NotNull
         private UserKind kind;
     }
 
     @Data
     public static class QualificationDetail {
+        @NotNull
         private QualificationStatus status;
+
         private String submittedAt;
         private String reviewedAt;
         private String rejectReason;
@@ -162,24 +186,41 @@ public final class IdentityDtos {
 
     @Data
     public static class MerchantProfile {
+        @NotNull
         private String userId;
+
+        @NotNull
         private String merchantName;
+
+        @NotNull
         private String nickname;
+
         private CommonDtos.MediaFile avatar;
+
+        @NotNull
         private List<String> interestedActivityFields;
+
+        @NotNull
         private AccountStatus accountStatus;
+
+        @NotNull
         private QualificationStatus qualificationStatus;
+
         private QualificationDetail qualification;
     }
 
     @Data
     public static class InterestTagItem {
+        @NotNull
         private String name;
     }
 
     @Data
     public static class NicknameAvailability {
+        @NotNull
         private String nickname;
+
+        @NotNull
         private Boolean available;
     }
 }

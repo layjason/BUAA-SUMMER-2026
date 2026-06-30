@@ -50,7 +50,8 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "account_status", nullable = false, length = 20)
-    private AccountStatus accountStatus;
+    @Builder.Default
+    private AccountStatus accountStatus = AccountStatus.inactive;
 
     @Column(name = "activated_at")
     private Instant activatedAt;
