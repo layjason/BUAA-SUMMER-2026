@@ -1,7 +1,6 @@
 import React from 'react';
 import { LogOut, RefreshCw } from 'lucide-react';
 
-
 interface TopBarProps {
   id?: string;
   onLogout: () => void;
