@@ -6,6 +6,13 @@ import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
+import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
+import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.identity.AccountStatus;
+import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
+import io.github.layjason.mayoistar.entity.identity.UserKind;
+import io.github.layjason.mayoistar.entity.social.ReportStatus;
+import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +33,9 @@ public class AdminController {
 
     @GetMapping("/activities")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> listActivities(
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) ActivityReviewStatus reviewStatus,
+            @RequestParam(required = false) ActivityRuntimeStatus runtimeStatus,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();
@@ -80,6 +89,7 @@ public class AdminController {
     @GetMapping("/teams")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamProfile>>> listTeams(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) TeamStatus status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();
@@ -98,7 +108,9 @@ public class AdminController {
 
     @GetMapping("/user-reports")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.UserReport>>> listUserReports(
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) ReportStatus status,
+            @RequestParam(required = false) String reporterUserId,
+            @RequestParam(required = false) String targetUserId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();
@@ -113,7 +125,9 @@ public class AdminController {
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<PageResult<AdminDtos.AdminUserSummary>>> listUsers(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) UserKind kind,
+            @RequestParam(required = false) AccountStatus status,
+            @RequestParam(required = false) QualificationStatus qualificationStatus,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();

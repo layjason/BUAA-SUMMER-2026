@@ -62,10 +62,18 @@ public class ActivityController {
 
     @GetMapping("/map")
     public ResponseEntity<ApiResponse<List<ActivityDtos.ActivityMapPoint>>> getMapPoints(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) List<String> activityTypes,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String startAtFrom,
+            @RequestParam(required = false) String startAtTo,
+            @RequestParam(required = false) Double minFee,
+            @RequestParam(required = false) Double maxFee,
             @RequestParam(required = false) Double latitude,
             @RequestParam(required = false) Double longitude,
-            @RequestParam(required = false) Double radiusKm,
-            @RequestParam(required = false) List<String> tags) {
+            @RequestParam(required = false) Integer distanceMeters,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
         return responseFactory.activityMapPoints();
     }
 
@@ -92,10 +100,15 @@ public class ActivityController {
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> searchActivities(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) List<String> tags,
+            @RequestParam(required = false) List<String> activityTypes,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String startAtFrom,
+            @RequestParam(required = false) String startAtTo,
+            @RequestParam(required = false) Double minFee,
+            @RequestParam(required = false) Double maxFee,
             @RequestParam(required = false) Double latitude,
             @RequestParam(required = false) Double longitude,
-            @RequestParam(required = false) Double radiusKm,
+            @RequestParam(required = false) Integer distanceMeters,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();

@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.entity.activities;
 
 import io.github.layjason.mayoistar.entity.admin.Admin;
+import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -50,7 +51,7 @@ public class ActivityReviewRecord {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private ReviewDecision result;
+    private ReviewStatus result;
 
     @Column(columnDefinition = "text")
     private String reason;

@@ -4,7 +4,7 @@ import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
-import io.github.layjason.mayoistar.entity.activities.ReviewDecision;
+import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.util.List;
@@ -134,9 +134,9 @@ public final class ActivityDtos {
 
     @Data
     public static class ReviewRecord {
+        private String reviewId;
         private String reviewerId;
-        private String reviewerName;
-        private ReviewDecision status;
+        private ReviewStatus result;
         private String reason;
         private String reviewedAt;
     }
