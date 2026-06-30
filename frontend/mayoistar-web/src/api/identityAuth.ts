@@ -1,4 +1,4 @@
-import { request } from './client';
+import { request, isMockMode, simulateLatency } from './client';
 import type { components } from './generated/openapi';
 
 /** 激活账号请求体，与 TypeSpec Identity.AccountActivationRequest 对齐 */
@@ -12,6 +12,11 @@ type AccountActivationRequest = components['schemas']['Identity.AccountActivatio
  * 不变量：不修改本地存储或认证状态，只发送一次 POST 请求。
  */
 export async function activateAccount(token: string): Promise<void> {
+  if (isMockMode()) {
+    await simulateLatency(250);
+    return;
+  }
+
   const body: AccountActivationRequest = { token };
   await request<void>('/identity/auth/activate', {
     method: 'POST',
