@@ -240,10 +240,7 @@ interface ChatOperations {
   @doc("上传聊天图片，请求为 multipart/form-data，返回可发送的图片 mediaId，上传不等于发送消息。")
   uploadChatImage(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
-
-      | QujuApi.Errors.Chat.InvalidMediaUsage
-      | QujuApi.Errors.Chat.ImageFormatInvalid
-      | QujuApi.Errors.Chat.ImageTooLarge
+    QujuApi.Errors.Chat.ImageFormatInvalid | QujuApi.Errors.Chat.ImageTooLarge
   >;
 
   @post
@@ -254,10 +251,7 @@ interface ChatOperations {
     @multipartBody body: MediaUploadRequest,
   ): APIResult<
     MediaFile,
-
-      | QujuApi.Errors.Chat.InvalidMediaUsage
-      | QujuApi.Errors.Chat.TeamNotVisible
-      | QujuApi.Errors.Chat.TeamMemberRequired
+    QujuApi.Errors.Chat.TeamNotVisible | QujuApi.Errors.Chat.TeamMemberRequired
   >;
 
   @post
@@ -269,7 +263,6 @@ interface ChatOperations {
   ): APIResult<
     MediaFile,
 
-      | QujuApi.Errors.Chat.InvalidMediaUsage
       | QujuApi.Errors.Chat.TeamNotVisible
       | QujuApi.Errors.Chat.TeamMemberRequired
       | QujuApi.Errors.Chat.ImageFormatInvalid
