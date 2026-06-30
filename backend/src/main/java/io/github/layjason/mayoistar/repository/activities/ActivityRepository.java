@@ -8,8 +8,16 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface ActivityRepository extends JpaRepository<Activity, String> {
+/**
+ * 活动数据访问层。
+ *
+ * <p>类职责：提供 Activity 实体的基础 CRUD、组织者活动查询与动态筛选查询能力。
+ *
+ * <p>类不变量：Repository 不承载业务规则，只表达持久化访问边界。
+ */
+public interface ActivityRepository extends JpaRepository<Activity, String>, JpaSpecificationExecutor<Activity> {
 
     Page<Activity> findByOrganizerIdAndReviewStatusOrderByUpdatedAtDesc(
             String organizerId, ActivityReviewStatus reviewStatus, Pageable pageable);

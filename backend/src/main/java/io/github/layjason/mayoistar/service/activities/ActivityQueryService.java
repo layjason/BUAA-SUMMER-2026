@@ -17,10 +17,6 @@ import io.github.layjason.mayoistar.repository.activities.ActivityImageRepositor
 import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityReviewRecordRepository;
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.format.DateTimeParseException;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -123,120 +119,6 @@ public class ActivityQueryService {
                 resolvedPageSize,
                 activityPage.getTotalElements());
         return activityDtoMapper.toActivitySummaryPage(activityPage, this::loadCoverImage);
-    }
-
-    /**
-     * 查询地图上可展示的活动点。
-     *
-     * <p>前置条件：筛选参数各自独立，任一无效时该筛选条件被忽略。
-     *
-     * <p>后置条件：返回按距离（若有中心点）或默认顺序排列的活动地图点列表，支持分页。
-     *
-     * <p>不变量：仅查询 reviewStatus 不为 draft 且 runtimeStatus 不为 takenDown 且有坐标的活动。
-     *
-     * @param keyword 标题关键词（模糊匹配）
-     * @param city 城市筛选
-     * @param startAtFrom 开始时间下限
-     * @param startAtTo 开始时间上限
-     * @param minFee 最低费用
-     * @param maxFee 最高费用
-     * @param latitude 用户纬度（用于距离排序和筛选）
-     * @param longitude 用户经度
-     * @param distanceMeters 最大距离（米）
-     * @param page 页码
-     * @param pageSize 每页大小
-     * @return 活动地图点列表
-     */
-    @Transactional(readOnly = true)
-    public List<ActivityDtos.ActivityMapPoint> getMapPoints(
-            String keyword,
-            String city,
-            String startAtFrom,
-            String startAtTo,
-            Double minFee,
-            Double maxFee,
-            Double latitude,
-            Double longitude,
-            Integer distanceMeters,
-            Integer page,
-            Integer pageSize) {
-        List<Activity> activities =
-                activityRepository.findByReviewStatusNotAndRuntimeStatusNotAndPointLatIsNotNullAndPointLonIsNotNull(
-                        ActivityReviewStatus.draft, ActivityRuntimeStatus.takenDown);
-
-        Instant startAtFromInstant = parseInstantQuietly(startAtFrom);
-        Instant startAtToInstant = parseInstantQuietly(startAtTo);
-
-        List<Activity> filtered = activities.stream()
-                .filter(activity -> {
-                    // 关键词筛选
-                    if (keyword != null && !keyword.isBlank()) {
-                        if (activity.getTitle() == null || !activity.getTitle().contains(keyword)) {
-                            return false;
-                        }
-                    }
-                    // 城市筛选
-                    if (city != null && !city.isBlank()) {
-                        if (activity.getCity() == null || !activity.getCity().equals(city)) {
-                            return false;
-                        }
-                    }
-                    // 时间范围筛选
-                    if (startAtFromInstant != null) {
-                        if (activity.getStartAt() == null
-                                || activity.getStartAt().isBefore(startAtFromInstant)) {
-                            return false;
-                        }
-                    }
-                    if (startAtToInstant != null) {
-                        if (activity.getStartAt() == null
-                                || activity.getStartAt().isAfter(startAtToInstant)) {
-                            return false;
-                        }
-                    }
-                    // 费用范围筛选
-                    if (minFee != null) {
-                        if (activity.getFeeAmount() == null
-                                || activity.getFeeAmount().compareTo(BigDecimal.valueOf(minFee)) < 0) {
-                            return false;
-                        }
-                    }
-                    if (maxFee != null) {
-                        if (activity.getFeeAmount() == null
-                                || activity.getFeeAmount().compareTo(BigDecimal.valueOf(maxFee)) > 0) {
-                            return false;
-                        }
-                    }
-                    // 距离筛选
-                    if (latitude != null && longitude != null && distanceMeters != null) {
-                        double dist =
-                                haversineDistance(latitude, longitude, activity.getPointLat(), activity.getPointLon());
-                        return dist <= distanceMeters;
-                    }
-                    return true;
-                })
-                .toList();
-
-        // 距离排序
-        if (latitude != null && longitude != null) {
-            filtered = filtered.stream()
-                    .sorted(Comparator.comparingDouble(activity ->
-                            haversineDistance(latitude, longitude, activity.getPointLat(), activity.getPointLon())))
-                    .toList();
-        }
-
-        // 分页
-        int resolvedPage = page == null || page < 1 ? 1 : page;
-        int resolvedPageSize = pageSize == null || pageSize < 1 ? 20 : pageSize;
-        int fromIndex = (resolvedPage - 1) * resolvedPageSize;
-        if (fromIndex >= filtered.size()) {
-            return List.of();
-        }
-        int toIndex = Math.min(fromIndex + resolvedPageSize, filtered.size());
-
-        return filtered.subList(fromIndex, toIndex).stream()
-                .map(activityDtoMapper::toActivityMapPoint)
-                .toList();
     }
 
     /**
@@ -345,41 +227,6 @@ public class ActivityQueryService {
         } catch (IllegalArgumentException e) {
             throw new BusinessException(20004, "无效的审核状态筛选条件：" + status);
         }
-    }
-
-    /**
-     * 静默解析时间字符串，解析失败时返回 null。
-     */
-    private Instant parseInstantQuietly(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return Instant.parse(value);
-        } catch (DateTimeParseException e) {
-            log.debug("地图查询：忽略无效的时间参数 {}", value.replace("\n", "\\n").replace("\r", "\\r"));
-            return null;
-        }
-    }
-
-    /**
-     * Haversine 公式计算两点之间的球面距离（单位：米）。
-     *
-     * <p>前置条件：所有参数均为有效的经纬度值。
-     *
-     * <p>后置条件：返回两点间的距离，精确到米。
-     */
-    private double haversineDistance(double lat1, double lon1, double lat2, double lon2) {
-        final double earthRadiusMeters = 6_371_000.0;
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                + Math.cos(Math.toRadians(lat1))
-                        * Math.cos(Math.toRadians(lat2))
-                        * Math.sin(dLon / 2)
-                        * Math.sin(dLon / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return earthRadiusMeters * c;
     }
 
     /**
