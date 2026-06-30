@@ -8329,6 +8329,7 @@ components:
         - text
         - image
         - location
+        - emoticon
       description: 消息类型。
     Chat.MessageReadStatus:
       type: string

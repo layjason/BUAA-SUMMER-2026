@@ -258,6 +258,32 @@ class ChatServiceTest {
                 .hasMessageContaining("Conversation membership");
     }
 
+    @Test
+    @DisplayName("发送表情消息 - unicode表情文本成功")
+    void sendMessage_emoticon_text() {
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.emoticon);
+        request.setText("😀");
+
+        ChatDtos.ChatMessage result =
+                chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request);
+
+        assertThat(result.getKind()).isEqualTo(MessageKind.emoticon);
+        assertThat(result.getText()).isEqualTo("😀");
+        assertThat(result.getRecalled()).isFalse();
+    }
+
+    @Test
+    @DisplayName("发送表情消息 - 无内容抛 MESSAGE_CONTENT_INVALID")
+    void sendMessage_emoticon_noContent() {
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.emoticon);
+
+        assertThatThrownBy(() -> chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("content is invalid");
+    }
+
     // ========================================
     // listMessages Tests
     // ========================================

@@ -443,6 +443,13 @@ public class ChatService {
                     throw new BusinessException(MESSAGE_CONTENT_INVALID, "Message content is invalid for its kind");
                 }
             }
+            case emoticon -> {
+                if ((request.getText() == null || request.getText().isBlank())
+                        && (request.getImageMediaId() == null
+                                || request.getImageMediaId().isBlank())) {
+                    throw new BusinessException(MESSAGE_CONTENT_INVALID, "Message content is invalid for its kind");
+                }
+            }
             case image -> {
                 if (request.getImageMediaId() == null
                         || request.getImageMediaId().isBlank()) {

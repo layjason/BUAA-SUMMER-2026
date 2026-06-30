@@ -15,6 +15,7 @@ enum MessageKind {
   text,
   image,
   location,
+  emoticon,
 }
 
 @doc("消息读取状态。")
