@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -12,6 +13,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 好友关系，每人一条记录，存储"我"对"好友"的关系数据。
@@ -53,8 +56,9 @@ public class Friendship {
     @Column(length = 50)
     private String remark;
 
-    @Column(name = "group_tags", columnDefinition = "text")
-    private String groupTags;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "group_tags", columnDefinition = "json")
+    private List<String> groupTags;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

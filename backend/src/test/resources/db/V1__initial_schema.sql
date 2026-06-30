@@ -266,7 +266,7 @@ CREATE TABLE friendships (
     friend_user_id VARCHAR(36)  NOT NULL,
     source         VARCHAR(30)  NOT NULL,
     remark         VARCHAR(50),
-    group_tags     TEXT,
+    group_tags     JSON,
     created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT pk_friendships PRIMARY KEY (friendship_id)
 );
@@ -320,7 +320,7 @@ CREATE INDEX idx_user_reports_status   ON user_reports (status);
 CREATE TABLE teams (
     team_id          VARCHAR(36)  NOT NULL,
     name             VARCHAR(100) NOT NULL,
-    tags             TEXT,
+    tags             JSON,
     join_mode        VARCHAR(30)  NOT NULL,
     capacity         INTEGER      NOT NULL,
     description      TEXT,
