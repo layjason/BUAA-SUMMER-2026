@@ -4,7 +4,12 @@ import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.service.activities.ActivitySearchCriteria;
+import io.github.layjason.mayoistar.service.activities.ActivitySearchService;
 import jakarta.validation.Valid;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -26,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ActivityController {
 
     private final DefaultApiResponseFactory responseFactory;
+    private final ActivitySearchService activitySearchService;
 
     @PostMapping("/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> saveDraft(
@@ -74,7 +80,20 @@ public class ActivityController {
             @RequestParam(required = false) Integer distanceMeters,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.activityMapPoints();
+        ActivitySearchCriteria criteria = searchCriteria(
+                keyword,
+                activityTypes,
+                city,
+                startAtFrom,
+                startAtTo,
+                minFee,
+                maxFee,
+                latitude,
+                longitude,
+                distanceMeters,
+                page,
+                pageSize);
+        return ResponseEntity.ok(ApiResponse.success(activitySearchService.mapPoints(criteria)));
     }
 
     @PostMapping(value = "/media/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -111,7 +130,20 @@ public class ActivityController {
             @RequestParam(required = false) Integer distanceMeters,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+        ActivitySearchCriteria criteria = searchCriteria(
+                keyword,
+                activityTypes,
+                city,
+                startAtFrom,
+                startAtTo,
+                minFee,
+                maxFee,
+                latitude,
+                longitude,
+                distanceMeters,
+                page,
+                pageSize);
+        return ResponseEntity.ok(ApiResponse.success(activitySearchService.search(criteria)));
     }
 
     @GetMapping("/templates")
@@ -214,5 +246,75 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> confirmWaitingSeat(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.WaitingConfirmationRequest request) {
         return responseFactory.registrationResult();
+    }
+
+    /**
+     * 构造活动搜索条件。
+     *
+     * <p>前置条件：Controller 已完成 query 参数绑定，时间字符串若存在应符合 ISO-8601 格式。
+     *
+     * <p>后置条件：返回服务层统一使用的搜索条件对象。
+     *
+     * <p>不变量：费用字段仅转为筛选值，不创建支付或订单语义。
+     */
+    private ActivitySearchCriteria searchCriteria(
+            String keyword,
+            List<String> activityTypes,
+            String city,
+            String startAtFrom,
+            String startAtTo,
+            Double minFee,
+            Double maxFee,
+            Double latitude,
+            Double longitude,
+            Integer distanceMeters,
+            Integer page,
+            Integer pageSize) {
+        return new ActivitySearchCriteria(
+                keyword,
+                activityTypes,
+                city,
+                parseInstant(startAtFrom),
+                parseInstant(startAtTo),
+                parseMoney(minFee),
+                parseMoney(maxFee),
+                latitude,
+                longitude,
+                distanceMeters,
+                page,
+                pageSize);
+    }
+
+    /**
+     * 解析时间参数。
+     *
+     * <p>前置条件：value 可为空或 ISO-8601 时间字符串。
+     *
+     * <p>后置条件：空白或格式非法的值返回 null，合法值返回 Instant。
+     *
+     * <p>不变量：搜索接口没有声明非法查询参数错误分支，非法时间不扩大筛选范围以外的业务状态。
+     */
+    private Instant parseInstant(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.parse(value);
+        } catch (DateTimeParseException ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * 解析费用参数。
+     *
+     * <p>前置条件：value 可为空。
+     *
+     * <p>后置条件：空值返回 null，非空值转为 BigDecimal。
+     *
+     * <p>不变量：仅用于筛选，不触发支付逻辑。
+     */
+    private BigDecimal parseMoney(Double value) {
+        return value == null ? null : BigDecimal.valueOf(value);
     }
 }
