@@ -364,6 +364,10 @@ export function upload<T>(
   filePath: string,
   formData?: Record<string, string>,
 ): Promise<T> {
+  if (mockHandler) {
+    const mockResult = mockHandler('POST', uploadPath, { filePath, formData })
+    if (mockResult != null) return mockResult.then((r) => r.data as T)
+  }
   const url = `${baseUrl}${uploadPath}`
   const authHeader: Record<string, string> = {}
   const token = tokenGetter()

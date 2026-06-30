@@ -99,6 +99,23 @@ export const mockData: Record<string, MockResponse> = {
     data: { nickname: '', available: true },
   },
 
+  /* 商家资质提交 */
+  'POST /identity/me/merchant-qualification': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {},
+  },
+
+  /* 头像上传 */
+  'POST /identity/media/avatar': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      mediaId: 9001,
+      url: 'https://picsum.photos/200',
+    },
+  },
+
   /* ========================= 活动 ========================= */
 
   'GET /activities/mine': {
