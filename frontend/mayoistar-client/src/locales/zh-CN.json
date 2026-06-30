@@ -118,5 +118,36 @@
     "success": "密码重置成功！",
     "successHint": "请使用新密码登录",
     "goLogin": "返回登录"
+  },
+
+  "editProfile": {
+    "title": "编辑资料",
+    "nickname": "昵称",
+    "nicknamePlaceholder": "请输入昵称",
+    "nicknameRequired": "昵称不能为空",
+    "nicknameUnavailable": "该昵称已被占用",
+    "merchantName": "商家名称",
+    "merchantNamePlaceholder": "请输入商家主体名称",
+    "gender": "性别",
+    "male": "男",
+    "female": "女",
+    "other": "其他",
+    "birthday": "生日",
+    "birthdayPlaceholder": "请选择生日",
+    "signature": "个性签名",
+    "signaturePlaceholder": "介绍你自己...",
+    "interestTags": "兴趣标签",
+    "interestedActivityFields": "关注领域",
+    "loadingTags": "加载标签中...",
+    "qualification": "商家资质",
+    "qualificationStatus": "资质状态",
+    "qualStatusNotSubmitted": "未提交",
+    "qualStatusPending": "审核中",
+    "qualStatusApproved": "已通过",
+    "qualStatusRejected": "已驳回",
+    "rejectReason": "驳回原因",
+    "changeAvatar": "点击更换头像",
+    "avatarUploadFailed": "头像上传失败",
+    "save": "保存"
   }
 }
