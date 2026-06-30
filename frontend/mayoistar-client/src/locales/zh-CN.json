@@ -65,7 +65,7 @@
 
   "profile": {
     "notLoggedInTip": "登录后查看个人信息和活动",
-    "sectionMyContent": "我的内容",
+    "sectionActivities": "活动",
     "sectionSocial": "社交",
     "sectionOther": "其他",
     "myActivities": "我创建的活动",

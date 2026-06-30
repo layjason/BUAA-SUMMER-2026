@@ -93,7 +93,7 @@ interface MenuSection {
 
 const menuSections: MenuSection[] = [
   {
-    title: t('profile.sectionMyContent'),
+    title: t('profile.sectionActivities'),
     items: [
       {
         key: 'myActivities',
