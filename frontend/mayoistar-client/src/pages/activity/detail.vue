@@ -530,7 +530,7 @@ onLoad((query) => {
 <style scoped>
 .page {
   background-color: #f7f8fa;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -800,5 +800,12 @@ onLoad((query) => {
 .menu-arrow {
   font-size: 28rpx;
   color: #c8c9cc;
+}
+</style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
 }
 </style>

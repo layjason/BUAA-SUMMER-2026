@@ -1,55 +1,57 @@
 <template>
   <view class="page">
-    <view class="form-container">
-      <text class="title">{{ t('activitySummary.title') }}</text>
+    <scroll-view class="scroll-area" scroll-y>
+      <view class="form-container">
+        <text class="title">{{ t('activitySummary.title') }}</text>
 
-      <!-- 活动总结图片 -->
-      <view class="form-item">
-        <text class="label">{{ t('activitySummary.images') }}</text>
-        <view class="image-grid">
-          <view
-            v-for="(img, idx) in imagePreviews"
-            :key="idx"
-            class="image-preview-item"
-            @click="removeImage(idx)"
-          >
-            <image class="preview-image" :src="img" mode="aspectFill" />
-            <text class="image-remove">×</text>
-          </view>
-          <view class="image-add-btn" @click="handleAddImage">
-            <text class="add-icon">+</text>
+        <!-- 活动总结图片 -->
+        <view class="form-item">
+          <text class="label">{{ t('activitySummary.images') }}</text>
+          <view class="image-grid">
+            <view
+              v-for="(img, idx) in imagePreviews"
+              :key="idx"
+              class="image-preview-item"
+              @click="removeImage(idx)"
+            >
+              <image class="preview-image" :src="img" mode="aspectFill" />
+              <text class="image-remove">×</text>
+            </view>
+            <view class="image-add-btn" @click="handleAddImage">
+              <text class="add-icon">+</text>
+            </view>
           </view>
         </view>
+
+        <!-- 总结标题 -->
+        <view class="form-item">
+          <text class="label">{{ t('activitySummary.summaryTitle') }}</text>
+          <input
+            v-model="summaryTitle"
+            class="input"
+            :placeholder="t('activitySummary.summaryTitlePlaceholder')"
+          />
+        </view>
+
+        <!-- 总结正文 -->
+        <view class="form-item">
+          <text class="label">{{ t('activitySummary.content') }}</text>
+          <textarea
+            v-model="summaryContent"
+            class="textarea"
+            :placeholder="t('activitySummary.contentPlaceholder')"
+            :maxlength="5000"
+            auto-height
+          />
+        </view>
+
+        <FormError :message="formError" />
+
+        <button class="submit-btn" :loading="submitting" @click="handleSubmit">
+          {{ t('activitySummary.submit') }}
+        </button>
       </view>
-
-      <!-- 总结标题 -->
-      <view class="form-item">
-        <text class="label">{{ t('activitySummary.summaryTitle') }}</text>
-        <input
-          v-model="summaryTitle"
-          class="input"
-          :placeholder="t('activitySummary.summaryTitlePlaceholder')"
-        />
-      </view>
-
-      <!-- 总结正文 -->
-      <view class="form-item">
-        <text class="label">{{ t('activitySummary.content') }}</text>
-        <textarea
-          v-model="summaryContent"
-          class="textarea"
-          :placeholder="t('activitySummary.contentPlaceholder')"
-          :maxlength="5000"
-          auto-height
-        />
-      </view>
-
-      <FormError :message="formError" />
-
-      <button class="submit-btn" :loading="submitting" @click="handleSubmit">
-        {{ t('activitySummary.submit') }}
-      </button>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -154,7 +156,16 @@ onLoad((query) => {
 <style scoped>
 .page {
   background-color: #f7f8fa;
-  min-height: 100vh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .form-container {
@@ -264,5 +275,12 @@ onLoad((query) => {
   border-radius: 12rpx;
   border: none;
   margin-top: 16rpx;
+}
+</style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
 }
 </style>

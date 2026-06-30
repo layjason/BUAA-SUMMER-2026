@@ -170,3 +170,10 @@ onLoad((query) => {
   margin-top: 16rpx;
 }
 </style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
+}
+</style>

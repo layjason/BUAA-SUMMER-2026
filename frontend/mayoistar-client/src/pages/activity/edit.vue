@@ -1,205 +1,207 @@
 <template>
   <view class="page">
-    <view class="edit-container">
-      <!-- 活动图片 -->
-      <view class="section">
-        <text class="section-title">{{ t('activityEdit.images') }}</text>
-        <view class="image-grid">
-          <view
-            v-for="(img, idx) in imagePreviews"
-            :key="idx"
-            class="image-preview-item"
-            @click="removeImage(idx)"
-          >
-            <image class="preview-image" :src="img" mode="aspectFill" />
-            <text class="image-remove">×</text>
-          </view>
-          <view class="image-add-btn" @click="handleAddImage">
-            <text class="add-icon">+</text>
-            <text class="add-text">{{ t('activityEdit.addImage') }}</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 活动名称 -->
-      <FormInput
-        v-model="formTitle"
-        :label="t('activityEdit.title')"
-        :placeholder="t('activityEdit.titlePlaceholder')"
-        :error="errors.title"
-      />
-
-      <!-- 活动标签 -->
-      <view class="form-item">
-        <text class="label">{{ t('activityEdit.tags') }}</text>
-        <view v-if="availableTags.length" class="tags-row">
-          <view
-            v-for="tag in availableTags"
-            :key="tag.name"
-            class="tag-chip"
-            :class="{ active: selectedTags.has(tag.name) }"
-            @click="toggleTag(tag.name)"
-          >
-            <text>{{ tag.name }}</text>
+    <scroll-view class="scroll-area" scroll-y>
+      <view class="edit-container">
+        <!-- 活动图片 -->
+        <view class="section">
+          <text class="section-title">{{ t('activityEdit.images') }}</text>
+          <view class="image-grid">
+            <view
+              v-for="(img, idx) in imagePreviews"
+              :key="idx"
+              class="image-preview-item"
+              @click="removeImage(idx)"
+            >
+              <image class="preview-image" :src="img" mode="aspectFill" />
+              <text class="image-remove">×</text>
+            </view>
+            <view class="image-add-btn" @click="handleAddImage">
+              <text class="add-icon">+</text>
+              <text class="add-text">{{ t('activityEdit.addImage') }}</text>
+            </view>
           </view>
         </view>
-        <text v-else class="hint">{{ t('editProfile.loadingTags') }}</text>
-        <text v-if="errors.tags" class="field-error">{{ errors.tags }}</text>
-      </view>
 
-      <!-- 时间 -->
-      <view class="form-item">
-        <text class="label">{{ t('activityEdit.startAt') }}</text>
-        <view class="datetime-row">
-          <picker mode="date" :value="startAtDate" @change="onStartAtDateChange">
-            <view class="picker-value">
-              <text :class="{ placeholder: !startAtDate }">{{
-                startAtDate || t('activityEdit.date')
-              }}</text>
-            </view>
-          </picker>
-          <picker mode="time" :value="startAtTime" @change="onStartAtTimeChange">
-            <view class="picker-value">
-              <text :class="{ placeholder: !startAtTime }">{{
-                startAtTime || t('activityEdit.time')
-              }}</text>
-            </view>
-          </picker>
-        </view>
-        <text v-if="errors.startAt" class="field-error">{{ errors.startAt }}</text>
-      </view>
-
-      <view class="form-item">
-        <text class="label">{{ t('activityEdit.endAt') }}</text>
-        <view class="datetime-row">
-          <picker mode="date" :value="endAtDate" @change="onEndAtDateChange">
-            <view class="picker-value">
-              <text :class="{ placeholder: !endAtDate }">{{
-                endAtDate || t('activityEdit.date')
-              }}</text>
-            </view>
-          </picker>
-          <picker mode="time" :value="endAtTime" @change="onEndAtTimeChange">
-            <view class="picker-value">
-              <text :class="{ placeholder: !endAtTime }">{{
-                endAtTime || t('activityEdit.time')
-              }}</text>
-            </view>
-          </picker>
-        </view>
-        <text v-if="errors.endAt" class="field-error">{{ errors.endAt }}</text>
-      </view>
-
-      <view class="form-item">
-        <text class="label">{{ t('activityEdit.registrationDeadline') }}</text>
-        <view class="datetime-row">
-          <picker mode="date" :value="deadlineDate" @change="onDeadlineDateChange">
-            <view class="picker-value">
-              <text :class="{ placeholder: !deadlineDate }">{{
-                deadlineDate || t('activityEdit.date')
-              }}</text>
-            </view>
-          </picker>
-          <picker mode="time" :value="deadlineTime" @change="onDeadlineTimeChange">
-            <view class="picker-value">
-              <text :class="{ placeholder: !deadlineTime }">{{
-                deadlineTime || t('activityEdit.time')
-              }}</text>
-            </view>
-          </picker>
-        </view>
-        <text v-if="errors.registrationDeadline" class="field-error">{{
-          errors.registrationDeadline
-        }}</text>
-      </view>
-
-      <!-- 地点 -->
-      <FormInput
-        v-model="formAddress"
-        :label="t('activityEdit.locationAddress')"
-        :placeholder="t('activityEdit.locationAddressPlaceholder')"
-        :error="errors.address"
-      />
-      <FormInput
-        v-model="formCity"
-        :label="t('activityEdit.locationCity')"
-        :placeholder="t('activityEdit.locationCityPlaceholder')"
-        :error="errors.city"
-      />
-      <FormInput
-        v-model="formPlaceName"
-        :label="t('activityEdit.locationPlaceName')"
-        :placeholder="t('activityEdit.locationPlaceNamePlaceholder')"
-      />
-
-      <!-- 人数上限 -->
-      <FormInput
-        v-model="formCapacity"
-        :label="t('activityEdit.capacity')"
-        :placeholder="t('activityEdit.capacityPlaceholder')"
-        type="number"
-        :error="errors.capacity"
-      />
-
-      <!-- 费用 -->
-      <FormInput
-        v-model="formFeeAmount"
-        :label="t('activityEdit.feeAmount')"
-        :placeholder="t('activityEdit.feeAmountPlaceholder')"
-        type="digit"
-      />
-      <FormInput
-        v-model="formFeeDescription"
-        :label="t('activityEdit.feeDescription')"
-        :placeholder="t('activityEdit.feeDescriptionPlaceholder')"
-      />
-
-      <!-- 最低年龄 -->
-      <FormInput
-        v-model="formMinAge"
-        :label="t('activityEdit.minAge')"
-        :placeholder="t('activityEdit.minAgePlaceholder')"
-        type="number"
-      />
-
-      <!-- 活动简介 -->
-      <view class="form-item">
-        <text class="label">{{ t('activityEdit.introduction') }}</text>
-        <textarea
-          v-model="formIntroduction"
-          class="textarea"
-          :placeholder="t('activityEdit.introductionPlaceholder')"
-          :maxlength="2000"
-          auto-height
+        <!-- 活动名称 -->
+        <FormInput
+          v-model="formTitle"
+          :label="t('activityEdit.title')"
+          :placeholder="t('activityEdit.titlePlaceholder')"
+          :error="errors.title"
         />
-        <text v-if="errors.introduction" class="field-error">{{ errors.introduction }}</text>
-      </view>
 
-      <!-- 安全须知 -->
-      <view class="form-item">
-        <text class="label">{{ t('activityEdit.safetyNotice') }}</text>
-        <textarea
-          v-model="formSafetyNotice"
-          class="textarea"
-          :placeholder="t('activityEdit.safetyNoticePlaceholder')"
-          :maxlength="2000"
-          auto-height
+        <!-- 活动标签 -->
+        <view class="form-item">
+          <text class="label">{{ t('activityEdit.tags') }}</text>
+          <view v-if="availableTags.length" class="tags-row">
+            <view
+              v-for="tag in availableTags"
+              :key="tag.name"
+              class="tag-chip"
+              :class="{ active: selectedTags.has(tag.name) }"
+              @click="toggleTag(tag.name)"
+            >
+              <text>{{ tag.name }}</text>
+            </view>
+          </view>
+          <text v-else class="hint">{{ t('editProfile.loadingTags') }}</text>
+          <text v-if="errors.tags" class="field-error">{{ errors.tags }}</text>
+        </view>
+
+        <!-- 时间 -->
+        <view class="form-item">
+          <text class="label">{{ t('activityEdit.startAt') }}</text>
+          <view class="datetime-row">
+            <picker mode="date" :value="startAtDate" @change="onStartAtDateChange">
+              <view class="picker-value">
+                <text :class="{ placeholder: !startAtDate }">{{
+                  startAtDate || t('activityEdit.date')
+                }}</text>
+              </view>
+            </picker>
+            <picker mode="time" :value="startAtTime" @change="onStartAtTimeChange">
+              <view class="picker-value">
+                <text :class="{ placeholder: !startAtTime }">{{
+                  startAtTime || t('activityEdit.time')
+                }}</text>
+              </view>
+            </picker>
+          </view>
+          <text v-if="errors.startAt" class="field-error">{{ errors.startAt }}</text>
+        </view>
+
+        <view class="form-item">
+          <text class="label">{{ t('activityEdit.endAt') }}</text>
+          <view class="datetime-row">
+            <picker mode="date" :value="endAtDate" @change="onEndAtDateChange">
+              <view class="picker-value">
+                <text :class="{ placeholder: !endAtDate }">{{
+                  endAtDate || t('activityEdit.date')
+                }}</text>
+              </view>
+            </picker>
+            <picker mode="time" :value="endAtTime" @change="onEndAtTimeChange">
+              <view class="picker-value">
+                <text :class="{ placeholder: !endAtTime }">{{
+                  endAtTime || t('activityEdit.time')
+                }}</text>
+              </view>
+            </picker>
+          </view>
+          <text v-if="errors.endAt" class="field-error">{{ errors.endAt }}</text>
+        </view>
+
+        <view class="form-item">
+          <text class="label">{{ t('activityEdit.registrationDeadline') }}</text>
+          <view class="datetime-row">
+            <picker mode="date" :value="deadlineDate" @change="onDeadlineDateChange">
+              <view class="picker-value">
+                <text :class="{ placeholder: !deadlineDate }">{{
+                  deadlineDate || t('activityEdit.date')
+                }}</text>
+              </view>
+            </picker>
+            <picker mode="time" :value="deadlineTime" @change="onDeadlineTimeChange">
+              <view class="picker-value">
+                <text :class="{ placeholder: !deadlineTime }">{{
+                  deadlineTime || t('activityEdit.time')
+                }}</text>
+              </view>
+            </picker>
+          </view>
+          <text v-if="errors.registrationDeadline" class="field-error">{{
+            errors.registrationDeadline
+          }}</text>
+        </view>
+
+        <!-- 地点 -->
+        <FormInput
+          v-model="formAddress"
+          :label="t('activityEdit.locationAddress')"
+          :placeholder="t('activityEdit.locationAddressPlaceholder')"
+          :error="errors.address"
         />
-        <text v-if="errors.safetyNotice" class="field-error">{{ errors.safetyNotice }}</text>
-      </view>
+        <FormInput
+          v-model="formCity"
+          :label="t('activityEdit.locationCity')"
+          :placeholder="t('activityEdit.locationCityPlaceholder')"
+          :error="errors.city"
+        />
+        <FormInput
+          v-model="formPlaceName"
+          :label="t('activityEdit.locationPlaceName')"
+          :placeholder="t('activityEdit.locationPlaceNamePlaceholder')"
+        />
 
-      <FormError :message="formError" />
+        <!-- 人数上限 -->
+        <FormInput
+          v-model="formCapacity"
+          :label="t('activityEdit.capacity')"
+          :placeholder="t('activityEdit.capacityPlaceholder')"
+          type="number"
+          :error="errors.capacity"
+        />
 
-      <!-- 操作按钮 -->
-      <view class="action-row">
-        <button class="btn btn-draft" :loading="savingDraft" @click="handleSaveDraft">
-          {{ t('activityEdit.saveDraft') }}
-        </button>
-        <button class="btn btn-submit" :loading="submitting" @click="handleSubmit">
-          {{ t('activityEdit.submitReview') }}
-        </button>
+        <!-- 费用 -->
+        <FormInput
+          v-model="formFeeAmount"
+          :label="t('activityEdit.feeAmount')"
+          :placeholder="t('activityEdit.feeAmountPlaceholder')"
+          type="digit"
+        />
+        <FormInput
+          v-model="formFeeDescription"
+          :label="t('activityEdit.feeDescription')"
+          :placeholder="t('activityEdit.feeDescriptionPlaceholder')"
+        />
+
+        <!-- 最低年龄 -->
+        <FormInput
+          v-model="formMinAge"
+          :label="t('activityEdit.minAge')"
+          :placeholder="t('activityEdit.minAgePlaceholder')"
+          type="number"
+        />
+
+        <!-- 活动简介 -->
+        <view class="form-item">
+          <text class="label">{{ t('activityEdit.introduction') }}</text>
+          <textarea
+            v-model="formIntroduction"
+            class="textarea"
+            :placeholder="t('activityEdit.introductionPlaceholder')"
+            :maxlength="2000"
+            auto-height
+          />
+          <text v-if="errors.introduction" class="field-error">{{ errors.introduction }}</text>
+        </view>
+
+        <!-- 安全须知 -->
+        <view class="form-item">
+          <text class="label">{{ t('activityEdit.safetyNotice') }}</text>
+          <textarea
+            v-model="formSafetyNotice"
+            class="textarea"
+            :placeholder="t('activityEdit.safetyNoticePlaceholder')"
+            :maxlength="2000"
+            auto-height
+          />
+          <text v-if="errors.safetyNotice" class="field-error">{{ errors.safetyNotice }}</text>
+        </view>
+
+        <FormError :message="formError" />
+
+        <!-- 操作按钮 -->
+        <view class="action-row">
+          <button class="btn btn-draft" :loading="savingDraft" @click="handleSaveDraft">
+            {{ t('activityEdit.saveDraft') }}
+          </button>
+          <button class="btn btn-submit" :loading="submitting" @click="handleSubmit">
+            {{ t('activityEdit.submitReview') }}
+          </button>
+        </view>
       </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -565,7 +567,16 @@ onLoad((query) => {
 <style scoped>
 .page {
   background-color: #f7f8fa;
-  min-height: 100vh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .edit-container {
@@ -755,5 +766,12 @@ onLoad((query) => {
 .btn-submit {
   background-color: #07c160;
   color: #fff;
+}
+</style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
 }
 </style>

@@ -84,7 +84,7 @@ onLoad(async (query) => {
 <style scoped>
 .page {
   background-color: #f7f8fa;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -169,5 +169,12 @@ onLoad(async (query) => {
 .status-waitingConfirmation {
   background-color: #fff7e6;
   color: #ed6a0c;
+}
+</style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
 }
 </style>
