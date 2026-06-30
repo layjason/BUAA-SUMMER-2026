@@ -148,6 +148,7 @@
     "rejectReason": "驳回原因",
     "changeAvatar": "点击更换头像",
     "avatarUploadFailed": "头像上传失败",
-    "save": "保存"
+    "save": "保存",
+    "saveSuccess": "保存成功"
   }
 }
