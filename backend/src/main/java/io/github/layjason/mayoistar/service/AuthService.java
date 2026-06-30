@@ -45,6 +45,21 @@ public class AuthService {
     private static final long EMAIL_COOLDOWN_SECONDS = 60;
 
     /**
+     * 登录失败最大次数，达到后账号被锁定。
+     */
+    private static final int MAX_LOGIN_ATTEMPTS = 5;
+
+    /**
+     * 登录锁定持续时间（秒）。
+     */
+    private static final long LOGIN_LOCK_DURATION_SECONDS = 900;
+
+    /**
+     * 登录失败窗口（秒），窗口外的旧失败不计入锁定判断。
+     */
+    private static final long LOGIN_ATTEMPT_WINDOW_SECONDS = 900;
+
+    /**
      * @param userRepository             用户数据访问
      * @param personalProfileRepository  个人资料数据访问
      * @param merchantProfileRepository  商家资料数据访问
@@ -164,9 +179,9 @@ public class AuthService {
     /**
      * 邮箱密码登录。
      *
-     * <p>前置条件：email 已注册且账号状态为 active。
+     * <p>前置条件：email 已注册且账号状态为 active，未被锁定。
      *
-     * <p>后置条件：返回 LoginResult（含 userId、kind、accountStatus、tokenPair）。
+     * <p>后置条件：返回 LoginResult（含 userId、kind、accountStatus、tokenPair）。登录成功时重置失败计数与锁定状态；密码错误时递增失败计数。
      *
      * @param request 登录请求
      * @return 登录结果
@@ -177,7 +192,15 @@ public class AuthService {
                 .findByEmail(request.getEmail())
                 .orElseThrow(() -> new BusinessException(10003, "Email or password is invalid"));
 
+        if (isLocked(user)) {
+            log.warn("锁定账号尝试登录: userId={}", user.getUserId());
+            throw new BusinessException(10003, "Email or password is invalid");
+        }
+
+        resetLoginWindowIfExpired(user);
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            recordLoginFailure(user);
             throw new BusinessException(10003, "Email or password is invalid");
         }
 
@@ -187,6 +210,8 @@ public class AuthService {
         if (user.getAccountStatus() == AccountStatus.banned) {
             throw new BusinessException(10005, "Account is banned");
         }
+
+        resetLoginState(user);
 
         String accessToken = jwtService.generateAccessToken(user.getUserId(), user.getKind());
         String refreshToken = jwtService.generateRefreshToken(user.getUserId(), user.getKind());
@@ -510,6 +535,75 @@ public class AuthService {
                         .plusSeconds(EMAIL_COOLDOWN_SECONDS)
                         .isAfter(Instant.now()))
                 .orElse(false);
+    }
+
+    /**
+     * 检查账号是否处于锁定状态。
+     *
+     * <p>前置条件：user 非空。
+     *
+     * <p>后置条件：返回 true 表示账号当前被锁定。
+     *
+     * @param user 用户实体
+     * @return 是否锁定
+     */
+    private boolean isLocked(User user) {
+        return user.getLockedUntil() != null && user.getLockedUntil().isAfter(Instant.now());
+    }
+
+    /**
+     * 若失败窗口已过期，重置登录失败计数。
+     *
+     * <p>前置条件：user 非空。
+     *
+     * <p>后置条件：若 lastFailedLoginAt + 窗口 < now，则 loginAttempts 重置为 0。
+     *
+     * @param user 用户实体
+     */
+    private void resetLoginWindowIfExpired(User user) {
+        if (user.getLastFailedLoginAt() != null
+                && user.getLastFailedLoginAt()
+                        .plusSeconds(LOGIN_ATTEMPT_WINDOW_SECONDS)
+                        .isBefore(Instant.now())) {
+            user.setLoginAttempts(0);
+        }
+    }
+
+    /**
+     * 记录一次登录失败，达到上限时锁定账号。
+     *
+     * <p>前置条件：user 非空，密码不匹配。
+     *
+     * <p>后置条件：loginAttempts + 1，若达到上限则设置 lockedUntil。
+     *
+     * @param user 用户实体
+     */
+    private void recordLoginFailure(User user) {
+        user.setLoginAttempts(user.getLoginAttempts() + 1);
+        user.setLastFailedLoginAt(Instant.now());
+        if (user.getLoginAttempts() >= MAX_LOGIN_ATTEMPTS) {
+            user.setLockedUntil(Instant.now().plusSeconds(LOGIN_LOCK_DURATION_SECONDS));
+            log.warn("账号已被锁定: userId={}", user.getUserId());
+        }
+        user.setUpdatedAt(Instant.now());
+        userRepository.save(user);
+    }
+
+    /**
+     * 登录成功后重置失败计数与锁定状态。
+     *
+     * <p>前置条件：user 非空，登录已验证通过。
+     *
+     * <p>后置条件：loginAttempts 重置为 0，lockedUntil 与 lastFailedLoginAt 置为 null。
+     *
+     * @param user 用户实体
+     */
+    private void resetLoginState(User user) {
+        user.setLoginAttempts(0);
+        user.setLastFailedLoginAt(null);
+        user.setLockedUntil(null);
+        user.setUpdatedAt(Instant.now());
+        userRepository.save(user);
     }
 
     /**

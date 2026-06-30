@@ -72,4 +72,13 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     @Builder.Default
     private Instant updatedAt = Instant.now();
+
+    @Column(name = "login_attempts", nullable = false)
+    private int loginAttempts;
+
+    @Column(name = "last_failed_login_at")
+    private Instant lastFailedLoginAt;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
 }
