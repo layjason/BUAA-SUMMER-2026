@@ -58,7 +58,7 @@ public class Activity {
     @EqualsAndHashCode.Exclude
     private Team team;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 200)
     private String title;
 
     @Column(columnDefinition = "text")
@@ -68,10 +68,12 @@ public class Activity {
     private String introduction;
 
     @Column(name = "start_at", nullable = false)
-    private Instant startAt;
+    @Builder.Default
+    private Instant startAt = Instant.now();
 
     @Column(name = "end_at", nullable = false)
-    private Instant endAt;
+    @Builder.Default
+    private Instant endAt = Instant.now();
 
     @Column(name = "point_lon")
     private Double pointLon;
@@ -79,11 +81,13 @@ public class Activity {
     @Column(name = "point_lat")
     private Double pointLat;
 
+    @Column(length = 100)
     private String city;
 
+    @Column(length = 500)
     private String address;
 
-    @Column(name = "place_name")
+    @Column(name = "place_name", length = 200)
     private String placeName;
 
     @Column(name = "safety_notice", columnDefinition = "text")
@@ -95,7 +99,7 @@ public class Activity {
     @Column(name = "fee_amount")
     private Double feeAmount;
 
-    @Column(name = "fee_description")
+    @Column(name = "fee_description", length = 500)
     private String feeDescription;
 
     @Column(name = "min_age")
@@ -117,8 +121,10 @@ public class Activity {
     private Boolean manualReviewRequired = false;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
 }

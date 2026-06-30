@@ -46,7 +46,7 @@ public class MerchantProfile {
     @EqualsAndHashCode.Exclude
     private User user;
 
-    @Column(name = "merchant_name")
+    @Column(name = "merchant_name", length = 100)
     private String merchantName;
 
     @Column(name = "avatar_media_id", length = 36)
@@ -62,5 +62,6 @@ public class MerchantProfile {
     private String interestedActivityFields;
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
 }

@@ -34,7 +34,7 @@ public class ActivityTemplate {
     @Column(name = "template_id", length = 36)
     private String templateId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
     @Column(name = "activity_type", nullable = false, length = 50)

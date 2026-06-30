@@ -47,7 +47,7 @@ public class SecurityToken {
     @EqualsAndHashCode.Exclude
     private User user;
 
-    @Column(name = "token_hash", nullable = false)
+    @Column(name = "token_hash", nullable = false, length = 255)
     private String tokenHash;
 
     @Enumerated(EnumType.STRING)
@@ -55,10 +55,12 @@ public class SecurityToken {
     private TokenType tokenType;
 
     @Column(name = "expires_at", nullable = false)
-    private Instant expiresAt;
+    @Builder.Default
+    private Instant expiresAt = Instant.now();
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     private Boolean used;
 

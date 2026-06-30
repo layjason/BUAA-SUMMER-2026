@@ -42,6 +42,6 @@ public class PollOption {
     @EqualsAndHashCode.Exclude
     private TeamPoll poll;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String content;
 }

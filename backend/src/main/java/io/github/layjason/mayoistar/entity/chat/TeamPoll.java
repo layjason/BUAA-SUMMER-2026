@@ -44,11 +44,12 @@ public class TeamPoll {
     @EqualsAndHashCode.Exclude
     private Team team;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 200)
     private String title;
 
     private Instant deadline;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }

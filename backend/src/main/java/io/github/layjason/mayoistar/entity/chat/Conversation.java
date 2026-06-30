@@ -43,6 +43,7 @@ public class Conversation {
     @Column(nullable = false, length = 20)
     private ConversationKind kind;
 
+    @Column(length = 100)
     private String title;
 
     @Column(name = "avatar_media_id", length = 36)
@@ -55,8 +56,10 @@ public class Conversation {
     private MediaFile avatar;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
 }

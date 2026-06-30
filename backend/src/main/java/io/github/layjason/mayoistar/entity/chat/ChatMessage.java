@@ -80,13 +80,13 @@ public class ChatMessage {
     @Column(name = "location_lat")
     private Double locationLat;
 
-    @Column(name = "location_city")
+    @Column(name = "location_city", length = 100)
     private String locationCity;
 
-    @Column(name = "location_address")
+    @Column(name = "location_address", length = 500)
     private String locationAddress;
 
-    @Column(name = "location_place_name")
+    @Column(name = "location_place_name", length = 200)
     private String locationPlaceName;
 
     @Column(name = "mentioned_user_ids", columnDefinition = "text")
@@ -100,5 +100,6 @@ public class ChatMessage {
     private Boolean recalled = false;
 
     @Column(name = "sent_at", nullable = false)
-    private Instant sentAt;
+    @Builder.Default
+    private Instant sentAt = Instant.now();
 }

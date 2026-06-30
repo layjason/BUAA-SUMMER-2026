@@ -65,5 +65,6 @@ public class PollVote {
     private User user;
 
     @Column(name = "voted_at", nullable = false)
-    private Instant votedAt;
+    @Builder.Default
+    private Instant votedAt = Instant.now();
 }

@@ -54,5 +54,6 @@ public class Blacklist {
     private User blockedUser;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }

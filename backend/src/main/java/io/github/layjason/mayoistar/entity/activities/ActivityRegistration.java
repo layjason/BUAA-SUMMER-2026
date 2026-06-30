@@ -61,7 +61,7 @@ public class ActivityRegistration {
     @Column(nullable = false, length = 30)
     private RegistrationStatus status;
 
-    @Column(name = "participant_note")
+    @Column(name = "participant_note", columnDefinition = "text")
     private String participantNote;
 
     @Column(name = "accepted_safety_notice", nullable = false)
@@ -74,7 +74,8 @@ public class ActivityRegistration {
     private Instant confirmationDeadline;
 
     @Column(name = "registered_at", nullable = false)
-    private Instant registeredAt;
+    @Builder.Default
+    private Instant registeredAt = Instant.now();
 
     @Column(name = "checked_in_at")
     private Instant checkedInAt;

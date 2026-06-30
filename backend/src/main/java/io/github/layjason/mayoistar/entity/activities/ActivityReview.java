@@ -65,5 +65,6 @@ public class ActivityReview {
     private String tags;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }

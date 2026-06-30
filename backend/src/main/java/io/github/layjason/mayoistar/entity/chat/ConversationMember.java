@@ -54,5 +54,6 @@ public class ConversationMember {
     private User user;
 
     @Column(name = "joined_at", nullable = false)
-    private Instant joinedAt;
+    @Builder.Default
+    private Instant joinedAt = Instant.now();
 }

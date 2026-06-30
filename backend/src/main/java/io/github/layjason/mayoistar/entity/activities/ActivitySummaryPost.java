@@ -53,12 +53,13 @@ public class ActivitySummaryPost {
     @EqualsAndHashCode.Exclude
     private User user;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 200)
     private String title;
 
     @Column(columnDefinition = "text", nullable = false)
     private String content;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }

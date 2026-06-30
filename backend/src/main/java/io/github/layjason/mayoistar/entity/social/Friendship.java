@@ -62,18 +62,19 @@ public class Friendship {
     @Column(nullable = false, length = 30)
     private FriendshipSource source;
 
-    @Column(name = "a_remark")
+    @Column(name = "a_remark", length = 50)
     private String aRemark;
 
     @Column(name = "a_group_tags", columnDefinition = "text")
     private String aGroupTags;
 
-    @Column(name = "b_remark")
+    @Column(name = "b_remark", length = 50)
     private String bRemark;
 
     @Column(name = "b_group_tags", columnDefinition = "text")
     private String bGroupTags;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }

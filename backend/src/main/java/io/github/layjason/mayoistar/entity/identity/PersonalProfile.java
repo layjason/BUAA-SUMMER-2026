@@ -64,6 +64,7 @@ public class PersonalProfile {
     @Column(length = 10)
     private String birthday;
 
+    @Column(columnDefinition = "text")
     private String signature;
 
     @Column(name = "interest_tags", columnDefinition = "text")
@@ -74,5 +75,6 @@ public class PersonalProfile {
     private Integer reputationScore = 100;
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
 }

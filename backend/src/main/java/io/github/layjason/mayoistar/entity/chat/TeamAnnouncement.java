@@ -58,5 +58,6 @@ public class TeamAnnouncement {
     private String content;
 
     @Column(name = "published_at", nullable = false)
-    private Instant publishedAt;
+    @Builder.Default
+    private Instant publishedAt = Instant.now();
 }

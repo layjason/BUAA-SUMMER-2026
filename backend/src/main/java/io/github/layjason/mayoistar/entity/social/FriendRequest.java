@@ -59,6 +59,7 @@ public class FriendRequest {
     @Column(nullable = false, length = 30)
     private FriendRequestSource source;
 
+    @Column(columnDefinition = "text")
     private String message;
 
     @Enumerated(EnumType.STRING)
@@ -66,5 +67,6 @@ public class FriendRequest {
     private FriendRequestStatus status;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }

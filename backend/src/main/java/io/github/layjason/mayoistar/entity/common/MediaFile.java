@@ -39,10 +39,10 @@ public class MediaFile {
     @Column(name = "media_id", length = 36)
     private String mediaId;
 
-    @Column(name = "file_name", nullable = false)
+    @Column(name = "file_name", nullable = false, length = 255)
     private String fileName;
 
-    @Column(name = "content_type", nullable = false)
+    @Column(name = "content_type", nullable = false, length = 127)
     private String contentType;
 
     @Column(name = "size_bytes", nullable = false)
@@ -52,9 +52,10 @@ public class MediaFile {
     @Column(nullable = false, length = 50)
     private MediaUsage usage;
 
-    @Column(name = "storage_path", nullable = false)
+    @Column(name = "storage_path", nullable = false, length = 500)
     private String storagePath;
 
+    @Column(length = 500)
     private String url;
 
     @Column(name = "uploaded_by", length = 36, nullable = false)
@@ -67,5 +68,6 @@ public class MediaFile {
     private User user;
 
     @Column(name = "uploaded_at", nullable = false)
-    private Instant uploadedAt;
+    @Builder.Default
+    private Instant uploadedAt = Instant.now();
 }

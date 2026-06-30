@@ -41,7 +41,7 @@ public class Team {
     @Column(name = "team_id", length = 36)
     private String teamId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
     @Column(columnDefinition = "text")
@@ -89,8 +89,10 @@ public class Team {
     private Conversation chat;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
 }

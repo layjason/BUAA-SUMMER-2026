@@ -543,17 +543,18 @@ CREATE TABLE teams (
     chat_id          VARCHAR(36),
     created_at       TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at       TIMESTAMP WITH TIME ZONE NOT NULL,
-    CONSTRAINT pk_teams PRIMARY KEY (team_id)
+    CONSTRAINT pk_teams PRIMARY KEY (team_id),
+    CONSTRAINT uq_teams_name UNIQUE (name)
 );
 
 CREATE INDEX idx_teams_leader_id ON teams (leader_id);
 CREATE INDEX idx_teams_status    ON teams (status);
 CREATE INDEX idx_teams_chat_id   ON teams (chat_id);
 
-COMMENT ON TABLE teams IS '小队，兴趣社交的基本组织单位。创建小队时自动生成群聊会话（chat_id）。小队解散或停用后不再出现在发现列表。';
+COMMENT ON TABLE teams IS '小队，兴趣社交的基本组织单位。小队名称全平台唯一。创建小队时自动生成群聊会话（chat_id）。小队解散或停用后不再出现在发现列表。';
 
 COMMENT ON COLUMN teams.team_id IS '小队唯一标识，UUID 格式';
-COMMENT ON COLUMN teams.name IS '小队名称';
+COMMENT ON COLUMN teams.name IS '小队名称，全平台唯一';
 COMMENT ON COLUMN teams.tags IS '小队标签，JSON 字符串数组格式';
 COMMENT ON COLUMN teams.join_mode IS '加入模式。publicJoin — 自由加入；approvalRequired — 需审核。不变量：非空，值为 publicJoin / approvalRequired 之一';
 COMMENT ON COLUMN teams.capacity IS '人数上限';
@@ -980,3 +981,23 @@ ALTER TABLE team_join_requests ADD CONSTRAINT ck_team_join_requests_status CHECK
 ALTER TABLE conversations ADD CONSTRAINT ck_conversations_kind CHECK (kind IN ('friend', 'team'));
 
 ALTER TABLE chat_messages ADD CONSTRAINT ck_chat_messages_kind CHECK (kind IN ('text', 'image', 'location'));
+
+-- ============================================================================
+-- Missing FK Indexes
+-- ============================================================================
+
+CREATE INDEX idx_personal_profiles_avatar ON personal_profiles (avatar_media_id);
+CREATE INDEX idx_merchant_profiles_avatar ON merchant_profiles (avatar_media_id);
+CREATE INDEX idx_qualifications_reviewer ON qualifications (reviewer_id);
+CREATE INDEX idx_activity_images_media ON activity_images (media_id);
+CREATE INDEX idx_review_records_reviewer ON activity_review_records (reviewer_id);
+CREATE INDEX idx_templates_cover_image ON activity_templates (default_cover_image_media_id);
+CREATE INDEX idx_summary_posts_user ON activity_summary_posts (user_id);
+CREATE INDEX idx_summary_images_media ON activity_summary_images (media_id);
+CREATE INDEX idx_teams_avatar ON teams (avatar_media_id);
+CREATE INDEX idx_conversations_avatar ON conversations (avatar_media_id);
+CREATE INDEX idx_chat_messages_image ON chat_messages (image_media_id);
+CREATE INDEX idx_announcements_publisher ON team_announcements (publisher_id);
+CREATE INDEX idx_poll_votes_option ON poll_votes (option_id);
+CREATE INDEX idx_ban_records_operator ON ban_records (operator_id);
+CREATE INDEX idx_reviews_user ON activity_reviews (user_id);

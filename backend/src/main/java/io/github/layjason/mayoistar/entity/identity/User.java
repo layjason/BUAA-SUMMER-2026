@@ -35,13 +35,13 @@ public class User {
     @Column(name = "user_id", length = 36)
     private String userId;
 
-    @Column(unique = true)
+    @Column(unique = true, length = 255)
     private String email;
 
     @Column(nullable = false, unique = true, length = 50)
     private String nickname;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
@@ -61,12 +61,14 @@ public class User {
     @Column(name = "banned_until")
     private Instant bannedUntil;
 
-    @Column(name = "ban_reason")
+    @Column(name = "ban_reason", columnDefinition = "text")
     private String banReason;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
 }

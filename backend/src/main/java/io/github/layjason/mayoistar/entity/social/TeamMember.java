@@ -64,5 +64,6 @@ public class TeamMember {
     private Integer points = 0;
 
     @Column(name = "joined_at", nullable = false)
-    private Instant joinedAt;
+    @Builder.Default
+    private Instant joinedAt = Instant.now();
 }

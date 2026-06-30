@@ -55,6 +55,7 @@ public class TeamJoinRequest {
     @EqualsAndHashCode.Exclude
     private User user;
 
+    @Column(columnDefinition = "text")
     private String message;
 
     @Enumerated(EnumType.STRING)
@@ -62,5 +63,6 @@ public class TeamJoinRequest {
     private TeamJoinRequestStatus status;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }
