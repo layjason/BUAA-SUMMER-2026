@@ -802,5 +802,5 @@ onLoad((query) => {
   font-size: 28rpx;
   color: #c8c9cc;
 }
-}
+
 </style>
