@@ -1,54 +1,39 @@
 <template>
   <view class="page">
     <view class="container">
-      <view class="header">
-        <text class="title">{{ t('forgotPassword.title') }}</text>
-        <text class="subtitle">{{ t('forgotPassword.subtitle') }}</text>
-      </view>
+      <PageHeader :title="t('forgotPassword.title')" :subtitle="t('forgotPassword.subtitle')" />
 
       <view v-if="sent" class="success-box">
         <text class="success-icon">📧</text>
         <text class="success-text">{{ t('forgotPassword.emailSent') }}</text>
         <text class="success-email">{{ email.trim() }}</text>
         <text class="success-hint">{{ t('forgotPassword.emailSentHint') }}</text>
-        <button
-          class="action-btn"
-          :disabled="loading || cooldown > 0"
+        <CooldownButton
+          :text="t('forgotPassword.resendButton')"
+          :cooldown-text="t('forgotPassword.resendCooldown')"
+          :cooldown="cooldown"
           :loading="loading"
           @click="handleResend"
-        >
-          {{
-            cooldown > 0
-              ? t('forgotPassword.resendCooldown', { seconds: cooldown })
-              : t('forgotPassword.resendButton')
-          }}
-        </button>
+        />
         <text v-if="resendSent" class="resend-ok">{{ t('forgotPassword.resendSent') }}</text>
-        <button class="action-btn secondary" @click="goLogin">
-          {{ t('forgotPassword.backToLogin') }}
-        </button>
+        <SubmitButton :text="t('forgotPassword.backToLogin')" secondary @click="goLogin" />
       </view>
 
       <view v-else class="form">
-        <view class="form-item">
-          <text class="label">{{ t('forgotPassword.email') }}</text>
-          <input
-            v-model="email"
-            class="input"
-            type="text"
-            :placeholder="t('forgotPassword.emailPlaceholder')"
-            placeholder-class="input-placeholder"
-          />
-          <text v-if="emailError" class="field-error">{{ emailError }}</text>
-        </view>
+        <FormInput
+          v-model="email"
+          :label="t('forgotPassword.email')"
+          :placeholder="t('forgotPassword.emailPlaceholder')"
+          :error="emailError"
+        />
 
-        <view v-if="formError" class="form-error">
-          <text>{{ formError }}</text>
-        </view>
+        <FormError :message="formError" />
 
-        <button class="action-btn" :disabled="loading" :loading="loading" @click="handleSend">
-          {{ loading ? '' : t('forgotPassword.sendButton') }}
-        </button>
+        <SubmitButton
+          :text="t('forgotPassword.sendButton')"
+          :loading="loading"
+          @click="handleSend"
+        />
 
         <view class="footer-links">
           <text class="link" @click="goLogin">{{ t('forgotPassword.backToLogin') }}</text>
@@ -65,10 +50,18 @@
  * 前置条件：用户未登录
  * 后置条件：发送成功后提示用户前往邮件链接，密码重置由网页端处理
  */
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
+import {
+  PageHeader,
+  FormInput,
+  FormError,
+  SubmitButton,
+  CooldownButton,
+  useCooldown,
+} from '@/components'
 
 const { t } = useI18n()
 
@@ -80,12 +73,7 @@ const resendSent = ref(false)
 const emailError = ref('')
 const formError = ref('')
 
-/** 重发冷却倒计时（秒） */
-const cooldown = ref(0)
-let cooldownTimer: ReturnType<typeof setInterval> | null = null
-
-/** 密码重置邮件重发冷却时长（秒） */
-const RESEND_COOLDOWN_SECONDS = 60
+const { cooldown, startCooldown } = useCooldown(60)
 
 function validateEmail(): boolean {
   emailError.value = ''
@@ -152,7 +140,6 @@ async function handleResend(): Promise<void> {
   } catch (error) {
     if (error instanceof BusinessError) {
       formError.value = getErrorMessage(error.code)
-      // 频率限制错误也启动冷却
       if (error.code === 10018) startCooldown()
     } else {
       formError.value = t('网络错误')
@@ -162,31 +149,9 @@ async function handleResend(): Promise<void> {
   }
 }
 
-/**
- * 启动重发冷却倒计时
- */
-function startCooldown(): void {
-  cooldown.value = RESEND_COOLDOWN_SECONDS
-  if (cooldownTimer) clearInterval(cooldownTimer)
-  cooldownTimer = setInterval(() => {
-    cooldown.value--
-    if (cooldown.value <= 0) {
-      if (cooldownTimer) clearInterval(cooldownTimer)
-      cooldownTimer = null
-    }
-  }, 1000)
-}
-
 function goLogin(): void {
   uni.navigateBack()
 }
-
-/**
- * 组件卸载时清理冷却定时器
- */
-onUnmounted(() => {
-  if (cooldownTimer) clearInterval(cooldownTimer)
-})
 </script>
 
 <style scoped>
@@ -197,89 +162,6 @@ onUnmounted(() => {
 
 .container {
   padding: 120rpx 48rpx 0;
-}
-
-.header {
-  margin-bottom: 64rpx;
-}
-
-.title {
-  display: block;
-  font-size: 48rpx;
-  font-weight: 700;
-  color: #323233;
-  margin-bottom: 16rpx;
-}
-
-.subtitle {
-  display: block;
-  font-size: 28rpx;
-  color: #969799;
-}
-
-.form-item {
-  margin-bottom: 32rpx;
-}
-
-.label {
-  display: block;
-  font-size: 28rpx;
-  color: #323233;
-  margin-bottom: 12rpx;
-}
-
-.input {
-  width: 100%;
-  height: 88rpx;
-  padding: 0 24rpx;
-  background-color: #fff;
-  border-radius: 8rpx;
-  font-size: 30rpx;
-  color: #323233;
-  box-sizing: border-box;
-}
-
-.input-placeholder {
-  color: #c8c9cc;
-}
-
-.field-error {
-  display: block;
-  font-size: 24rpx;
-  color: #ee0a24;
-  margin-top: 8rpx;
-}
-
-.form-error {
-  background-color: #fff2f0;
-  border: 1rpx solid #ffccc7;
-  border-radius: 8rpx;
-  padding: 16rpx 24rpx;
-  margin-bottom: 24rpx;
-  font-size: 26rpx;
-  color: #ee0a24;
-}
-
-.action-btn {
-  width: 100%;
-  height: 88rpx;
-  line-height: 88rpx;
-  background-color: #1989fa;
-  color: #fff;
-  font-size: 32rpx;
-  border-radius: 8rpx;
-  border: none;
-  margin-top: 16rpx;
-}
-
-.action-btn[disabled] {
-  opacity: 0.6;
-}
-
-.action-btn.secondary {
-  background-color: #fff;
-  color: #1989fa;
-  border: 1rpx solid #1989fa;
 }
 
 .resend-ok {
