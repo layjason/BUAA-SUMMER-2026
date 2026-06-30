@@ -748,6 +748,27 @@ COMMENT ON COLUMN chat_messages.mention_all IS '是否 @全体成员。仅队长
 COMMENT ON COLUMN chat_messages.recalled IS '是否已撤回，默认 false。撤回后消息内容保持不变以备审计';
 COMMENT ON COLUMN chat_messages.sent_at IS '发送时间，UTC 时区';
 
+CREATE TABLE message_reads (
+    read_id    VARCHAR(36)  NOT NULL,
+    message_id VARCHAR(36)  NOT NULL,
+    user_id    VARCHAR(36)  NOT NULL,
+    status     VARCHAR(10)  NOT NULL,
+    read_at    TIMESTAMP WITH TIME ZONE,
+    CONSTRAINT pk_message_reads PRIMARY KEY (read_id),
+    CONSTRAINT uq_message_reads_msg_user UNIQUE (message_id, user_id)
+);
+
+CREATE INDEX idx_message_reads_message ON message_reads (message_id);
+CREATE INDEX idx_message_reads_user       ON message_reads (user_id);
+
+COMMENT ON TABLE message_reads IS '消息读取状态，记录每用户对每条消息的已读/未读状态。同一用户对同一消息只能有一条记录。';
+
+COMMENT ON COLUMN message_reads.read_id IS '读取状态记录唯一标识，UUID 格式';
+COMMENT ON COLUMN message_reads.message_id IS '关联消息 ID';
+COMMENT ON COLUMN message_reads.user_id IS '用户 ID';
+COMMENT ON COLUMN message_reads.status IS '读取状态。unread — 未读；read — 已读。不变量：值为 unread / read 之一';
+COMMENT ON COLUMN message_reads.read_at IS '首次阅读时间，null 表示尚未阅读';
+
 CREATE TABLE team_announcements (
     announcement_id VARCHAR(36)  NOT NULL,
     team_id         VARCHAR(36)  NOT NULL,
@@ -952,6 +973,9 @@ ALTER TABLE chat_messages ADD CONSTRAINT fk_chat_messages_conv FOREIGN KEY (conv
 ALTER TABLE chat_messages ADD CONSTRAINT fk_chat_messages_sender FOREIGN KEY (sender_id) REFERENCES users(user_id) ON DELETE RESTRICT;
 ALTER TABLE chat_messages ADD CONSTRAINT fk_chat_messages_image FOREIGN KEY (image_media_id) REFERENCES media_files(media_id) ON DELETE SET NULL;
 
+ALTER TABLE message_reads ADD CONSTRAINT fk_message_reads_message FOREIGN KEY (message_id) REFERENCES chat_messages(message_id) ON DELETE CASCADE;
+ALTER TABLE message_reads ADD CONSTRAINT fk_message_reads_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
 ALTER TABLE team_announcements ADD CONSTRAINT fk_announcements_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE;
 ALTER TABLE team_announcements ADD CONSTRAINT fk_announcements_pub FOREIGN KEY (publisher_id) REFERENCES users(user_id) ON DELETE RESTRICT;
 
@@ -1014,6 +1038,8 @@ ALTER TABLE team_moderation_records ADD CONSTRAINT ck_team_moderation_records_ac
 ALTER TABLE conversations ADD CONSTRAINT ck_conversations_kind CHECK (kind IN ('friend', 'team'));
 
 ALTER TABLE chat_messages ADD CONSTRAINT ck_chat_messages_kind CHECK (kind IN ('text', 'image', 'location'));
+
+ALTER TABLE message_reads ADD CONSTRAINT ck_message_reads_status CHECK (status IN ('unread', 'read'));
 
 -- ============================================================================
 -- Missing FK Indexes
