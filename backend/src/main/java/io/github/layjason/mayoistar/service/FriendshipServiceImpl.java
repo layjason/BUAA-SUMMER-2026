@@ -65,9 +65,11 @@ public class FriendshipServiceImpl implements FriendshipService {
      */
     @Override
     @Transactional(readOnly = true)
-    public PageResult<SocialDtos.FriendItem> listFriends(String userId, int page, int pageSize) {
-        var friendshipPage =
-                friendshipRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page - 1, pageSize));
+    public PageResult<SocialDtos.FriendItem> listFriends(String userId, int page, int pageSize, String keyword) {
+        var friendshipPage = (keyword != null && !keyword.isBlank())
+                ? friendshipRepository.findByUserIdAndFriendNicknameContaining(
+                        userId, keyword, PageRequest.of(page - 1, pageSize))
+                : friendshipRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page - 1, pageSize));
 
         List<SocialDtos.FriendItem> items =
                 friendshipPage.getContent().stream().map(this::toFriendItem).toList();

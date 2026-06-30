@@ -109,7 +109,7 @@ class FriendshipServiceTest {
                     .thenReturn(page);
             when(userRepository.findById("user-b")).thenReturn(Optional.of(buildUser("user-b", "userB")));
 
-            var result = service.listFriends("user-a", 1, 20);
+            var result = service.listFriends("user-a", 1, 20, null);
 
             assertThat(result.getItems()).hasSize(1);
             assertThat(result.getItems().get(0).getUserId()).isEqualTo("user-b");

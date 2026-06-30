@@ -107,8 +107,9 @@ public class SocialController {
     @GetMapping("/friends")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.FriendItem>>> listFriends(
             @RequestParam(required = false, defaultValue = "1") Integer page,
-            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
-        var result = friendshipService.listFriends(securityUtils.getCurrentUserId(), page, pageSize);
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize,
+            @RequestParam(required = false) String keyword) {
+        var result = friendshipService.listFriends(securityUtils.getCurrentUserId(), page, pageSize, keyword);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
