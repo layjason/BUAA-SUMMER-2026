@@ -287,6 +287,11 @@ function reviewStatusText(status: string): string {
   color: #ed6a0c;
 }
 
+.draft-approved {
+  background-color: #ebf9e9;
+  color: #07c160;
+}
+
 .status-tag {
   font-size: 22rpx;
   padding: 4rpx 12rpx;
@@ -299,14 +304,18 @@ function reviewStatusText(status: string): string {
 }
 
 .status-registrationClosed {
-  background-color: #fff2f0;
-  color: #ee0a24;
+  background-color: #fff7e6;
+  color: #ed6a0c;
 }
 
-.status-ongoing,
+.status-ongoing {
+  background-color: #ebf9e9;
+  color: #07c160;
+}
+
 .status-ended {
-  background-color: #ebedf0;
-  color: #969799;
+  background-color: #f2f3f5;
+  color: #c8c9cc;
 }
 
 .status-notStarted {
