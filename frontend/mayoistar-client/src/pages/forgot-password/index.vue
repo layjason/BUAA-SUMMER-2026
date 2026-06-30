@@ -135,15 +135,30 @@ async function handleSend() {
  * 重发重置邮件
  *
  * 前置条件：已发送过邮件，不在冷却期内
- * 后置条件：成功时开始 60 秒冷却倒计时
+ * 后置条件：成功时开始 60 秒冷却倒计时；频率限制错误（10018）也启动冷却
  */
 async function handleResend(): Promise<void> {
   if (loading.value || cooldown.value > 0) return
+  loading.value = true
   resendSent.value = false
-  await doSend()
-  if (sent.value) {
-    startCooldown()
+  formError.value = ''
+
+  try {
+    await api.post('/identity/auth/password-reset-email', {
+      body: { email: email.value.trim() },
+    })
     resendSent.value = true
+    startCooldown()
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      formError.value = getErrorMessage(error.code)
+      // 频率限制错误也启动冷却
+      if (error.code === 10018) startCooldown()
+    } else {
+      formError.value = t('网络错误')
+    }
+  } finally {
+    loading.value = false
   }
 }
 
