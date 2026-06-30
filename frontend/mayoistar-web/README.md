@@ -1,54 +1,35 @@
-# mayoistar-web
+# MayoiStar Web
 
-This template should help get you started developing with Vue 3 in Vite.
+迷星群聚后台管理 Web 前端，使用 React、Vite 和 TypeScript 实现。
 
-## Recommended IDE Setup
+## 基本命令
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
+```bash
 pnpm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
 pnpm dev
-```
-
-### Type-Check, Compile and Minify for Production
-
-```sh
-pnpm build
-```
-
-### Run Unit Tests with [Vitest](https://vitest.dev/)
-
-```sh
 pnpm test:unit
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
+pnpm type-check
 pnpm lint
+pnpm format:check
 ```
+
+## 环境变量
+
+- `VITE_API_BASE_URL`：后端 API 基础地址。留空时请求当前源，适合通过 Vite 代理或同源部署。
+- `VITE_USE_MOCK`：是否启用本地 Mock 数据。未设置或设置为 `true` 时启用，设置为 `false` 时请求后端。
+
+## API 契约
+
+接口路径、请求体和响应结构应与 `../../api-spec` 中的 TypeSpec 契约保持一致。
+
+更新或校验前端 API 类型时，先重新生成 OpenAPI，再生成 TypeScript 契约类型：
+
+```bash
+cd ../../api-spec
+pnpm compile
+
+cd ../frontend/mayoistar-web
+pnpm api:generate
+```
+
+业务 DTO 应从 `src/api/generated/openapi.ts` 派生，Mock 数据可以手工维护，但必须使用生成类型校验字段、枚举和分页结构。
