@@ -1,9 +1,7 @@
 <template>
   <view class="page">
     <view class="activate-container">
-      <view class="header">
-        <text class="title">{{ t('activate.title') }}</text>
-      </view>
+      <PageHeader :title="t('activate.title')" />
 
       <!-- 正在激活 -->
       <view v-if="state === 'activating'" class="status-box">
@@ -15,7 +13,7 @@
       <view v-else-if="state === 'success'" class="status-box success">
         <text class="status-icon">✅</text>
         <text class="status-text">{{ t('activate.success') }}</text>
-        <button class="action-btn" @click="goLogin">{{ t('activate.goLogin') }}</button>
+        <SubmitButton :text="t('activate.goLogin')" @click="goLogin" />
       </view>
 
       <!-- 已发送激活邮件（正常注册流程） -->
@@ -38,23 +36,16 @@
 
       <!-- 操作按钮：有邮箱时显示 resend + 重新注册 -->
       <view v-if="pendingEmail && (state === 'sent' || state === 'error')" class="action-section">
-        <button
-          class="action-btn"
-          :disabled="sending || cooldown > 0"
+        <CooldownButton
+          :text="t('activate.resendButton')"
+          :cooldown-text="t('activate.resendCooldown')"
+          :cooldown="cooldown"
           :loading="sending"
           @click="handleResend"
-        >
-          {{
-            cooldown > 0
-              ? t('activate.resendCooldown', { seconds: cooldown })
-              : t('activate.resendButton')
-          }}
-        </button>
+        />
         <text v-if="resendSent" class="resend-ok">{{ t('activate.resendSent') }}</text>
 
-        <button class="action-btn secondary" @click="goRegister">
-          {{ t('activate.emailWrong') }}
-        </button>
+        <SubmitButton :text="t('activate.emailWrong')" secondary @click="goRegister" />
       </view>
     </view>
   </view>
@@ -72,11 +63,12 @@
  * 前置条件：注册时存储 pendingActivationEmail
  * 后置条件：激活成功清除 pending 邮箱，跳转登录页
  */
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
+import { PageHeader, SubmitButton, CooldownButton, useCooldown } from '@/components'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -87,12 +79,7 @@ const pendingEmail = ref('')
 const sending = ref(false)
 const resendSent = ref(false)
 
-/** 重发邮件冷却倒计时（秒） */
-const cooldown = ref(0)
-let cooldownTimer: ReturnType<typeof setInterval> | null = null
-
-/** 激活邮件重发冷却时长（秒） */
-const RESEND_COOLDOWN_SECONDS = 60
+const { cooldown, startCooldown } = useCooldown(60)
 
 /**
  * 从页面参数中提取 token
@@ -111,7 +98,6 @@ onMounted(async () => {
   const token = parseToken()
 
   if (token) {
-    // 有 token：自动激活（来自 scheme 或链接）
     try {
       await api.post('/identity/auth/activate', { body: { token } })
       cleanupAndSuccess()
@@ -127,7 +113,6 @@ onMounted(async () => {
       }
     }
   } else if (pendingEmail.value) {
-    // 无 token 有邮箱：APP 注册后正常进入，显示邮件已发送
     state.value = 'sent'
     // 从登录页 10004 跳转过来时自动调用重发
     if (authStore.autoResendActivation) {
@@ -135,13 +120,8 @@ onMounted(async () => {
       await handleResend()
     }
   } else {
-    // 无 token 无邮箱：兜底
     state.value = 'idle'
   }
-})
-
-onUnmounted(() => {
-  if (cooldownTimer) clearInterval(cooldownTimer)
 })
 
 function cleanupAndSuccess(): void {
@@ -171,7 +151,6 @@ async function handleResend(): Promise<void> {
     if (error instanceof BusinessError) {
       errorText.value = getErrorMessage(error.code)
       state.value = 'error'
-      // 频率限制错误也启动冷却
       if (error.code === 10015) startCooldown()
     } else {
       errorText.value = t('网络错误')
@@ -180,21 +159,6 @@ async function handleResend(): Promise<void> {
   } finally {
     sending.value = false
   }
-}
-
-/**
- * 启动重发冷却倒计时
- */
-function startCooldown(): void {
-  cooldown.value = RESEND_COOLDOWN_SECONDS
-  if (cooldownTimer) clearInterval(cooldownTimer)
-  cooldownTimer = setInterval(() => {
-    cooldown.value--
-    if (cooldown.value <= 0) {
-      if (cooldownTimer) clearInterval(cooldownTimer)
-      cooldownTimer = null
-    }
-  }, 1000)
 }
 
 function goLogin(): void {
@@ -214,17 +178,6 @@ function goRegister(): void {
 
 .activate-container {
   padding: 160rpx 48rpx 0;
-}
-
-.header {
-  margin-bottom: 56rpx;
-}
-
-.title {
-  display: block;
-  font-size: 48rpx;
-  font-weight: 700;
-  color: #323233;
 }
 
 .status-box {
@@ -267,28 +220,6 @@ function goRegister(): void {
 
 .action-section {
   padding: 0 0 40rpx;
-}
-
-.action-btn {
-  width: 100%;
-  height: 88rpx;
-  line-height: 88rpx;
-  background-color: #1989fa;
-  color: #fff;
-  font-size: 32rpx;
-  border-radius: 8rpx;
-  border: none;
-  margin-bottom: 24rpx;
-}
-
-.action-btn.secondary {
-  background-color: #fff;
-  color: #1989fa;
-  border: 1rpx solid #1989fa;
-}
-
-.action-btn[disabled] {
-  opacity: 0.6;
 }
 
 .resend-ok {
