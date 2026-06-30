@@ -15,6 +15,8 @@ public interface ConversationMemberRepository extends JpaRepository<Conversation
 
     List<ConversationMember> findByConversationId(String conversationId);
 
+    List<ConversationMember> findByUserId(String userId);
+
     @Query("SELECT cm1.conversationId FROM ConversationMember cm1 "
             + "WHERE cm1.userId = :userA AND cm1.conversationId IN "
             + "(SELECT cm2.conversationId FROM ConversationMember cm2 WHERE cm2.userId = :userB)")

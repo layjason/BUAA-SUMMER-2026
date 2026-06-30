@@ -11,12 +11,14 @@ import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.chat.ChatMessage;
+import io.github.layjason.mayoistar.entity.chat.Conversation;
 import io.github.layjason.mayoistar.entity.chat.MessageKind;
 import io.github.layjason.mayoistar.entity.chat.MessageRead;
 import io.github.layjason.mayoistar.entity.chat.MessageReadStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ChatMessageRepository;
 import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
+import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import java.time.Duration;
 import java.time.Instant;
@@ -49,6 +51,7 @@ public class ChatService {
 
     private final ChatMessageRepository chatMessageRepository;
     private final ConversationMemberRepository conversationMemberRepository;
+    private final ConversationRepository conversationRepository;
     private final MessageReadRepository messageReadRepository;
     private final NotificationService notificationService;
 
@@ -163,6 +166,78 @@ public class ChatService {
                 pageResult.getNumber() + 1,
                 pageResult.getSize(),
                 pageResult.getTotalPages());
+    }
+
+    // ========================================
+    // List Conversations
+    // ========================================
+
+    /**
+     * 分页获取当前用户的会话列表，含未读计数和最后一条消息预览。
+     *
+     * <p>前置条件：{@code userId} 为有效用户。
+     *
+     * <p>后置条件：返回分页 ConversationSummary 列表，按更新时间倒序排列。
+     *
+     * @param userId   当前用户 ID
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @return 分页结果
+     */
+    @Transactional(readOnly = true)
+    public PageResult<ChatDtos.ConversationSummary> listConversations(String userId, int page, int pageSize) {
+        var members = conversationMemberRepository.findByUserId(userId);
+
+        List<ChatDtos.ConversationSummary> allItems = members.stream()
+                .map(member -> conversationRepository
+                        .findById(member.getConversationId())
+                        .map(conv -> buildConversationSummary(conv, userId))
+                        .orElse(null))
+                .filter(summary -> summary != null)
+                .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
+                .collect(Collectors.toList());
+
+        int fromIndex = (page - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, allItems.size());
+        List<ChatDtos.ConversationSummary> pageItems =
+                fromIndex < allItems.size() ? allItems.subList(fromIndex, toIndex) : List.of();
+
+        return new PageResult<>(pageItems, (long) allItems.size(), page, pageSize, (int)
+                Math.ceil((double) allItems.size() / pageSize));
+    }
+
+    private ChatDtos.ConversationSummary buildConversationSummary(Conversation conv, String userId) {
+        ChatDtos.ConversationSummary summary = new ChatDtos.ConversationSummary();
+        summary.setConversationId(conv.getConversationId());
+        summary.setKind(conv.getKind());
+        summary.setTitle(conv.getTitle());
+        summary.setUpdatedAt(conv.getUpdatedAt().toString());
+
+        var lastMessagePage = chatMessageRepository.findByConversationIdOrderBySentAtDesc(
+                conv.getConversationId(), PageRequest.of(0, 1));
+        if (!lastMessagePage.isEmpty()) {
+            ChatMessage lastMsg = lastMessagePage.getContent().getFirst();
+            if (Boolean.TRUE.equals(lastMsg.getRecalled())) {
+                summary.setLastMessagePreview("[消息已撤回]");
+            } else {
+                summary.setLastMessagePreview(
+                        lastMsg.getText() != null ? lastMsg.getText() : "[" + lastMsg.getKind() + "]");
+            }
+        }
+
+        long unreadCount = 0L;
+        var allMessages = chatMessageRepository.findByConversationIdOrderBySentAtDesc(
+                conv.getConversationId(), PageRequest.of(0, Integer.MAX_VALUE));
+        List<String> messageIds =
+                allMessages.getContent().stream().map(ChatMessage::getMessageId).collect(Collectors.toList());
+        if (!messageIds.isEmpty()) {
+            unreadCount = messageReadRepository.findByMessageIdInAndUserId(messageIds, userId).stream()
+                    .filter(mr -> mr.getStatus() == MessageReadStatus.unread)
+                    .count();
+        }
+        summary.setUnreadCount((int) unreadCount);
+
+        return summary;
     }
 
     // ========================================

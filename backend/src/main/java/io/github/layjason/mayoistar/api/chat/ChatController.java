@@ -33,8 +33,11 @@ public class ChatController {
 
     @GetMapping("/conversations")
     public ResponseEntity<ApiResponse<PageResult<ChatDtos.ConversationSummary>>> listConversations(
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.listConversations(userId, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/conversations/{conversationId}/messages")
