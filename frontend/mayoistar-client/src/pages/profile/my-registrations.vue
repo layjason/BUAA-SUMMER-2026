@@ -226,8 +226,10 @@ function goDetail(activityId: string): void {
 .bottom-safe {
   height: 48rpx;
 }
+</style>
 
-<style > page {
+<style>
+page {
   height: 100%;
   overflow: hidden;
 }
