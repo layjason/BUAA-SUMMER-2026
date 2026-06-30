@@ -178,5 +178,31 @@
     "statusWaiting": "候补中",
     "statusWaitingConfirmation": "待确认",
     "registrationTime": "报名时间"
+  },
+
+  "activityDetail": {
+    "title": "活动详情",
+    "time": "活动时间",
+    "location": "活动地点",
+    "organizer": "发起人",
+    "fee": "费用",
+    "free": "免费",
+    "feeAmount": "¥{amount}",
+    "tags": "活动标签",
+    "registeredCount": "已报名 {count}/{total}",
+    "waitingCount": "候补 {count} 人",
+    "registrationDeadline": "报名截止",
+    "registerNow": "立即报名 ({count}/{total})",
+    "registerFull": "加入候补 (候补{count}人)",
+    "cancelRegistration": "取消报名",
+    "waitingRank": "等待中 (排位第{rank})",
+    "confirmWaiting": "确认候补名额",
+    "checkedInTag": "已签到",
+    "disabledTag": "不可操作",
+    "introduction": "活动简介",
+    "images": "活动图片",
+    "safetyNotice": "安全须知",
+    "safetyNoticeCollapse": "展开安全须知",
+    "loading": "加载中..."
   }
 }

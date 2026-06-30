@@ -663,4 +663,246 @@ export const mockData: Record<string, MockResponse> = {
       reputationScore: 50,
     },
   },
+
+  /* ===================== 活动详情 ===================== */
+
+  /*
+   * 覆盖多种 runtimeStatus + 图片组合
+   */
+  'GET /activities/2001': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: '2001',
+      title: '周末羽毛球友谊赛',
+      tags: ['运动健身'],
+      introduction:
+        '周末一起来打羽毛球吧！无论你是初学者还是老手，都欢迎参加。' +
+        '我们将根据水平分组，保证每个人都有愉快的体验。\n\n' +
+        '活动流程：\n' +
+        '1. 14:00 集合签到\n' +
+        '2. 14:15 热身运动\n' +
+        '3. 14:30 分组对抗\n' +
+        '4. 16:30 自由交流\n' +
+        '5. 17:00 结束\n\n' +
+        '请自备球拍和运动装备，饮用水由组织者统一提供。',
+      safetyNotice:
+        '1. 运动前请充分热身，避免受伤。\n' +
+        '2. 如有心脏病、高血压等不宜剧烈运动的疾病，请提前告知组织者。\n' +
+        '3. 活动期间请保管好个人财物。\n' +
+        '4. 建议穿着运动鞋和运动服装。\n' +
+        '5. 如遇身体不适，请立即停止运动并联系组织者。',
+      startAt: '2026-07-05T14:00:00Z',
+      endAt: '2026-07-05T17:00:00Z',
+      location: {
+        address: '海淀区体育馆羽毛球馆',
+        city: '北京',
+        placeName: '海淀体育馆',
+        point: { longitude: 116.347, latitude: 39.972 },
+      },
+      coverImage: null,
+      images: [
+        {
+          mediaId: 'act_img_01',
+          fileName: 'badminton_1.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: 204800,
+          usage: 'activity',
+          url: 'https://picsum.photos/800/400?random=10',
+          uploadedAt: '2026-07-01T08:00:00Z',
+        },
+        {
+          mediaId: 'act_img_02',
+          fileName: 'badminton_2.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: 153600,
+          usage: 'activity',
+          url: 'https://picsum.photos/800/400?random=11',
+          uploadedAt: '2026-07-01T08:00:00Z',
+        },
+        {
+          mediaId: 'act_img_03',
+          fileName: 'badminton_3.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: 184320,
+          usage: 'activity',
+          url: 'https://picsum.photos/800/400?random=12',
+          uploadedAt: '2026-07-01T08:00:00Z',
+        },
+      ],
+      feeAmount: 30.0,
+      capacity: 16,
+      registeredCount: 12,
+      waitingCount: 0,
+      registrationDeadline: '2026-07-04T23:59:59Z',
+      organizerId: '10002',
+      organizerName: '小明',
+      reviewStatus: 'approved',
+      runtimeStatus: 'registering',
+      aiContentReview: {
+        status: 'succeeded',
+        riskLevel: 'low',
+        suggestedReviewStatus: 'approved',
+        reasons: [],
+        friendlyErrorMessage: null,
+      },
+      manualReviewRequired: false,
+      reviewRecords: [
+        {
+          reviewId: 'rev_001',
+          result: 'approved',
+          reason: null,
+          reviewerId: 'system',
+          reviewedAt: '2026-07-01T08:30:00Z',
+        },
+      ],
+    },
+  },
+
+  'GET /activities/2001/participation-state': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      canRegister: true,
+      status: null,
+      waitingRank: null,
+      confirmationDeadline: null,
+      canCancelRegistration: false,
+      canConfirmWaitingSeat: false,
+      canCheckIn: false,
+    },
+  },
+
+  'GET /activities/2002': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: '2002',
+      title: '桌游之夜——三国杀专场',
+      tags: ['桌游聚会'],
+      introduction:
+        '每周一次的桌游之夜来啦！本期主题是三国杀，欢迎新老朋友参加。\n\n我们会准备多个扩展包，并有资深玩家现场教学。\n\n活动现场提供零食和饮料。',
+      safetyNotice: '请在公共场所注意个人物品安全。玩桌游时保持友好氛围，不要过度激动。',
+      startAt: '2026-07-12T19:00:00Z',
+      endAt: '2026-07-12T22:00:00Z',
+      location: {
+        address: '五道口桌游吧',
+        city: '北京',
+        placeName: '五道口桌游吧',
+        point: { longitude: 116.337, latitude: 39.982 },
+      },
+      coverImage: { url: 'https://picsum.photos/400/200?random=2', mediaId: 'img2002' },
+      images: [
+        {
+          mediaId: 'act_img_21',
+          fileName: 'boardgame_1.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: 184320,
+          usage: 'activity',
+          url: 'https://picsum.photos/800/400?random=21',
+          uploadedAt: '2026-07-01T09:00:00Z',
+        },
+        {
+          mediaId: 'act_img_22',
+          fileName: 'boardgame_2.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: 204800,
+          usage: 'activity',
+          url: 'https://picsum.photos/800/400?random=22',
+          uploadedAt: '2026-07-01T09:00:00Z',
+        },
+      ],
+      feeAmount: 50.0,
+      capacity: 8,
+      registeredCount: 8,
+      waitingCount: 3,
+      registrationDeadline: '2026-07-11T23:59:59Z',
+      organizerId: '10001',
+      organizerName: '测试用户',
+      reviewStatus: 'approved',
+      runtimeStatus: 'registrationClosed',
+      aiContentReview: {
+        status: 'succeeded',
+        riskLevel: 'low',
+        suggestedReviewStatus: 'approved',
+        reasons: [],
+        friendlyErrorMessage: null,
+      },
+      manualReviewRequired: false,
+      reviewRecords: [],
+    },
+  },
+
+  'GET /activities/2002/participation-state': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      canRegister: false,
+      status: 'registered',
+      waitingRank: null,
+      confirmationDeadline: null,
+      canCancelRegistration: true,
+      canConfirmWaitingSeat: false,
+      canCheckIn: false,
+    },
+  },
+
+  'GET /activities/2005': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: '2005',
+      title: '胡同骑行探索',
+      tags: ['户外徒步', '运动健身'],
+      introduction:
+        '一起骑行探索北京胡同文化！从南锣鼓巷出发，途经北锣鼓巷、什刹海、烟袋斜街，最后回到出发点。全程约 15 公里，骑行时间约 3 小时。',
+      safetyNotice: '请佩戴头盔等护具。遵守交通规则，注意避让行人。建议穿着长袖防晒。',
+      startAt: '2026-07-10T08:00:00Z',
+      endAt: '2026-07-10T16:00:00Z',
+      location: {
+        address: '东城区南锣鼓巷地铁站 E 口',
+        city: '北京',
+        placeName: '南锣鼓巷地铁站',
+        point: { longitude: 116.403, latitude: 39.937 },
+      },
+      coverImage: { url: 'https://picsum.photos/800/400?random=5', mediaId: 'img2005' },
+      images: [
+        {
+          mediaId: 'act_img_51',
+          fileName: 'cycling_1.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: 256000,
+          usage: 'activity',
+          url: 'https://picsum.photos/800/400?random=51',
+          uploadedAt: '2026-07-01T10:00:00Z',
+        },
+      ],
+      feeAmount: 20.0,
+      capacity: 10,
+      registeredCount: 10,
+      waitingCount: 0,
+      registrationDeadline: '2026-07-09T23:59:59Z',
+      organizerId: '10001',
+      organizerName: '测试用户',
+      reviewStatus: 'approved',
+      runtimeStatus: 'ongoing',
+      aiContentReview: null,
+      manualReviewRequired: false,
+      reviewRecords: [],
+    },
+  },
+
+  'GET /activities/2005/participation-state': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      canRegister: false,
+      status: 'checkedIn',
+      waitingRank: null,
+      confirmationDeadline: null,
+      canCancelRegistration: false,
+      canConfirmWaitingSeat: false,
+      canCheckIn: false,
+    },
+  },
 }
