@@ -45,7 +45,6 @@ export const isMockMode = () => {
 
 type ToastCallback = (message: string, type: 'success' | 'error' | 'info') => void;
 let toastHandler: ToastCallback | null = null;
-
 /**
  * 注册 API 层可复用的 Toast 回调。
  *

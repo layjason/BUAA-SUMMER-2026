@@ -60,7 +60,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ id, type, value }) => 
   return (
     <span
       id={id}
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${mapped.bgClass} ${mapped.textClass}`}
+      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${mapped.bgClass} ${mapped.textClass}`}
     >
       {mapped.text}
     </span>

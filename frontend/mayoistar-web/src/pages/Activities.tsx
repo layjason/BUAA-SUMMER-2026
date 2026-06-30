@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
@@ -237,7 +232,7 @@ export const Activities: React.FC = () => {
                 setReviewStatus(e.target.value);
                 setPage(1);
               }}
-              className="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none text-slate-700 font-bold focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              className="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none text-slate-700 font-bold focus:ring-2 focus:ring-blue-500/20 cursor-pointer min-w-[5.5rem]"
             >
               <option value="">全部</option>
               <option value="pending">待审核</option>
@@ -257,7 +252,7 @@ export const Activities: React.FC = () => {
                 setRuntimeStatus(e.target.value);
                 setPage(1);
               }}
-              className="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none text-slate-700 font-bold focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              className="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none text-slate-700 font-bold focus:ring-2 focus:ring-blue-500/20 cursor-pointer min-w-[5.5rem]"
             >
               <option value="">全部</option>
               <option value="registering">报名中</option>
@@ -367,7 +362,7 @@ export const Activities: React.FC = () => {
                     <td className="px-6 py-4 text-right pr-8 shrink-0">
                       <button
                         onClick={() => handleOpenDrawer(act.activityId)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-blue-600 text-slate-600 hover:text-white rounded-xl font-bold cursor-pointer transition-all focus:outline-none"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-blue-600 text-slate-600 hover:text-white rounded-xl font-bold cursor-pointer transition-all focus:outline-none whitespace-nowrap"
                       >
                         <Eye className="h-3.5 w-3.5" />
                         <span>合规审计</span>

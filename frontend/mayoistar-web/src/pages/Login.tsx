@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { login } from '../api/adminAuth';
-import { Lock, User, Eye, EyeOff, Sparkles, ShieldAlert } from 'lucide-react';
+import { Lock, User, Eye, EyeOff, Sparkles } from 'lucide-react';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -59,15 +59,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           </p>
         </div>
 
-        {/* Warning notification about admin accounts */}
-        <div className="flex items-start gap-3 p-3.5 bg-slate-50 border border-slate-200/60 rounded-2xl text-left">
-          <ShieldAlert className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            <strong>安全提示：</strong>
-            本系统仅面向趣聚平台内部运营、安全稽查、审核治理人员开放。账户由超级管理员统一预置，不提供公开注册途径。
-          </p>
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Username Input */}
           <div className="space-y-1.5 text-left">
@@ -80,7 +71,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 type="text"
                 required
                 disabled={loading}
-                placeholder="请输入用户名 (测试用 admin)"
+                placeholder="请输入用户名"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full text-sm pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 font-medium"
@@ -99,7 +90,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 type={showPassword ? 'text' : 'password'}
                 required
                 disabled={loading}
-                placeholder="请输入登录密码 (测试用 admin123)"
+                placeholder="请输入登录密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full text-sm pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 font-mono font-medium"

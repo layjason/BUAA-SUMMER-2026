@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { request, isMockMode, simulateLatency } from './client';
 import { mockDb } from './mockDb';
 import { MerchantProfile } from '../types';

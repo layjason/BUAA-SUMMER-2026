@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import type { components, paths } from './api/generated/openapi';
 
 type JsonResponseBody<Response> = Response extends {

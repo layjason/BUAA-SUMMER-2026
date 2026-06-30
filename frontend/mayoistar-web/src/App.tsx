@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect } from 'react';
 import { getAccessToken, setAccessToken, registerToastHandler } from './api/client';
 import { logout } from './api/adminAuth';
@@ -24,6 +19,7 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!getAccessToken());
   const [currentRoute, setCurrentRoute] = useState<string>('workbench');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
 
   // Setup global toast notifications
   useEffect(() => {
@@ -86,7 +82,12 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans antialiased text-slate-800">
-      <SidebarNav currentRoute={currentRoute} onNavigate={setCurrentRoute} />
+      <SidebarNav
+        currentRoute={currentRoute}
+        onNavigate={setCurrentRoute}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((prev) => !prev)}
+      />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopBar onLogout={handleLogout} />
         <main className="flex-1 overflow-y-auto p-8 max-w-7xl w-full mx-auto">{renderPage()}</main>

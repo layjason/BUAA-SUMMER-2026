@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { request, isMockMode, simulateLatency, setAccessToken, showToast } from './client';
 import { mockDb } from './mockDb';
 import { AdminLoginRequest, AdminChangePasswordRequest, LoginResult } from '../types';

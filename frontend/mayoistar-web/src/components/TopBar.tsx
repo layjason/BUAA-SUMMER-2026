@@ -1,11 +1,6 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React from 'react';
-import { LogOut, Wifi, Laptop, RefreshCw } from 'lucide-react';
-import { isMockMode } from '../api/client';
+import { LogOut, RefreshCw } from 'lucide-react';
+
 
 interface TopBarProps {
   id?: string;
@@ -22,25 +17,7 @@ export const TopBar: React.FC<TopBarProps> = ({ id, onLogout }) => {
       id={id}
       className="h-16 bg-white border-b border-slate-200/80 px-8 flex items-center justify-between shadow-xs shrink-0"
     >
-      {/* Left side environment indicators */}
-      <div className="flex items-center gap-4">
-        {/* Connection status badge */}
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200/60">
-          <Wifi className="h-3.5 w-3.5 text-green-500 animate-pulse" />
-          <span>网络状态: 正常</span>
-        </div>
-
-        {/* Database engine status */}
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200/60">
-          <Laptop className="h-3.5 w-3.5 text-blue-500" />
-          <span>
-            数据模式:{' '}
-            <span className={isMockMode() ? 'text-amber-600 font-bold' : 'text-blue-600 font-bold'}>
-              {isMockMode() ? '本地沙盒 Mock' : '远程后端 API'}
-            </span>
-          </span>
-        </div>
-      </div>
+      <div />
 
       {/* Right side controls and profile */}
       <div className="flex items-center gap-6">
