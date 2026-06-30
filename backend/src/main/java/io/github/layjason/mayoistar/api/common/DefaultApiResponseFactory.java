@@ -7,7 +7,6 @@ import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
