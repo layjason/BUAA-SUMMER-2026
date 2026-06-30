@@ -33,7 +33,7 @@ describe('formatDateTime', () => {
 
 describe('getErrorMessage', () => {
   it('应返回已知错误码的中文提示', () => {
-    expect(getErrorMessage(10000)).toBe('该邮箱已被注册')
+    expect(getErrorMessage(10001)).toBe('该邮箱已被注册')
   })
 
   it('应为未知错误码返回回退消息', () => {
