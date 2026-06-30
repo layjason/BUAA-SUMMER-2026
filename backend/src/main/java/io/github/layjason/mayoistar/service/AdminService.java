@@ -173,8 +173,11 @@ public class AdminService {
                 .findByUserId(merchantId)
                 .orElseThrow(() -> new BusinessException(10008, "User kind is not allowed for this operation"));
 
-        log.info("商家资质审核完成: merchantId={}, adminId={}, result={}",
-                sanitizeForLog(merchantId), sanitizeForLog(adminId), qualification.getStatus());
+        log.info(
+                "商家资质审核完成: merchantId={}, adminId={}, result={}",
+                sanitizeForLog(merchantId),
+                sanitizeForLog(adminId),
+                qualification.getStatus());
 
         return buildMerchantProfileResponse(user, profile, qualification);
     }
@@ -441,8 +444,11 @@ public class AdminService {
                 .build();
         banRecordRepository.save(banRecord);
 
-        log.info("用户已被封禁: userId={}, adminId={}, until={}",
-                sanitizeForLog(userId), sanitizeForLog(adminId), bannedUntil);
+        log.info(
+                "用户已被封禁: userId={}, adminId={}, until={}",
+                sanitizeForLog(userId),
+                sanitizeForLog(adminId),
+                bannedUntil);
 
         return buildAdminUserSummary(user);
     }
@@ -572,8 +578,11 @@ public class AdminService {
         report.setHandledAt(Instant.now());
         reportRepository.save(report);
 
-        log.info("举报已处理: reportId={}, adminId={}, status={}",
-                sanitizeForLog(reportId), sanitizeForLog(adminId), request.getStatus());
+        log.info(
+                "举报已处理: reportId={}, adminId={}, status={}",
+                sanitizeForLog(reportId),
+                sanitizeForLog(adminId),
+                request.getStatus());
 
         return buildReportDto(report);
     }
@@ -692,8 +701,11 @@ public class AdminService {
                 .build();
         activityReviewRecordRepository.save(record);
 
-        log.info("活动审核完成: activityId={}, adminId={}, result={}",
-                sanitizeForLog(activityId), sanitizeForLog(adminId), result);
+        log.info(
+                "活动审核完成: activityId={}, adminId={}, result={}",
+                sanitizeForLog(activityId),
+                sanitizeForLog(adminId),
+                result);
 
         return buildActivityDetail(activity);
     }
@@ -734,7 +746,10 @@ public class AdminService {
         activity.setUpdatedAt(Instant.now());
         activityRepository.save(activity);
 
-        log.info("活动已下架: activityId={}, adminId={}, reason={}", activityId, adminId,
+        log.info(
+                "活动已下架: activityId={}, adminId={}, reason={}",
+                activityId,
+                adminId,
                 sanitizeForLog(request.getReason()));
 
         return buildActivityDetail(activity);
@@ -770,8 +785,7 @@ public class AdminService {
         activity.setUpdatedAt(Instant.now());
         activityRepository.save(activity);
 
-        log.info("活动已恢复: activityId={}, adminId={}",
-                sanitizeForLog(activityId), sanitizeForLog(adminId));
+        log.info("活动已恢复: activityId={}, adminId={}", sanitizeForLog(activityId), sanitizeForLog(adminId));
 
         return buildActivityDetail(activity);
     }
@@ -1008,8 +1022,7 @@ public class AdminService {
                 .build();
         teamModerationRecordRepository.save(record);
 
-        log.info("小队已停用: teamId={}, adminId={}, reason={}", teamId, adminId,
-                sanitizeForLog(request.getReason()));
+        log.info("小队已停用: teamId={}, adminId={}, reason={}", teamId, adminId, sanitizeForLog(request.getReason()));
 
         return buildTeamProfile(team);
     }
@@ -1054,8 +1067,7 @@ public class AdminService {
                 .build();
         teamModerationRecordRepository.save(record);
 
-        log.info("小队已恢复: teamId={}, adminId={}",
-                sanitizeForLog(teamId), sanitizeForLog(adminId));
+        log.info("小队已恢复: teamId={}, adminId={}", sanitizeForLog(teamId), sanitizeForLog(adminId));
 
         return buildTeamProfile(team);
     }

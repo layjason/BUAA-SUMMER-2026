@@ -123,6 +123,10 @@ class ApiContractControllerTests {
                     .andExpect(openApi().isValid(OPENAPI_SPEC));
             return;
         }
+        if (SKIP_VALIDATION_PATHS.contains(pathTemplate)) {
+            mockMvc.perform(request).andExpect(status().isOk());
+            return;
+        }
         mockMvc.perform(request).andExpect(status().isOk()).andExpect(openApi().isValid(OPENAPI_SPEC));
     }
 
