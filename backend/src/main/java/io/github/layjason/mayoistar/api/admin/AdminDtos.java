@@ -1,12 +1,17 @@
 package io.github.layjason.mayoistar.api.admin;
 
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
+import io.github.layjason.mayoistar.entity.admin.AdminModerationAction;
 import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
+import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
+import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import jakarta.validation.constraints.NotNull;
+import java.util.List;
 import lombok.Data;
 
 /**
@@ -72,7 +77,7 @@ public final class AdminDtos {
     }
 
     @Data
-    public static class UserReportDecisionRequest {
+    public static class ReportDecisionRequest {
         @NotNull
         private ReportStatus status;
 
@@ -123,5 +128,53 @@ public final class AdminDtos {
 
         @NotNull
         private String createdAt;
+    }
+
+    @Data
+    public static class AdminUserDetail {
+        private String userId;
+        private String email;
+        private String nickname;
+        private UserKind kind;
+        private AccountStatus status;
+        private QualificationStatus qualificationStatus;
+        private Integer activityCount;
+        private Integer teamCount;
+        private String createdAt;
+        private AdminBanInfo currentBanInfo;
+    }
+
+    @Data
+    public static class AdminBanInfo {
+        private String reason;
+        private String bannedUntil;
+        private String createdAt;
+        private String operatorId;
+    }
+
+    @Data
+    public static class AdminModerationRecord {
+        private String recordId;
+        private AdminModerationAction action;
+        private String reason;
+        private String operatorId;
+        private String createdAt;
+    }
+
+    @Data
+    public static class AdminTeamDetail {
+        private String teamId;
+        private String name;
+        private List<String> tags;
+        private TeamJoinMode joinMode;
+        private Integer capacity;
+        private Integer memberCount;
+        private String description;
+        private CommonDtos.MediaFile avatar;
+        private TeamStatus status;
+        private String creatorId;
+        private String leaderId;
+        private String chatId;
+        private List<AdminModerationRecord> moderationRecords;
     }
 }

@@ -5,6 +5,7 @@ import io.github.layjason.mayoistar.entity.social.FriendRequestSource;
 import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
 import io.github.layjason.mayoistar.entity.social.FriendshipSource;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
+import io.github.layjason.mayoistar.entity.social.ReportTargetType;
 import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
 import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
@@ -44,9 +45,12 @@ public final class SocialDtos {
     }
 
     @Data
-    public static class UserReportCreateRequest {
+    public static class ReportCreateRequest {
         @NotNull
-        private String targetUserId;
+        private ReportTargetType targetType;
+
+        @NotNull
+        private String targetId;
 
         @NotNull
         private String reason;
@@ -142,10 +146,11 @@ public final class SocialDtos {
     }
 
     @Data
-    public static class UserReport {
+    public static class Report {
         private String reportId;
         private String reporterUserId;
-        private String targetUserId;
+        private ReportTargetType targetType;
+        private String targetId;
         private String reason;
         private ReportStatus status;
         private String handlingNote;
@@ -164,6 +169,7 @@ public final class SocialDtos {
         private String description;
         private CommonDtos.MediaFile avatar;
         private TeamStatus status;
+        private String creatorId;
         private String leaderId;
         private String chatId;
     }

@@ -232,8 +232,7 @@ namespace QujuApi.Errors.Social {
     extends APIErrorResponse<40006, "Friend request already exists"> {}
 
   @doc("40007：举报目标或举报内容不合法。")
-  model UserReportInvalid
-    extends APIErrorResponse<40007, "User report is invalid"> {}
+  model ReportInvalid extends APIErrorResponse<40007, "Report is invalid"> {}
 
   @doc("40008：小队名称已被占用。")
   model TeamNameUnavailable
@@ -408,8 +407,8 @@ namespace QujuApi.Errors.Admin {
     extends APIErrorResponse<60006, "Review reason is required"> {}
 
   @doc("60007：举报记录不存在。")
-  model UserReportNotFound
-    extends APIErrorResponse<60007, "User report {reportId} does not exist"> {}
+  model ReportNotFound
+    extends APIErrorResponse<60007, "Report {reportId} does not exist"> {}
 
   @doc("60008：活动不存在。")
   model ActivityNotFound

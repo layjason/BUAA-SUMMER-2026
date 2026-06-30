@@ -74,6 +74,15 @@ public class Team {
     @Column(nullable = false, length = 20)
     private TeamStatus status;
 
+    @Column(name = "creator_id", length = 36, nullable = false)
+    private String creatorId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "creator_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User creator;
+
     @Column(name = "leader_id", length = 36, nullable = false)
     private String leaderId;
 

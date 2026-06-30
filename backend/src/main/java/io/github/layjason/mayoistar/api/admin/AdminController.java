@@ -12,6 +12,7 @@ import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
+import io.github.layjason.mayoistar.entity.social.ReportTargetType;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class AdminController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) ActivityReviewStatus reviewStatus,
             @RequestParam(required = false) ActivityRuntimeStatus runtimeStatus,
+            @RequestParam(required = false) String organizerId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();
@@ -90,6 +92,38 @@ public class AdminController {
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamProfile>>> listTeams(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) TeamStatus status,
+            @RequestParam(required = false) String creatorId,
+            @RequestParam(required = false) String leaderId,
+            @RequestParam(required = false) String memberUserId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        return responseFactory.emptyPage();
+    }
+
+    @GetMapping("/teams/{teamId}")
+    public ResponseEntity<ApiResponse<AdminDtos.AdminTeamDetail>> getTeam(@PathVariable String teamId) {
+        return responseFactory.adminTeamDetail();
+    }
+
+    @GetMapping("/teams/{teamId}/activities")
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> listTeamActivities(
+            @PathVariable String teamId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        return responseFactory.emptyPage();
+    }
+
+    @GetMapping("/teams/{teamId}/members")
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamMember>>> listTeamMembers(
+            @PathVariable String teamId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        return responseFactory.emptyPage();
+    }
+
+    @GetMapping("/teams/{teamId}/reports")
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.Report>>> listTeamReports(
+            @PathVariable String teamId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();
@@ -106,20 +140,21 @@ public class AdminController {
         return responseFactory.teamProfile();
     }
 
-    @GetMapping("/user-reports")
-    public ResponseEntity<ApiResponse<PageResult<SocialDtos.UserReport>>> listUserReports(
+    @GetMapping("/reports")
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.Report>>> listReports(
             @RequestParam(required = false) ReportStatus status,
             @RequestParam(required = false) String reporterUserId,
-            @RequestParam(required = false) String targetUserId,
+            @RequestParam(required = false) ReportTargetType targetType,
+            @RequestParam(required = false) String targetId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();
     }
 
-    @PostMapping("/user-reports/{reportId}/decision")
-    public ResponseEntity<ApiResponse<SocialDtos.UserReport>> decideUserReport(
-            @PathVariable String reportId, @Valid @RequestBody AdminDtos.UserReportDecisionRequest request) {
-        return responseFactory.userReport();
+    @PostMapping("/reports/{reportId}/decision")
+    public ResponseEntity<ApiResponse<SocialDtos.Report>> decideReport(
+            @PathVariable String reportId, @Valid @RequestBody AdminDtos.ReportDecisionRequest request) {
+        return responseFactory.report();
     }
 
     @GetMapping("/users")
@@ -128,6 +163,27 @@ public class AdminController {
             @RequestParam(required = false) UserKind kind,
             @RequestParam(required = false) AccountStatus status,
             @RequestParam(required = false) QualificationStatus qualificationStatus,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        return responseFactory.emptyPage();
+    }
+
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<ApiResponse<AdminDtos.AdminUserDetail>> getUser(@PathVariable String userId) {
+        return responseFactory.adminUserDetail();
+    }
+
+    @GetMapping("/users/{userId}/activities")
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> listUserActivities(
+            @PathVariable String userId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        return responseFactory.emptyPage();
+    }
+
+    @GetMapping("/users/{userId}/teams")
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamProfile>>> listUserTeams(
+            @PathVariable String userId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();
