@@ -70,13 +70,10 @@
           <text class="section-body">{{ activity.introduction }}</text>
         </view>
 
-        <!-- 安全须知（可折叠） -->
+        <!-- 安全须知 -->
         <view class="section card">
-          <view class="section-header" @click="safetyExpanded = !safetyExpanded">
-            <text class="section-title">{{ t('activityDetail.safetyNotice') }}</text>
-            <text class="expand-icon">{{ safetyExpanded ? '收起' : '展开' }}</text>
-          </view>
-          <text v-if="safetyExpanded" class="section-body">{{ activity.safetyNotice }}</text>
+          <text class="section-title">{{ t('activityDetail.safetyNotice') }}</text>
+          <text class="section-body">{{ activity.safetyNotice }}</text>
         </view>
       </view>
 
@@ -115,7 +112,6 @@ const { t } = useI18n()
 const loading = ref(true)
 const errorMsg = ref('')
 const activityId = ref('')
-const safetyExpanded = ref(false)
 
 interface ActivityDetail {
   activityId: string
