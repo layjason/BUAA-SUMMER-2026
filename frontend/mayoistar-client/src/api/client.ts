@@ -26,6 +26,14 @@ export function setTokenGetter(getter: TokenGetter): void {
   tokenGetter = getter
 }
 
+/** 刷新令牌获取器，供 refreshAndRetry 使用 */
+type RefreshTokenGetter = () => string | null
+let refreshTokenGetter: RefreshTokenGetter = () => null
+
+export function setRefreshTokenGetter(getter: RefreshTokenGetter): void {
+  refreshTokenGetter = getter
+}
+
 /** Token 过期回调，刷新失败时调用，典型用途：清除认证状态并跳转登录页 */
 type TokenExpiredHandler = () => void
 let onTokenExpired: TokenExpiredHandler = () => {}
@@ -116,6 +124,7 @@ let refreshing = false
 let pendingQueue: Array<{
   resolve: (value: { code: number; message: string; data: unknown }) => void
   reject: (reason: unknown) => void
+  retryCtx: object
 }> = []
 
 /**
@@ -153,11 +162,11 @@ function internalRawRequest(
 async function refreshAndRetry(): Promise<void> {
   refreshing = true
   try {
-    const token = tokenGetter()
-    if (!token) throw new TokenExpiredError()
+    const storedRefreshToken = refreshTokenGetter()
+    if (!storedRefreshToken) throw new TokenExpiredError()
 
     const result = await internalRawRequest('POST', '/identity/auth/refresh', {
-      refreshToken: token,
+      refreshToken: storedRefreshToken,
     })
 
     tokenSaver(
@@ -168,12 +177,9 @@ async function refreshAndRetry(): Promise<void> {
     // 重试挂起队列中的所有请求
     const queue = pendingQueue
     pendingQueue = []
-    for (const { resolve, reject } of queue) {
+    for (const { resolve, reject, retryCtx } of queue) {
       try {
-        const res = await doRawRequest(
-          getRetryContext(queue),
-          false, // 不复入拦截器
-        )
+        const res = await doRawRequest(retryCtx, false)
         resolve(res)
       } catch (err) {
         reject(err)
@@ -222,7 +228,7 @@ function doRawRequest(
           if (resBody.code === 200) {
             resolve(resBody)
           } else if (resBody.code === 401 && allowRefresh) {
-            pendingQueue.push({ resolve, reject })
+            pendingQueue.push({ resolve, reject, retryCtx })
             setRetryContext(retryCtx, { method, url, body })
             if (!refreshing) refreshAndRetry()
           } else if (resBody.code === 401) {
@@ -231,7 +237,7 @@ function doRawRequest(
             reject(new BusinessError(resBody.code, resBody.message))
           }
         } else if (res.statusCode === 401 && allowRefresh) {
-          pendingQueue.push({ resolve, reject })
+          pendingQueue.push({ resolve, reject, retryCtx })
           setRetryContext(retryCtx, { method, url, body })
           if (!refreshing) refreshAndRetry()
         } else if (res.statusCode === 401) {
