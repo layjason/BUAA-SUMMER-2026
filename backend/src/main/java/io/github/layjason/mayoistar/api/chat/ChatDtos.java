@@ -3,7 +3,10 @@ package io.github.layjason.mayoistar.api.chat;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.chat.MessageKind;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import lombok.Data;
 
@@ -34,40 +37,42 @@ public final class ChatDtos {
 
     @Data
     public static class ForwardMessageRequest {
-        @NotNull
+        @NotEmpty
         private List<String> targetConversationIds;
     }
 
     @Data
     public static class MarkMessagesReadRequest {
-        @NotNull
+        @NotEmpty
         private List<String> messageIds;
     }
 
     @Data
     public static class TeamAnnouncementRequest {
-        @NotNull
+        @NotBlank
         private String content;
     }
 
     @Data
     public static class DeleteTeamFilesRequest {
-        @NotNull
+        @NotEmpty
         private List<String> mediaIds;
     }
 
     @Data
     public static class DeleteTeamAlbumImagesRequest {
-        @NotNull
+        @NotEmpty
         private List<String> mediaIds;
     }
 
     @Data
     public static class TeamPollCreateRequest {
-        @NotNull
+        @NotBlank
+        @Size(max = 200)
         private String title;
 
-        @NotNull
+        @NotEmpty
+        @Size(min = 2)
         private List<String> options;
 
         private String deadline;
@@ -75,7 +80,8 @@ public final class ChatDtos {
 
     @Data
     public static class VotePollRequest {
-        @NotNull
+        @NotBlank
+        @Size(max = 36)
         private String optionId;
     }
 
