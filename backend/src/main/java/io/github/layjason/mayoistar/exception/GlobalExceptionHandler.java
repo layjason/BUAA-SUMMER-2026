@@ -2,15 +2,17 @@ package io.github.layjason.mayoistar.exception;
 
 import io.github.layjason.mayoistar.api.common.ApiErrorResponse;
 import io.github.layjason.mayoistar.api.common.EmptyData;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 /**
  * 全局异常处理器。
  *
- * <p>类职责：将业务异常转换为符合 API 约定的错误响应。
+ * <p>类职责：将业务异常和校验异常转换为符合 API 约定的错误响应。
  *
  * <p>类不变量：所有错误响应的 HTTP 状态码固定为 200，错误码通过 ApiErrorResponse.code 传递。
  */
@@ -34,6 +36,51 @@ public class GlobalExceptionHandler {
         ApiErrorResponse<EmptyData> body = new ApiErrorResponse<>();
         body.setCode(ex.getCode());
         body.setMessage(ex.getBusinessMessage());
+        body.setData(new EmptyData());
+        return ResponseEntity.ok(body);
+    }
+
+    /**
+     * 处理请求体参数校验失败异常。
+     *
+     * <p>前置条件：Controller 的 @Valid 触发 Jakarta Bean Validation 失败。
+     *
+     * <p>后置条件：返回 code=400，message 为第一条校验失败信息的 API 错误响应，HTTP 200。
+     *
+     * @param ex 校验异常
+     * @return 错误响应
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse<EmptyData>> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex) {
+        var fieldError = ex.getBindingResult().getFieldError();
+        String message = fieldError != null ? fieldError.getDefaultMessage() : "请求参数校验失败";
+        log.warn("参数校验失败: {}", message);
+        ApiErrorResponse<EmptyData> body = new ApiErrorResponse<>();
+        body.setCode(400);
+        body.setMessage(message);
+        body.setData(new EmptyData());
+        return ResponseEntity.ok(body);
+    }
+
+    /**
+     * 处理方法参数校验失败异常。
+     *
+     * <p>前置条件：@Validated 触发方法级参数校验失败。
+     *
+     * <p>后置条件：返回 code=400，message 为第一条校验失败信息的 API 错误响应，HTTP 200。
+     *
+     * @param ex 校验异常
+     * @return 错误响应
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiErrorResponse<EmptyData>> handleConstraintViolation(ConstraintViolationException ex) {
+        var violation = ex.getConstraintViolations().iterator().next();
+        String message = violation != null ? violation.getMessage() : "请求参数校验失败";
+        log.warn("参数校验失败: {}", message);
+        ApiErrorResponse<EmptyData> body = new ApiErrorResponse<>();
+        body.setCode(400);
+        body.setMessage(message);
         body.setData(new EmptyData());
         return ResponseEntity.ok(body);
     }
