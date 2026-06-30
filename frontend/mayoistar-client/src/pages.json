@@ -108,31 +108,36 @@
     {
       "path": "pages/activity/detail",
       "style": {
-        "navigationBarTitleText": "活动详情"
+        "navigationBarTitleText": "活动详情",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/activity/edit",
       "style": {
-        "navigationBarTitleText": "编辑活动"
+        "navigationBarTitleText": "编辑活动",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/activity/review",
       "style": {
-        "navigationBarTitleText": "评价活动"
+        "navigationBarTitleText": "评价活动",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/activity/summary",
       "style": {
-        "navigationBarTitleText": "发布活动总结"
+        "navigationBarTitleText": "发布活动总结",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/activity/participants",
       "style": {
-        "navigationBarTitleText": "参与者列表"
+        "navigationBarTitleText": "参与者列表",
+        "disableScroll": true
       }
     }
   ],
