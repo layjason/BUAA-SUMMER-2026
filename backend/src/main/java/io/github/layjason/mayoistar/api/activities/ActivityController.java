@@ -4,6 +4,8 @@ import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
+import io.github.layjason.mayoistar.service.activities.RequestActorResolver;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -26,28 +28,45 @@ import org.springframework.web.multipart.MultipartFile;
 public class ActivityController {
 
     private final DefaultApiResponseFactory responseFactory;
+    private final ActivityDraftService activityDraftService;
+    private final RequestActorResolver requestActorResolver;
 
     @PostMapping("/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> saveDraft(
             @Valid @RequestBody ActivityDtos.ActivityDraftUpsertRequest request) {
-        return responseFactory.activityDraftDetail();
+        return requestActorResolver
+                .resolveCurrentUserId()
+                .map(userId -> ResponseEntity.ok(ApiResponse.success(activityDraftService.saveDraft(userId, request))))
+                .orElseGet(responseFactory::activityDraftDetail);
     }
 
     @GetMapping("/drafts")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivityDraftSummary>>> listDrafts(
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+        return requestActorResolver
+                .resolveCurrentUserId()
+                .map(userId ->
+                        ResponseEntity.ok(ApiResponse.success(activityDraftService.listDrafts(userId, page, pageSize))))
+                .orElseGet(responseFactory::emptyPage);
     }
 
     @GetMapping("/drafts/{activityId}")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> getDraft(@PathVariable String activityId) {
-        return responseFactory.activityDraftDetail();
+        return requestActorResolver
+                .resolveCurrentUserId()
+                .map(userId ->
+                        ResponseEntity.ok(ApiResponse.success(activityDraftService.getDraft(userId, activityId))))
+                .orElseGet(responseFactory::activityDraftDetail);
     }
 
     @PatchMapping("/drafts/{activityId}")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> updateDraft(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.ActivityDraftUpsertRequest request) {
-        return responseFactory.activityDraftDetail();
+        return requestActorResolver
+                .resolveCurrentUserId()
+                .map(userId -> ResponseEntity.ok(
+                        ApiResponse.success(activityDraftService.updateDraft(userId, activityId, request))))
+                .orElseGet(responseFactory::activityDraftDetail);
     }
 
     @GetMapping("/feed")
