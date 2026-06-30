@@ -11,12 +11,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
+import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.PersonalProfile;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityRepository;
 import io.swagger.parser.OpenAPIParser;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -84,6 +88,9 @@ class ApiContractControllerTests {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private ActivityRepository activityRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -431,6 +438,29 @@ class ApiContractControllerTests {
         profile.setReputationScore(100);
         profile.setUpdatedAt(now);
         personalProfileRepository.save(profile);
+
+        // 为使用 placeholder 路径参数的 admin 端点准备种子活动
+        activityRepository.findById("placeholder").orElseGet(() -> activityRepository.save(Activity.builder()
+                .activityId("placeholder")
+                .organizerId(CONTRACT_USER_ID)
+                .title("契约测试活动")
+                .tags(List.of("契约"))
+                .introduction("契约测试活动简介")
+                .startAt(now)
+                .endAt(now.plusSeconds(7200))
+                .pointLon(116.397)
+                .pointLat(39.907)
+                .city("北京")
+                .address("契约测试地址")
+                .placeName("契约测试地点")
+                .safetyNotice("契约测试安全须知")
+                .capacity(20)
+                .registrationDeadline(now.plusSeconds(3600))
+                .reviewStatus(ActivityReviewStatus.approved)
+                .runtimeStatus(ActivityRuntimeStatus.notStarted)
+                .createdAt(now)
+                .updatedAt(now)
+                .build()));
     }
 
     /**
