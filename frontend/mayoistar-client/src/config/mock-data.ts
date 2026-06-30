@@ -1046,7 +1046,7 @@ export const mockData: Record<string, MockResponse> = {
     code: 200,
     message: 'For Super Earth!',
     data: {
-      canRegister: false,
+      canRegister: true,
       status: 'canceled',
       waitingRank: null,
       confirmationDeadline: null,
