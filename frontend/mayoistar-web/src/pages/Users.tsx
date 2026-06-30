@@ -189,7 +189,6 @@ export const Users: React.FC = () => {
               <option value="">全部</option>
               <option value="personal">个人用户</option>
               <option value="merchant">商家用户</option>
-              <option value="admin">管理员</option>
             </select>
           </div>
 

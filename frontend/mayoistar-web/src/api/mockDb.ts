@@ -107,7 +107,7 @@ const initialMerchants = [
   {
     userId: 'user_004',
     merchantName: '北京趣野户外文化传播有限公司',
-    merchantNickname: '趣野户外俱乐部',
+    nickname: '趣野户外俱乐部',
     avatar: {
       mediaId: 'img_avatar_m1',
       fileName: 'avatar_m1.jpg',
@@ -130,7 +130,7 @@ const initialMerchants = [
   {
     userId: 'user_005',
     merchantName: '上海微风餐饮娱乐合伙企业',
-    merchantNickname: '微风密室剧本杀',
+    nickname: '微风密室剧本杀',
     avatar: {
       mediaId: 'img_avatar_m2',
       fileName: 'avatar_m2.jpg',
@@ -152,7 +152,7 @@ const initialMerchants = [
   {
     userId: 'user_006',
     merchantName: '野鸡山寨徒步代理有限公司',
-    merchantNickname: '野鸡徒步代理商',
+    nickname: '野鸡徒步代理商',
     avatar: {
       mediaId: 'img_avatar_m3',
       fileName: 'avatar_m3.jpg',

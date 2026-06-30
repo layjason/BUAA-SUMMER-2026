@@ -19,7 +19,6 @@ export interface StatusMapItem {
 export const USER_KIND_MAP: Record<UserKind, StatusMapItem> = {
   personal: { text: '个人用户', bgClass: 'bg-blue-50', textClass: 'text-blue-700' },
   merchant: { text: '商家用户', bgClass: 'bg-emerald-50', textClass: 'text-emerald-700' },
-  admin: { text: '管理员', bgClass: 'bg-purple-50', textClass: 'text-purple-700' },
 };
 
 export const ACCOUNT_STATUS_MAP: Record<AccountStatus, StatusMapItem> = {

@@ -1,16 +1,14 @@
 import { request, isMockMode, simulateLatency, setAccessToken, showToast } from './client';
 import { mockDb } from './mockDb';
-import { AdminLoginRequest, AdminChangePasswordRequest, LoginResult } from '../types';
+import { AdminLoginRequest, AdminLoginResponse, AdminChangePasswordRequest } from '../types';
 
-export async function login(payload: AdminLoginRequest): Promise<LoginResult> {
+export async function login(payload: AdminLoginRequest): Promise<AdminLoginResponse> {
   if (isMockMode()) {
     await simulateLatency(300);
     const storedHash = mockDb.getPasswordHash();
     if (payload.username === 'admin' && payload.password === storedHash) {
-      const mockResult: LoginResult = {
+      const mockResult: AdminLoginResponse = {
         userId: 'admin_001',
-        kind: 'admin',
-        accountStatus: 'active',
         tokens: {
           accessToken: 'mock_jwt_token_admin_001',
           refreshToken: 'mock_refresh_token_admin_001',
@@ -26,7 +24,7 @@ export async function login(payload: AdminLoginRequest): Promise<LoginResult> {
     }
   }
 
-  const result = await request<LoginResult>('/admin/auth/login', {
+  const result = await request<AdminLoginResponse>('/admin/auth/login', {
     method: 'POST',
     body: JSON.stringify(payload),
   });

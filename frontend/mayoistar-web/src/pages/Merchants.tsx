@@ -340,7 +340,7 @@ export const Merchants: React.FC = () => {
               <h4 className="text-sm font-black text-slate-800 tracking-tight leading-snug">
                 {profile.merchantName}
               </h4>
-              <p className="text-xs text-slate-400">平台昵称: {profile.merchantNickname}</p>
+              <p className="text-xs text-slate-400">平台昵称: {profile.nickname}</p>
               <div className="flex items-center gap-2 pt-1">
                 <StatusBadge type="qualificationStatus" value={profile.qualificationStatus} />
                 <StatusBadge type="accountStatus" value={profile.accountStatus} />

@@ -100,7 +100,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 上传活动评价 Markdown 内链图片，请求为 multipart/form-data，媒体用途必须为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。 */
+    /** @description 上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。 */
     post: operations['ActivityOperations_uploadActivityReviewImage'];
     delete?: never;
     options?: never;
@@ -1144,7 +1144,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 提交商家资质申请，请求为 multipart/form-data，上传营业执照或营业凭证图片。若已有 pending 或 approved 的申请则拒绝重复提交，rejected 后可重新提交。仅商家用户可调用。 */
+    /** @description 提交商家资质申请，请求为 JSON，licenseMediaIds 引用已上传的营业执照或营业凭证图片。若已有 pending 或 approved 的申请则拒绝重复提交，rejected 后可重新提交。仅商家用户可调用。 */
     post: operations['IdentityOperations_submitMerchantQualification'];
     delete?: never;
     options?: never;
@@ -2129,6 +2129,13 @@ export interface components {
       username: string;
       /** @description 管理员登录密码。 */
       password: string;
+    };
+    /** @description 管理员登录响应，管理员账号由 admins 表管理，不返回 UserKind（管理员身份已隐含）。 */
+    'Admin.AdminLoginResponse': {
+      /** @description 管理员标识。 */
+      userId: components['schemas']['EntityId'];
+      /** @description 登录成功后签发的令牌对。 */
+      tokens: components['schemas']['Identity.TokenPair'];
     };
     /** @description 后台用户摘要。 */
     'Admin.AdminUserSummary': {
@@ -3920,13 +3927,6 @@ export interface components {
      * @enum {string}
      */
     'Identity.AccountStatus': 'inactive' | 'active' | 'banned';
-    'Identity.AvatarUploadRequest': {
-      /**
-       * Format: binary
-       * @description 头像文件。
-       */
-      file: string;
-    };
     /** @description 修改密码请求，调用方已登录且当前密码正确，密码更新后服务端可使旧令牌失效，新密码只保存加盐哈希。 */
     'Identity.ChangePasswordRequest': {
       /** @description 当前密码。 */
@@ -3968,8 +3968,8 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 商家主体名称。 */
       merchantName: string;
-      /** @description 商家平台展示昵称。 */
-      merchantNickname: string;
+      /** @description 商家全平台唯一昵称，与个人昵称共享唯一约束。 */
+      nickname: string;
       /** @description 商家头像媒体文件。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 商家关注或经营的活动领域。 */
@@ -3987,6 +3987,8 @@ export interface components {
       email: string;
       /** @description 商家账号明文密码，服务端负责加盐哈希保存。 */
       password: string;
+      /** @description 商家全平台唯一昵称，与个人昵称共享唯一约束。 */
+      nickname: string;
     };
     /** @description 昵称校验结果。 */
     'Identity.NicknameAvailability': {
@@ -4051,9 +4053,10 @@ export interface components {
      * @enum {string}
      */
     'Identity.QualificationStatus': 'not_submitted' | 'pending' | 'approved' | 'rejected';
+    /** @description 商家资质提交请求，营业执照或营业凭证图片需先通过上传接口取得 mediaId，提交接口仅引用已上传媒体。 */
     'Identity.QualificationSubmitRequest': {
-      /** @description 营业执照或营业凭证图片。 */
-      licenseImages: string[];
+      /** @description 营业执照或营业凭证媒体文件标识列表。 */
+      licenseMediaIds: components['schemas']['EntityId'][];
     };
     /** @description 刷新令牌请求，refreshToken 未过期且未被撤销，签发新的访问令牌，不会改变账号资料。 */
     'Identity.RefreshTokenRequest': {
@@ -4085,8 +4088,8 @@ export interface components {
     'Identity.UpdateMerchantProfileRequest': {
       /** @description 新的商家主体名称。 */
       merchantName?: string;
-      /** @description 新的商家展示昵称。 */
-      merchantNickname?: string;
+      /** @description 新的商家昵称。 */
+      nickname?: string;
       /** @description 新头像媒体文件标识。 */
       avatarMediaId?: components['schemas']['EntityId'];
       /** @description 新的关注或经营活动领域。 */
@@ -4111,7 +4114,7 @@ export interface components {
      * @description 用户类型。
      * @enum {string}
      */
-    'Identity.UserKind': 'personal' | 'merchant' | 'admin';
+    'Identity.UserKind': 'personal' | 'merchant';
     /** @description 内部服务器错误。 */
     InternalServerErrorResponse: {
       /**
@@ -4164,8 +4167,6 @@ export interface components {
        * @description 上传文件。
        */
       file: string;
-      /** @description 媒体用途。 */
-      usage: components['schemas']['MediaUsage'];
     };
     /**
      * @description 媒体用途。
@@ -4946,7 +4947,6 @@ export interface operations {
             | components['schemas']['UnauthorizedResponse']
             | components['schemas']['ForbiddenResponse']
             | components['schemas']['InternalServerErrorResponse']
-            | components['schemas']['Errors.Activities.InvalidMediaUsage']
             | components['schemas']['Errors.Activities.ImageFormatInvalid']
             | components['schemas']['Errors.Activities.ImageTooLarge'];
         };
@@ -4991,7 +4991,6 @@ export interface operations {
             | components['schemas']['UnauthorizedResponse']
             | components['schemas']['ForbiddenResponse']
             | components['schemas']['InternalServerErrorResponse']
-            | components['schemas']['Errors.Activities.InvalidMediaUsage']
             | components['schemas']['Errors.Activities.ImageFormatInvalid']
             | components['schemas']['Errors.Activities.ImageTooLarge'];
         };
@@ -6175,7 +6174,7 @@ export interface operations {
                  */
                 message: 'For Super Earth!';
                 /** @description 响应数据。 */
-                data: components['schemas']['Identity.LoginResult'];
+                data: components['schemas']['Admin.AdminLoginResponse'];
               }
             | components['schemas']['BadRequestResponse']
             | components['schemas']['UnauthorizedResponse']
@@ -7062,7 +7061,6 @@ export interface operations {
             | components['schemas']['UnauthorizedResponse']
             | components['schemas']['ForbiddenResponse']
             | components['schemas']['InternalServerErrorResponse']
-            | components['schemas']['Errors.Chat.InvalidMediaUsage']
             | components['schemas']['Errors.Chat.ImageFormatInvalid']
             | components['schemas']['Errors.Chat.ImageTooLarge'];
         };
@@ -7312,7 +7310,6 @@ export interface operations {
             | components['schemas']['UnauthorizedResponse']
             | components['schemas']['ForbiddenResponse']
             | components['schemas']['InternalServerErrorResponse']
-            | components['schemas']['Errors.Chat.InvalidMediaUsage']
             | components['schemas']['Errors.Chat.TeamNotVisible']
             | components['schemas']['Errors.Chat.TeamMemberRequired']
             | components['schemas']['Errors.Chat.ImageFormatInvalid']
@@ -7568,7 +7565,6 @@ export interface operations {
             | components['schemas']['UnauthorizedResponse']
             | components['schemas']['ForbiddenResponse']
             | components['schemas']['InternalServerErrorResponse']
-            | components['schemas']['Errors.Chat.InvalidMediaUsage']
             | components['schemas']['Errors.Chat.TeamNotVisible']
             | components['schemas']['Errors.Chat.TeamMemberRequired'];
         };
@@ -8276,7 +8272,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'multipart/form-data': components['schemas']['Identity.QualificationSubmitRequest'];
+        'application/json': components['schemas']['Identity.QualificationSubmitRequest'];
       };
     };
     responses: {
@@ -8452,7 +8448,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'multipart/form-data': components['schemas']['Identity.AvatarUploadRequest'];
+        'multipart/form-data': components['schemas']['MediaUploadRequest'];
       };
     };
     responses: {
@@ -8518,7 +8514,6 @@ export interface operations {
             | components['schemas']['UnauthorizedResponse']
             | components['schemas']['ForbiddenResponse']
             | components['schemas']['InternalServerErrorResponse']
-            | components['schemas']['Errors.Identity.InvalidMediaUsage']
             | components['schemas']['Errors.Identity.ImageFormatInvalid']
             | components['schemas']['Errors.Identity.ImageTooLarge'];
         };

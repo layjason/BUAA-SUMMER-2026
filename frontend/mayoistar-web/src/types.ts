@@ -64,6 +64,7 @@ export type ReportStatus = components['schemas']['Social.ReportStatus'];
 export type UserReport = components['schemas']['Social.UserReport'];
 
 export type AdminLoginRequest = components['schemas']['Admin.AdminLoginRequest'];
+export type AdminLoginResponse = components['schemas']['Admin.AdminLoginResponse'];
 export type AdminChangePasswordRequest = components['schemas']['Admin.AdminChangePasswordRequest'];
 
 export type AdminUsersPage = SuccessData<'/admin/users', 'get'>;
