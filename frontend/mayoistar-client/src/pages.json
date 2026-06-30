@@ -44,6 +44,18 @@
       "style": {
         "navigationBarTitleText": "账号激活"
       }
+    },
+    {
+      "path": "pages/forgot-password/index",
+      "style": {
+        "navigationBarTitleText": "忘记密码"
+      }
+    },
+    {
+      "path": "pages/reset-password/index",
+      "style": {
+        "navigationBarTitleText": "重置密码"
+      }
     }
   ],
   "tabBar": {
