@@ -1,6 +1,8 @@
 package io.github.layjason.mayoistar.api.chat;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.entity.chat.ConversationKind;
+import io.github.layjason.mayoistar.entity.chat.MessageKind;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import lombok.Data;
@@ -21,7 +23,7 @@ public final class ChatDtos {
     @Data
     public static class SendMessageRequest {
         @NotNull
-        private String kind;
+        private MessageKind kind;
 
         private String text;
         private String imageMediaId;
@@ -82,7 +84,7 @@ public final class ChatDtos {
     @Data
     public static class ConversationSummary {
         private String conversationId;
-        private String kind;
+        private ConversationKind kind;
         private String title;
         private CommonDtos.MediaFile avatar;
         private String lastMessagePreview;
@@ -95,7 +97,7 @@ public final class ChatDtos {
         private String messageId;
         private String conversationId;
         private String senderId;
-        private String kind;
+        private MessageKind kind;
         private String text;
         private CommonDtos.MediaFile image;
         private CommonDtos.LocationInfo location;

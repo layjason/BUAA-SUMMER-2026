@@ -3,6 +3,8 @@ package io.github.layjason.mayoistar.entity.activities;
 import io.github.layjason.mayoistar.entity.admin.Admin;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -46,8 +48,9 @@ public class ActivityReviewRecord {
     @EqualsAndHashCode.Exclude
     private Activity activity;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private String result;
+    private ReviewDecision result;
 
     @Column(columnDefinition = "text")
     private String reason;

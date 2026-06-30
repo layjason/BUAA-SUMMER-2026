@@ -5,6 +5,8 @@ import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -45,8 +47,9 @@ public class Team {
     @Column(columnDefinition = "text")
     private String tags;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "join_mode", nullable = false, length = 30)
-    private String joinMode;
+    private TeamJoinMode joinMode;
 
     @Column(nullable = false)
     private Integer capacity;
@@ -63,8 +66,9 @@ public class Team {
     @EqualsAndHashCode.Exclude
     private MediaFile avatar;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String status;
+    private TeamStatus status;
 
     @Column(name = "leader_id", length = 36, nullable = false)
     private String leaderId;

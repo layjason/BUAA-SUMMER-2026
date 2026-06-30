@@ -3,6 +3,8 @@ package io.github.layjason.mayoistar.entity.common;
 import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -46,8 +48,9 @@ public class MediaFile {
     @Column(name = "size_bytes", nullable = false)
     private Long sizeBytes;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private String usage;
+    private MediaUsage usage;
 
     @Column(name = "storage_path", nullable = false)
     private String storagePath;

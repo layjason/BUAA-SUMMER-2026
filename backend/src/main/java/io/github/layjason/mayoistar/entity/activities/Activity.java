@@ -4,6 +4,8 @@ import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.social.Team;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -102,11 +104,13 @@ public class Activity {
     @Column(name = "registration_deadline")
     private Instant registrationDeadline;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "review_status", nullable = false, length = 30)
-    private String reviewStatus;
+    private ActivityReviewStatus reviewStatus;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "runtime_status", nullable = false, length = 30)
-    private String runtimeStatus;
+    private ActivityRuntimeStatus runtimeStatus;
 
     @Column(name = "manual_review_required", nullable = false)
     @Builder.Default

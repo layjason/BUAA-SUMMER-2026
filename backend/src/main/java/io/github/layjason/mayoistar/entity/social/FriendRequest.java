@@ -3,6 +3,8 @@ package io.github.layjason.mayoistar.entity.social;
 import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -53,13 +55,15 @@ public class FriendRequest {
     @EqualsAndHashCode.Exclude
     private User targetUser;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private String source;
+    private FriendRequestSource source;
 
     private String message;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String status;
+    private FriendRequestStatus status;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

@@ -2,6 +2,8 @@ package io.github.layjason.mayoistar.entity.identity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -42,11 +44,13 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String kind;
+    private UserKind kind;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "account_status", nullable = false, length = 20)
-    private String accountStatus;
+    private AccountStatus accountStatus;
 
     @Column(name = "activated_at")
     private Instant activatedAt;

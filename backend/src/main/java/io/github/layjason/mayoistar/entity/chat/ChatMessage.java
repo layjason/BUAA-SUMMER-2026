@@ -4,6 +4,8 @@ import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -56,8 +58,9 @@ public class ChatMessage {
     @EqualsAndHashCode.Exclude
     private User sender;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String kind;
+    private MessageKind kind;
 
     @Column(columnDefinition = "text")
     private String text;

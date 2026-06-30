@@ -3,6 +3,8 @@ package io.github.layjason.mayoistar.entity.social;
 import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -56,8 +58,9 @@ public class UserReport {
     @Column(nullable = false, columnDefinition = "text")
     private String reason;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private String status;
+    private ReportStatus status;
 
     @Column(name = "handling_note", columnDefinition = "text")
     private String handlingNote;

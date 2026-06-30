@@ -2,6 +2,8 @@ package io.github.layjason.mayoistar.entity.identity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -48,8 +50,9 @@ public class SecurityToken {
     @Column(name = "token_hash", nullable = false)
     private String tokenHash;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "token_type", nullable = false, length = 20)
-    private String tokenType;
+    private TokenType tokenType;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;

@@ -3,6 +3,8 @@ package io.github.layjason.mayoistar.entity.chat;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -37,8 +39,9 @@ public class Conversation {
     @Column(name = "conversation_id", length = 36)
     private String conversationId;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String kind;
+    private ConversationKind kind;
 
     private String title;
 

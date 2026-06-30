@@ -3,6 +3,7 @@ package io.github.layjason.mayoistar.api.chat;
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -49,7 +50,7 @@ public class ChatController {
     @PostMapping(value = "/media/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>> uploadChatImage(
             @RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.mediaFile("chatImage");
+        return responseFactory.mediaFile(MediaUsage.chatImage);
     }
 
     @PostMapping("/messages/read")
@@ -73,7 +74,7 @@ public class ChatController {
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
             uploadTeamAlbumImage(
                     @PathVariable String teamId, @RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.mediaFile("teamAlbum");
+        return responseFactory.mediaFile(MediaUsage.teamAlbum);
     }
 
     @GetMapping("/teams/{teamId}/album-images")
@@ -106,7 +107,7 @@ public class ChatController {
     @PostMapping(value = "/teams/{teamId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>> uploadTeamFile(
             @PathVariable String teamId, @RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.mediaFile("teamFile");
+        return responseFactory.mediaFile(MediaUsage.teamFile);
     }
 
     @GetMapping("/teams/{teamId}/files")

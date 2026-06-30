@@ -3,6 +3,8 @@ package io.github.layjason.mayoistar.entity.social;
 import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -53,8 +55,9 @@ public class TeamMember {
     @EqualsAndHashCode.Exclude
     private User user;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String role;
+    private TeamMemberRole role;
 
     @Column(nullable = false)
     @Builder.Default

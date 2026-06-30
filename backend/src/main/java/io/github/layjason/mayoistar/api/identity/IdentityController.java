@@ -2,6 +2,7 @@ package io.github.layjason.mayoistar.api.identity;
 
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -119,13 +120,13 @@ public class IdentityController {
     @PostMapping(value = "/media/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>> uploadAvatar(
             @RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.mediaFile("avatar");
+        return responseFactory.mediaFile(MediaUsage.avatar);
     }
 
     @PostMapping(value = "/media/license", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
             uploadMerchantLicense(@RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.mediaFile("merchantLicense");
+        return responseFactory.mediaFile(MediaUsage.merchantLicense);
     }
 
     @GetMapping("/nicknames/availability")

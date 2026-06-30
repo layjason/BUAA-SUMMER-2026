@@ -3,6 +3,8 @@ package io.github.layjason.mayoistar.entity.social;
 import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -55,8 +57,9 @@ public class TeamJoinRequest {
 
     private String message;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private String status;
+    private TeamJoinRequestStatus status;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
