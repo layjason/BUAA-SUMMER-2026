@@ -46,6 +46,9 @@ public final class IdentityDtos {
 
         @NotNull
         private String password;
+
+        @NotNull
+        private String nickname;
     }
 
     @Data
@@ -103,7 +106,7 @@ public final class IdentityDtos {
     @Data
     public static class UpdateMerchantProfileRequest {
         private String merchantName;
-        private String merchantNickname;
+        private String nickname;
         private String avatarMediaId;
         private List<String> interestedActivityFields;
     }
@@ -151,7 +154,7 @@ public final class IdentityDtos {
     public static class MerchantProfile {
         private String userId;
         private String merchantName;
-        private String merchantNickname;
+        private String nickname;
         private CommonDtos.MediaFile avatar;
         private List<String> interestedActivityFields;
         private String accountStatus;

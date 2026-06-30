@@ -16,7 +16,7 @@ import lombok.ToString;
 /**
  * 商家资料，与 User 一对一关联。
  *
- * <p>商家昵称全平台唯一（与个人用户昵称共享唯一性约束）。
+ * <p>昵称已上移至 User 实体。
  */
 @Entity
 @Table(name = "merchant_profiles")
@@ -35,9 +35,6 @@ public class MerchantProfile {
 
     @Column(name = "merchant_name")
     private String merchantName;
-
-    @Column(name = "merchant_nickname", unique = true, length = 50)
-    private String merchantNickname;
 
     @Column(name = "avatar_media_id", length = 36)
     private String avatarMediaId;

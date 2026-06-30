@@ -236,7 +236,7 @@ public class DefaultApiResponseFactory {
         IdentityDtos.MerchantProfile dto = new IdentityDtos.MerchantProfile();
         dto.setUserId("merchant-placeholder");
         dto.setMerchantName("默认商家");
-        dto.setMerchantNickname("默认商家昵称");
+        dto.setNickname("默认商家昵称");
         dto.setInterestedActivityFields(List.of());
         dto.setAccountStatus("active");
         dto.setQualificationStatus("not_submitted");

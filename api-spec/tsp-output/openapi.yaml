@@ -10317,7 +10317,7 @@ components:
       required:
         - userId
         - merchantName
-        - merchantNickname
+        - nickname
         - interestedActivityFields
         - accountStatus
         - qualificationStatus
@@ -10329,9 +10329,9 @@ components:
         merchantName:
           type: string
           description: 商家主体名称。
-        merchantNickname:
+        nickname:
           type: string
-          description: 商家平台展示昵称。
+          description: 商家全平台唯一昵称，与个人昵称共享唯一约束。
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
@@ -10359,6 +10359,7 @@ components:
       required:
         - email
         - password
+        - nickname
       properties:
         email:
           type: string
@@ -10366,6 +10367,9 @@ components:
         password:
           type: string
           description: 商家账号明文密码，服务端负责加盐哈希保存。
+        nickname:
+          type: string
+          description: 商家全平台唯一昵称，与个人昵称共享唯一约束。
       description: 商家注册请求，邮箱未注册，创建未激活账号并发送激活邮件，商家资料和资质提交走独立接口。
     Identity.NicknameAvailability:
       type: object
@@ -10551,9 +10555,9 @@ components:
         merchantName:
           type: string
           description: 新的商家主体名称。
-        merchantNickname:
+        nickname:
           type: string
-          description: 新的商家展示昵称。
+          description: 新的商家昵称。
         avatarMediaId:
           allOf:
             - $ref: '#/components/schemas/EntityId'

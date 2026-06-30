@@ -16,7 +16,7 @@ import lombok.ToString;
 /**
  * 个人用户资料，与 User 一对一关联。
  *
- * <p>昵称全平台唯一（与商家昵称共享唯一性约束）。兴趣标签以 JSON 数组形式存储。
+ * <p>昵称已上移至 User 实体。兴趣标签以 JSON 数组形式存储。
  */
 @Entity
 @Table(name = "personal_profiles")
@@ -32,9 +32,6 @@ public class PersonalProfile {
     @Id
     @Column(name = "user_id", length = 36)
     private String userId;
-
-    @Column(nullable = false, unique = true, length = 50)
-    private String nickname;
 
     @Column(name = "avatar_media_id", length = 36)
     private String avatarMediaId;

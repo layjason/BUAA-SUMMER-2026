@@ -61,6 +61,9 @@ model MerchantRegisterRequest {
 
   @doc("商家账号明文密码，服务端负责加盐哈希保存。")
   password: string;
+
+  @doc("商家全平台唯一昵称，与个人昵称共享唯一约束。")
+  nickname: string;
 }
 
 @doc("令牌响应。")
@@ -203,8 +206,8 @@ model MerchantProfile {
   @doc("商家主体名称。")
   merchantName: string;
 
-  @doc("商家平台展示昵称。")
-  merchantNickname: string;
+  @doc("商家全平台唯一昵称，与个人昵称共享唯一约束。")
+  nickname: string;
 
   @doc("商家头像媒体文件。")
   avatar?: MediaFile;
@@ -227,8 +230,8 @@ model UpdateMerchantProfileRequest {
   @doc("新的商家主体名称。")
   merchantName?: string;
 
-  @doc("新的商家展示昵称。")
-  merchantNickname?: string;
+  @doc("新的商家昵称。")
+  nickname?: string;
 
   @doc("新头像媒体文件标识。")
   avatarMediaId?: EntityId;
