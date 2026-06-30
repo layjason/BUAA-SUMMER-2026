@@ -502,32 +502,34 @@ COMMENT ON COLUMN blacklists.blocker_id IS '屏蔽者用户 ID，即设置黑名
 COMMENT ON COLUMN blacklists.blocked_user_id IS '被屏蔽用户 ID';
 COMMENT ON COLUMN blacklists.created_at IS '屏蔽时间，UTC 时区';
 
-CREATE TABLE user_reports (
-    report_id       VARCHAR(36)  NOT NULL,
+CREATE TABLE reports (
+    report_id        VARCHAR(36)  NOT NULL,
     reporter_user_id VARCHAR(36)  NOT NULL,
-    target_user_id  VARCHAR(36)  NOT NULL,
-    reason          TEXT         NOT NULL,
-    status          VARCHAR(30)  NOT NULL,
-    handling_note   TEXT,
-    created_at      TIMESTAMP WITH TIME ZONE NOT NULL,
-    handled_at      TIMESTAMP WITH TIME ZONE,
-    CONSTRAINT pk_user_reports PRIMARY KEY (report_id)
+    target_type      VARCHAR(30)  NOT NULL,
+    target_id        VARCHAR(36)  NOT NULL,
+    reason           TEXT         NOT NULL,
+    status           VARCHAR(30)  NOT NULL,
+    handling_note    TEXT,
+    created_at       TIMESTAMP WITH TIME ZONE NOT NULL,
+    handled_at       TIMESTAMP WITH TIME ZONE,
+    CONSTRAINT pk_reports PRIMARY KEY (report_id)
 );
 
-CREATE INDEX idx_user_reports_reporter ON user_reports (reporter_user_id);
-CREATE INDEX idx_user_reports_target   ON user_reports (target_user_id);
-CREATE INDEX idx_user_reports_status   ON user_reports (status);
+CREATE INDEX idx_reports_reporter ON reports (reporter_user_id);
+CREATE INDEX idx_reports_target   ON reports (target_type, target_id);
+CREATE INDEX idx_reports_status   ON reports (status);
 
-COMMENT ON TABLE user_reports IS '用户举报，由用户提交并进入后台处理流程。';
+COMMENT ON TABLE reports IS '举报，由用户提交并进入后台处理流程，目标可以是用户、小队、活动或消息。';
 
-COMMENT ON COLUMN user_reports.report_id IS '举报唯一标识，UUID 格式';
-COMMENT ON COLUMN user_reports.reporter_user_id IS '举报者用户 ID';
-COMMENT ON COLUMN user_reports.target_user_id IS '被举报用户 ID';
-COMMENT ON COLUMN user_reports.reason IS '举报原因';
-COMMENT ON COLUMN user_reports.status IS '处理状态。不变量：非空，值为 pending / processing / resolved / rejected 之一';
-COMMENT ON COLUMN user_reports.handling_note IS '处理备注，管理员填写';
-COMMENT ON COLUMN user_reports.created_at IS '举报时间，UTC 时区';
-COMMENT ON COLUMN user_reports.handled_at IS '处理时间，UTC 时区，null 表示未处理';
+COMMENT ON COLUMN reports.report_id IS '举报唯一标识，UUID 格式';
+COMMENT ON COLUMN reports.reporter_user_id IS '举报者用户 ID';
+COMMENT ON COLUMN reports.target_type IS '被举报对象类型。不变量：非空，值为 user / team / activity / message 之一';
+COMMENT ON COLUMN reports.target_id IS '被举报对象 ID';
+COMMENT ON COLUMN reports.reason IS '举报原因';
+COMMENT ON COLUMN reports.status IS '处理状态。不变量：非空，值为 pending / processing / resolved / rejected 之一';
+COMMENT ON COLUMN reports.handling_note IS '处理备注，管理员填写';
+COMMENT ON COLUMN reports.created_at IS '举报时间，UTC 时区';
+COMMENT ON COLUMN reports.handled_at IS '处理时间，UTC 时区，null 表示未处理';
 
 CREATE TABLE teams (
     team_id          VARCHAR(36)  NOT NULL,
@@ -538,6 +540,7 @@ CREATE TABLE teams (
     description      TEXT,
     avatar_media_id  VARCHAR(36),
     status           VARCHAR(20)  NOT NULL,
+    creator_id        VARCHAR(36)  NOT NULL,
     leader_id        VARCHAR(36)  NOT NULL,
     chat_id          VARCHAR(36),
     created_at       TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -546,6 +549,7 @@ CREATE TABLE teams (
     CONSTRAINT uq_teams_name UNIQUE (name)
 );
 
+CREATE INDEX idx_teams_creator_id ON teams (creator_id);
 CREATE INDEX idx_teams_leader_id ON teams (leader_id);
 CREATE INDEX idx_teams_status    ON teams (status);
 CREATE INDEX idx_teams_chat_id   ON teams (chat_id);
@@ -561,6 +565,7 @@ COMMENT ON COLUMN teams.capacity IS '人数上限';
 COMMENT ON COLUMN teams.description IS '小队简介';
 COMMENT ON COLUMN teams.avatar_media_id IS '头像媒体文件 ID';
 COMMENT ON COLUMN teams.status IS '小队状态。active — 活跃；dissolved — 已解散；disabled — 已停用。不变量：非空，值为 active / dissolved / disabled 之一';
+COMMENT ON COLUMN teams.creator_id IS '小队创建者用户 ID，创建后不随队长转移改变';
 COMMENT ON COLUMN teams.leader_id IS '队长用户 ID';
 COMMENT ON COLUMN teams.chat_id IS '关联群聊会话 ID，创建小队时自动生成';
 COMMENT ON COLUMN teams.created_at IS '创建时间，UTC 时区';
@@ -634,6 +639,28 @@ COMMENT ON COLUMN team_point_records.user_id IS '成员用户 ID';
 COMMENT ON COLUMN team_point_records.point_change IS '积分变动值。正数为增加，负数为扣减。不变量：非零';
 COMMENT ON COLUMN team_point_records.reason IS '变动原因，如"参加活动"、"违纪扣分"';
 COMMENT ON COLUMN team_point_records.created_at IS '变动时间，UTC 时区';
+
+CREATE TABLE team_moderation_records (
+    record_id   VARCHAR(36) NOT NULL,
+    team_id     VARCHAR(36) NOT NULL,
+    action      VARCHAR(40) NOT NULL,
+    reason      TEXT        NOT NULL,
+    operator_id VARCHAR(36) NOT NULL,
+    created_at  TIMESTAMP WITH TIME ZONE NOT NULL,
+    CONSTRAINT pk_team_moderation_records PRIMARY KEY (record_id)
+);
+
+CREATE INDEX idx_team_moderation_records_team ON team_moderation_records (team_id);
+CREATE INDEX idx_team_moderation_records_operator ON team_moderation_records (operator_id);
+
+COMMENT ON TABLE team_moderation_records IS '小队后台治理记录，记录停用、恢复等治理动作。';
+
+COMMENT ON COLUMN team_moderation_records.record_id IS '治理记录唯一标识，UUID 格式';
+COMMENT ON COLUMN team_moderation_records.team_id IS '被治理小队 ID';
+COMMENT ON COLUMN team_moderation_records.action IS '治理动作。不变量：非空，值为 disableTeam / restoreTeam 之一';
+COMMENT ON COLUMN team_moderation_records.reason IS '治理原因或说明';
+COMMENT ON COLUMN team_moderation_records.operator_id IS '操作管理员 ID';
+COMMENT ON COLUMN team_moderation_records.created_at IS '治理时间，UTC 时区';
 
 -- --------------------------------------------------------------------------
 -- chat - 即时通讯
@@ -896,9 +923,9 @@ ALTER TABLE follows ADD CONSTRAINT fk_follows_followed FOREIGN KEY (followed_id)
 ALTER TABLE blacklists ADD CONSTRAINT fk_blacklists_blocker FOREIGN KEY (blocker_id) REFERENCES users(user_id) ON DELETE CASCADE;
 ALTER TABLE blacklists ADD CONSTRAINT fk_blacklists_blocked FOREIGN KEY (blocked_user_id) REFERENCES users(user_id) ON DELETE CASCADE;
 
-ALTER TABLE user_reports ADD CONSTRAINT fk_user_reports_from FOREIGN KEY (reporter_user_id) REFERENCES users(user_id) ON DELETE CASCADE;
-ALTER TABLE user_reports ADD CONSTRAINT fk_user_reports_target FOREIGN KEY (target_user_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+ALTER TABLE reports ADD CONSTRAINT fk_reports_reporter FOREIGN KEY (reporter_user_id) REFERENCES users(user_id) ON DELETE CASCADE;
 
+ALTER TABLE teams ADD CONSTRAINT fk_teams_creator FOREIGN KEY (creator_id) REFERENCES users(user_id) ON DELETE RESTRICT;
 ALTER TABLE teams ADD CONSTRAINT fk_teams_leader FOREIGN KEY (leader_id) REFERENCES users(user_id) ON DELETE RESTRICT;
 ALTER TABLE teams ADD CONSTRAINT fk_teams_chat FOREIGN KEY (chat_id) REFERENCES conversations(conversation_id) ON DELETE SET NULL;
 ALTER TABLE teams ADD CONSTRAINT fk_teams_avatar FOREIGN KEY (avatar_media_id) REFERENCES media_files(media_id) ON DELETE SET NULL;
@@ -911,6 +938,9 @@ ALTER TABLE team_join_requests ADD CONSTRAINT fk_team_join_req_user FOREIGN KEY 
 
 ALTER TABLE team_point_records ADD CONSTRAINT fk_team_points_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE;
 ALTER TABLE team_point_records ADD CONSTRAINT fk_team_points_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+
+ALTER TABLE team_moderation_records ADD CONSTRAINT fk_team_moderation_records_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE;
+ALTER TABLE team_moderation_records ADD CONSTRAINT fk_team_moderation_records_operator FOREIGN KEY (operator_id) REFERENCES admins(admin_id) ON DELETE RESTRICT;
 
 -- chat - 即时通讯
 ALTER TABLE conversations ADD CONSTRAINT fk_conversations_avatar FOREIGN KEY (avatar_media_id) REFERENCES media_files(media_id) ON DELETE SET NULL;
@@ -968,7 +998,8 @@ ALTER TABLE friend_requests ADD CONSTRAINT ck_friend_requests_status CHECK (stat
 
 ALTER TABLE friendships ADD CONSTRAINT ck_friendships_source CHECK (source IN ('manualRequest', 'mutualFollow'));
 
-ALTER TABLE user_reports ADD CONSTRAINT ck_user_reports_status CHECK (status IN ('pending', 'processing', 'resolved', 'rejected'));
+ALTER TABLE reports ADD CONSTRAINT ck_reports_target_type CHECK (target_type IN ('user', 'team', 'activity', 'message'));
+ALTER TABLE reports ADD CONSTRAINT ck_reports_status CHECK (status IN ('pending', 'processing', 'resolved', 'rejected'));
 
 ALTER TABLE teams ADD CONSTRAINT ck_teams_join_mode CHECK (join_mode IN ('publicJoin', 'approvalRequired'));
 ALTER TABLE teams ADD CONSTRAINT ck_teams_status CHECK (status IN ('active', 'dissolved', 'disabled'));
@@ -976,6 +1007,8 @@ ALTER TABLE teams ADD CONSTRAINT ck_teams_status CHECK (status IN ('active', 'di
 ALTER TABLE team_members ADD CONSTRAINT ck_team_members_role CHECK (role IN ('leader', 'admin', 'member'));
 
 ALTER TABLE team_join_requests ADD CONSTRAINT ck_team_join_requests_status CHECK (status IN ('pending', 'accepted', 'rejected', 'canceled'));
+
+ALTER TABLE team_moderation_records ADD CONSTRAINT ck_team_moderation_records_action CHECK (action IN ('disableTeam', 'restoreTeam'));
 
 -- chat
 ALTER TABLE conversations ADD CONSTRAINT ck_conversations_kind CHECK (kind IN ('friend', 'team'));

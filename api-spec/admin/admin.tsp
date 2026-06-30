@@ -80,6 +80,29 @@ model AdminUserSummary {
   createdAt: DateTimeString;
 }
 
+@doc("后台用户详情。")
+model AdminUserDetail {
+  ...AdminUserSummary;
+
+  @doc("当前封禁信息。用户未封禁时为空。")
+  currentBanInfo?: AdminBanInfo;
+}
+
+@doc("后台用户当前封禁信息。")
+model AdminBanInfo {
+  @doc("封禁原因。")
+  reason: string;
+
+  @doc("封禁截止时间。")
+  bannedUntil: DateTimeString;
+
+  @doc("封禁记录创建时间。")
+  createdAt: DateTimeString;
+
+  @doc("操作管理员标识。")
+  operatorId: EntityId;
+}
+
 @doc("封禁请求，目标用户存在且未被封禁，用户在期限内不能登录，必须填写封禁原因和期限。")
 model BanUserRequest {
   @doc("封禁原因。")
@@ -111,6 +134,10 @@ model AdminActivityQuery extends PageQuery {
   @doc("活动进行状态筛选条件。")
   @query
   runtimeStatus?: QujuApi.Activities.ActivityRuntimeStatus;
+
+  @doc("按活动发起人用户标识筛选。")
+  @query
+  organizerId?: EntityId;
 }
 
 @doc("下架或恢复活动请求，活动存在，活动状态按动作迁移，下架必须填写原因。")
@@ -128,10 +155,22 @@ model AdminTeamQuery extends PageQuery {
   @doc("小队状态筛选条件。")
   @query
   status?: QujuApi.Social.TeamStatus;
+
+  @doc("按小队创建者用户标识筛选。")
+  @query
+  creatorId?: EntityId;
+
+  @doc("按当前队长用户标识筛选。")
+  @query
+  leaderId?: EntityId;
+
+  @doc("按成员用户标识筛选。")
+  @query
+  memberUserId?: EntityId;
 }
 
-@doc("后台用户举报查询条件。")
-model AdminUserReportQuery extends PageQuery {
+@doc("后台举报查询条件。")
+model AdminReportQuery extends PageQuery {
   @doc("举报处理状态筛选条件。")
   @query
   status?: QujuApi.Social.ReportStatus;
@@ -140,13 +179,17 @@ model AdminUserReportQuery extends PageQuery {
   @query
   reporterUserId?: EntityId;
 
-  @doc("被举报用户标识筛选条件。")
+  @doc("被举报对象类型筛选条件。")
   @query
-  targetUserId?: EntityId;
+  targetType?: QujuApi.Social.ReportTargetType;
+
+  @doc("被举报对象标识筛选条件。")
+  @query
+  targetId?: EntityId;
 }
 
-@doc("用户举报处理请求。")
-model UserReportDecisionRequest {
+@doc("举报处理请求。")
+model ReportDecisionRequest {
   @doc("更新后的举报处理状态。")
   status: QujuApi.Social.ReportStatus;
 
@@ -158,6 +201,45 @@ model UserReportDecisionRequest {
 model TeamModerationRequest {
   @doc("小队停用或恢复说明。")
   reason: string;
+}
+
+@doc("后台治理动作。")
+enum AdminModerationAction {
+  banUser,
+  unbanUser,
+  reviewActivity,
+  takeDownActivity,
+  restoreActivity,
+  disableTeam,
+  restoreTeam,
+  reviewMerchant,
+  handleReport,
+}
+
+@doc("后台治理记录。")
+model AdminModerationRecord {
+  @doc("治理记录标识。")
+  recordId: EntityId;
+
+  @doc("治理动作。")
+  action: AdminModerationAction;
+
+  @doc("治理原因或说明。")
+  reason: string;
+
+  @doc("操作管理员标识。")
+  operatorId: EntityId;
+
+  @doc("治理记录创建时间。")
+  createdAt: DateTimeString;
+}
+
+@doc("后台小队详情。")
+model AdminTeamDetail {
+  ...QujuApi.Social.TeamProfile;
+
+  @doc("小队停用、恢复等后台治理记录。")
+  moderationRecords: AdminModerationRecord[];
 }
 
 @route("/admin")
@@ -185,22 +267,43 @@ interface AdminOperations {
   listUsers(...AdminUserQuery): APIResult<PageResult<AdminUserSummary>>;
 
   @get
-  @route("/user-reports")
-  @doc("查询用户举报，管理员可按处理状态、举报人和被举报人筛选。")
-  listUserReports(
-    ...AdminUserReportQuery,
-  ): APIResult<PageResult<QujuApi.Social.UserReport>>;
+  @route("/users/{userId}")
+  @doc("获取后台用户详情，管理员查看用户基本信息、账号状态和当前封禁信息，不修改用户资料。")
+  getUser(@path userId: EntityId): APIResult<
+    AdminUserDetail,
+    QujuApi.Errors.Admin.UserNotFound
+  >;
+
+  @get
+  @route("/users/{userId}/activities")
+  @doc("查询指定用户发布的活动，管理员按用户标识查看活动列表。")
+  listUserActivities(@path userId: EntityId, ...PageQuery): APIResult<
+    PageResult<QujuApi.Activities.ActivitySummary>,
+    QujuApi.Errors.Admin.UserNotFound
+  >;
+
+  @get
+  @route("/users/{userId}/teams")
+  @doc("查询指定用户创建或参与的小队，管理员按用户标识查看小队列表。")
+  listUserTeams(@path userId: EntityId, ...PageQuery): APIResult<
+    PageResult<QujuApi.Social.TeamProfile>,
+    QujuApi.Errors.Admin.UserNotFound
+  >;
+
+  @get
+  @route("/reports")
+  @doc("查询举报，管理员可按处理状态、举报人、被举报对象类型和被举报对象标识筛选。")
+  listReports(
+    ...AdminReportQuery,
+  ): APIResult<PageResult<QujuApi.Social.Report>>;
 
   @post
-  @route("/user-reports/{reportId}/decision")
-  @doc("处理用户举报，管理员更新举报处理状态并填写处理说明。")
-  decideUserReport(
+  @route("/reports/{reportId}/decision")
+  @doc("处理举报，管理员更新举报处理状态并填写处理说明。")
+  decideReport(
     @path reportId: EntityId,
-    @body body: UserReportDecisionRequest,
-  ): APIResult<
-    QujuApi.Social.UserReport,
-    QujuApi.Errors.Admin.UserReportNotFound
-  >;
+    @body body: ReportDecisionRequest,
+  ): APIResult<QujuApi.Social.Report, QujuApi.Errors.Admin.ReportNotFound>;
 
   @post
   @route("/users/{userId}/ban")
@@ -300,6 +403,38 @@ interface AdminOperations {
   listTeams(
     ...AdminTeamQuery,
   ): APIResult<PageResult<QujuApi.Social.TeamProfile>>;
+
+  @get
+  @route("/teams/{teamId}")
+  @doc("获取后台小队详情，管理员查看小队基础信息和后台治理记录，不直接修改小队资料。")
+  getTeam(@path teamId: EntityId): APIResult<
+    AdminTeamDetail,
+    QujuApi.Errors.Admin.TeamNotFound
+  >;
+
+  @get
+  @route("/teams/{teamId}/members")
+  @doc("查询后台小队成员，管理员查看成员信息和成员身份，不直接修改成员身份。")
+  listTeamMembers(@path teamId: EntityId, ...PageQuery): APIResult<
+    PageResult<QujuApi.Social.TeamMember>,
+    QujuApi.Errors.Admin.TeamNotFound
+  >;
+
+  @get
+  @route("/teams/{teamId}/activities")
+  @doc("查询后台小队队内活动，管理员查看队内活动列表。")
+  listTeamActivities(@path teamId: EntityId, ...PageQuery): APIResult<
+    PageResult<QujuApi.Activities.ActivitySummary>,
+    QujuApi.Errors.Admin.TeamNotFound
+  >;
+
+  @get
+  @route("/teams/{teamId}/reports")
+  @doc("查询后台小队相关举报，管理员查看 targetType=team 且 targetId 为该小队的举报记录。")
+  listTeamReports(@path teamId: EntityId, ...PageQuery): APIResult<
+    PageResult<QujuApi.Social.Report>,
+    QujuApi.Errors.Admin.TeamNotFound
+  >;
 
   @post
   @route("/teams/{teamId}/disable")

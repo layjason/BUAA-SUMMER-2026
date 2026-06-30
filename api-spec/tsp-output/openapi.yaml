@@ -1426,6 +1426,7 @@ paths:
         - $ref: '#/components/parameters/Admin.AdminActivityQuery.keyword'
         - $ref: '#/components/parameters/Admin.AdminActivityQuery.reviewStatus'
         - $ref: '#/components/parameters/Admin.AdminActivityQuery.runtimeStatus'
+        - $ref: '#/components/parameters/Admin.AdminActivityQuery.organizerId'
         - $ref: '#/components/parameters/PageQuery.page'
         - $ref: '#/components/parameters/PageQuery.pageSize'
       responses:
@@ -1864,6 +1865,129 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Admin.MerchantReviewRequest'
+  /admin/reports:
+    get:
+      operationId: AdminOperations_listReports
+      description: 查询举报，管理员可按处理状态、举报人、被举报对象类型和被举报对象标识筛选。
+      parameters:
+        - $ref: '#/components/parameters/Admin.AdminReportQuery.status'
+        - $ref: '#/components/parameters/Admin.AdminReportQuery.reporterUserId'
+        - $ref: '#/components/parameters/Admin.AdminReportQuery.targetType'
+        - $ref: '#/components/parameters/Admin.AdminReportQuery.targetId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Social.Report'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+      tags:
+        - 后台管理
+  /admin/reports/{reportId}/decision:
+    post:
+      operationId: AdminOperations_decideReport
+      description: 处理举报，管理员更新举报处理状态并填写处理说明。
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Social.Report'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Admin.ReportNotFound'
+      tags:
+        - 后台管理
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Admin.ReportDecisionRequest'
   /admin/teams:
     get:
       operationId: AdminOperations_listTeams
@@ -1871,6 +1995,9 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Admin.AdminTeamQuery.keyword'
         - $ref: '#/components/parameters/Admin.AdminTeamQuery.status'
+        - $ref: '#/components/parameters/Admin.AdminTeamQuery.creatorId'
+        - $ref: '#/components/parameters/Admin.AdminTeamQuery.leaderId'
+        - $ref: '#/components/parameters/Admin.AdminTeamQuery.memberUserId'
         - $ref: '#/components/parameters/PageQuery.page'
         - $ref: '#/components/parameters/PageQuery.pageSize'
       responses:
@@ -1934,6 +2061,125 @@ paths:
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
       tags:
         - 后台管理
+  /admin/teams/{teamId}:
+    get:
+      operationId: AdminOperations_getTeam
+      description: 获取后台小队详情，管理员查看小队基础信息和后台治理记录，不直接修改小队资料。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Admin.AdminTeamDetail'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Admin.TeamNotFound'
+      tags:
+        - 后台管理
+  /admin/teams/{teamId}/activities:
+    get:
+      operationId: AdminOperations_listTeamActivities
+      description: 查询后台小队队内活动，管理员查看队内活动列表。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Activities.ActivitySummary'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Admin.TeamNotFound'
+      tags:
+        - 后台管理
   /admin/teams/{teamId}/disable:
     post:
       operationId: AdminOperations_disableTeam
@@ -1987,6 +2233,154 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Admin.TeamModerationRequest'
+  /admin/teams/{teamId}/members:
+    get:
+      operationId: AdminOperations_listTeamMembers
+      description: 查询后台小队成员，管理员查看成员信息和成员身份，不直接修改成员身份。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Social.TeamMember'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Admin.TeamNotFound'
+      tags:
+        - 后台管理
+  /admin/teams/{teamId}/reports:
+    get:
+      operationId: AdminOperations_listTeamReports
+      description: 查询后台小队相关举报，管理员查看 targetType=team 且 targetId 为该小队的举报记录。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Social.Report'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Admin.TeamNotFound'
+      tags:
+        - 后台管理
   /admin/teams/{teamId}/restore:
     post:
       operationId: AdminOperations_restoreTeam
@@ -2033,128 +2427,6 @@ paths:
                   - $ref: '#/components/schemas/Errors.Admin.TeamModerationStateInvalid'
       tags:
         - 后台管理
-  /admin/user-reports:
-    get:
-      operationId: AdminOperations_listUserReports
-      description: 查询用户举报，管理员可按处理状态、举报人和被举报人筛选。
-      parameters:
-        - $ref: '#/components/parameters/Admin.AdminUserReportQuery.status'
-        - $ref: '#/components/parameters/Admin.AdminUserReportQuery.reporterUserId'
-        - $ref: '#/components/parameters/Admin.AdminUserReportQuery.targetUserId'
-        - $ref: '#/components/parameters/PageQuery.page'
-        - $ref: '#/components/parameters/PageQuery.pageSize'
-      responses:
-        '200':
-          description: The request has succeeded.
-          content:
-            application/json:
-              schema:
-                anyOf:
-                  - type: object
-                    required:
-                      - code
-                      - message
-                      - data
-                    properties:
-                      code:
-                        type: number
-                        enum:
-                          - 200
-                        description: 平台响应代码，成功响应固定为 200。
-                      message:
-                        type: string
-                        enum:
-                          - For Super Earth!
-                        description: 平台响应消息，成功响应固定为 For Super Earth!。
-                      data:
-                        type: object
-                        required:
-                          - items
-                          - total
-                          - page
-                          - pageSize
-                          - totalPages
-                        properties:
-                          items:
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/Social.UserReport'
-                            description: 当前页数据。
-                          total:
-                            type: integer
-                            format: int64
-                            description: 匹配总数。
-                          page:
-                            type: integer
-                            format: int32
-                            description: 当前页码。
-                          pageSize:
-                            type: integer
-                            format: int32
-                            description: 每页数量。
-                          totalPages:
-                            type: integer
-                            format: int32
-                            description: 匹配总页数。
-                        description: 响应数据。
-                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
-                  - $ref: '#/components/schemas/BadRequestResponse'
-                  - $ref: '#/components/schemas/UnauthorizedResponse'
-                  - $ref: '#/components/schemas/ForbiddenResponse'
-                  - $ref: '#/components/schemas/InternalServerErrorResponse'
-      tags:
-        - 后台管理
-  /admin/user-reports/{reportId}/decision:
-    post:
-      operationId: AdminOperations_decideUserReport
-      description: 处理用户举报，管理员更新举报处理状态并填写处理说明。
-      parameters:
-        - name: reportId
-          in: path
-          required: true
-          schema:
-            $ref: '#/components/schemas/EntityId'
-      responses:
-        '200':
-          description: The request has succeeded.
-          content:
-            application/json:
-              schema:
-                anyOf:
-                  - type: object
-                    required:
-                      - code
-                      - message
-                      - data
-                    properties:
-                      code:
-                        type: number
-                        enum:
-                          - 200
-                        description: 平台响应代码，成功响应固定为 200。
-                      message:
-                        type: string
-                        enum:
-                          - For Super Earth!
-                        description: 平台响应消息，成功响应固定为 For Super Earth!。
-                      data:
-                        allOf:
-                          - $ref: '#/components/schemas/Social.UserReport'
-                        description: 响应数据。
-                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
-                  - $ref: '#/components/schemas/BadRequestResponse'
-                  - $ref: '#/components/schemas/UnauthorizedResponse'
-                  - $ref: '#/components/schemas/ForbiddenResponse'
-                  - $ref: '#/components/schemas/InternalServerErrorResponse'
-                  - $ref: '#/components/schemas/Errors.Admin.UserReportNotFound'
-      tags:
-        - 后台管理
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Admin.UserReportDecisionRequest'
   /admin/users:
     get:
       operationId: AdminOperations_listUsers
@@ -2227,6 +2499,125 @@ paths:
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
       tags:
         - 后台管理
+  /admin/users/{userId}:
+    get:
+      operationId: AdminOperations_getUser
+      description: 获取后台用户详情，管理员查看用户基本信息、账号状态和当前封禁信息，不修改用户资料。
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Admin.AdminUserDetail'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Admin.UserNotFound'
+      tags:
+        - 后台管理
+  /admin/users/{userId}/activities:
+    get:
+      operationId: AdminOperations_listUserActivities
+      description: 查询指定用户发布的活动，管理员按用户标识查看活动列表。
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Activities.ActivitySummary'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Admin.UserNotFound'
+      tags:
+        - 后台管理
   /admin/users/{userId}/ban:
     post:
       operationId: AdminOperations_banUser
@@ -2280,6 +2671,80 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Admin.BanUserRequest'
+  /admin/users/{userId}/teams:
+    get:
+      operationId: AdminOperations_listUserTeams
+      description: 查询指定用户创建或参与的小队，管理员按用户标识查看小队列表。
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Social.TeamProfile'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Admin.UserNotFound'
+      tags:
+        - 后台管理
   /admin/users/{userId}/unban:
     post:
       operationId: AdminOperations_unbanUser
@@ -5117,6 +5582,121 @@ paths:
                   - $ref: '#/components/schemas/Errors.Social.BlacklistRelationExists'
       tags:
         - 好友社群
+  /social/reports:
+    post:
+      operationId: SocialOperations_createReport
+      description: 举报对象，调用方填写被举报对象类型、标识和举报理由，举报进入后台处理流程。
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Social.Report'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Social.UserNotVisible'
+                  - $ref: '#/components/schemas/Errors.Social.ReportInvalid'
+      tags:
+        - 好友社群
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Social.ReportCreateRequest'
+    get:
+      operationId: SocialOperations_listMyReports
+      description: 查看我提交的举报，返回举报理由、处理状态和处理说明。
+      parameters:
+        - $ref: '#/components/parameters/Social.ReportQuery'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Social.Report'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+      tags:
+        - 好友社群
   /social/teams:
     post:
       operationId: SocialOperations_createTeam
@@ -5955,121 +6535,6 @@ paths:
                   - $ref: '#/components/schemas/Errors.Social.TeamMemberNotFound'
       tags:
         - 好友社群
-  /social/user-reports:
-    post:
-      operationId: SocialOperations_createUserReport
-      description: 举报用户，调用方填写被举报用户和举报理由，举报进入后台处理流程。
-      parameters: []
-      responses:
-        '200':
-          description: The request has succeeded.
-          content:
-            application/json:
-              schema:
-                anyOf:
-                  - type: object
-                    required:
-                      - code
-                      - message
-                      - data
-                    properties:
-                      code:
-                        type: number
-                        enum:
-                          - 200
-                        description: 平台响应代码，成功响应固定为 200。
-                      message:
-                        type: string
-                        enum:
-                          - For Super Earth!
-                        description: 平台响应消息，成功响应固定为 For Super Earth!。
-                      data:
-                        allOf:
-                          - $ref: '#/components/schemas/Social.UserReport'
-                        description: 响应数据。
-                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
-                  - $ref: '#/components/schemas/BadRequestResponse'
-                  - $ref: '#/components/schemas/UnauthorizedResponse'
-                  - $ref: '#/components/schemas/ForbiddenResponse'
-                  - $ref: '#/components/schemas/InternalServerErrorResponse'
-                  - $ref: '#/components/schemas/Errors.Social.UserNotVisible'
-                  - $ref: '#/components/schemas/Errors.Social.UserReportInvalid'
-      tags:
-        - 好友社群
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Social.UserReportCreateRequest'
-    get:
-      operationId: SocialOperations_listMyUserReports
-      description: 查看我提交的用户举报，返回举报理由、处理状态和处理说明。
-      parameters:
-        - $ref: '#/components/parameters/Social.UserReportQuery'
-        - $ref: '#/components/parameters/PageQuery.page'
-        - $ref: '#/components/parameters/PageQuery.pageSize'
-      responses:
-        '200':
-          description: The request has succeeded.
-          content:
-            application/json:
-              schema:
-                anyOf:
-                  - type: object
-                    required:
-                      - code
-                      - message
-                      - data
-                    properties:
-                      code:
-                        type: number
-                        enum:
-                          - 200
-                        description: 平台响应代码，成功响应固定为 200。
-                      message:
-                        type: string
-                        enum:
-                          - For Super Earth!
-                        description: 平台响应消息，成功响应固定为 For Super Earth!。
-                      data:
-                        type: object
-                        required:
-                          - items
-                          - total
-                          - page
-                          - pageSize
-                          - totalPages
-                        properties:
-                          items:
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/Social.UserReport'
-                            description: 当前页数据。
-                          total:
-                            type: integer
-                            format: int64
-                            description: 匹配总数。
-                          page:
-                            type: integer
-                            format: int32
-                            description: 当前页码。
-                          pageSize:
-                            type: integer
-                            format: int32
-                            description: 每页数量。
-                          totalPages:
-                            type: integer
-                            format: int32
-                            description: 匹配总页数。
-                        description: 响应数据。
-                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
-                  - $ref: '#/components/schemas/BadRequestResponse'
-                  - $ref: '#/components/schemas/UnauthorizedResponse'
-                  - $ref: '#/components/schemas/ForbiddenResponse'
-                  - $ref: '#/components/schemas/InternalServerErrorResponse'
-      tags:
-        - 好友社群
 security:
   - BearerAuth: []
 components:
@@ -6169,6 +6634,14 @@ components:
       schema:
         type: string
       explode: false
+    Admin.AdminActivityQuery.organizerId:
+      name: organizerId
+      in: query
+      required: false
+      description: 按活动发起人用户标识筛选。
+      schema:
+        $ref: '#/components/schemas/EntityId'
+      explode: false
     Admin.AdminActivityQuery.reviewStatus:
       name: reviewStatus
       in: query
@@ -6185,6 +6658,46 @@ components:
       schema:
         $ref: '#/components/schemas/Activities.ActivityRuntimeStatus'
       explode: false
+    Admin.AdminReportQuery.reporterUserId:
+      name: reporterUserId
+      in: query
+      required: false
+      description: 举报人用户标识筛选条件。
+      schema:
+        $ref: '#/components/schemas/EntityId'
+      explode: false
+    Admin.AdminReportQuery.status:
+      name: status
+      in: query
+      required: false
+      description: 举报处理状态筛选条件。
+      schema:
+        $ref: '#/components/schemas/Social.ReportStatus'
+      explode: false
+    Admin.AdminReportQuery.targetId:
+      name: targetId
+      in: query
+      required: false
+      description: 被举报对象标识筛选条件。
+      schema:
+        $ref: '#/components/schemas/EntityId'
+      explode: false
+    Admin.AdminReportQuery.targetType:
+      name: targetType
+      in: query
+      required: false
+      description: 被举报对象类型筛选条件。
+      schema:
+        $ref: '#/components/schemas/Social.ReportTargetType'
+      explode: false
+    Admin.AdminTeamQuery.creatorId:
+      name: creatorId
+      in: query
+      required: false
+      description: 按小队创建者用户标识筛选。
+      schema:
+        $ref: '#/components/schemas/EntityId'
+      explode: false
     Admin.AdminTeamQuery.keyword:
       name: keyword
       in: query
@@ -6192,6 +6705,22 @@ components:
       description: 按小队名称或标签搜索的关键词。
       schema:
         type: string
+      explode: false
+    Admin.AdminTeamQuery.leaderId:
+      name: leaderId
+      in: query
+      required: false
+      description: 按当前队长用户标识筛选。
+      schema:
+        $ref: '#/components/schemas/EntityId'
+      explode: false
+    Admin.AdminTeamQuery.memberUserId:
+      name: memberUserId
+      in: query
+      required: false
+      description: 按成员用户标识筛选。
+      schema:
+        $ref: '#/components/schemas/EntityId'
       explode: false
     Admin.AdminTeamQuery.status:
       name: status
@@ -6233,30 +6762,6 @@ components:
       schema:
         $ref: '#/components/schemas/Identity.AccountStatus'
       explode: false
-    Admin.AdminUserReportQuery.reporterUserId:
-      name: reporterUserId
-      in: query
-      required: false
-      description: 举报人用户标识筛选条件。
-      schema:
-        $ref: '#/components/schemas/EntityId'
-      explode: false
-    Admin.AdminUserReportQuery.status:
-      name: status
-      in: query
-      required: false
-      description: 举报处理状态筛选条件。
-      schema:
-        $ref: '#/components/schemas/Social.ReportStatus'
-      explode: false
-    Admin.AdminUserReportQuery.targetUserId:
-      name: targetUserId
-      in: query
-      required: false
-      description: 被举报用户标识筛选条件。
-      schema:
-        $ref: '#/components/schemas/EntityId'
-      explode: false
     PageQuery.page:
       name: page
       in: query
@@ -6285,6 +6790,14 @@ components:
       schema:
         $ref: '#/components/schemas/Social.FriendRequestStatus'
       explode: false
+    Social.ReportQuery:
+      name: status
+      in: query
+      required: false
+      description: 举报处理状态筛选条件。
+      schema:
+        $ref: '#/components/schemas/Social.ReportStatus'
+      explode: false
     Social.TeamJoinRequestQuery:
       name: status
       in: query
@@ -6292,14 +6805,6 @@ components:
       description: 入队申请状态筛选条件。
       schema:
         $ref: '#/components/schemas/Social.TeamJoinRequestStatus'
-      explode: false
-    Social.UserReportQuery:
-      name: status
-      in: query
-      required: false
-      description: 举报处理状态筛选条件。
-      schema:
-        $ref: '#/components/schemas/Social.ReportStatus'
       explode: false
   schemas:
     Activities.ActivityDetail:
@@ -7134,6 +7639,30 @@ components:
           type: string
           description: 活动下架或恢复说明。
       description: 下架或恢复活动请求，活动存在，活动状态按动作迁移，下架必须填写原因。
+    Admin.AdminBanInfo:
+      type: object
+      required:
+        - reason
+        - bannedUntil
+        - createdAt
+        - operatorId
+      properties:
+        reason:
+          type: string
+          description: 封禁原因。
+        bannedUntil:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 封禁截止时间。
+        createdAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 封禁记录创建时间。
+        operatorId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 操作管理员标识。
+      description: 后台用户当前封禁信息。
     Admin.AdminChangePasswordRequest:
       type: object
       required:
@@ -7175,6 +7704,166 @@ components:
             - $ref: '#/components/schemas/Identity.TokenPair'
           description: 登录成功后签发的令牌对。
       description: 管理员登录响应，管理员账号由 admins 表管理，不返回 UserKind（管理员身份已隐含）。
+    Admin.AdminModerationAction:
+      type: string
+      enum:
+        - banUser
+        - unbanUser
+        - reviewActivity
+        - takeDownActivity
+        - restoreActivity
+        - disableTeam
+        - restoreTeam
+        - reviewMerchant
+        - handleReport
+      description: 后台治理动作。
+    Admin.AdminModerationRecord:
+      type: object
+      required:
+        - recordId
+        - action
+        - reason
+        - operatorId
+        - createdAt
+      properties:
+        recordId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 治理记录标识。
+        action:
+          allOf:
+            - $ref: '#/components/schemas/Admin.AdminModerationAction'
+          description: 治理动作。
+        reason:
+          type: string
+          description: 治理原因或说明。
+        operatorId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 操作管理员标识。
+        createdAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 治理记录创建时间。
+      description: 后台治理记录。
+    Admin.AdminTeamDetail:
+      type: object
+      required:
+        - teamId
+        - name
+        - tags
+        - joinMode
+        - capacity
+        - memberCount
+        - status
+        - creatorId
+        - leaderId
+        - chatId
+        - moderationRecords
+      properties:
+        teamId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 小队标识。
+        name:
+          type: string
+          description: 小队名称。
+        tags:
+          type: array
+          items:
+            type: string
+          description: 小队兴趣标签。
+        joinMode:
+          allOf:
+            - $ref: '#/components/schemas/Social.TeamJoinMode'
+          description: 小队加入方式。
+        capacity:
+          type: integer
+          format: int32
+          description: 小队人数上限。
+        memberCount:
+          type: integer
+          format: int32
+          description: 当前成员数量。
+        description:
+          type: string
+          description: 小队简介。
+        avatar:
+          allOf:
+            - $ref: '#/components/schemas/MediaFile'
+          description: 小队头像媒体文件。
+        status:
+          allOf:
+            - $ref: '#/components/schemas/Social.TeamStatus'
+          description: 小队状态。
+        creatorId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 小队创建者用户标识。
+        leaderId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 队长用户标识。
+        chatId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 小队群聊会话标识。
+        moderationRecords:
+          type: array
+          items:
+            $ref: '#/components/schemas/Admin.AdminModerationRecord'
+          description: 小队停用、恢复等后台治理记录。
+      description: 后台小队详情。
+    Admin.AdminUserDetail:
+      type: object
+      required:
+        - userId
+        - email
+        - kind
+        - status
+        - activityCount
+        - teamCount
+        - createdAt
+      properties:
+        userId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 用户标识。
+        email:
+          type: string
+          description: 用户邮箱。
+        nickname:
+          type: string
+          description: 用户昵称或商家展示昵称。
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/Identity.UserKind'
+          description: 用户类型。
+        status:
+          allOf:
+            - $ref: '#/components/schemas/Identity.AccountStatus'
+          description: 账号状态。
+        qualificationStatus:
+          allOf:
+            - $ref: '#/components/schemas/Identity.QualificationStatus'
+          description: 商家资质审核状态。非商家用户为空。
+        activityCount:
+          type: integer
+          format: int32
+          description: 用户发布的活动数量。
+        teamCount:
+          type: integer
+          format: int32
+          description: 用户创建的小队数量。
+        createdAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 账号创建时间。
+        currentBanInfo:
+          allOf:
+            - $ref: '#/components/schemas/Admin.AdminBanInfo'
+          description: 当前封禁信息。用户未封禁时为空。
+      description: 后台用户详情。
     Admin.AdminUserSummary:
       type: object
       required:
@@ -7247,16 +7936,7 @@ components:
           type: string
           description: 驳回原因或审核说明。
       description: 商家审核请求，商家申请存在且待审核，更新商家审核状态，驳回时必须填写原因。
-    Admin.TeamModerationRequest:
-      type: object
-      required:
-        - reason
-      properties:
-        reason:
-          type: string
-          description: 小队停用或恢复说明。
-      description: 停用或恢复小队请求，小队存在，小队状态按动作迁移，停用必须填写原因。
-    Admin.UserReportDecisionRequest:
+    Admin.ReportDecisionRequest:
       type: object
       required:
         - status
@@ -7269,7 +7949,16 @@ components:
         handlingNote:
           type: string
           description: 后台处理说明。
-      description: 用户举报处理请求。
+      description: 举报处理请求。
+    Admin.TeamModerationRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          description: 小队停用或恢复说明。
+      description: 停用或恢复小队请求，小队存在，小队状态按动作迁移，停用必须填写原因。
     Ai.ActivityPlanningRequest:
       type: object
       required:
@@ -8430,6 +9119,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 60005：商家审核状态不允许当前操作。
+    Errors.Admin.ReportNotFound:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 60007
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Report {reportId} does not exist
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 60007：举报记录不存在。
     Errors.Admin.ReviewReasonRequired:
       type: object
       allOf:
@@ -8580,31 +9294,6 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 60002：目标用户不存在。
-    Errors.Admin.UserReportNotFound:
-      type: object
-      allOf:
-        - type: object
-          required:
-            - code
-            - message
-            - data
-          properties:
-            code:
-              type: number
-              enum:
-                - 60007
-              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
-            message:
-              type: string
-              enum:
-                - User report {reportId} does not exist
-              description: 平台错误消息，业务错误使用英文模板文案。
-            data:
-              allOf:
-                - $ref: '#/components/schemas/EmptyData'
-              description: 错误上下文，默认无额外业务数据。
-          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
-      description: 60007：举报记录不存在。
     Errors.Ai.AiOutputUnavailable:
       type: object
       allOf:
@@ -9830,6 +10519,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 40004：好友关系状态不允许当前操作。
+    Errors.Social.ReportInvalid:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 40007
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Report is invalid
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 40007：举报目标或举报内容不合法。
     Errors.Social.TeamActivityNotVisible:
       type: object
       allOf:
@@ -10130,31 +10844,6 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 40000：目标用户不存在或不可见。
-    Errors.Social.UserReportInvalid:
-      type: object
-      allOf:
-        - type: object
-          required:
-            - code
-            - message
-            - data
-          properties:
-            code:
-              type: number
-              enum:
-                - 40007
-              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
-            message:
-              type: string
-              enum:
-                - User report is invalid
-              description: 平台错误消息，业务错误使用英文模板文案。
-            data:
-              allOf:
-                - $ref: '#/components/schemas/EmptyData'
-              description: 错误上下文，默认无额外业务数据。
-          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
-      description: 40007：举报目标或举报内容不合法。
     ForbiddenResponse:
       type: object
       allOf:
@@ -10929,6 +11618,71 @@ components:
           type: string
           description: 入队申请附言。
       description: 加入小队请求，小队存在且未满员未解散，公开小队直接加入，审核小队创建申请，黑名单关系不得加入。
+    Social.Report:
+      type: object
+      required:
+        - reportId
+        - reporterUserId
+        - targetType
+        - targetId
+        - reason
+        - status
+        - createdAt
+      properties:
+        reportId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 举报记录标识。
+        reporterUserId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 举报人用户标识。
+        targetType:
+          allOf:
+            - $ref: '#/components/schemas/Social.ReportTargetType'
+          description: 被举报对象类型。
+        targetId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 被举报对象标识。
+        reason:
+          type: string
+          description: 举报理由文本。
+        status:
+          allOf:
+            - $ref: '#/components/schemas/Social.ReportStatus'
+          description: 举报处理状态。
+        handlingNote:
+          type: string
+          description: 后台处理说明。
+        createdAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 举报创建时间。
+        handledAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 举报处理时间。
+      description: 举报记录。
+    Social.ReportCreateRequest:
+      type: object
+      required:
+        - targetType
+        - targetId
+        - reason
+      properties:
+        targetType:
+          allOf:
+            - $ref: '#/components/schemas/Social.ReportTargetType'
+          description: 被举报对象类型。
+        targetId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 被举报对象标识。
+        reason:
+          type: string
+          description: 举报理由文本。
+      description: 举报请求，调用方提交目标类型、目标标识和举报理由，举报进入后台处理流程。
     Social.ReportStatus:
       type: string
       enum:
@@ -10937,6 +11691,14 @@ components:
         - resolved
         - rejected
       description: 举报处理状态。
+    Social.ReportTargetType:
+      type: string
+      enum:
+        - user
+        - team
+        - activity
+        - message
+      description: 举报目标类型。
     Social.TeamCreateRequest:
       type: object
       required:
@@ -11109,6 +11871,7 @@ components:
         - capacity
         - memberCount
         - status
+        - creatorId
         - leaderId
         - chatId
       properties:
@@ -11147,6 +11910,10 @@ components:
           allOf:
             - $ref: '#/components/schemas/Social.TeamStatus'
           description: 小队状态。
+        creatorId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 小队创建者用户标识。
         leaderId:
           allOf:
             - $ref: '#/components/schemas/EntityId'
@@ -11163,61 +11930,6 @@ components:
         - dissolved
         - disabled
       description: 小队状态。
-    Social.UserReport:
-      type: object
-      required:
-        - reportId
-        - reporterUserId
-        - targetUserId
-        - reason
-        - status
-        - createdAt
-      properties:
-        reportId:
-          allOf:
-            - $ref: '#/components/schemas/EntityId'
-          description: 举报记录标识。
-        reporterUserId:
-          allOf:
-            - $ref: '#/components/schemas/EntityId'
-          description: 举报人用户标识。
-        targetUserId:
-          allOf:
-            - $ref: '#/components/schemas/EntityId'
-          description: 被举报用户标识。
-        reason:
-          type: string
-          description: 举报理由文本。
-        status:
-          allOf:
-            - $ref: '#/components/schemas/Social.ReportStatus'
-          description: 举报处理状态。
-        handlingNote:
-          type: string
-          description: 后台处理说明。
-        createdAt:
-          allOf:
-            - $ref: '#/components/schemas/DateTimeString'
-          description: 举报创建时间。
-        handledAt:
-          allOf:
-            - $ref: '#/components/schemas/DateTimeString'
-          description: 举报处理时间。
-      description: 用户举报记录。
-    Social.UserReportCreateRequest:
-      type: object
-      required:
-        - targetUserId
-        - reason
-      properties:
-        targetUserId:
-          allOf:
-            - $ref: '#/components/schemas/EntityId'
-          description: 被举报用户标识。
-        reason:
-          type: string
-          description: 举报理由文本。
-      description: 用户举报请求。
     TimeOfDaySeconds:
       type: integer
       format: int32

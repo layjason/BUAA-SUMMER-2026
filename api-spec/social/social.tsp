@@ -41,6 +41,21 @@ enum ReportStatus {
   rejected,
 }
 
+@doc("举报目标类型。")
+enum ReportTargetType {
+  @doc("用户。")
+  user,
+
+  @doc("小队。")
+  team,
+
+  @doc("活动。")
+  activity,
+
+  @doc("消息。")
+  message,
+}
+
 @doc("好友申请请求，双方不是好友且不存在黑名单关系，创建待处理申请，重复申请不会创建多条有效记录。")
 model FriendRequestCreate {
   @doc("好友申请目标用户标识。")
@@ -90,25 +105,31 @@ model FriendRequestQuery extends PageQuery {
   status?: FriendRequestStatus;
 }
 
-@doc("用户举报请求。")
-model UserReportCreateRequest {
-  @doc("被举报用户标识。")
-  targetUserId: EntityId;
+@doc("举报请求，调用方提交目标类型、目标标识和举报理由，举报进入后台处理流程。")
+model ReportCreateRequest {
+  @doc("被举报对象类型。")
+  targetType: ReportTargetType;
+
+  @doc("被举报对象标识。")
+  targetId: EntityId;
 
   @doc("举报理由文本。")
   reason: string;
 }
 
-@doc("用户举报记录。")
-model UserReport {
+@doc("举报记录。")
+model Report {
   @doc("举报记录标识。")
   reportId: EntityId;
 
   @doc("举报人用户标识。")
   reporterUserId: EntityId;
 
-  @doc("被举报用户标识。")
-  targetUserId: EntityId;
+  @doc("被举报对象类型。")
+  targetType: ReportTargetType;
+
+  @doc("被举报对象标识。")
+  targetId: EntityId;
 
   @doc("举报理由文本。")
   reason: string;
@@ -126,8 +147,8 @@ model UserReport {
   handledAt?: DateTimeString;
 }
 
-@doc("用户举报查询条件。")
-model UserReportQuery extends PageQuery {
+@doc("举报查询条件。")
+model ReportQuery extends PageQuery {
   @doc("举报处理状态筛选条件。")
   @query
   status?: ReportStatus;
@@ -288,6 +309,9 @@ model TeamProfile {
 
   @doc("小队状态。")
   status: TeamStatus;
+
+  @doc("小队创建者用户标识。")
+  creatorId: EntityId;
 
   @doc("队长用户标识。")
   leaderId: EntityId;
@@ -493,19 +517,17 @@ interface SocialOperations {
   >;
 
   @post
-  @route("/user-reports")
-  @doc("举报用户，调用方填写被举报用户和举报理由，举报进入后台处理流程。")
-  createUserReport(@body body: UserReportCreateRequest): APIResult<
-    UserReport,
-
-      | QujuApi.Errors.Social.UserNotVisible
-      | QujuApi.Errors.Social.UserReportInvalid
+  @route("/reports")
+  @doc("举报对象，调用方填写被举报对象类型、标识和举报理由，举报进入后台处理流程。")
+  createReport(@body body: ReportCreateRequest): APIResult<
+    Report,
+    QujuApi.Errors.Social.UserNotVisible | QujuApi.Errors.Social.ReportInvalid
   >;
 
   @get
-  @route("/user-reports")
-  @doc("查看我提交的用户举报，返回举报理由、处理状态和处理说明。")
-  listMyUserReports(...UserReportQuery): APIResult<PageResult<UserReport>>;
+  @route("/reports")
+  @doc("查看我提交的举报，返回举报理由、处理状态和处理说明。")
+  listMyReports(...ReportQuery): APIResult<PageResult<Report>>;
 
   @post
   @route("/teams")

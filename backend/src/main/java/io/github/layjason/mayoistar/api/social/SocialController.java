@@ -213,14 +213,14 @@ public class SocialController {
         return responseFactory.emptyPage();
     }
 
-    @PostMapping("/user-reports")
-    public ResponseEntity<ApiResponse<SocialDtos.UserReport>> createUserReport(
-            @Valid @RequestBody SocialDtos.UserReportCreateRequest request) {
-        return responseFactory.userReport();
+    @PostMapping("/reports")
+    public ResponseEntity<ApiResponse<SocialDtos.Report>> createReport(
+            @Valid @RequestBody SocialDtos.ReportCreateRequest request) {
+        return responseFactory.report();
     }
 
-    @GetMapping("/user-reports")
-    public ResponseEntity<ApiResponse<PageResult<SocialDtos.UserReport>>> listMyUserReports(
+    @GetMapping("/reports")
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.Report>>> listMyReports(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
