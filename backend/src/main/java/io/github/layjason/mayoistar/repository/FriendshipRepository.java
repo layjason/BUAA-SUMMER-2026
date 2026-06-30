@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.repository;
 
 import io.github.layjason.mayoistar.entity.social.Friendship;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,6 +14,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface FriendshipRepository extends JpaRepository<Friendship, String> {
 
     boolean existsByUserIdAndFriendUserId(String userId, String friendUserId);
+
+    Optional<Friendship> findByUserIdAndFriendUserId(String userId, String friendUserId);
 
     Page<Friendship> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
 
