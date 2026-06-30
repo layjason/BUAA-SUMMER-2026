@@ -16,6 +16,7 @@ import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
 import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
 import io.github.layjason.mayoistar.repository.MessageReadRepository;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
@@ -57,6 +58,9 @@ class FriendshipServiceTest {
     @Mock
     private MessageReadRepository messageReadRepository;
 
+    @Mock
+    private PersonalProfileRepository personalProfileRepository;
+
     private FriendshipService service;
 
     @BeforeEach
@@ -64,6 +68,7 @@ class FriendshipServiceTest {
         service = new FriendshipServiceImpl(
                 friendshipRepository,
                 userRepository,
+                personalProfileRepository,
                 conversationRepository,
                 conversationMemberRepository,
                 chatMessageRepository,

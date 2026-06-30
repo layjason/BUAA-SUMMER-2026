@@ -1,9 +1,10 @@
 package io.github.layjason.mayoistar.service;
 
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
-import io.github.layjason.mayoistar.entity.identity.User;
+import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ChatMessageRepository;
@@ -11,6 +12,7 @@ import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
 import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
 import io.github.layjason.mayoistar.repository.MessageReadRepository;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +33,7 @@ public class FriendshipServiceImpl implements FriendshipService {
 
     private final FriendshipRepository friendshipRepository;
     private final UserRepository userRepository;
+    private final PersonalProfileRepository personalProfileRepository;
     private final ConversationRepository conversationRepository;
     private final ConversationMemberRepository conversationMemberRepository;
     private final ChatMessageRepository chatMessageRepository;
@@ -39,12 +42,14 @@ public class FriendshipServiceImpl implements FriendshipService {
     public FriendshipServiceImpl(
             FriendshipRepository friendshipRepository,
             UserRepository userRepository,
+            PersonalProfileRepository personalProfileRepository,
             ConversationRepository conversationRepository,
             ConversationMemberRepository conversationMemberRepository,
             ChatMessageRepository chatMessageRepository,
             MessageReadRepository messageReadRepository) {
         this.friendshipRepository = friendshipRepository;
         this.userRepository = userRepository;
+        this.personalProfileRepository = personalProfileRepository;
         this.conversationRepository = conversationRepository;
         this.conversationMemberRepository = conversationMemberRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -59,6 +64,7 @@ public class FriendshipServiceImpl implements FriendshipService {
      * <p>后置条件：返回分页 FriendItem，含昵称。
      */
     @Override
+    @Transactional(readOnly = true)
     public PageResult<SocialDtos.FriendItem> listFriends(String userId, int page, int pageSize) {
         var friendshipPage =
                 friendshipRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page - 1, pageSize));
@@ -140,13 +146,34 @@ public class FriendshipServiceImpl implements FriendshipService {
     private SocialDtos.FriendItem toFriendItem(Friendship friendship) {
         SocialDtos.FriendItem item = new SocialDtos.FriendItem();
         item.setUserId(friendship.getFriendUserId());
-        item.setNickname(userRepository
-                .findById(friendship.getFriendUserId())
-                .map(User::getNickname)
-                .orElse("unknown"));
         item.setRemark(friendship.getRemark());
         item.setGroupTags(friendship.getGroupTags());
         item.setSource(friendship.getSource());
+
+        userRepository.findById(friendship.getFriendUserId()).ifPresent(user -> {
+            item.setNickname(user.getNickname());
+            personalProfileRepository.findByUserId(user.getUserId()).ifPresent(profile -> {
+                if (profile.getAvatar() != null) {
+                    item.setAvatar(toMediaFileDto(profile.getAvatar()));
+                }
+            });
+        });
+
+        if (item.getNickname() == null) {
+            item.setNickname("unknown");
+        }
         return item;
+    }
+
+    private CommonDtos.MediaFile toMediaFileDto(MediaFile entity) {
+        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
+        dto.setMediaId(entity.getMediaId());
+        dto.setFileName(entity.getFileName());
+        dto.setContentType(entity.getContentType());
+        dto.setSizeBytes(entity.getSizeBytes());
+        dto.setUsage(entity.getUsage());
+        dto.setUrl(entity.getUrl());
+        dto.setUploadedAt(entity.getUploadedAt().toString());
+        return dto;
     }
 }

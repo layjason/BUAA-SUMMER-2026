@@ -1,12 +1,14 @@
 package io.github.layjason.mayoistar.service;
 
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
-import io.github.layjason.mayoistar.entity.identity.User;
+import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.social.Blacklist;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
@@ -30,14 +32,17 @@ public class BlacklistServiceImpl implements BlacklistService {
     private final BlacklistRepository blacklistRepository;
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
+    private final PersonalProfileRepository personalProfileRepository;
 
     public BlacklistServiceImpl(
             BlacklistRepository blacklistRepository,
             UserRepository userRepository,
-            FriendshipRepository friendshipRepository) {
+            FriendshipRepository friendshipRepository,
+            PersonalProfileRepository personalProfileRepository) {
         this.blacklistRepository = blacklistRepository;
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
+        this.personalProfileRepository = personalProfileRepository;
     }
 
     /**
@@ -112,6 +117,7 @@ public class BlacklistServiceImpl implements BlacklistService {
      * @return 黑名单分页结果
      */
     @Override
+    @Transactional(readOnly = true)
     public PageResult<SocialDtos.BlacklistItem> listBlacklist(String currentUserId, int page, int pageSize) {
         var blacklistPage = blacklistRepository.findByBlockerIdOrderByCreatedAtDesc(
                 currentUserId, PageRequest.of(page - 1, pageSize));
@@ -138,11 +144,32 @@ public class BlacklistServiceImpl implements BlacklistService {
     private SocialDtos.BlacklistItem toBlacklistItem(Blacklist record) {
         SocialDtos.BlacklistItem item = new SocialDtos.BlacklistItem();
         item.setUserId(record.getBlockedUserId());
-        item.setNickname(userRepository
-                .findById(record.getBlockedUserId())
-                .map(User::getNickname)
-                .orElse("unknown"));
         item.setBlockedAt(record.getCreatedAt().toString());
+
+        userRepository.findById(record.getBlockedUserId()).ifPresent(user -> {
+            item.setNickname(user.getNickname());
+            personalProfileRepository.findByUserId(user.getUserId()).ifPresent(profile -> {
+                if (profile.getAvatar() != null) {
+                    item.setAvatar(toMediaFileDto(profile.getAvatar()));
+                }
+            });
+        });
+
+        if (item.getNickname() == null) {
+            item.setNickname("unknown");
+        }
         return item;
+    }
+
+    private CommonDtos.MediaFile toMediaFileDto(MediaFile entity) {
+        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
+        dto.setMediaId(entity.getMediaId());
+        dto.setFileName(entity.getFileName());
+        dto.setContentType(entity.getContentType());
+        dto.setSizeBytes(entity.getSizeBytes());
+        dto.setUsage(entity.getUsage());
+        dto.setUrl(entity.getUrl());
+        dto.setUploadedAt(entity.getUploadedAt().toString());
+        return dto;
     }
 }

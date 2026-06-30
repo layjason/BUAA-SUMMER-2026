@@ -12,6 +12,7 @@ import io.github.layjason.mayoistar.entity.social.Blacklist;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
@@ -47,11 +48,15 @@ class BlacklistServiceTest {
     @Mock
     private FriendshipRepository friendshipRepository;
 
+    @Mock
+    private PersonalProfileRepository personalProfileRepository;
+
     private BlacklistService blacklistService;
 
     @BeforeEach
     void setUp() {
-        blacklistService = new BlacklistServiceImpl(blacklistRepository, userRepository, friendshipRepository);
+        blacklistService = new BlacklistServiceImpl(
+                blacklistRepository, userRepository, friendshipRepository, personalProfileRepository);
     }
 
     @Nested

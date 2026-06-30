@@ -14,6 +14,7 @@ import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
 import io.github.layjason.mayoistar.repository.FollowRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
 import java.util.Optional;
@@ -45,11 +46,15 @@ class FollowServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private PersonalProfileRepository personalProfileRepository;
+
     private FollowService service;
 
     @BeforeEach
     void setUp() {
-        service = new FollowServiceImpl(followRepository, friendshipRepository, blacklistRepository, userRepository);
+        service = new FollowServiceImpl(
+                followRepository, friendshipRepository, blacklistRepository, userRepository, personalProfileRepository);
     }
 
     @Test
