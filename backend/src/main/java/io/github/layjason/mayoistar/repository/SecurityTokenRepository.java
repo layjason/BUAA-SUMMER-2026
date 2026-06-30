@@ -19,6 +19,11 @@ public interface SecurityTokenRepository extends JpaRepository<SecurityToken, St
 
     List<SecurityToken> findByUserIdAndTokenType(String userId, TokenType tokenType);
 
+    /**
+     * 按用户 ID 和令牌类型查询最近创建的令牌，用于频率限制。
+     */
+    Optional<SecurityToken> findFirstByUserIdAndTokenTypeOrderByCreatedAtDesc(String userId, TokenType tokenType);
+
     @Modifying
     @Query(
             "UPDATE SecurityToken t SET t.revoked = true WHERE t.userId = :userId AND t.tokenType = :tokenType AND t.revoked = false")
