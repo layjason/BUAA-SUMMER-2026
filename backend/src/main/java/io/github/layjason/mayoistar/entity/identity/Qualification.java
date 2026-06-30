@@ -11,6 +11,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -18,6 +19,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 商家资质审核记录，与 MerchantProfile 一对一关联。
@@ -52,8 +55,9 @@ public class Qualification {
     @Column(nullable = false, length = 30)
     private QualificationStatus status;
 
-    @Column(name = "license_media_ids", columnDefinition = "text")
-    private String licenseMediaIds;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "license_media_ids", columnDefinition = "jsonb")
+    private List<String> licenseMediaIds;
 
     @Column(name = "submitted_at")
     private Instant submittedAt;

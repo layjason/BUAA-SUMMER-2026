@@ -76,7 +76,7 @@ public class Friendship {
     private String remark;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "group_tags", columnDefinition = "json")
+    @Column(name = "group_tags", columnDefinition = "jsonb")
     private List<String> groupTags;
 
     @Column(name = "created_at", nullable = false)

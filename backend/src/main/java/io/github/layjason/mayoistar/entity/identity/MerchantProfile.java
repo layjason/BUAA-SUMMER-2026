@@ -11,6 +11,7 @@ import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -18,6 +19,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 商家资料，与 User 一对一关联。
@@ -58,8 +61,9 @@ public class MerchantProfile {
     @EqualsAndHashCode.Exclude
     private MediaFile avatar;
 
-    @Column(name = "interested_activity_fields", columnDefinition = "text")
-    private String interestedActivityFields;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "interested_activity_fields", columnDefinition = "jsonb")
+    private List<String> interestedActivityFields;
 
     @Column(name = "updated_at", nullable = false)
     @Builder.Default

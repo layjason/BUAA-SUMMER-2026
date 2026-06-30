@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -19,6 +20,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 聊天消息，支持文本、图片和位置共享三种类型。
@@ -89,8 +92,9 @@ public class ChatMessage {
     @Column(name = "location_place_name", length = 200)
     private String locationPlaceName;
 
-    @Column(name = "mentioned_user_ids", columnDefinition = "text")
-    private String mentionedUserIds;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "mentioned_user_ids", columnDefinition = "jsonb")
+    private List<String> mentionedUserIds;
 
     @Column(name = "mention_all")
     private Boolean mentionAll;

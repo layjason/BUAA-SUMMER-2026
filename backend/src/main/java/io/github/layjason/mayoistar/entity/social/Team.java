@@ -48,7 +48,7 @@ public class Team {
     private String name;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "json")
+    @Column(columnDefinition = "jsonb")
     private List<String> tags;
 
     @Enumerated(EnumType.STRING)

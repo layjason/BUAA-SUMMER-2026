@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -19,6 +20,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 活动主体，保存活动的完整信息。
@@ -61,8 +64,9 @@ public class Activity {
     @Column(nullable = false, length = 200)
     private String title;
 
-    @Column(columnDefinition = "text")
-    private String tags;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<String> tags;
 
     @Column(columnDefinition = "text")
     private String introduction;
@@ -96,7 +100,7 @@ public class Activity {
     @Column(nullable = false)
     private Integer capacity;
 
-    @Column(name = "fee_amount")
+    @Column(name = "fee_amount", columnDefinition = "DECIMAL(19,4)")
     private Double feeAmount;
 
     @Column(name = "fee_description", length = 500)

@@ -13,6 +13,7 @@ import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -20,6 +21,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 个人用户资料，与 User 一对一关联。
@@ -67,8 +70,9 @@ public class PersonalProfile {
     @Column(columnDefinition = "text")
     private String signature;
 
-    @Column(name = "interest_tags", columnDefinition = "text")
-    private String interestTags;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "interest_tags", columnDefinition = "jsonb")
+    private List<String> interestTags;
 
     @Column(name = "reputation_score", nullable = false)
     @Builder.Default
