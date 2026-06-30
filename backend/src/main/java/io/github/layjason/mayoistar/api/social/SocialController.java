@@ -9,9 +9,11 @@ import io.github.layjason.mayoistar.common.SecurityUtils;
 import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
 import io.github.layjason.mayoistar.service.BlacklistService;
+import io.github.layjason.mayoistar.service.FollowService;
 import io.github.layjason.mayoistar.service.FriendRequestService;
 import io.github.layjason.mayoistar.service.FriendshipService;
 import io.github.layjason.mayoistar.service.ReportService;
+import io.github.layjason.mayoistar.service.SocialProfileService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,8 @@ public class SocialController {
     private final FriendRequestService friendRequestService;
     private final FriendshipService friendshipService;
     private final ReportService reportService;
+    private final FollowService followService;
+    private final SocialProfileService socialProfileService;
     private final SecurityUtils securityUtils;
 
     /* ========== 黑名单 ========== */
@@ -240,33 +244,40 @@ public class SocialController {
         return responseFactory.emptyPage();
     }
 
-    /* ========== 关注与资料（未实现，保持stub） ========== */
+    /* ========== 关注与资料 ========== */
 
     @GetMapping("/followers")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.FollowItem>>> listFollowers(
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = followService.listFollowers(securityUtils.getCurrentUserId(), page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/follows")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.FollowItem>>> listFollows(
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = followService.listFollows(securityUtils.getCurrentUserId(), page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/follows/{targetUserId}")
     public ResponseEntity<ApiResponse<SocialDtos.FollowRelation>> followUser(@PathVariable String targetUserId) {
-        return responseFactory.followRelation();
+        var result = followService.followUser(securityUtils.getCurrentUserId(), targetUserId);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @DeleteMapping("/follows/{targetUserId}")
     public ResponseEntity<ApiResponse<SocialDtos.FollowRelation>> unfollowUser(@PathVariable String targetUserId) {
-        return responseFactory.followRelation();
+        var result = followService.unfollowUser(securityUtils.getCurrentUserId(), targetUserId);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/profiles/{userId}")
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.identity.IdentityDtos.PublicUserProfile>>
             getUserProfile(@PathVariable String userId) {
-        return responseFactory.publicUserProfile();
+        var result = socialProfileService.getUserProfile(securityUtils.getCurrentUserId(), userId);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

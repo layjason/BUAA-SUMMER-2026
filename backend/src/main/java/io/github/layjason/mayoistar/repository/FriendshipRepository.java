@@ -5,6 +5,8 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 
 /**
  * 好友关系数据访问层。
@@ -20,4 +22,9 @@ public interface FriendshipRepository extends JpaRepository<Friendship, String> 
     Page<Friendship> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
 
     void deleteByUserIdAndFriendUserId(String userId, String friendUserId);
+
+    @Modifying
+    @Query(
+            "DELETE FROM Friendship f WHERE (f.userId = :userIdA AND f.friendUserId = :userIdB) OR (f.userId = :userIdB AND f.friendUserId = :userIdA)")
+    void deleteBilateral(String userIdA, String userIdB);
 }

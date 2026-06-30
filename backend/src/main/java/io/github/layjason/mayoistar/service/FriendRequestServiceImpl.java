@@ -35,16 +35,19 @@ public class FriendRequestServiceImpl implements FriendRequestService {
     private final FriendshipRepository friendshipRepository;
     private final BlacklistRepository blacklistRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public FriendRequestServiceImpl(
             FriendRequestRepository friendRequestRepository,
             FriendshipRepository friendshipRepository,
             BlacklistRepository blacklistRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            NotificationService notificationService) {
         this.friendRequestRepository = friendRequestRepository;
         this.friendshipRepository = friendshipRepository;
         this.blacklistRepository = blacklistRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -99,7 +102,9 @@ public class FriendRequestServiceImpl implements FriendRequestService {
         friendRequestRepository.save(request);
 
         log.info("好友申请发送成功: requester={}, target={}", requesterId, targetUserId);
-        return toFriendRequestDto(request);
+        SocialDtos.FriendRequest result = toFriendRequestDto(request);
+        notificationService.notifyFriendRequestCreated(result);
+        return result;
     }
 
     /**

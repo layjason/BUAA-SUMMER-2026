@@ -51,12 +51,19 @@ class FriendRequestServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     private FriendRequestService service;
 
     @BeforeEach
     void setUp() {
         service = new FriendRequestServiceImpl(
-                friendRequestRepository, friendshipRepository, blacklistRepository, userRepository);
+                friendRequestRepository,
+                friendshipRepository,
+                blacklistRepository,
+                userRepository,
+                notificationService);
     }
 
     @Nested
@@ -84,6 +91,7 @@ class FriendRequestServiceTest {
 
             ArgumentCaptor<FriendRequest> captor = ArgumentCaptor.forClass(FriendRequest.class);
             verify(friendRequestRepository).save(captor.capture());
+            verify(notificationService).notifyFriendRequestCreated(any());
             assertThat(captor.getValue().getRequesterId()).isEqualTo("user-a");
             assertThat(captor.getValue().getTargetUserId()).isEqualTo("user-b");
             assertThat(captor.getValue().getStatus()).isEqualTo(FriendRequestStatus.pending);
