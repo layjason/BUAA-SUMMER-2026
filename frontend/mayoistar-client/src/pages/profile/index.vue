@@ -201,12 +201,11 @@ async function handleLogout(): Promise<void> {
 
 <style scoped>
 .page {
-  min-height: 100vh;
   background-color: #f7f8fa;
 }
 
 .profile-container {
-  padding: 32rpx 32rpx 0;
+  padding: 32rpx 32rpx 48rpx;
 }
 
 .user-card {
