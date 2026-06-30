@@ -336,6 +336,7 @@ CREATE TABLE teams (
 CREATE INDEX idx_teams_leader_id ON teams (leader_id);
 CREATE INDEX idx_teams_status    ON teams (status);
 CREATE INDEX idx_teams_chat_id   ON teams (chat_id);
+CREATE UNIQUE INDEX uq_teams_name ON teams (name);
 
 CREATE TABLE team_members (
     member_id  VARCHAR(36) NOT NULL,
