@@ -38,6 +38,12 @@
       "style": {
         "navigationBarTitleText": "注册"
       }
+    },
+    {
+      "path": "pages/activate/index",
+      "style": {
+        "navigationBarTitleText": "账号激活"
+      }
     }
   ],
   "tabBar": {
