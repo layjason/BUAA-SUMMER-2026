@@ -13,6 +13,8 @@ import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
+import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
+import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.FriendRequestRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
@@ -54,6 +56,12 @@ class FriendRequestServiceTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private ConversationRepository conversationRepository;
+
+    @Mock
+    private ConversationMemberRepository conversationMemberRepository;
+
     private FriendRequestService service;
 
     @BeforeEach
@@ -63,7 +71,9 @@ class FriendRequestServiceTest {
                 friendshipRepository,
                 blacklistRepository,
                 userRepository,
-                notificationService);
+                notificationService,
+                conversationRepository,
+                conversationMemberRepository);
     }
 
     @Nested
