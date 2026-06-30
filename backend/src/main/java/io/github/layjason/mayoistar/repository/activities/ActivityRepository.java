@@ -24,4 +24,10 @@ public interface ActivityRepository extends JpaRepository<Activity, String> {
      */
     List<Activity> findByReviewStatusNotAndRuntimeStatusNotAndPointLatIsNotNullAndPointLonIsNotNull(
             ActivityReviewStatus excludedReviewStatus, ActivityRuntimeStatus excludedRuntimeStatus);
+
+    /**
+     * 查询需要自动流转运行时状态的活动：已审核通过，且不在排除的运行状态中。
+     */
+    List<Activity> findByReviewStatusAndRuntimeStatusNotIn(
+            ActivityReviewStatus reviewStatus, Collection<ActivityRuntimeStatus> excludedRuntimeStatuses);
 }

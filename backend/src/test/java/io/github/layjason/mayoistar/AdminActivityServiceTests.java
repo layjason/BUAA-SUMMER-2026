@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
+import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
@@ -292,6 +293,59 @@ class AdminActivityServiceTests {
         assertThat(records).hasSize(1);
         assertThat(records.getFirst().getResult()).isEqualTo(ReviewStatus.approved);
         assertThat(records.getFirst().getReason()).isEqualTo("管理员恢复活动");
+    }
+
+    /* ========== listActivities ========== */
+
+    @Test
+    void listActivitiesShouldReturnAllActivities() {
+        User organizer = saveUser("user-a");
+        saveApprovedActivity(organizer.getUserId(), "活动A");
+        saveApprovedActivity(organizer.getUserId(), "活动B");
+
+        PageResult<ActivityDtos.ActivitySummary> result =
+                adminActivityService.listActivities(null, null, null, null, 1, 20);
+
+        assertThat(result.getItems()).hasSize(2);
+    }
+
+    @Test
+    void listActivitiesShouldFilterByKeyword() {
+        User organizer = saveUser("user-a");
+        saveApprovedActivity(organizer.getUserId(), "桌游之夜");
+        saveApprovedActivity(organizer.getUserId(), "羽毛球赛");
+
+        PageResult<ActivityDtos.ActivitySummary> result =
+                adminActivityService.listActivities("桌游", null, null, null, 1, 20);
+
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().getFirst().getTitle()).isEqualTo("桌游之夜");
+    }
+
+    @Test
+    void listActivitiesShouldFilterByReviewStatus() {
+        User organizer = saveUser("user-a");
+        saveApprovedActivity(organizer.getUserId(), "已通过");
+        savePendingActivity(organizer.getUserId(), "待审核");
+
+        PageResult<ActivityDtos.ActivitySummary> result =
+                adminActivityService.listActivities(null, ActivityReviewStatus.pending, null, null, 1, 20);
+
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().getFirst().getTitle()).isEqualTo("待审核");
+    }
+
+    @Test
+    void listActivitiesShouldFilterByRuntimeStatus() {
+        User organizer = saveUser("user-a");
+        saveApprovedActivity(organizer.getUserId(), "正常活动");
+        saveTakenDownActivity(organizer.getUserId());
+
+        PageResult<ActivityDtos.ActivitySummary> result =
+                adminActivityService.listActivities(null, null, ActivityRuntimeStatus.takenDown, null, 1, 20);
+
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().getFirst().getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.takenDown);
     }
 
     /* ========== 辅助方法 ========== */

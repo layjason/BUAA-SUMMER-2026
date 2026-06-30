@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.service.activities;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
+import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityImage;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
@@ -26,6 +27,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,6 +67,66 @@ public class AdminActivityService {
     public ActivityDtos.ActivityDetail getActivityDetail(String activityId) {
         Activity activity = findActivity(activityId);
         return loadActivityDetail(activity);
+    }
+
+    /**
+     * 管理员分页查询活动列表。
+     *
+     * <p>前置条件：筛选参数各自独立。
+     *
+     * <p>后置条件：返回按更新时间倒序排列的活动摘要分页结果，支持关键词、审核状态、运行状态、组织者筛选。
+     *
+     * <p>不变量：仅执行只读查询。
+     *
+     * @param keyword 标题关键词
+     * @param reviewStatus 审核状态筛选
+     * @param runtimeStatus 运行状态筛选
+     * @param organizerId 组织者筛选
+     * @param page 页码
+     * @param pageSize 每页大小
+     * @return 活动摘要分页结果
+     */
+    @Transactional(readOnly = true)
+    public PageResult<ActivityDtos.ActivitySummary> listActivities(
+            String keyword,
+            ActivityReviewStatus reviewStatus,
+            ActivityRuntimeStatus runtimeStatus,
+            String organizerId,
+            Integer page,
+            Integer pageSize) {
+        final String sanitizedKeyword = keyword != null ? keyword.replaceAll("[\\r\\n]", "_") : null;
+        int resolvedPage = page == null || page < 1 ? 1 : page;
+        int resolvedPageSize = pageSize == null || pageSize < 1 ? 20 : pageSize;
+        PageRequest pageRequest = PageRequest.of(resolvedPage - 1, resolvedPageSize);
+
+        Page<Activity> activityPage;
+        if (organizerId != null) {
+            activityPage = activityRepository.findByOrganizerIdOrderByUpdatedAtDesc(organizerId, pageRequest);
+        } else {
+            activityPage = activityRepository.findAll(pageRequest);
+        }
+
+        List<ActivityDtos.ActivitySummary> items = activityPage.getContent().stream()
+                .filter(activity -> {
+                    if (sanitizedKeyword != null && !sanitizedKeyword.isBlank()) {
+                        if (activity.getTitle() == null || !activity.getTitle().contains(sanitizedKeyword)) {
+                            return false;
+                        }
+                    }
+                    if (reviewStatus != null && activity.getReviewStatus() != reviewStatus) {
+                        return false;
+                    }
+                    if (runtimeStatus != null && activity.getRuntimeStatus() != runtimeStatus) {
+                        return false;
+                    }
+                    return true;
+                })
+                .map(activity -> activityDtoMapper.toActivitySummary(activity, id -> null))
+                .toList();
+
+        log.info("管理员已查询活动列表");
+        return new PageResult<>(
+                items, activityPage.getTotalElements(), resolvedPage, resolvedPageSize, activityPage.getTotalPages());
     }
 
     /**

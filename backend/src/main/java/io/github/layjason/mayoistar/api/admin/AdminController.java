@@ -42,7 +42,8 @@ public class AdminController {
             @RequestParam(required = false) String organizerId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+        return ResponseEntity.ok(ApiResponse.success(adminActivityService.listActivities(
+                keyword, reviewStatus, runtimeStatus, organizerId, page, pageSize)));
     }
 
     @GetMapping("/activities/{activityId}")
