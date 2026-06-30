@@ -2,12 +2,14 @@ package io.github.layjason.mayoistar.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.layjason.mayoistar.entity.social.Report;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
 import io.github.layjason.mayoistar.entity.social.ReportTargetType;
+import io.github.layjason.mayoistar.entity.social.ReputationChangeSource;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ReportRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
@@ -122,7 +124,7 @@ class ReportServiceTest {
     class DecideReportTests {
 
         @Test
-        @DisplayName("管理员处理举报为已解决")
+        @DisplayName("管理员首次处理用户举报为已解决时重算信誉分并记录流水")
         void decideReportResolved() {
             Report report = Report.builder()
                     .reportId("rp-1")
@@ -134,12 +136,45 @@ class ReportServiceTest {
                     .createdAt(Instant.now())
                     .build();
             when(reportRepository.findById("rp-1")).thenReturn(Optional.of(report));
+            when(reputationService.getCurrentScore("user-b")).thenReturn(100);
+            when(reputationService.recalculateScore("user-b")).thenReturn(85);
 
             var result = service.decideReport("rp-1", ReportStatus.resolved, "已核实，扣分处理");
 
             assertThat(result.getStatus()).isEqualTo(ReportStatus.resolved);
             assertThat(result.getHandlingNote()).isEqualTo("已核实，扣分处理");
             assertThat(result.getHandledAt()).isNotNull();
+            verify(reputationService).recalculateScore("user-b");
+            verify(reputationService)
+                    .recordScoreChange("user-b", -15, ReputationChangeSource.report, "rp-1", "举报核实扣分: 已核实，扣分处理");
+        }
+
+        @Test
+        @DisplayName("已解决举报重复处理为已解决时不重复记录流水")
+        void resolvedReportDoesNotRecordDuplicateChange() {
+            Report report = Report.builder()
+                    .reportId("rp-1")
+                    .reporterUserId("user-a")
+                    .targetType(ReportTargetType.user)
+                    .targetId("user-b")
+                    .reason("spam")
+                    .status(ReportStatus.resolved)
+                    .createdAt(Instant.now())
+                    .build();
+            when(reportRepository.findById("rp-1")).thenReturn(Optional.of(report));
+            when(reputationService.getCurrentScore("user-b")).thenReturn(85);
+            when(reputationService.recalculateScore("user-b")).thenReturn(85);
+
+            service.decideReport("rp-1", ReportStatus.resolved, "维持处理");
+
+            verify(reputationService).recalculateScore("user-b");
+            verify(reputationService, never())
+                    .recordScoreChange(
+                            org.mockito.ArgumentMatchers.anyString(),
+                            org.mockito.ArgumentMatchers.anyInt(),
+                            org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.anyString());
         }
     }
 }

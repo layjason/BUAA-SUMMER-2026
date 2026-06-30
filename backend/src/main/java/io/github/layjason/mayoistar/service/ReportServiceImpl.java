@@ -122,23 +122,46 @@ public class ReportServiceImpl implements ReportService {
         Report report = reportRepository
                 .findById(reportId)
                 .orElseThrow(() -> new BusinessException(40005, "Report is invalid"));
+        ReportStatus oldStatus = report.getStatus();
+        boolean userReport = report.getTargetType() == ReportTargetType.user;
+        int oldScore = userReport ? reputationService.getCurrentScore(report.getTargetId()) : 0;
 
         report.setStatus(status);
         report.setHandlingNote(handlingNote);
         report.setHandledAt(Instant.now());
         reportRepository.save(report);
 
-        if (status == ReportStatus.resolved && report.getTargetType() == ReportTargetType.user) {
-            reputationService.recordScoreChange(
-                    report.getTargetId(),
-                    -10,
-                    ReputationChangeSource.report,
-                    report.getReportId(),
-                    "举报核实扣分: " + handlingNote);
+        if (userReport) {
+            int newScore = reputationService.recalculateScore(report.getTargetId());
+            recordResolvedReportScoreChange(report, oldStatus, status, oldScore, newScore, handlingNote);
         }
 
         log.info("举报处理完成: reportId={}, status={}", reportId, status);
         return toReportDto(report);
+    }
+
+    /**
+     * 记录举报首次核实造成的信誉分净变化。
+     *
+     * <p>前置条件：report 为用户举报，oldScore 与 newScore 分别表示状态变更前后的信誉分。
+     *
+     * <p>后置条件：仅当举报从非 resolved 变为 resolved 时，新增一条以举报 ID 去重的信誉积分流水。
+     */
+    private void recordResolvedReportScoreChange(
+            Report report,
+            ReportStatus oldStatus,
+            ReportStatus newStatus,
+            int oldScore,
+            int newScore,
+            String handlingNote) {
+        if (oldStatus != ReportStatus.resolved && newStatus == ReportStatus.resolved) {
+            reputationService.recordScoreChange(
+                    report.getTargetId(),
+                    newScore - oldScore,
+                    ReputationChangeSource.report,
+                    report.getReportId(),
+                    "举报核实扣分: " + handlingNote);
+        }
     }
 
     private Specification<Report> buildAdminSpec(

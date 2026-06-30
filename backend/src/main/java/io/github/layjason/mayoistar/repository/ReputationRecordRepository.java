@@ -1,5 +1,6 @@
 package io.github.layjason.mayoistar.repository;
 
+import io.github.layjason.mayoistar.entity.social.ReputationChangeSource;
 import io.github.layjason.mayoistar.entity.social.ReputationRecord;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,4 +13,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ReputationRecordRepository extends JpaRepository<ReputationRecord, String> {
 
     List<ReputationRecord> findByUserIdOrderByCreatedAtDesc(String userId);
+
+    boolean existsBySourceAndReferenceId(ReputationChangeSource source, String referenceId);
 }

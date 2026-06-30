@@ -2,10 +2,13 @@ package io.github.layjason.mayoistar.repository;
 
 import io.github.layjason.mayoistar.entity.social.Report;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
+import io.github.layjason.mayoistar.entity.social.ReportTargetType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * 举报记录数据访问层。
@@ -19,4 +22,13 @@ public interface ReportRepository extends JpaRepository<Report, String>, JpaSpec
 
     Page<Report> findByReporterUserIdAndStatusOrderByCreatedAtDesc(
             String reporterUserId, ReportStatus status, Pageable pageable);
+
+    long countByTargetTypeAndTargetIdAndStatus(ReportTargetType targetType, String targetId, ReportStatus status);
+
+    @Query("SELECT COUNT(DISTINCT r.reporterUserId) FROM Report r "
+            + "WHERE r.targetType = :targetType AND r.targetId = :targetId AND r.status = :status")
+    long countDistinctReporterByTargetTypeAndTargetIdAndStatus(
+            @Param("targetType") ReportTargetType targetType,
+            @Param("targetId") String targetId,
+            @Param("status") ReportStatus status);
 }

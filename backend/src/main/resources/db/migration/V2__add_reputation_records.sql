@@ -14,6 +14,7 @@ CREATE TABLE reputation_records (
 );
 
 CREATE INDEX idx_reputation_records_user ON reputation_records (user_id);
+CREATE UNIQUE INDEX uk_reputation_records_source_reference ON reputation_records (source, reference_id);
 
 ALTER TABLE reputation_records ADD CONSTRAINT ck_reputation_records_source CHECK (source IN ('report', 'admin_manual'));
 
@@ -22,7 +23,7 @@ ALTER TABLE reputation_records ADD CONSTRAINT fk_reputation_records_user FOREIGN
 -- 为 blacklists 表添加自引用检查约束，与 friendships 和 follows 保持一致
 ALTER TABLE blacklists ADD CONSTRAINT ck_blacklists_self CHECK (blocker_id != blocked_user_id);
 
-COMMENT ON TABLE reputation_records IS '信誉积分变更记录，记录每次积分变动的原因和关联信息。仅保存变更记录和累加积分，不实现计算策略。';
+COMMENT ON TABLE reputation_records IS '信誉积分变更记录，记录每次积分变动的原因和关联信息。仅保存审计流水，当前信誉分由举报事实重算。';
 
 COMMENT ON COLUMN reputation_records.record_id IS '记录唯一标识，UUID 格式';
 COMMENT ON COLUMN reputation_records.user_id IS '用户 ID，被变更积分的用户';

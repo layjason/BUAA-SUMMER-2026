@@ -57,6 +57,24 @@ class ReputationSchemaTests {
         assertEquals(1, count);
     }
 
+    /**
+     * 验证信誉积分流水对来源和关联实体做唯一约束。
+     *
+     * <p>前置条件：Flyway V2 已执行迁移。
+     *
+     * <p>后置条件：uk_reputation_records_source_reference 唯一索引存在。
+     */
+    @Test
+    void reputationRecordsHasSourceReferenceUniqueIndex() {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM INFORMATION_SCHEMA.INDEXES
+                WHERE TABLE_NAME = 'REPUTATION_RECORDS'
+                    AND INDEX_NAME = 'UK_REPUTATION_RECORDS_SOURCE_REFERENCE'
+                """, Integer.class);
+        assertEquals(1, count);
+    }
+
     private Integer columnCount(String tableName, String columnName) {
         return jdbcTemplate.queryForObject("""
                 SELECT COUNT(*)
