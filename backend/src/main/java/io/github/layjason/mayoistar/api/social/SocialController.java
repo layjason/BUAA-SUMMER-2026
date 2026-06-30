@@ -4,6 +4,8 @@ import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
+import io.github.layjason.mayoistar.entity.social.ReportStatus;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -73,13 +75,17 @@ public class SocialController {
 
     @GetMapping("/friend-requests/received")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.FriendRequest>>> listReceivedFriendRequests(
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) FriendRequestStatus status,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();
     }
 
     @GetMapping("/friend-requests/sent")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.FriendRequest>>> listSentFriendRequests(
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) FriendRequestStatus status,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();
     }
 
@@ -91,9 +97,7 @@ public class SocialController {
 
     @GetMapping("/friends")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.FriendItem>>> listFriends(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();
     }
 
@@ -221,7 +225,7 @@ public class SocialController {
 
     @GetMapping("/reports")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.Report>>> listMyReports(
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) ReportStatus status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();
