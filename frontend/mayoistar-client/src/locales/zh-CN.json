@@ -207,7 +207,12 @@
     "viewParticipants": "参与者列表",
     "writeReview": "评价活动",
     "writeSummary": "发布总结",
-    "checkInManagement": "签到管理"
+    "checkInManagement": "签到管理",
+    "generateQrCode": "生成签到二维码",
+    "qrCodeTitle": "签到二维码",
+    "qrCodeToken": "签到码",
+    "qrCodeExpires": "过期时间",
+    "enterQrCode": "请输入签到码"
   },
 
   "activityEdit": {

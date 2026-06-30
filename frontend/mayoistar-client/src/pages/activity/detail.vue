@@ -115,6 +115,16 @@
         >
           {{ t('activityDetail.checkInManagement') }}
         </button>
+        <button
+          v-if="
+            isOrganizer &&
+            (activity.runtimeStatus === 'registering' || activity.runtimeStatus === 'ongoing')
+          "
+          class="action-btn action-btn-secondary"
+          @click="handleGenerateQrCode"
+        >
+          {{ t('activityDetail.generateQrCode') }}
+        </button>
       </view>
     </template>
   </view>
@@ -291,7 +301,7 @@ function handleAction(): void {
   const p = participation.value
   if (!p || buttonDisabled.value) return
   if (p.canCheckIn) {
-    uni.showToast({ title: '签到功能即将上线', icon: 'none' })
+    handleCheckIn()
     return
   }
   if (p.canConfirmWaitingSeat) {
@@ -323,6 +333,82 @@ function showSafetyConfirm(): void {
       }
     },
   })
+}
+
+/**
+ * 扫码签到
+ *
+ * 尝试调用设备摄像头扫码，失败时回退到手动输入签到码。
+ */
+async function handleCheckIn(): Promise<void> {
+  let qrCodeToken = ''
+
+  try {
+    const scanResult = await uni.scanCode({})
+    qrCodeToken = scanResult.result
+  } catch {
+    const inputResult = await new Promise<string | null>((resolve) => {
+      uni.showModal({
+        title: t('activityDetail.checkIn'),
+        content: t('activityDetail.enterQrCode'),
+        editable: true,
+        confirmText: t('确定'),
+        cancelText: t('取消'),
+        success: (res) => {
+          resolve(res.confirm ? (res.content as string)?.trim() || null : null)
+        },
+      })
+    })
+    qrCodeToken = inputResult ?? ''
+  }
+
+  if (!qrCodeToken) return
+
+  try {
+    await api.post('/activities/{activityId}/check-ins', {
+      path: { activityId: activityId.value },
+      body: { qrCodeToken },
+    })
+    uni.showToast({ title: '签到成功', icon: 'success' })
+    await loadData()
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
+    } else {
+      uni.showToast({ title: '签到失败，请稍后重试', icon: 'none' })
+    }
+  }
+}
+
+/**
+ * 生成签到二维码
+ */
+async function handleGenerateQrCode(): Promise<void> {
+  try {
+    const result = (await api.post('/activities/{activityId}/check-in-qrcode', {
+      path: { activityId: activityId.value },
+    })) as { qrCodeToken: string; expiresAt: string }
+    uni.showModal({
+      title: t('activityDetail.qrCodeTitle'),
+      content:
+        `${t('activityDetail.qrCodeToken')}: ${result.qrCodeToken}\n` +
+        `${t('activityDetail.qrCodeExpires')}: ${formatDateTime(result.expiresAt)}`,
+      showCancel: true,
+      cancelText: '关闭',
+      confirmText: '复制',
+      success: (res) => {
+        if (res.confirm) {
+          uni.setClipboardData({ data: result.qrCodeToken })
+        }
+      },
+    })
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
+    } else {
+      uni.showToast({ title: '生成二维码失败', icon: 'none' })
+    }
+  }
 }
 
 /**

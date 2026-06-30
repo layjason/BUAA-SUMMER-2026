@@ -1710,4 +1710,50 @@ export const mockData: Record<string, MockResponse> = {
       totalPages: 1,
     },
   },
+
+  /* ===================== 签到 ===================== */
+
+  'POST /activities/2001/check-in-qrcode': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: '2001',
+      qrCodeToken: 'CKIN-2001-A7X9K2M4',
+      expiresAt: '2026-07-05T15:00:00Z',
+    },
+  },
+
+  'POST /activities/2001/check-ins': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      registrationId: 'r001',
+      userId: '10001',
+      nickname: '测试用户',
+      registrationStatus: 'checkedIn',
+      checkedInAt: new Date().toISOString(),
+    },
+  },
+
+  'POST /activities/2005/check-in-qrcode': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: '2005',
+      qrCodeToken: 'CKIN-2005-B3Y5W7P9',
+      expiresAt: '2026-07-10T10:00:00Z',
+    },
+  },
+
+  'POST /activities/2005/check-ins': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      registrationId: 'r051',
+      userId: '10001',
+      nickname: '测试用户',
+      registrationStatus: 'checkedIn',
+      checkedInAt: new Date().toISOString(),
+    },
+  },
 }
