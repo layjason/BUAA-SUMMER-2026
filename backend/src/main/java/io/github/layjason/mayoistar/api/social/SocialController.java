@@ -3,6 +3,7 @@ package io.github.layjason.mayoistar.api.social;
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
+import io.github.layjason.mayoistar.api.common.EmptyData;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
@@ -34,14 +35,12 @@ public class SocialController {
     }
 
     @PostMapping("/blacklist/{targetUserId}")
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> blockUser(
-            @PathVariable String targetUserId) {
+    public ResponseEntity<ApiResponse<EmptyData>> blockUser(@PathVariable String targetUserId) {
         return responseFactory.emptyData();
     }
 
     @DeleteMapping("/blacklist/{targetUserId}")
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> unblockUser(
-            @PathVariable String targetUserId) {
+    public ResponseEntity<ApiResponse<EmptyData>> unblockUser(@PathVariable String targetUserId) {
         return responseFactory.emptyData();
     }
 
