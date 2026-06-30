@@ -551,6 +551,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/admin/reports': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 查询举报，管理员可按处理状态、举报人、被举报对象类型和被举报对象标识筛选。 */
+    get: operations['AdminOperations_listReports'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/admin/reports/{reportId}/decision': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description 处理举报，管理员更新举报处理状态并填写处理说明。 */
+    post: operations['AdminOperations_decideReport'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/admin/teams': {
     parameters: {
       query?: never;
@@ -560,6 +594,40 @@ export interface paths {
     };
     /** @description 查询全部小队，管理员已登录，返回小队基础信息、状态和成员统计，管理员不得直接修改小队名称、标签、公告和成员身份。 */
     get: operations['AdminOperations_listTeams'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/admin/teams/{teamId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 获取后台小队详情，管理员查看小队基础信息和后台治理记录，不直接修改小队资料。 */
+    get: operations['AdminOperations_getTeam'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/admin/teams/{teamId}/activities': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 查询后台小队队内活动，管理员查看队内活动列表。 */
+    get: operations['AdminOperations_listTeamActivities'];
     put?: never;
     post?: never;
     delete?: never;
@@ -585,6 +653,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/admin/teams/{teamId}/members': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 查询后台小队成员，管理员查看成员信息和成员身份，不直接修改成员身份。 */
+    get: operations['AdminOperations_listTeamMembers'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/admin/teams/{teamId}/reports': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 查询后台小队相关举报，管理员查看 targetType=team 且 targetId 为该小队的举报记录。 */
+    get: operations['AdminOperations_listTeamReports'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/admin/teams/{teamId}/restore': {
     parameters: {
       query?: never;
@@ -596,40 +698,6 @@ export interface paths {
     put?: never;
     /** @description 恢复小队，违规问题已处理，小队恢复正常功能，恢复动作保留历史停用记录。 */
     post: operations['AdminOperations_restoreTeam'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/user-reports': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description 查询用户举报，管理员可按处理状态、举报人和被举报人筛选。 */
-    get: operations['AdminOperations_listUserReports'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/user-reports/{reportId}/decision': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** @description 处理用户举报，管理员更新举报处理状态并填写处理说明。 */
-    post: operations['AdminOperations_decideUserReport'];
     delete?: never;
     options?: never;
     head?: never;
@@ -653,6 +721,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/admin/users/{userId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 获取后台用户详情，管理员查看用户基本信息、账号状态和当前封禁信息，不修改用户资料。 */
+    get: operations['AdminOperations_getUser'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/admin/users/{userId}/activities': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 查询指定用户发布的活动，管理员按用户标识查看活动列表。 */
+    get: operations['AdminOperations_listUserActivities'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/admin/users/{userId}/ban': {
     parameters: {
       query?: never;
@@ -664,6 +766,23 @@ export interface paths {
     put?: never;
     /** @description 封禁用户，目标用户存在，用户在封禁期限内不能登录，必须记录封禁原因。 */
     post: operations['AdminOperations_banUser'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/admin/users/{userId}/teams': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 查询指定用户创建或参与的小队，管理员按用户标识查看小队列表。 */
+    get: operations['AdminOperations_listUserTeams'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1445,6 +1564,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/social/reports': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 查看我提交的举报，返回举报理由、处理状态和处理说明。 */
+    get: operations['SocialOperations_listMyReports'];
+    put?: never;
+    /** @description 举报对象，调用方填写被举报对象类型、标识和举报理由，举报进入后台处理流程。 */
+    post: operations['SocialOperations_createReport'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/social/teams': {
     parameters: {
       query?: never;
@@ -1629,24 +1766,6 @@ export interface paths {
     get: operations['SocialOperations_getTeamPointRanks'];
     put?: never;
     post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/social/user-reports': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description 查看我提交的用户举报，返回举报理由、处理状态和处理说明。 */
-    get: operations['SocialOperations_listMyUserReports'];
-    put?: never;
-    /** @description 举报用户，调用方填写被举报用户和举报理由，举报进入后台处理流程。 */
-    post: operations['SocialOperations_createUserReport'];
     delete?: never;
     options?: never;
     head?: never;
@@ -2116,6 +2235,17 @@ export interface components {
       /** @description 活动下架或恢复说明。 */
       reason: string;
     };
+    /** @description 后台用户当前封禁信息。 */
+    'Admin.AdminBanInfo': {
+      /** @description 封禁原因。 */
+      reason: string;
+      /** @description 封禁截止时间。 */
+      bannedUntil: components['schemas']['DateTimeString'];
+      /** @description 封禁记录创建时间。 */
+      createdAt: components['schemas']['DateTimeString'];
+      /** @description 操作管理员标识。 */
+      operatorId: components['schemas']['EntityId'];
+    };
     /** @description 管理员改密请求，调用方已登录且旧密码正确，密码更新并可使旧令牌失效，新密码只保存加盐哈希。 */
     'Admin.AdminChangePasswordRequest': {
       /** @description 当前密码。 */
@@ -2136,6 +2266,97 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 登录成功后签发的令牌对。 */
       tokens: components['schemas']['Identity.TokenPair'];
+    };
+    /**
+     * @description 后台治理动作。
+     * @enum {string}
+     */
+    'Admin.AdminModerationAction':
+      | 'banUser'
+      | 'unbanUser'
+      | 'reviewActivity'
+      | 'takeDownActivity'
+      | 'restoreActivity'
+      | 'disableTeam'
+      | 'restoreTeam'
+      | 'reviewMerchant'
+      | 'handleReport';
+    /** @description 后台治理记录。 */
+    'Admin.AdminModerationRecord': {
+      /** @description 治理记录标识。 */
+      recordId: components['schemas']['EntityId'];
+      /** @description 治理动作。 */
+      action: components['schemas']['Admin.AdminModerationAction'];
+      /** @description 治理原因或说明。 */
+      reason: string;
+      /** @description 操作管理员标识。 */
+      operatorId: components['schemas']['EntityId'];
+      /** @description 治理记录创建时间。 */
+      createdAt: components['schemas']['DateTimeString'];
+    };
+    /** @description 后台小队详情。 */
+    'Admin.AdminTeamDetail': {
+      /** @description 小队标识。 */
+      teamId: components['schemas']['EntityId'];
+      /** @description 小队名称。 */
+      name: string;
+      /** @description 小队兴趣标签。 */
+      tags: string[];
+      /** @description 小队加入方式。 */
+      joinMode: components['schemas']['Social.TeamJoinMode'];
+      /**
+       * Format: int32
+       * @description 小队人数上限。
+       */
+      capacity: number;
+      /**
+       * Format: int32
+       * @description 当前成员数量。
+       */
+      memberCount: number;
+      /** @description 小队简介。 */
+      description?: string;
+      /** @description 小队头像媒体文件。 */
+      avatar?: components['schemas']['MediaFile'];
+      /** @description 小队状态。 */
+      status: components['schemas']['Social.TeamStatus'];
+      /** @description 小队创建者用户标识。 */
+      creatorId: components['schemas']['EntityId'];
+      /** @description 队长用户标识。 */
+      leaderId: components['schemas']['EntityId'];
+      /** @description 小队群聊会话标识。 */
+      chatId: components['schemas']['EntityId'];
+      /** @description 小队停用、恢复等后台治理记录。 */
+      moderationRecords: components['schemas']['Admin.AdminModerationRecord'][];
+    };
+    /** @description 后台用户详情。 */
+    'Admin.AdminUserDetail': {
+      /** @description 用户标识。 */
+      userId: components['schemas']['EntityId'];
+      /** @description 用户邮箱。 */
+      email: string;
+      /** @description 用户昵称或商家展示昵称。 */
+      nickname?: string;
+      /** @description 用户类型。 */
+      kind: components['schemas']['Identity.UserKind'];
+      /** @description 账号状态。 */
+      status: components['schemas']['Identity.AccountStatus'];
+      /** @description 商家资质审核状态。非商家用户为空。 */
+      qualificationStatus?: components['schemas']['Identity.QualificationStatus'];
+      /**
+       * Format: int32
+       * @description 用户发布的活动数量。
+       */
+      activityCount: number;
+      /**
+       * Format: int32
+       * @description 用户创建的小队数量。
+       */
+      teamCount: number;
+      /** @description 账号创建时间。 */
+      createdAt: components['schemas']['DateTimeString'];
+      /** @description 当前封禁信息。用户未封禁时为空。 */
+      currentBanInfo?: components['schemas']['Admin.AdminBanInfo'];
     };
     /** @description 后台用户摘要。 */
     'Admin.AdminUserSummary': {
@@ -2178,17 +2399,17 @@ export interface components {
       /** @description 驳回原因或审核说明。 */
       reason?: string;
     };
-    /** @description 停用或恢复小队请求，小队存在，小队状态按动作迁移，停用必须填写原因。 */
-    'Admin.TeamModerationRequest': {
-      /** @description 小队停用或恢复说明。 */
-      reason: string;
-    };
-    /** @description 用户举报处理请求。 */
-    'Admin.UserReportDecisionRequest': {
+    /** @description 举报处理请求。 */
+    'Admin.ReportDecisionRequest': {
       /** @description 更新后的举报处理状态。 */
       status: components['schemas']['Social.ReportStatus'];
       /** @description 后台处理说明。 */
       handlingNote: string;
+    };
+    /** @description 停用或恢复小队请求，小队存在，小队状态按动作迁移，停用必须填写原因。 */
+    'Admin.TeamModerationRequest': {
+      /** @description 小队停用或恢复说明。 */
+      reason: string;
     };
     /** @description AI 活动策划请求，用户已登录且未超过调用频率，返回可编辑的结构化活动草案，不接收或返回模型供应商凭据。 */
     'Ai.ActivityPlanningRequest': {
@@ -2854,6 +3075,21 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
+    /** @description 60007：举报记录不存在。 */
+    'Errors.Admin.ReportNotFound': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 60007;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'Report {reportId} does not exist';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
     /** @description 60006：审核驳回、要求修改、下架或停用类操作缺少原因。 */
     'Errors.Admin.ReviewReasonRequired': {
       /**
@@ -2941,21 +3177,6 @@ export interface components {
        * @enum {string}
        */
       message: 'User {userId} does not exist';
-      /** @description 错误上下文，默认无额外业务数据。 */
-      data: components['schemas']['EmptyData'];
-    };
-    /** @description 60007：举报记录不存在。 */
-    'Errors.Admin.UserReportNotFound': {
-      /**
-       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
-       * @enum {number}
-       */
-      code: 60007;
-      /**
-       * @description 平台错误消息，业务错误使用英文模板文案。
-       * @enum {string}
-       */
-      message: 'User report {reportId} does not exist';
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
@@ -3694,6 +3915,21 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
+    /** @description 40007：举报目标或举报内容不合法。 */
+    'Errors.Social.ReportInvalid': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 40007;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'Report is invalid';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
     /** @description 40018：小队活动不存在或不属于该小队。 */
     'Errors.Social.TeamActivityNotVisible': {
       /**
@@ -3871,21 +4107,6 @@ export interface components {
        * @enum {string}
        */
       message: 'User {userId} is not visible';
-      /** @description 错误上下文，默认无额外业务数据。 */
-      data: components['schemas']['EmptyData'];
-    };
-    /** @description 40007：举报目标或举报内容不合法。 */
-    'Errors.Social.UserReportInvalid': {
-      /**
-       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
-       * @enum {number}
-       */
-      code: 40007;
-      /**
-       * @description 平台错误消息，业务错误使用英文模板文案。
-       * @enum {string}
-       */
-      message: 'User report is invalid';
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
@@ -4314,11 +4535,46 @@ export interface components {
       /** @description 入队申请附言。 */
       message?: string;
     };
+    /** @description 举报记录。 */
+    'Social.Report': {
+      /** @description 举报记录标识。 */
+      reportId: components['schemas']['EntityId'];
+      /** @description 举报人用户标识。 */
+      reporterUserId: components['schemas']['EntityId'];
+      /** @description 被举报对象类型。 */
+      targetType: components['schemas']['Social.ReportTargetType'];
+      /** @description 被举报对象标识。 */
+      targetId: components['schemas']['EntityId'];
+      /** @description 举报理由文本。 */
+      reason: string;
+      /** @description 举报处理状态。 */
+      status: components['schemas']['Social.ReportStatus'];
+      /** @description 后台处理说明。 */
+      handlingNote?: string;
+      /** @description 举报创建时间。 */
+      createdAt: components['schemas']['DateTimeString'];
+      /** @description 举报处理时间。 */
+      handledAt?: components['schemas']['DateTimeString'];
+    };
+    /** @description 举报请求，调用方提交目标类型、目标标识和举报理由，举报进入后台处理流程。 */
+    'Social.ReportCreateRequest': {
+      /** @description 被举报对象类型。 */
+      targetType: components['schemas']['Social.ReportTargetType'];
+      /** @description 被举报对象标识。 */
+      targetId: components['schemas']['EntityId'];
+      /** @description 举报理由文本。 */
+      reason: string;
+    };
     /**
      * @description 举报处理状态。
      * @enum {string}
      */
     'Social.ReportStatus': 'pending' | 'processing' | 'resolved' | 'rejected';
+    /**
+     * @description 举报目标类型。
+     * @enum {string}
+     */
+    'Social.ReportTargetType': 'user' | 'team' | 'activity' | 'message';
     /** @description 小队创建请求，名称可用且人数上限为正数，创建小队并自动生成群聊，创建者成为队长。 */
     'Social.TeamCreateRequest': {
       /** @description 小队名称。 */
@@ -4438,6 +4694,8 @@ export interface components {
       avatar?: components['schemas']['MediaFile'];
       /** @description 小队状态。 */
       status: components['schemas']['Social.TeamStatus'];
+      /** @description 小队创建者用户标识。 */
+      creatorId: components['schemas']['EntityId'];
       /** @description 队长用户标识。 */
       leaderId: components['schemas']['EntityId'];
       /** @description 小队群聊会话标识。 */
@@ -4448,32 +4706,6 @@ export interface components {
      * @enum {string}
      */
     'Social.TeamStatus': 'active' | 'dissolved' | 'disabled';
-    /** @description 用户举报记录。 */
-    'Social.UserReport': {
-      /** @description 举报记录标识。 */
-      reportId: components['schemas']['EntityId'];
-      /** @description 举报人用户标识。 */
-      reporterUserId: components['schemas']['EntityId'];
-      /** @description 被举报用户标识。 */
-      targetUserId: components['schemas']['EntityId'];
-      /** @description 举报理由文本。 */
-      reason: string;
-      /** @description 举报处理状态。 */
-      status: components['schemas']['Social.ReportStatus'];
-      /** @description 后台处理说明。 */
-      handlingNote?: string;
-      /** @description 举报创建时间。 */
-      createdAt: components['schemas']['DateTimeString'];
-      /** @description 举报处理时间。 */
-      handledAt?: components['schemas']['DateTimeString'];
-    };
-    /** @description 用户举报请求。 */
-    'Social.UserReportCreateRequest': {
-      /** @description 被举报用户标识。 */
-      targetUserId: components['schemas']['EntityId'];
-      /** @description 举报理由文本。 */
-      reason: string;
-    };
     /**
      * Format: int32
      * @description 一天内从 00:00:00 开始计算的秒数。
@@ -4519,12 +4751,28 @@ export interface components {
     'Activities.ActivitySearchQuery.startAtTo': components['schemas']['DateTimeString'];
     /** @description 按活动名称或发起人搜索的关键词。 */
     'Admin.AdminActivityQuery.keyword': string;
+    /** @description 按活动发起人用户标识筛选。 */
+    'Admin.AdminActivityQuery.organizerId': components['schemas']['EntityId'];
     /** @description 活动审核状态筛选条件。 */
     'Admin.AdminActivityQuery.reviewStatus': components['schemas']['Activities.ActivityReviewStatus'];
     /** @description 活动进行状态筛选条件。 */
     'Admin.AdminActivityQuery.runtimeStatus': components['schemas']['Activities.ActivityRuntimeStatus'];
+    /** @description 举报人用户标识筛选条件。 */
+    'Admin.AdminReportQuery.reporterUserId': components['schemas']['EntityId'];
+    /** @description 举报处理状态筛选条件。 */
+    'Admin.AdminReportQuery.status': components['schemas']['Social.ReportStatus'];
+    /** @description 被举报对象标识筛选条件。 */
+    'Admin.AdminReportQuery.targetId': components['schemas']['EntityId'];
+    /** @description 被举报对象类型筛选条件。 */
+    'Admin.AdminReportQuery.targetType': components['schemas']['Social.ReportTargetType'];
+    /** @description 按小队创建者用户标识筛选。 */
+    'Admin.AdminTeamQuery.creatorId': components['schemas']['EntityId'];
     /** @description 按小队名称或标签搜索的关键词。 */
     'Admin.AdminTeamQuery.keyword': string;
+    /** @description 按当前队长用户标识筛选。 */
+    'Admin.AdminTeamQuery.leaderId': components['schemas']['EntityId'];
+    /** @description 按成员用户标识筛选。 */
+    'Admin.AdminTeamQuery.memberUserId': components['schemas']['EntityId'];
     /** @description 小队状态筛选条件。 */
     'Admin.AdminTeamQuery.status': components['schemas']['Social.TeamStatus'];
     /** @description 按邮箱、昵称或商家名称搜索的关键词。 */
@@ -4535,22 +4783,16 @@ export interface components {
     'Admin.AdminUserQuery.qualificationStatus': components['schemas']['Identity.QualificationStatus'];
     /** @description 账号状态筛选条件。 */
     'Admin.AdminUserQuery.status': components['schemas']['Identity.AccountStatus'];
-    /** @description 举报人用户标识筛选条件。 */
-    'Admin.AdminUserReportQuery.reporterUserId': components['schemas']['EntityId'];
-    /** @description 举报处理状态筛选条件。 */
-    'Admin.AdminUserReportQuery.status': components['schemas']['Social.ReportStatus'];
-    /** @description 被举报用户标识筛选条件。 */
-    'Admin.AdminUserReportQuery.targetUserId': components['schemas']['EntityId'];
     /** @description 页码，从 1 开始。 */
     'PageQuery.page': number;
     /** @description 每页数量。 */
     'PageQuery.pageSize': number;
     /** @description 好友申请状态筛选条件。 */
     'Social.FriendRequestQuery': components['schemas']['Social.FriendRequestStatus'];
+    /** @description 举报处理状态筛选条件。 */
+    'Social.ReportQuery': components['schemas']['Social.ReportStatus'];
     /** @description 入队申请状态筛选条件。 */
     'Social.TeamJoinRequestQuery': components['schemas']['Social.TeamJoinRequestStatus'];
-    /** @description 举报处理状态筛选条件。 */
-    'Social.UserReportQuery': components['schemas']['Social.ReportStatus'];
   };
   requestBodies: never;
   headers: never;
@@ -5908,6 +6150,8 @@ export interface operations {
         reviewStatus?: components['parameters']['Admin.AdminActivityQuery.reviewStatus'];
         /** @description 活动进行状态筛选条件。 */
         runtimeStatus?: components['parameters']['Admin.AdminActivityQuery.runtimeStatus'];
+        /** @description 按活动发起人用户标识筛选。 */
+        organizerId?: components['parameters']['Admin.AdminActivityQuery.organizerId'];
         /** @description 页码，从 1 开始。 */
         page?: components['parameters']['PageQuery.page'];
         /** @description 每页数量。 */
@@ -6310,6 +6554,125 @@ export interface operations {
       };
     };
   };
+  AdminOperations_listReports: {
+    parameters: {
+      query?: {
+        /** @description 举报处理状态筛选条件。 */
+        status?: components['parameters']['Admin.AdminReportQuery.status'];
+        /** @description 举报人用户标识筛选条件。 */
+        reporterUserId?: components['parameters']['Admin.AdminReportQuery.reporterUserId'];
+        /** @description 被举报对象类型筛选条件。 */
+        targetType?: components['parameters']['Admin.AdminReportQuery.targetType'];
+        /** @description 被举报对象标识筛选条件。 */
+        targetId?: components['parameters']['Admin.AdminReportQuery.targetId'];
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Social.Report'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse'];
+        };
+      };
+    };
+  };
+  AdminOperations_decideReport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        reportId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Admin.ReportDecisionRequest'];
+      };
+    };
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Social.Report'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Admin.ReportNotFound'];
+        };
+      };
+    };
+  };
   AdminOperations_listTeams: {
     parameters: {
       query?: {
@@ -6317,6 +6680,12 @@ export interface operations {
         keyword?: components['parameters']['Admin.AdminTeamQuery.keyword'];
         /** @description 小队状态筛选条件。 */
         status?: components['parameters']['Admin.AdminTeamQuery.status'];
+        /** @description 按小队创建者用户标识筛选。 */
+        creatorId?: components['parameters']['Admin.AdminTeamQuery.creatorId'];
+        /** @description 按当前队长用户标识筛选。 */
+        leaderId?: components['parameters']['Admin.AdminTeamQuery.leaderId'];
+        /** @description 按成员用户标识筛选。 */
+        memberUserId?: components['parameters']['Admin.AdminTeamQuery.memberUserId'];
         /** @description 页码，从 1 开始。 */
         page?: components['parameters']['PageQuery.page'];
         /** @description 每页数量。 */
@@ -6380,6 +6749,116 @@ export interface operations {
       };
     };
   };
+  AdminOperations_getTeam: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Admin.AdminTeamDetail'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Admin.TeamNotFound'];
+        };
+      };
+    };
+  };
+  AdminOperations_listTeamActivities: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Activities.ActivitySummary'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Admin.TeamNotFound'];
+        };
+      };
+    };
+  };
   AdminOperations_disableTeam: {
     parameters: {
       query?: never;
@@ -6427,6 +6906,144 @@ export interface operations {
       };
     };
   };
+  AdminOperations_listTeamMembers: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Social.TeamMember'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Admin.TeamNotFound'];
+        };
+      };
+    };
+  };
+  AdminOperations_listTeamReports: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Social.Report'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Admin.TeamNotFound'];
+        };
+      };
+    };
+  };
   AdminOperations_restoreTeam: {
     parameters: {
       query?: never;
@@ -6465,123 +7082,6 @@ export interface operations {
             | components['schemas']['InternalServerErrorResponse']
             | components['schemas']['Errors.Admin.TeamNotFound']
             | components['schemas']['Errors.Admin.TeamModerationStateInvalid'];
-        };
-      };
-    };
-  };
-  AdminOperations_listUserReports: {
-    parameters: {
-      query?: {
-        /** @description 举报处理状态筛选条件。 */
-        status?: components['parameters']['Admin.AdminUserReportQuery.status'];
-        /** @description 举报人用户标识筛选条件。 */
-        reporterUserId?: components['parameters']['Admin.AdminUserReportQuery.reporterUserId'];
-        /** @description 被举报用户标识筛选条件。 */
-        targetUserId?: components['parameters']['Admin.AdminUserReportQuery.targetUserId'];
-        /** @description 页码，从 1 开始。 */
-        page?: components['parameters']['PageQuery.page'];
-        /** @description 每页数量。 */
-        pageSize?: components['parameters']['PageQuery.pageSize'];
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json':
-            | {
-                /**
-                 * @description 平台响应代码，成功响应固定为 200。
-                 * @enum {number}
-                 */
-                code: 200;
-                /**
-                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
-                 * @enum {string}
-                 */
-                message: 'For Super Earth!';
-                /** @description 响应数据。 */
-                data: {
-                  /** @description 当前页数据。 */
-                  items: components['schemas']['Social.UserReport'][];
-                  /**
-                   * Format: int64
-                   * @description 匹配总数。
-                   */
-                  total: number;
-                  /**
-                   * Format: int32
-                   * @description 当前页码。
-                   */
-                  page: number;
-                  /**
-                   * Format: int32
-                   * @description 每页数量。
-                   */
-                  pageSize: number;
-                  /**
-                   * Format: int32
-                   * @description 匹配总页数。
-                   */
-                  totalPages: number;
-                };
-              }
-            | components['schemas']['BadRequestResponse']
-            | components['schemas']['UnauthorizedResponse']
-            | components['schemas']['ForbiddenResponse']
-            | components['schemas']['InternalServerErrorResponse'];
-        };
-      };
-    };
-  };
-  AdminOperations_decideUserReport: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        reportId: components['schemas']['EntityId'];
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['Admin.UserReportDecisionRequest'];
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json':
-            | {
-                /**
-                 * @description 平台响应代码，成功响应固定为 200。
-                 * @enum {number}
-                 */
-                code: 200;
-                /**
-                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
-                 * @enum {string}
-                 */
-                message: 'For Super Earth!';
-                /** @description 响应数据。 */
-                data: components['schemas']['Social.UserReport'];
-              }
-            | components['schemas']['BadRequestResponse']
-            | components['schemas']['UnauthorizedResponse']
-            | components['schemas']['ForbiddenResponse']
-            | components['schemas']['InternalServerErrorResponse']
-            | components['schemas']['Errors.Admin.UserReportNotFound'];
         };
       };
     };
@@ -6660,6 +7160,116 @@ export interface operations {
       };
     };
   };
+  AdminOperations_getUser: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        userId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Admin.AdminUserDetail'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Admin.UserNotFound'];
+        };
+      };
+    };
+  };
+  AdminOperations_listUserActivities: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path: {
+        userId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Activities.ActivitySummary'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Admin.UserNotFound'];
+        };
+      };
+    };
+  };
   AdminOperations_banUser: {
     parameters: {
       query?: never;
@@ -6703,6 +7313,75 @@ export interface operations {
             | components['schemas']['Errors.Admin.UserNotFound']
             | components['schemas']['Errors.Admin.UserAlreadyBanned']
             | components['schemas']['Errors.Admin.ReviewReasonRequired'];
+        };
+      };
+    };
+  };
+  AdminOperations_listUserTeams: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path: {
+        userId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Social.TeamProfile'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Admin.UserNotFound'];
         };
       };
     };
@@ -9347,6 +10026,118 @@ export interface operations {
       };
     };
   };
+  SocialOperations_listMyReports: {
+    parameters: {
+      query?: {
+        /** @description 举报处理状态筛选条件。 */
+        status?: components['parameters']['Social.ReportQuery'];
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Social.Report'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse'];
+        };
+      };
+    };
+  };
+  SocialOperations_createReport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Social.ReportCreateRequest'];
+      };
+    };
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Social.Report'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Social.UserNotVisible']
+            | components['schemas']['Errors.Social.ReportInvalid'];
+        };
+      };
+    };
+  };
   SocialOperations_searchTeams: {
     parameters: {
       query?: {
@@ -10096,118 +10887,6 @@ export interface operations {
             | components['schemas']['InternalServerErrorResponse']
             | components['schemas']['Errors.Social.TeamNotVisible']
             | components['schemas']['Errors.Social.TeamMemberNotFound'];
-        };
-      };
-    };
-  };
-  SocialOperations_listMyUserReports: {
-    parameters: {
-      query?: {
-        /** @description 举报处理状态筛选条件。 */
-        status?: components['parameters']['Social.UserReportQuery'];
-        /** @description 页码，从 1 开始。 */
-        page?: components['parameters']['PageQuery.page'];
-        /** @description 每页数量。 */
-        pageSize?: components['parameters']['PageQuery.pageSize'];
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json':
-            | {
-                /**
-                 * @description 平台响应代码，成功响应固定为 200。
-                 * @enum {number}
-                 */
-                code: 200;
-                /**
-                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
-                 * @enum {string}
-                 */
-                message: 'For Super Earth!';
-                /** @description 响应数据。 */
-                data: {
-                  /** @description 当前页数据。 */
-                  items: components['schemas']['Social.UserReport'][];
-                  /**
-                   * Format: int64
-                   * @description 匹配总数。
-                   */
-                  total: number;
-                  /**
-                   * Format: int32
-                   * @description 当前页码。
-                   */
-                  page: number;
-                  /**
-                   * Format: int32
-                   * @description 每页数量。
-                   */
-                  pageSize: number;
-                  /**
-                   * Format: int32
-                   * @description 匹配总页数。
-                   */
-                  totalPages: number;
-                };
-              }
-            | components['schemas']['BadRequestResponse']
-            | components['schemas']['UnauthorizedResponse']
-            | components['schemas']['ForbiddenResponse']
-            | components['schemas']['InternalServerErrorResponse'];
-        };
-      };
-    };
-  };
-  SocialOperations_createUserReport: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['Social.UserReportCreateRequest'];
-      };
-    };
-    responses: {
-      /** @description The request has succeeded. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json':
-            | {
-                /**
-                 * @description 平台响应代码，成功响应固定为 200。
-                 * @enum {number}
-                 */
-                code: 200;
-                /**
-                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
-                 * @enum {string}
-                 */
-                message: 'For Super Earth!';
-                /** @description 响应数据。 */
-                data: components['schemas']['Social.UserReport'];
-              }
-            | components['schemas']['BadRequestResponse']
-            | components['schemas']['UnauthorizedResponse']
-            | components['schemas']['ForbiddenResponse']
-            | components['schemas']['InternalServerErrorResponse']
-            | components['schemas']['Errors.Social.UserNotVisible']
-            | components['schemas']['Errors.Social.UserReportInvalid'];
         };
       };
     };

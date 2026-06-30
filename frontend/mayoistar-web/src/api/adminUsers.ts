@@ -2,7 +2,10 @@ import { request, isMockMode, simulateLatency, buildPaginatedResult } from './cl
 import { mockDb } from './mockDb';
 import {
   AdminUserSummary,
+  AdminUserDetail,
   AdminUsersPage,
+  AdminUserActivitiesPage,
+  AdminUserTeamsPage,
   UserKind,
   AccountStatus,
   QualificationStatus,
@@ -82,4 +85,89 @@ export async function unbanUser(userId: string): Promise<AdminUserSummary> {
   return request<AdminUserSummary>(`/admin/users/${userId}/unban`, {
     method: 'POST',
   });
+}
+
+/**
+ * 获取后台用户详情。
+ *
+ * 前置条件：管理员已登录，userId 为有效用户标识。
+ * 后置条件：返回包含封禁信息的用户详情。
+ *
+ * @param userId 用户标识
+ */
+export async function getUser(userId: string): Promise<AdminUserDetail> {
+  if (isMockMode()) {
+    await simulateLatency(150);
+    const detail = mockDb.getUserDetail(userId);
+    if (!detail) {
+      throw new Error('未找到该用户');
+    }
+    return detail;
+  }
+
+  return request<AdminUserDetail>(`/admin/users/${userId}`);
+}
+
+/**
+ * 查询指定用户发布的活动列表。
+ *
+ * 前置条件：管理员已登录，userId 为有效用户标识。
+ * 后置条件：返回该用户发布的活动分页列表。
+ *
+ * @param userId 用户标识
+ * @param page 页码
+ * @param pageSize 每页数量
+ */
+export async function listUserActivities(
+  userId: string,
+  page = 1,
+  pageSize = 10,
+): Promise<AdminUserActivitiesPage> {
+  if (isMockMode()) {
+    await simulateLatency(150);
+    const items = mockDb.getUserActivities(userId);
+    const total = items.length;
+    const start = (page - 1) * pageSize;
+    const sliced = items.slice(start, start + pageSize);
+    return buildPaginatedResult(sliced, total, page, pageSize);
+  }
+
+  const queryParams = new URLSearchParams();
+  queryParams.set('page', String(page));
+  queryParams.set('pageSize', String(pageSize));
+
+  return request<AdminUserActivitiesPage>(
+    `/admin/users/${userId}/activities?${queryParams.toString()}`,
+  );
+}
+
+/**
+ * 查询指定用户创建或参与的小队列表。
+ *
+ * 前置条件：管理员已登录，userId 为有效用户标识。
+ * 后置条件：返回该用户相关的小队分页列表。
+ *
+ * @param userId 用户标识
+ * @param page 页码
+ * @param pageSize 每页数量
+ */
+export async function listUserTeams(
+  userId: string,
+  page = 1,
+  pageSize = 10,
+): Promise<AdminUserTeamsPage> {
+  if (isMockMode()) {
+    await simulateLatency(150);
+    const items = mockDb.getUserTeams(userId);
+    const total = items.length;
+    const start = (page - 1) * pageSize;
+    const sliced = items.slice(start, start + pageSize);
+    return buildPaginatedResult(sliced, total, page, pageSize);
+  }
+
+  const queryParams = new URLSearchParams();
+  queryParams.set('page', String(page));
+  queryParams.set('pageSize', String(pageSize));
+
+  return request<AdminUserTeamsPage>(`/admin/users/${userId}/teams?${queryParams.toString()}`);
 }

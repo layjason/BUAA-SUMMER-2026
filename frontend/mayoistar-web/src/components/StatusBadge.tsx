@@ -8,6 +8,7 @@ import {
   TEAM_JOIN_MODE_MAP,
   TEAM_STATUS_MAP,
   REPORT_STATUS_MAP,
+  REPORT_TARGET_TYPE_MAP,
   AI_RISK_LEVEL_MAP,
   StatusMapItem,
 } from '../constants/statusMaps';
@@ -21,6 +22,7 @@ type StatusBadgeType =
   | 'teamJoinMode'
   | 'teamStatus'
   | 'reportStatus'
+  | 'reportTargetType'
   | 'aiRiskLevel';
 
 const STATUS_MAPS: Record<StatusBadgeType, Record<string, StatusMapItem>> = {
@@ -32,6 +34,7 @@ const STATUS_MAPS: Record<StatusBadgeType, Record<string, StatusMapItem>> = {
   teamJoinMode: TEAM_JOIN_MODE_MAP,
   teamStatus: TEAM_STATUS_MAP,
   reportStatus: REPORT_STATUS_MAP,
+  reportTargetType: REPORT_TARGET_TYPE_MAP,
   aiRiskLevel: AI_RISK_LEVEL_MAP,
 };
 

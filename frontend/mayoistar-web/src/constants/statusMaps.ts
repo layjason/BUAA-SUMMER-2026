@@ -7,6 +7,7 @@ import {
   TeamJoinMode,
   TeamStatus,
   ReportStatus,
+  ReportTargetType,
   AiRiskLevel,
 } from '../types';
 
@@ -155,6 +156,13 @@ export const REPORT_STATUS_MAP: Record<ReportStatus, StatusMapItem> = {
     bgClass: 'bg-slate-100 border border-slate-300',
     textClass: 'text-slate-600',
   },
+};
+
+export const REPORT_TARGET_TYPE_MAP: Record<ReportTargetType, StatusMapItem> = {
+  user: { text: '用户', bgClass: 'bg-blue-50', textClass: 'text-blue-700' },
+  activity: { text: '活动', bgClass: 'bg-emerald-50', textClass: 'text-emerald-700' },
+  team: { text: '小队', bgClass: 'bg-indigo-50', textClass: 'text-indigo-700' },
+  message: { text: '消息', bgClass: 'bg-amber-50', textClass: 'text-amber-700' },
 };
 
 export const AI_RISK_LEVEL_MAP: Record<AiRiskLevel, StatusMapItem> = {

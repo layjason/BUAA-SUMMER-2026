@@ -1,9 +1,14 @@
 import {
   AdminUserSummary,
+  AdminUserDetail,
+  AdminTeamDetail,
+  AdminModerationRecord,
   MerchantProfile,
   ActivityDetail,
+  ActivitySummary,
   TeamProfile,
-  UserReport,
+  TeamMember,
+  Report,
   ReviewRecord,
   QualificationStatus,
   ReportStatus,
@@ -426,6 +431,7 @@ const initialTeams = [
       uploadedAt: '2026-03-12T09:00:00Z',
     },
     status: 'active',
+    creatorId: 'user_004',
     leaderId: 'user_004',
     chatId: 'chat_t1',
   },
@@ -448,6 +454,7 @@ const initialTeams = [
       uploadedAt: '2026-04-01T15:00:00Z',
     },
     status: 'active',
+    creatorId: 'user_002',
     leaderId: 'user_002',
     chatId: 'chat_t2',
   },
@@ -469,16 +476,93 @@ const initialTeams = [
       uploadedAt: '2026-05-10T11:20:00Z',
     },
     status: 'disabled',
+    creatorId: 'user_003',
     leaderId: 'user_003',
     chatId: 'chat_t3',
   },
 ] satisfies TeamProfile[];
 
+const initialTeamMembers: Record<string, TeamMember[]> = {
+  team_001: [
+    {
+      userId: 'user_004',
+      nickname: '趣野户外俱乐部',
+      role: 'leader',
+      points: 500,
+      joinedAt: '2026-03-12T09:00:00Z',
+    },
+    {
+      userId: 'user_001',
+      nickname: '徒步旅人小张',
+      role: 'member',
+      points: 120,
+      joinedAt: '2026-03-15T10:00:00Z',
+    },
+    {
+      userId: 'user_002',
+      nickname: '桌游高玩李四',
+      role: 'admin',
+      points: 300,
+      joinedAt: '2026-03-20T14:00:00Z',
+    },
+  ],
+  team_002: [
+    {
+      userId: 'user_002',
+      nickname: '桌游高玩李四',
+      role: 'leader',
+      points: 450,
+      joinedAt: '2026-04-01T15:00:00Z',
+    },
+    {
+      userId: 'user_001',
+      nickname: '徒步旅人小张',
+      role: 'member',
+      points: 80,
+      joinedAt: '2026-04-05T11:00:00Z',
+    },
+  ],
+  team_003: [
+    {
+      userId: 'user_003',
+      nickname: '低俗内容发布者',
+      role: 'leader',
+      points: 10,
+      joinedAt: '2026-05-10T11:20:00Z',
+    },
+  ],
+};
+
+const initialModerationRecords: AdminModerationRecord[] = [
+  {
+    recordId: 'mod_001',
+    action: 'banUser',
+    reason: '封禁用户 user_003：发布非法投资引流广告',
+    operatorId: 'admin_001',
+    createdAt: '2026-06-29T08:00:00Z',
+  },
+  {
+    recordId: 'mod_002',
+    action: 'takeDownActivity',
+    reason: '下架活动 act_004（绝望坡拉练）：安全隐患严重',
+    operatorId: 'admin_001',
+    createdAt: '2026-06-18T11:00:00Z',
+  },
+  {
+    recordId: 'mod_003',
+    action: 'disableTeam',
+    reason: '停用小队 team_003（高息投资理财内部共享小队）：涉嫌网络诈骗',
+    operatorId: 'admin_001',
+    createdAt: '2026-06-30T05:00:00Z',
+  },
+];
+
 const initialReports = [
   {
     reportId: 'rep_001',
     reporterUserId: 'user_001',
-    targetUserId: 'user_003',
+    targetType: 'user',
+    targetId: 'user_003',
     reason:
       '该用户在多个活动评论区以及小队群聊内群发非法投资、兼职套现和绑卡返还50元红包的网贷诈骗引流广告，非常恶劣！',
     status: 'resolved',
@@ -490,13 +574,26 @@ const initialReports = [
   {
     reportId: 'rep_002',
     reporterUserId: 'user_002',
-    targetUserId: 'user_006',
+    targetType: 'activity',
+    targetId: 'act_004',
     reason:
       '该商家发布的绝望坡拉练越野活动，存在极其严重的安全疏漏，领队无证且拒不配合林业局封山通告，强行带队走危险野道。',
     status: 'pending',
     createdAt: '2026-06-29T09:12:00Z',
   },
-] satisfies UserReport[];
+  {
+    reportId: 'rep_003',
+    reporterUserId: 'user_001',
+    targetType: 'team',
+    targetId: 'team_003',
+    reason:
+      '该小队以高息理财为幌子在群聊中发布非法投资理财链接，涉嫌网络诈骗，已有多名成员反映被骗。',
+    status: 'processing',
+    handlingNote: '正在核实中，已联系相关成员取证。',
+    createdAt: '2026-06-30T02:00:00Z',
+    handledAt: '2026-06-30T05:00:00Z',
+  },
+] satisfies Report[];
 
 // Database state container supporting simple persistence
 class MockDatabase {
@@ -504,7 +601,9 @@ class MockDatabase {
   private merchants: MerchantProfile[] = [];
   private activities: ActivityDetail[] = [];
   private teams: TeamProfile[] = [];
-  private reports: UserReport[] = [];
+  private reports: Report[] = [];
+  private teamMembersMap: Record<string, TeamMember[]> = {};
+  private moderationRecords: AdminModerationRecord[] = [];
   private adminPasswordHash: string = 'admin123'; // Initial password
 
   constructor() {
@@ -518,6 +617,8 @@ class MockDatabase {
       const storedActivities = localStorage.getItem('quju_activities');
       const storedTeams = localStorage.getItem('quju_teams');
       const storedReports = localStorage.getItem('quju_reports');
+      const storedMembers = localStorage.getItem('quju_team_members');
+      const storedModeration = localStorage.getItem('quju_moderation_records');
       const storedPassword = localStorage.getItem('quju_admin_pwd');
 
       this.users = storedUsers ? JSON.parse(storedUsers) : [...initialUsers];
@@ -525,6 +626,16 @@ class MockDatabase {
       this.activities = storedActivities ? JSON.parse(storedActivities) : [...initialActivities];
       this.teams = storedTeams ? JSON.parse(storedTeams) : [...initialTeams];
       this.reports = storedReports ? JSON.parse(storedReports) : [...initialReports];
+
+      // Schema migration: detect old reports format (missing targetType) and reset
+      if (this.reports.length > 0 && !('targetType' in this.reports[0])) {
+        this.reports = [...initialReports];
+      }
+
+      this.teamMembersMap = storedMembers ? JSON.parse(storedMembers) : { ...initialTeamMembers };
+      this.moderationRecords = storedModeration
+        ? JSON.parse(storedModeration)
+        : [...initialModerationRecords];
       this.adminPasswordHash = storedPassword || 'admin123';
 
       this.save();
@@ -534,6 +645,8 @@ class MockDatabase {
       this.activities = [...initialActivities];
       this.teams = [...initialTeams];
       this.reports = [...initialReports];
+      this.teamMembersMap = { ...initialTeamMembers };
+      this.moderationRecords = [...initialModerationRecords];
       this.adminPasswordHash = 'admin123';
     }
   }
@@ -544,6 +657,8 @@ class MockDatabase {
     localStorage.setItem('quju_activities', JSON.stringify(this.activities));
     localStorage.setItem('quju_teams', JSON.stringify(this.teams));
     localStorage.setItem('quju_reports', JSON.stringify(this.reports));
+    localStorage.setItem('quju_team_members', JSON.stringify(this.teamMembersMap));
+    localStorage.setItem('quju_moderation_records', JSON.stringify(this.moderationRecords));
     localStorage.setItem('quju_admin_pwd', this.adminPasswordHash);
   }
 
@@ -618,13 +733,162 @@ class MockDatabase {
     });
   }
 
-  public getReports(filters: { status?: string; reporterUserId?: string; targetUserId?: string }) {
+  public getReports(filters: {
+    status?: string;
+    reporterUserId?: string;
+    targetType?: string;
+    targetId?: string;
+  }) {
     return this.reports.filter((r) => {
       if (filters.status && r.status !== filters.status) return false;
-      if (filters.reporterUserId && r.reporterUserId !== filters.reporterUserId) return false;
-      if (filters.targetUserId && r.targetUserId !== filters.targetUserId) return false;
+      if (filters.reporterUserId) {
+        const kw = filters.reporterUserId.toLowerCase();
+        if (!r.reporterUserId.toLowerCase().includes(kw)) return false;
+      }
+      if (filters.targetType && r.targetType !== filters.targetType) return false;
+      if (filters.targetId) {
+        const kw = filters.targetId.toLowerCase();
+        if (!r.targetId.toLowerCase().includes(kw)) return false;
+      }
       return true;
     });
+  }
+
+  /**
+   * 获取用户详情，包含封禁信息。
+   *
+   * 前置条件：userId 为已存在的用户标识。
+   * 后置条件：返回用户详情，若用户被封禁则包含封禁信息。
+   */
+  public getUserDetail(userId: string): AdminUserDetail | undefined {
+    const user = this.users.find((u) => u.userId === userId);
+    if (!user) return undefined;
+
+    const banRecord = this.moderationRecords.find(
+      (r) => r.action === 'banUser' && r.operatorId === 'admin_001' && r.reason.includes(userId),
+    );
+
+    const detail: AdminUserDetail = {
+      ...user,
+      currentBanInfo:
+        user.status === 'banned'
+          ? {
+              reason: banRecord?.reason || '违反平台规定',
+              bannedUntil: '2026-12-31T23:59:59Z',
+              createdAt: banRecord?.createdAt || '2026-06-29T08:00:00Z',
+              operatorId: 'admin_001',
+            }
+          : undefined,
+    };
+    return detail;
+  }
+
+  /**
+   * 获取指定用户发布的活动列表。
+   *
+   * 前置条件：userId 为有效用户标识。
+   * 后置条件：返回该用户作为发起人的所有活动摘要。
+   */
+  public getUserActivities(userId: string): ActivitySummary[] {
+    return this.activities
+      .filter((a) => a.organizerId === userId)
+      .map((a) => ({
+        activityId: a.activityId,
+        title: a.title,
+        tags: a.tags,
+        startAt: a.startAt,
+        endAt: a.endAt,
+        location: a.location,
+        coverImage: a.coverImage,
+        feeAmount: a.feeAmount,
+        reviewStatus: a.reviewStatus,
+        runtimeStatus: a.runtimeStatus,
+        registeredCount: a.registeredCount,
+        capacity: a.capacity,
+      }));
+  }
+
+  /**
+   * 获取指定用户创建或参与的小队列表。
+   *
+   * 前置条件：userId 为有效用户标识。
+   * 后置条件：返回该用户作为队长或成员的所有小队资料。
+   */
+  public getUserTeams(userId: string): TeamProfile[] {
+    const memberTeamIds = Object.entries(this.teamMembersMap)
+      .filter(([, members]) => members.some((m) => m.userId === userId))
+      .map(([teamId]) => teamId);
+    return this.teams.filter(
+      (t) => t.leaderId === userId || t.creatorId === userId || memberTeamIds.includes(t.teamId),
+    );
+  }
+
+  /**
+   * 获取小队详情，包含治理记录。
+   *
+   * 前置条件：teamId 为已存在的小队标识。
+   * 后置条件：返回小队详情及关联的治理记录。
+   */
+  public getTeamDetail(teamId: string): AdminTeamDetail | undefined {
+    const team = this.teams.find((t) => t.teamId === teamId);
+    if (!team) return undefined;
+
+    const records = this.moderationRecords.filter(
+      (r) => r.reason.includes(teamId) || r.reason.includes(team.name),
+    );
+
+    return {
+      ...team,
+      moderationRecords: records,
+    };
+  }
+
+  /**
+   * 获取小队成员列表。
+   *
+   * 前置条件：teamId 为有效小队标识。
+   * 后置条件：返回该小队所有成员信息。
+   */
+  public getTeamMembers(teamId: string): TeamMember[] {
+    return this.teamMembersMap[teamId] || [];
+  }
+
+  /**
+   * 获取小队相关活动列表。
+   *
+   * 前置条件：teamId 为有效小队标识。
+   * 后置条件：返回与该小队关联的活动摘要列表。
+   */
+  public getTeamActivities(teamId: string): ActivitySummary[] {
+    // Mock: 返回队长创建的活动作为小队活动
+    const team = this.teams.find((t) => t.teamId === teamId);
+    if (!team) return [];
+    return this.activities
+      .filter((a) => a.organizerId === team.leaderId)
+      .map((a) => ({
+        activityId: a.activityId,
+        title: a.title,
+        tags: a.tags,
+        startAt: a.startAt,
+        endAt: a.endAt,
+        location: a.location,
+        coverImage: a.coverImage,
+        feeAmount: a.feeAmount,
+        reviewStatus: a.reviewStatus,
+        runtimeStatus: a.runtimeStatus,
+        registeredCount: a.registeredCount,
+        capacity: a.capacity,
+      }));
+  }
+
+  /**
+   * 获取小队相关举报记录。
+   *
+   * 前置条件：teamId 为有效小队标识。
+   * 后置条件：返回 targetType=team 且 targetId 为该小队的举报记录。
+   */
+  public getTeamReports(teamId: string): Report[] {
+    return this.reports.filter((r) => r.targetType === 'team' && r.targetId === teamId);
   }
 
   // Mutative Admin operations
@@ -776,11 +1040,11 @@ class MockDatabase {
     return undefined;
   }
 
-  public decideUserReport(
+  public decideReport(
     reportId: string,
     status: ReportStatus,
     handlingNote: string,
-  ): UserReport | undefined {
+  ): Report | undefined {
     const rpt = this.reports.find((r) => r.reportId === reportId);
     if (rpt) {
       rpt.status = status;

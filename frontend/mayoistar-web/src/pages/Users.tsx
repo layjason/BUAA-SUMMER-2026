@@ -6,9 +6,24 @@ import { EmptyState } from '../components/EmptyState';
 import { SkeletonBlock } from '../components/SkeletonBlock';
 import { DetailDrawer } from '../components/DetailDrawer';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { listUsers, banUser, unbanUser } from '../api/adminUsers';
-import { AdminUserSummary, UserKind, AccountStatus, QualificationStatus } from '../types';
-import { Search, Eye, AlertTriangle, Mail, Calendar } from 'lucide-react';
+import {
+  listUsers,
+  banUser,
+  unbanUser,
+  getUser,
+  listUserActivities,
+  listUserTeams,
+} from '../api/adminUsers';
+import {
+  AdminUserSummary,
+  AdminUserDetail,
+  ActivitySummary,
+  TeamProfile,
+  UserKind,
+  AccountStatus,
+  QualificationStatus,
+} from '../types';
+import { Search, Eye, AlertTriangle, Mail, Calendar, Activity, Users2 } from 'lucide-react';
 
 export const Users: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -25,6 +40,10 @@ export const Users: React.FC = () => {
 
   // Selected details state
   const [selectedUser, setSelectedUser] = useState<AdminUserSummary | null>(null);
+  const [userDetail, setUserDetail] = useState<AdminUserDetail | null>(null);
+  const [userActivities, setUserActivities] = useState<ActivitySummary[]>([]);
+  const [userTeams, setUserTeams] = useState<TeamProfile[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // Confirm dialog state
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -75,8 +94,27 @@ export const Users: React.FC = () => {
     fetchList();
   };
 
-  const handleOpenDrawer = (user: AdminUserSummary) => {
+  const handleOpenDrawer = async (user: AdminUserSummary) => {
     setSelectedUser(user);
+    setDetailLoading(true);
+    setUserDetail(null);
+    setUserActivities([]);
+    setUserTeams([]);
+
+    try {
+      const [detail, activitiesRes, teamsRes] = await Promise.all([
+        getUser(user.userId),
+        listUserActivities(user.userId, 1, 50),
+        listUserTeams(user.userId, 1, 50),
+      ]);
+      setUserDetail(detail);
+      setUserActivities(activitiesRes.items);
+      setUserTeams(teamsRes.items);
+    } catch (e) {
+      console.error('Failed to fetch user detail:', e);
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const triggerAction = (type: 'ban' | 'unban') => {
@@ -387,16 +425,120 @@ export const Users: React.FC = () => {
                   <p className="text-slate-700 font-bold pt-0.5">
                     该账户总计在平台发布了{' '}
                     <strong className="text-blue-600 font-extrabold">
-                      {selectedUser.activityCount}
+                      {userActivities.length}
                     </strong>{' '}
-                    个活动，并创建了{' '}
-                    <strong className="text-indigo-600 font-extrabold">
-                      {selectedUser.teamCount}
-                    </strong>{' '}
+                    个活动，并参与了{' '}
+                    <strong className="text-indigo-600 font-extrabold">{userTeams.length}</strong>{' '}
                     个兴趣社群小队。
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* Ban info (if banned) */}
+            {userDetail?.currentBanInfo && (
+              <div className="space-y-3">
+                <h5 className="text-[10px] font-bold text-red-500 uppercase tracking-wider text-left">
+                  当前封禁信息
+                </h5>
+                <div className="p-4 bg-red-50 border border-red-100 rounded-2xl space-y-2 text-left">
+                  <div className="flex justify-between">
+                    <span className="text-[10px] text-red-400">封禁原因</span>
+                    <span className="text-xs text-red-700 font-bold max-w-[200px] text-right">
+                      {userDetail.currentBanInfo.reason}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[10px] text-red-400">封禁截止</span>
+                    <span className="text-xs text-red-700 font-mono font-bold">
+                      {formatDateTime(userDetail.currentBanInfo.bannedUntil)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[10px] text-red-400">执行时间</span>
+                    <span className="text-xs text-red-700 font-mono font-bold">
+                      {formatDateTime(userDetail.currentBanInfo.createdAt)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* User Activities List */}
+            <div className="space-y-3">
+              <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left flex items-center gap-1.5">
+                <Activity className="h-3.5 w-3.5" />
+                <span>发布的活动 ({userActivities.length})</span>
+              </h5>
+              {detailLoading ? (
+                <SkeletonBlock rows={2} />
+              ) : userActivities.length === 0 ? (
+                <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-[10px] text-slate-400 font-semibold">
+                  该用户尚未发布任何活动。
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {userActivities.map((act) => (
+                    <div
+                      key={act.activityId}
+                      className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-left"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-slate-800 font-bold text-xs line-clamp-1 flex-1">
+                          {act.title}
+                        </p>
+                        <div className="flex gap-1 shrink-0">
+                          <StatusBadge type="activityReview" value={act.reviewStatus} />
+                          <StatusBadge type="activityRuntime" value={act.runtimeStatus} />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1.5 text-[10px] text-slate-400 font-mono">
+                        <span>
+                          参与: {act.registeredCount}/{act.capacity}
+                        </span>
+                        <span>{formatDateTime(act.startAt)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* User Teams List */}
+            <div className="space-y-3">
+              <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left flex items-center gap-1.5">
+                <Users2 className="h-3.5 w-3.5" />
+                <span>参与的小队 ({userTeams.length})</span>
+              </h5>
+              {detailLoading ? (
+                <SkeletonBlock rows={2} />
+              ) : userTeams.length === 0 ? (
+                <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-[10px] text-slate-400 font-semibold">
+                  该用户未创建或加入任何小队。
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {userTeams.map((team) => (
+                    <div
+                      key={team.teamId}
+                      className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-left"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-slate-800 font-bold text-xs line-clamp-1 flex-1">
+                          {team.name}
+                        </p>
+                        <StatusBadge type="teamStatus" value={team.status} />
+                      </div>
+                      <div className="flex items-center gap-3 mt-1.5 text-[10px] text-slate-400 font-mono">
+                        <span>
+                          成员: {team.memberCount}/{team.capacity}
+                        </span>
+                        <span>队长: {team.leaderId === selectedUser.userId ? '是' : '否'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Timestamps */}

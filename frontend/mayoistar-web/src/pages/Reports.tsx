@@ -4,13 +4,13 @@ import { StatusBadge } from '../components/StatusBadge';
 import { Pagination } from '../components/Pagination';
 import { EmptyState } from '../components/EmptyState';
 import { SkeletonBlock } from '../components/SkeletonBlock';
-import { listUserReports, decideUserReport } from '../api/adminReports';
-import { UserReport, ReportStatus } from '../types';
+import { listReports, decideReport } from '../api/adminReports';
+import { Report, ReportStatus, ReportTargetType } from '../types';
 import { Edit3, AlertTriangle, User } from 'lucide-react';
 
 export const Reports: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [reports, setReports] = useState<UserReport[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
@@ -18,10 +18,11 @@ export const Reports: React.FC = () => {
   // Filters state
   const [status, setStatus] = useState<string>('');
   const [reporterUserId, setReporterUserId] = useState('');
-  const [targetUserId, setTargetUserId] = useState('');
+  const [targetId, setTargetId] = useState('');
+  const [targetType, setTargetType] = useState<string>('');
 
   // Decision Modal state
-  const [activeReport, setActiveReport] = useState<UserReport | null>(null);
+  const [activeReport, setActiveReport] = useState<Report | null>(null);
   const [decisionNote, setHandlingNote] = useState('');
   const [decisionStatus, setDecisionStatus] = useState<ReportStatus>('resolved');
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -29,10 +30,11 @@ export const Reports: React.FC = () => {
   const fetchList = async () => {
     setLoading(true);
     try {
-      const res = await listUserReports({
+      const res = await listReports({
         status: status ? (status as ReportStatus) : undefined,
         reporterUserId: reporterUserId.trim() || undefined,
-        targetUserId: targetUserId.trim() || undefined,
+        targetType: targetType ? (targetType as ReportTargetType) : undefined,
+        targetId: targetId.trim() || undefined,
         page,
         pageSize,
       });
@@ -55,7 +57,7 @@ export const Reports: React.FC = () => {
     fetchList();
   };
 
-  const handleOpenDecision = (report: UserReport) => {
+  const handleOpenDecision = (report: Report) => {
     setActiveReport(report);
     setDecisionStatus(report.status === 'pending' ? 'resolved' : report.status);
     setHandlingNote(report.handlingNote || '');
@@ -72,7 +74,7 @@ export const Reports: React.FC = () => {
 
     setSubmitLoading(true);
     try {
-      const updated = await decideUserReport(
+      const updated = await decideReport(
         activeReport.reportId,
         decisionStatus,
         decisionNote.trim(),
@@ -140,15 +142,34 @@ export const Reports: React.FC = () => {
             </span>
             <input
               type="text"
-              placeholder="被举报人用户 ID..."
-              value={targetUserId}
-              onChange={(e) => setTargetUserId(e.target.value)}
+              placeholder="被举报目标 ID..."
+              value={targetId}
+              onChange={(e) => setTargetId(e.target.value)}
               className="w-full text-xs pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 font-semibold"
             />
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+          {/* Target Type select */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-400 shrink-0">目标类型</span>
+            <select
+              value={targetType}
+              onChange={(e) => {
+                setTargetType(e.target.value);
+                setPage(1);
+              }}
+              className="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none text-slate-700 font-bold focus:ring-2 focus:ring-blue-500/20 cursor-pointer min-w-[5.5rem]"
+            >
+              <option value="">全部</option>
+              <option value="user">用户</option>
+              <option value="activity">活动</option>
+              <option value="team">小队</option>
+              <option value="message">消息</option>
+            </select>
+          </div>
+
           {/* Report Status select */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-400 shrink-0">处理状态</span>
@@ -214,9 +235,14 @@ export const Reports: React.FC = () => {
                       {rpt.reporterUserId}
                     </td>
 
-                    {/* Target ID */}
-                    <td className="px-6 py-4 font-mono font-bold text-red-600">
-                      {rpt.targetUserId}
+                    {/* Target Type + ID */}
+                    <td className="px-6 py-4">
+                      <div className="space-y-0.5 text-left">
+                        <StatusBadge type="reportTargetType" value={rpt.targetType} />
+                        <p className="font-mono font-bold text-red-600 text-[10px]">
+                          {rpt.targetId}
+                        </p>
+                      </div>
                     </td>
 
                     {/* Reason text */}
@@ -294,9 +320,15 @@ export const Reports: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">被举报账户 ID:</span>
+                    <span className="text-slate-400">被举报目标类型:</span>
+                    <span className="font-bold text-slate-700">
+                      <StatusBadge type="reportTargetType" value={activeReport.targetType} />
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">被举报目标 ID:</span>
                     <span className="font-mono font-bold text-red-600">
-                      {activeReport.targetUserId}
+                      {activeReport.targetId}
                     </span>
                   </div>
                 </div>

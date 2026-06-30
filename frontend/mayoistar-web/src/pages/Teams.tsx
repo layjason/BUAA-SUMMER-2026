@@ -7,9 +7,48 @@ import { EmptyState } from '../components/EmptyState';
 import { SkeletonBlock } from '../components/SkeletonBlock';
 import { DetailDrawer } from '../components/DetailDrawer';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { listTeams, disableTeam, restoreTeam } from '../api/adminTeams';
-import { TeamProfile, TeamStatus } from '../types';
-import { Search, Eye, AlertTriangle, Users2, KeyRound, MessageSquareCode } from 'lucide-react';
+import {
+  listTeams,
+  disableTeam,
+  restoreTeam,
+  getTeam,
+  listTeamMembers,
+  listTeamActivities,
+  listTeamReports,
+} from '../api/adminTeams';
+import {
+  TeamProfile,
+  AdminTeamDetail,
+  TeamMember,
+  ActivitySummary,
+  Report,
+  TeamStatus,
+} from '../types';
+import {
+  Search,
+  Eye,
+  AlertTriangle,
+  Users2,
+  KeyRound,
+  MessageSquareCode,
+  Activity,
+  Flag,
+  Shield,
+} from 'lucide-react';
+
+const formatDateTime = (isoString?: string) => {
+  if (!isoString) return '-';
+  try {
+    const date = new Date(isoString);
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  } catch {
+    return isoString;
+  }
+};
 
 export const Teams: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -24,6 +63,11 @@ export const Teams: React.FC = () => {
 
   // Selected Detail Drawer state
   const [selectedTeam, setSelectedTeam] = useState<TeamProfile | null>(null);
+  const [teamDetail, setTeamDetail] = useState<AdminTeamDetail | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamActivities, setTeamActivities] = useState<ActivitySummary[]>([]);
+  const [teamReports, setTeamReports] = useState<Report[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // Confirm dialogue controls
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -68,8 +112,30 @@ export const Teams: React.FC = () => {
     fetchList();
   };
 
-  const handleOpenDrawer = (team: TeamProfile) => {
+  const handleOpenDrawer = async (team: TeamProfile) => {
     setSelectedTeam(team);
+    setDetailLoading(true);
+    setTeamDetail(null);
+    setTeamMembers([]);
+    setTeamActivities([]);
+    setTeamReports([]);
+
+    try {
+      const [detail, membersRes, activitiesRes, reportsRes] = await Promise.all([
+        getTeam(team.teamId),
+        listTeamMembers(team.teamId, 1, 100),
+        listTeamActivities(team.teamId, 1, 50),
+        listTeamReports(team.teamId, 1, 50),
+      ]);
+      setTeamDetail(detail);
+      setTeamMembers(membersRes.items);
+      setTeamActivities(activitiesRes.items);
+      setTeamReports(reportsRes.items);
+    } catch (e) {
+      console.error('Failed to fetch team detail:', e);
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const triggerAction = (type: 'disable' | 'restore') => {
@@ -359,6 +425,152 @@ export const Teams: React.FC = () => {
               <div className="p-4 bg-slate-50/50 border border-slate-100 rounded-xl text-slate-700 leading-relaxed font-semibold whitespace-pre-wrap">
                 {selectedTeam.description || '该小队队长很懒，暂未公布任何详细的群介绍。'}
               </div>
+            </div>
+
+            {/* Moderation Records */}
+            {teamDetail && teamDetail.moderationRecords.length > 0 && (
+              <div className="space-y-3">
+                <h5 className="text-[10px] font-bold text-red-500 uppercase tracking-wider text-left flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5" />
+                  <span>治理记录 ({teamDetail.moderationRecords.length})</span>
+                </h5>
+                <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                  {teamDetail.moderationRecords.map((rec) => (
+                    <div
+                      key={rec.recordId}
+                      className="p-3 bg-red-50 border border-red-100 rounded-xl text-left"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-red-700">{rec.action}</span>
+                        <span className="text-[10px] font-mono text-red-400">
+                          {formatDateTime(rec.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-red-600 mt-1 font-medium">{rec.reason}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Team Members List */}
+            <div className="space-y-3">
+              <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left flex items-center gap-1.5">
+                <Users2 className="h-3.5 w-3.5" />
+                <span>成员列表 ({teamMembers.length})</span>
+              </h5>
+              {detailLoading ? (
+                <SkeletonBlock rows={2} />
+              ) : teamMembers.length === 0 ? (
+                <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-[10px] text-slate-400 font-semibold">
+                  该小队暂无成员数据。
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[180px] overflow-y-auto">
+                  {teamMembers.map((m) => (
+                    <div
+                      key={m.userId}
+                      className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between"
+                    >
+                      <div className="text-left min-w-0 flex-1">
+                        <p className="text-slate-800 font-bold text-xs truncate">{m.nickname}</p>
+                        <p className="text-[10px] text-slate-400 font-mono">{m.userId}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                            m.role === 'leader'
+                              ? 'bg-amber-50 text-amber-700'
+                              : m.role === 'admin'
+                                ? 'bg-indigo-50 text-indigo-700'
+                                : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {m.role === 'leader' ? '队长' : m.role === 'admin' ? '管理' : '成员'}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          积分: {m.points}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Team Activities List */}
+            <div className="space-y-3">
+              <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left flex items-center gap-1.5">
+                <Activity className="h-3.5 w-3.5" />
+                <span>小队活动 ({teamActivities.length})</span>
+              </h5>
+              {detailLoading ? (
+                <SkeletonBlock rows={2} />
+              ) : teamActivities.length === 0 ? (
+                <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-[10px] text-slate-400 font-semibold">
+                  该小队暂无关联活动。
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[180px] overflow-y-auto">
+                  {teamActivities.map((act) => (
+                    <div
+                      key={act.activityId}
+                      className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-left"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-slate-800 font-bold text-xs line-clamp-1 flex-1">
+                          {act.title}
+                        </p>
+                        <div className="flex gap-1 shrink-0">
+                          <StatusBadge type="activityReview" value={act.reviewStatus} />
+                          <StatusBadge type="activityRuntime" value={act.runtimeStatus} />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1.5 text-[10px] text-slate-400 font-mono">
+                        <span>
+                          参与: {act.registeredCount}/{act.capacity}
+                        </span>
+                        <span>{formatDateTime(act.startAt)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Team Reports List */}
+            <div className="space-y-3">
+              <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left flex items-center gap-1.5">
+                <Flag className="h-3.5 w-3.5" />
+                <span>相关举报 ({teamReports.length})</span>
+              </h5>
+              {detailLoading ? (
+                <SkeletonBlock rows={2} />
+              ) : teamReports.length === 0 ? (
+                <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-[10px] text-slate-400 font-semibold">
+                  该小队暂无举报记录。
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[180px] overflow-y-auto">
+                  {teamReports.map((rpt) => (
+                    <div
+                      key={rpt.reportId}
+                      className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-left"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-[10px] text-slate-400">{rpt.reportId}</span>
+                        <StatusBadge type="reportStatus" value={rpt.status} />
+                      </div>
+                      <p className="text-xs text-slate-700 font-medium mt-1 line-clamp-2">
+                        {rpt.reason}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-mono mt-1">
+                        举报人: {rpt.reporterUserId} | {formatDateTime(rpt.createdAt)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Hard rule warning about profiles/passwords editing */}

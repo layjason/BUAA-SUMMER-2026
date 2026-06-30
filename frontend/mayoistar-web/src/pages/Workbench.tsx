@@ -4,9 +4,9 @@ import { StatCard } from '../components/StatCard';
 import { SkeletonBlock } from '../components/SkeletonBlock';
 import { listActivities } from '../api/adminActivities';
 import { listUsers } from '../api/adminUsers';
-import { listUserReports } from '../api/adminReports';
+import { listReports } from '../api/adminReports';
 import { listTeams } from '../api/adminTeams';
-import { ActivitySummary, UserReport } from '../types';
+import { ActivitySummary, Report } from '../types';
 import {
   ShieldAlert,
   Store,
@@ -39,7 +39,7 @@ export const Workbench: React.FC<WorkbenchProps> = ({ onNavigate }) => {
 
   // Hot lists for quick preview
   const [hotActivities, setHotActivities] = useState<ActivitySummary[]>([]);
-  const [hotReports, setHotReports] = useState<UserReport[]>([]);
+  const [hotReports, setHotReports] = useState<Report[]>([]);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -49,7 +49,7 @@ export const Workbench: React.FC<WorkbenchProps> = ({ onNavigate }) => {
         await Promise.all([
           listActivities({ reviewStatus: 'pending', pageSize: 1 }),
           listUsers({ kind: 'merchant', qualificationStatus: 'pending', pageSize: 1 }),
-          listUserReports({ status: 'pending', pageSize: 1 }),
+          listReports({ status: 'pending', pageSize: 1 }),
           listActivities({ runtimeStatus: 'takenDown', pageSize: 1 }),
           listUsers({ status: 'banned', pageSize: 1 }),
           listTeams({ status: 'disabled', pageSize: 1 }),
@@ -66,7 +66,7 @@ export const Workbench: React.FC<WorkbenchProps> = ({ onNavigate }) => {
 
       // 2. Fetch active hot items for quick action
       const actQueue = await listActivities({ reviewStatus: 'pending', pageSize: 3 });
-      const rptQueue = await listUserReports({ status: 'pending', pageSize: 3 });
+      const rptQueue = await listReports({ status: 'pending', pageSize: 3 });
 
       setHotActivities(actQueue.items);
       setHotReports(rptQueue.items);

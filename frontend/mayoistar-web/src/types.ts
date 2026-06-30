@@ -61,16 +61,30 @@ export type TeamStatus = components['schemas']['Social.TeamStatus'];
 export type TeamProfile = components['schemas']['Social.TeamProfile'];
 
 export type ReportStatus = components['schemas']['Social.ReportStatus'];
-export type UserReport = components['schemas']['Social.UserReport'];
+export type ReportTargetType = components['schemas']['Social.ReportTargetType'];
+export type Report = components['schemas']['Social.Report'];
+
+export type TeamMemberRole = components['schemas']['Social.TeamMemberRole'];
+export type TeamMember = components['schemas']['Social.TeamMember'];
 
 export type AdminLoginRequest = components['schemas']['Admin.AdminLoginRequest'];
 export type AdminLoginResponse = components['schemas']['Admin.AdminLoginResponse'];
 export type AdminChangePasswordRequest = components['schemas']['Admin.AdminChangePasswordRequest'];
+export type AdminUserDetail = components['schemas']['Admin.AdminUserDetail'];
+export type AdminBanInfo = components['schemas']['Admin.AdminBanInfo'];
+export type AdminTeamDetail = components['schemas']['Admin.AdminTeamDetail'];
+export type AdminModerationAction = components['schemas']['Admin.AdminModerationAction'];
+export type AdminModerationRecord = components['schemas']['Admin.AdminModerationRecord'];
 
 export type AdminUsersPage = SuccessData<'/admin/users', 'get'>;
 export type AdminActivitiesPage = SuccessData<'/admin/activities', 'get'>;
 export type AdminTeamsPage = SuccessData<'/admin/teams', 'get'>;
-export type AdminUserReportsPage = SuccessData<'/admin/user-reports', 'get'>;
+export type AdminReportsPage = SuccessData<'/admin/reports', 'get'>;
+export type AdminUserActivitiesPage = SuccessData<'/admin/users/{userId}/activities', 'get'>;
+export type AdminUserTeamsPage = SuccessData<'/admin/users/{userId}/teams', 'get'>;
+export type AdminTeamMembersPage = SuccessData<'/admin/teams/{teamId}/members', 'get'>;
+export type AdminTeamActivitiesPage = SuccessData<'/admin/teams/{teamId}/activities', 'get'>;
+export type AdminTeamReportsPage = SuccessData<'/admin/teams/{teamId}/reports', 'get'>;
 
 export type PaginatedResult<Item> = {
   items: Item[];
