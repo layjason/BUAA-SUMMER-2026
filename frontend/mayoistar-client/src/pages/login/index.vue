@@ -45,13 +45,9 @@
           {{ loading ? '' : t('login.button') }}
         </button>
 
-        <!-- 忘记密码 -->
-        <view class="forgot-password">
-          <text class="link" @click="goForgotPassword">{{ t('login.forgotPassword') }}</text>
-        </view>
-
         <!-- 底部链接 -->
         <view class="footer-links">
+          <text class="link" @click="goForgotPassword">{{ t('login.forgotPassword') }}</text>
           <text class="link" @click="goRegister">{{ t('login.toRegister') }}</text>
         </view>
       </view>
@@ -296,17 +292,11 @@ function goForgotPassword(): void {
   opacity: 0.6;
 }
 
-.forgot-password {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16rpx;
-  padding-right: 4rpx;
-}
-
 .footer-links {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   margin-top: 32rpx;
+  padding: 0 4rpx;
 }
 
 .link {
