@@ -241,16 +241,30 @@ function validateNickname(): boolean {
 /**
  * 校验密码
  *
+ * 前置条件：password 已绑定到输入框
+ * 后置条件：通过时无错误信息，不通过时 passwordError 被赋值
+ * 规则：长度 8-32 位，大写字母、小写字母、数字、特殊符号四种类型至少包含三种
+ *
  * @returns true 表示校验通过
  */
 function validatePassword(): boolean {
   passwordError.value = ''
   if (!password.value) {
-    passwordError.value = t('register.passwordTooShort')
+    passwordError.value = t('register.passwordLengthError')
     return false
   }
-  if (password.value.length < 6) {
-    passwordError.value = t('register.passwordTooShort')
+  const length = password.value.length
+  if (length < 8 || length > 32) {
+    passwordError.value = t('register.passwordLengthError')
+    return false
+  }
+  const hasUpper = /[A-Z]/.test(password.value)
+  const hasLower = /[a-z]/.test(password.value)
+  const hasDigit = /\d/.test(password.value)
+  const hasSpecial = /[^A-Za-z0-9]/.test(password.value)
+  const typeCount = [hasUpper, hasLower, hasDigit, hasSpecial].filter(Boolean).length
+  if (typeCount < 3) {
+    passwordError.value = t('register.passwordStrengthError')
     return false
   }
   return true

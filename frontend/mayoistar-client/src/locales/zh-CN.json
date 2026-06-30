@@ -43,7 +43,7 @@
     "email": "邮箱",
     "emailPlaceholder": "请输入邮箱",
     "password": "密码",
-    "passwordPlaceholder": "请输入密码（6-20位）",
+    "passwordPlaceholder": "请输入8-32位密码",
     "confirmPassword": "确认密码",
     "confirmPasswordPlaceholder": "请再次输入密码",
     "nickname": "昵称",
@@ -53,7 +53,8 @@
     "button": "注册",
     "toLogin": "已有账号？立即登录",
     "emailFormatError": "请输入正确的邮箱格式",
-    "passwordTooShort": "密码长度至少6位",
+    "passwordLengthError": "密码长度需为8-32位",
+    "passwordStrengthError": "密码需包含大写字母、小写字母、数字、特殊符号中至少三种",
     "passwordMismatch": "两次输入的密码不一致",
     "nicknameRequired": "昵称不能为空",
     "nicknameUnavailable": "该昵称已被占用",
@@ -70,7 +71,8 @@
     "settings": "设置",
     "merchant": "商家",
     "personal": "个人",
-    "userPrefix": "用户"
+    "userPrefix": "用户",
+    "tapToLogin": "点我登录/注册"
   },
 
   "activate": {
