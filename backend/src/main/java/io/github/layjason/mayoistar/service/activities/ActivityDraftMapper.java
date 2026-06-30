@@ -4,6 +4,7 @@ import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import java.time.Instant;
 import java.util.Collection;
@@ -109,6 +110,90 @@ public class ActivityDraftMapper {
         dto.setUsage(mediaFile.getUsage());
         dto.setUrl(mediaFile.getUrl());
         dto.setUploadedAt(formatInstant(mediaFile.getUploadedAt()));
+        return dto;
+    }
+
+    /**
+     * 将活动实体转换为活动详情 DTO。
+     *
+     * <p>前置条件：activity 非空，organizerName 非空。
+     *
+     * <p>后置条件：返回包含完整字段的 ActivityDetail，包括发起人名称、图片、审核记录和报名/候补人数。
+     *
+     * <p>不变量：不修改传入实体，不执行持久化操作。
+     *
+     * @param activity 活动实体
+     * @param organizerName 发起人昵称
+     * @param mediaFiles 活动关联的媒体文件列表
+     * @param imageSortOrderProvider 图片排序函数
+     * @param reviewRecords 审核记录 DTO 列表
+     * @param registeredCount 已报名人数
+     * @param waitingCount 候补人数
+     * @return 活动详情 DTO
+     */
+    public ActivityDtos.ActivityDetail toActivityDetail(
+            Activity activity,
+            String organizerName,
+            Collection<MediaFile> mediaFiles,
+            Function<String, Integer> imageSortOrderProvider,
+            List<ActivityDtos.ReviewRecord> reviewRecords,
+            int registeredCount,
+            int waitingCount) {
+        ActivityDtos.ActivityDetail dto = new ActivityDtos.ActivityDetail();
+        dto.setActivityId(activity.getActivityId());
+        dto.setTitle(activity.getTitle());
+        dto.setTags(activity.getTags() == null ? List.of() : List.copyOf(activity.getTags()));
+        dto.setStartAt(formatInstant(activity.getStartAt()));
+        dto.setEndAt(formatInstant(activity.getEndAt()));
+        dto.setLocation(toLocationInfo(activity));
+        dto.setCoverImage(mediaFiles.stream()
+                .sorted((left, right) -> Integer.compare(
+                        imageSortOrderProvider.apply(left.getMediaId()),
+                        imageSortOrderProvider.apply(right.getMediaId())))
+                .map(this::toMediaFile)
+                .findFirst()
+                .orElse(null));
+        dto.setFeeAmount(activity.getFeeAmount());
+        dto.setReviewStatus(activity.getReviewStatus());
+        dto.setRuntimeStatus(activity.getRuntimeStatus());
+        dto.setRegisteredCount(registeredCount);
+        dto.setCapacity(activity.getCapacity());
+        dto.setIntroduction(activity.getIntroduction());
+        dto.setSafetyNotice(activity.getSafetyNotice());
+        dto.setRegistrationDeadline(formatInstant(activity.getRegistrationDeadline()));
+        dto.setOrganizerId(activity.getOrganizerId());
+        dto.setOrganizerName(organizerName);
+        dto.setImages(mediaFiles.stream()
+                .sorted((left, right) -> Integer.compare(
+                        imageSortOrderProvider.apply(left.getMediaId()),
+                        imageSortOrderProvider.apply(right.getMediaId())))
+                .map(this::toMediaFile)
+                .toList());
+        dto.setWaitingCount(waitingCount);
+        dto.setManualReviewRequired(activity.getManualReviewRequired());
+        dto.setReviewRecords(reviewRecords);
+        return dto;
+    }
+
+    /**
+     * 将审核记录实体转换为审核记录 DTO。
+     *
+     * <p>前置条件：record 非空。
+     *
+     * <p>后置条件：返回包含审核结果、原因、审核人和时间的 DTO。
+     *
+     * <p>不变量：不修改传入实体。
+     *
+     * @param record 审核记录实体
+     * @return 审核记录 DTO
+     */
+    public ActivityDtos.ReviewRecord toReviewRecord(ActivityReviewRecord record) {
+        ActivityDtos.ReviewRecord dto = new ActivityDtos.ReviewRecord();
+        dto.setReviewId(record.getRecordId());
+        dto.setReviewerId(record.getReviewerId());
+        dto.setResult(record.getResult());
+        dto.setReason(record.getReason());
+        dto.setReviewedAt(formatInstant(record.getReviewedAt()));
         return dto;
     }
 
