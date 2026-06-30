@@ -40,6 +40,11 @@ public class AuthService {
     private final MailService mailService;
 
     /**
+     * 邮件发送冷却时间（秒），激活邮件和密码重置邮件共用。
+     */
+    private static final long EMAIL_COOLDOWN_SECONDS = 60;
+
+    /**
      * @param userRepository             用户数据访问
      * @param personalProfileRepository  个人资料数据访问
      * @param merchantProfileRepository  商家资料数据访问
@@ -252,7 +257,7 @@ public class AuthService {
      *
      * <p>前置条件：邮箱对应账号存在且状态为 inactive。
      *
-     * <p>后置条件：生成新激活令牌，作废旧令牌，发送新激活邮件。
+     * <p>后置条件：生成新激活令牌，作废旧令牌，发送新激活邮件。若在冷却期内则拒绝发送。
      *
      * @param email 账号邮箱
      */
@@ -269,6 +274,9 @@ public class AuthService {
             throw new BusinessException(10005, "Account is banned");
         }
 
+        checkEmailCooldown(
+                user.getUserId(), TokenType.activation, 10015, "Activation email resend rate limit has been exceeded");
+
         securityTokenRepository.revokeAllByUserIdAndTokenType(user.getUserId(), TokenType.activation);
 
         String activationToken = JwtService.generateRandomToken();
@@ -283,7 +291,7 @@ public class AuthService {
      *
      * <p>前置条件：email 对应的账号存在（不向调用方暴露是否存在）。
      *
-     * <p>后置条件：若账号存在，生成密码重置令牌并发送邮件；若不存在，静默返回。
+     * <p>后置条件：若账号存在且不在冷却期内，生成密码重置令牌并发送邮件；若不存在或在冷却期内，静默返回。
      *
      * @param email 账号邮箱
      */
@@ -291,6 +299,10 @@ public class AuthService {
     public void sendPasswordResetEmail(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
             if (user.getAccountStatus() == AccountStatus.banned) {
+                return;
+            }
+            if (isEmailCooldownActive(user.getUserId(), TokenType.password_reset)) {
+                log.info("密码重置邮件在冷却期内，静默返回: userId={}", user.getUserId());
                 return;
             }
             securityTokenRepository.revokeAllByUserIdAndTokenType(user.getUserId(), TokenType.password_reset);
@@ -409,7 +421,17 @@ public class AuthService {
         }
 
         String tokenHash = JwtService.hashToken(refreshToken);
-        if (securityTokenRepository.findByTokenHash(tokenHash).isEmpty()) {
+        SecurityToken securityToken = securityTokenRepository
+                .findByTokenHash(tokenHash)
+                .orElseThrow(() -> new BusinessException(10007, "Refresh token is invalid"));
+
+        if (Boolean.TRUE.equals(securityToken.getUsed())) {
+            throw new BusinessException(10007, "Refresh token is invalid");
+        }
+        if (Boolean.TRUE.equals(securityToken.getRevoked())) {
+            throw new BusinessException(10007, "Refresh token is invalid");
+        }
+        if (securityToken.getExpiresAt().isBefore(Instant.now())) {
             throw new BusinessException(10007, "Refresh token is invalid");
         }
 
@@ -442,6 +464,52 @@ public class AuthService {
     public void logout(String userId) {
         securityTokenRepository.revokeAllByUserIdAndTokenType(userId, TokenType.refresh);
         log.info("用户登出成功: userId={}", userId);
+    }
+
+    /**
+     * 检查邮件发送是否在冷却期内，若在冷却期内则抛出指定业务异常。
+     *
+     * <p>前置条件：userId、tokenType、errorCode、errorMessage 均非空。
+     *
+     * <p>后置条件：若最近一次该类型令牌在冷却期内创建，抛出 BusinessException。
+     *
+     * @param userId       用户 ID
+     * @param tokenType    令牌类型
+     * @param errorCode    限流错误码
+     * @param errorMessage 限流错误消息
+     */
+    private void checkEmailCooldown(String userId, TokenType tokenType, int errorCode, String errorMessage) {
+        securityTokenRepository
+                .findFirstByUserIdAndTokenTypeOrderByCreatedAtDesc(userId, tokenType)
+                .ifPresent(lastToken -> {
+                    if (lastToken
+                            .getCreatedAt()
+                            .plusSeconds(EMAIL_COOLDOWN_SECONDS)
+                            .isAfter(Instant.now())) {
+                        throw new BusinessException(errorCode, errorMessage);
+                    }
+                });
+    }
+
+    /**
+     * 检查邮件发送是否在冷却期内。
+     *
+     * <p>前置条件：userId 和 tokenType 非空。
+     *
+     * <p>后置条件：返回 true 表示处于冷却期内。
+     *
+     * @param userId    用户 ID
+     * @param tokenType 令牌类型
+     * @return 是否在冷却期内
+     */
+    private boolean isEmailCooldownActive(String userId, TokenType tokenType) {
+        return securityTokenRepository
+                .findFirstByUserIdAndTokenTypeOrderByCreatedAtDesc(userId, tokenType)
+                .map(lastToken -> lastToken
+                        .getCreatedAt()
+                        .plusSeconds(EMAIL_COOLDOWN_SECONDS)
+                        .isAfter(Instant.now()))
+                .orElse(false);
     }
 
     /**

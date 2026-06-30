@@ -69,10 +69,14 @@ public class AdminService {
             String merchantId, String adminId, AdminDtos.MerchantReviewRequest request) {
 
         // 校验管理员存在
-        adminRepository.findById(adminId).orElseThrow(() -> new BusinessException(401, "Admin not found"));
+        adminRepository
+                .findById(adminId)
+                .orElseThrow(() -> new BusinessException(60000, "Admin username or password is invalid"));
 
         // 校验商家存在
-        User user = userRepository.findById(merchantId).orElseThrow(() -> new BusinessException(404, "User not found"));
+        User user = userRepository
+                .findById(merchantId)
+                .orElseThrow(() -> new BusinessException(60002, "User " + merchantId + " does not exist"));
         if (user.getKind() != UserKind.merchant) {
             throw new BusinessException(10008, "User kind is not allowed for this operation");
         }
@@ -80,12 +84,12 @@ public class AdminService {
         // 校验资质存在且为 pending 状态
         Qualification qualification = qualificationRepository
                 .findByUserIdAndStatus(merchantId, QualificationStatus.pending)
-                .orElseThrow(() -> new BusinessException(400, "Merchant review state is invalid"));
+                .orElseThrow(() -> new BusinessException(60005, "Merchant review state does not allow this operation"));
 
         // 驳回时必须填写原因
         if (Boolean.FALSE.equals(request.getApproved())
                 && (request.getReason() == null || request.getReason().isBlank())) {
-            throw new BusinessException(400, "Review reason is required");
+            throw new BusinessException(60006, "Review reason is required");
         }
 
         Instant now = Instant.now();
@@ -119,9 +123,11 @@ public class AdminService {
      */
     public io.github.layjason.mayoistar.api.identity.IdentityDtos.MerchantProfile getMerchantForAdmin(
             String merchantId) {
-        User user = userRepository.findById(merchantId).orElseThrow(() -> new BusinessException(404, "User not found"));
+        User user = userRepository
+                .findById(merchantId)
+                .orElseThrow(() -> new BusinessException(60002, "User " + merchantId + " does not exist"));
         if (user.getKind() != UserKind.merchant) {
-            throw new BusinessException(404, "User not found");
+            throw new BusinessException(60002, "User " + merchantId + " does not exist");
         }
 
         MerchantProfile profile = merchantProfileRepository

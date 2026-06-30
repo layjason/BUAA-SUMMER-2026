@@ -118,7 +118,7 @@ class AdminServiceTest {
         }
 
         @Test
-        @DisplayName("驳回时无原因抛出异常")
+        @DisplayName("驳回时无原因抛出 60006")
         void shouldThrowWhenRejectWithoutReason() {
             Admin admin = buildAdmin();
             User user = buildMerchantUser();
@@ -133,11 +133,13 @@ class AdminServiceTest {
             request.setApproved(false);
 
             assertThatThrownBy(() -> adminService.reviewMerchantQualification(merchantId, adminId, request))
-                    .isInstanceOf(BusinessException.class);
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60006);
         }
 
         @Test
-        @DisplayName("资质不在 pending 状态抛出异常")
+        @DisplayName("资质不在 pending 状态抛出 60005")
         void shouldThrowWhenNotPending() {
             Admin admin = buildAdmin();
             User user = buildMerchantUser();
@@ -151,7 +153,38 @@ class AdminServiceTest {
             request.setApproved(true);
 
             assertThatThrownBy(() -> adminService.reviewMerchantQualification(merchantId, adminId, request))
-                    .isInstanceOf(BusinessException.class);
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60005);
+        }
+
+        @Test
+        @DisplayName("用户不存在时抛出 60002")
+        void shouldThrowWhenUserNotFound() {
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(userRepository.findById(merchantId)).thenReturn(Optional.empty());
+
+            AdminDtos.MerchantReviewRequest request = new AdminDtos.MerchantReviewRequest();
+            request.setApproved(true);
+
+            assertThatThrownBy(() -> adminService.reviewMerchantQualification(merchantId, adminId, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60002);
+        }
+
+        @Test
+        @DisplayName("管理员不存在时抛出 60000")
+        void shouldThrowWhenAdminNotFound() {
+            when(adminRepository.findById(adminId)).thenReturn(Optional.empty());
+
+            AdminDtos.MerchantReviewRequest request = new AdminDtos.MerchantReviewRequest();
+            request.setApproved(true);
+
+            assertThatThrownBy(() -> adminService.reviewMerchantQualification(merchantId, adminId, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60000);
         }
     }
 
