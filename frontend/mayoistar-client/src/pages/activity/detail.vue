@@ -79,6 +79,17 @@
           <text class="section-title">{{ t('activityDetail.safetyNotice') }}</text>
           <text class="section-body">{{ activity.safetyNotice }}</text>
         </view>
+
+        <!-- 参与者菜单 -->
+        <view class="section">
+          <view class="menu-card" hover-class="menu-hover" @click="goParticipants">
+            <text class="menu-text">{{ t('activityDetail.viewParticipants') }}</text>
+            <view class="menu-right">
+              <text class="menu-count">{{ activity.registeredCount }}/{{ activity.capacity }}</text>
+              <text class="menu-arrow">&gt;</text>
+            </view>
+          </view>
+        </view>
       </view>
 
       <!-- 底部操作按钮 -->
@@ -90,13 +101,6 @@
           @click="handleAction"
         >
           {{ buttonText }}
-        </button>
-        <button
-          v-if="isOrganizer"
-          class="action-btn action-btn-secondary"
-          @click="handleViewParticipants"
-        >
-          {{ t('activityDetail.viewParticipants') }}
         </button>
         <button v-if="canReview" class="action-btn action-btn-secondary" @click="goReview">
           {{ t('activityDetail.writeReview') }}
@@ -412,26 +416,10 @@ async function handleGenerateQrCode(): Promise<void> {
 }
 
 /**
- * 查看参与者列表
+ * 跳转到参与者列表页
  */
-async function handleViewParticipants(): Promise<void> {
-  try {
-    const result = (await api.get('/activities/{activityId}/participants', {
-      path: { activityId: activityId.value },
-    })) as { items: { nickname: string; registrationStatus: string }[] }
-    const list = result.items.map((p) => `${p.nickname}（${p.registrationStatus}）`).join('\n')
-    uni.showModal({
-      title: '参与者列表',
-      content: list || '暂无参与者',
-      showCancel: false,
-    })
-  } catch {
-    uni.showModal({
-      title: '参与者列表',
-      content: '加载失败',
-      showCancel: false,
-    })
-  }
+function goParticipants(): void {
+  uni.navigateTo({ url: `/pages/activity/participants?activityId=${activityId.value}` })
 }
 
 /**
@@ -759,6 +747,41 @@ onLoad((query) => {
 .action-btn.disabled {
   background-color: #c8c9cc;
   color: #fff;
+}
+
+/* ---- 参与者菜单 ---- */
+.menu-card {
+  background-color: #fff;
+  border-radius: 12rpx;
+  padding: 28rpx 32rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.menu-hover {
+  opacity: 0.85;
+}
+
+.menu-text {
+  font-size: 28rpx;
+  color: #323233;
+}
+
+.menu-right {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.menu-count {
+  font-size: 26rpx;
+  color: #969799;
+}
+
+.menu-arrow {
+  font-size: 28rpx;
+  color: #c8c9cc;
 }
 
 .action-btn-secondary {
