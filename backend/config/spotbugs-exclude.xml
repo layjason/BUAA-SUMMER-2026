@@ -32,4 +32,12 @@
             <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+Service" />
         </Or>
     </Match>
+    <!--
+        ChatService 中 log 的参数均为 UUID (messageId, conversationId, userId) 或
+        枚举值 (MessageKind)，不可能包含 CRLF 字符。SpotBugs 无法推断参数类型安全性。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.ChatService" />
+        <Bug pattern="CRLF_INJECTION_LOGS" />
+    </Match>
 </FindBugsFilter>
