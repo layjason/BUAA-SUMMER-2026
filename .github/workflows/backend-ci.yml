@@ -32,11 +32,8 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install editorconfig-checker
-        run: npm install --global editorconfig-checker
-
       - name: Check EditorConfig
-        run: editorconfig-checker
+        run: npx editorconfig-checker@6.1.1
 
       - name: Check formatting
         run: mvn -B -ntp spotless:check
