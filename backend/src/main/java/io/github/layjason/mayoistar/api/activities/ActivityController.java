@@ -6,9 +6,11 @@ import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.service.ActivitySearchService;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
+import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
 import io.github.layjason.mayoistar.service.activities.RequestActorResolver;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +33,7 @@ public class ActivityController {
     private final DefaultApiResponseFactory responseFactory;
     private final ActivitySearchService activitySearchService;
     private final ActivityDraftService activityDraftService;
+    private final ActivityQueryService activityQueryService;
     private final RequestActorResolver requestActorResolver;
 
     @PostMapping("/drafts")
@@ -127,7 +130,11 @@ public class ActivityController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+        return requestActorResolver
+                .resolveCurrentUserId()
+                .map(userId -> ResponseEntity.ok(
+                        ApiResponse.success(activityQueryService.listMyActivities(userId, status, page, pageSize))))
+                .orElseGet(responseFactory::emptyPage);
     }
 
     @GetMapping("/search")
@@ -175,7 +182,8 @@ public class ActivityController {
 
     @GetMapping("/{activityId}")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> getActivity(@PathVariable String activityId) {
-        return responseFactory.activityDetail();
+        Optional<String> userId = requestActorResolver.resolveCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(activityQueryService.getActivity(userId, activityId)));
     }
 
     @PostMapping("/{activityId}/check-in-qrcode")
