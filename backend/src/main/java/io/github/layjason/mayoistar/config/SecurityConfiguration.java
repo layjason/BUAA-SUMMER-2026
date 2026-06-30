@@ -30,6 +30,8 @@ public class SecurityConfiguration {
         "/identity/auth/refresh",
         "/identity/nicknames/availability",
         "/identity/interest-tags",
+        "/admin/auth/login",
+        "/admin/auth/password",
     };
 
     /**

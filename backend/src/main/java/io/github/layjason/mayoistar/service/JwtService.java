@@ -143,6 +143,66 @@ public class JwtService {
     }
 
     /**
+     * 生成管理员访问令牌。
+     *
+     * <p>前置条件：adminId 非空。
+     *
+     * <p>后置条件：返回包含 sub=adminId、kind=admin、type=access 且有效期为 accessTokenExpire 秒的 JWT。
+     *
+     * @param adminId 管理员标识
+     * @return 访问令牌字符串
+     */
+    public String generateAdminAccessToken(String adminId) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .subject(adminId)
+                .claim("kind", "admin")
+                .claim("type", "access")
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusSeconds(jwtProperties.accessTokenExpire())))
+                .signWith(secretKey)
+                .compact();
+    }
+
+    /**
+     * 生成管理员刷新令牌。
+     *
+     * <p>前置条件：adminId 非空。
+     *
+     * <p>后置条件：返回包含 sub=adminId、kind=admin、type=refresh 且有效期为 refreshTokenExpire 秒的 JWT。
+     *
+     * @param adminId 管理员标识
+     * @return 刷新令牌字符串
+     */
+    public String generateAdminRefreshToken(String adminId) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .subject(adminId)
+                .claim("kind", "admin")
+                .claim("type", "refresh")
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusSeconds(jwtProperties.refreshTokenExpire())))
+                .signWith(secretKey)
+                .compact();
+    }
+
+    /**
+     * 检查 Claims 是否为管理员令牌。
+     *
+     * <p>前置条件：claims 非空。
+     *
+     * <p>后置条件：若 kind 声称值为 "admin" 则返回 true。
+     *
+     * @param claims 解析后的 Claims
+     * @return 是否为管理员令牌
+     */
+    public boolean isAdmin(Claims claims) {
+        return "admin".equals(claims.get("kind", String.class));
+    }
+
+    /**
      * 获取访问令牌的过期时间。
      *
      * @param claims 解析后的 Claims
