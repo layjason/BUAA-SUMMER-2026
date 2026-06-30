@@ -333,6 +333,7 @@ public class DefaultApiResponseFactory {
         dto.setTeamId("team-placeholder");
         dto.setTitle("默认投票");
         dto.setOptions(List.of(option));
+        dto.setDeadline(NOW);
         dto.setCreatedAt(NOW);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
