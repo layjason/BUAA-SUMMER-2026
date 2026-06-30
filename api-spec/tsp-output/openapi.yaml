@@ -398,7 +398,6 @@ paths:
                   - $ref: '#/components/schemas/UnauthorizedResponse'
                   - $ref: '#/components/schemas/ForbiddenResponse'
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
-                  - $ref: '#/components/schemas/Errors.Activities.InvalidMediaUsage'
                   - $ref: '#/components/schemas/Errors.Activities.ImageFormatInvalid'
                   - $ref: '#/components/schemas/Errors.Activities.ImageTooLarge'
       tags:
@@ -409,13 +408,10 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/MediaUploadRequest'
-            encoding:
-              usage:
-                contentType: application/json
   /activities/media/review-images:
     post:
       operationId: ActivityOperations_uploadActivityReviewImage
-      description: 上传活动评价 Markdown 内链图片，请求为 multipart/form-data，媒体用途必须为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。
+      description: 上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。
       parameters: []
       responses:
         '200':
@@ -449,7 +445,6 @@ paths:
                   - $ref: '#/components/schemas/UnauthorizedResponse'
                   - $ref: '#/components/schemas/ForbiddenResponse'
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
-                  - $ref: '#/components/schemas/Errors.Activities.InvalidMediaUsage'
                   - $ref: '#/components/schemas/Errors.Activities.ImageFormatInvalid'
                   - $ref: '#/components/schemas/Errors.Activities.ImageTooLarge'
       tags:
@@ -460,9 +455,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/MediaUploadRequest'
-            encoding:
-              usage:
-                contentType: application/json
   /activities/mine:
     get:
       operationId: ActivityOperations_listMyActivities
@@ -2663,7 +2655,6 @@ paths:
                   - $ref: '#/components/schemas/UnauthorizedResponse'
                   - $ref: '#/components/schemas/ForbiddenResponse'
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
-                  - $ref: '#/components/schemas/Errors.Chat.InvalidMediaUsage'
                   - $ref: '#/components/schemas/Errors.Chat.ImageFormatInvalid'
                   - $ref: '#/components/schemas/Errors.Chat.ImageTooLarge'
       tags:
@@ -2674,9 +2665,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/MediaUploadRequest'
-            encoding:
-              usage:
-                contentType: application/json
   /chat/messages/read:
     post:
       operationId: ChatOperations_markMessagesRead
@@ -2867,7 +2855,6 @@ paths:
                   - $ref: '#/components/schemas/UnauthorizedResponse'
                   - $ref: '#/components/schemas/ForbiddenResponse'
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
-                  - $ref: '#/components/schemas/Errors.Chat.InvalidMediaUsage'
                   - $ref: '#/components/schemas/Errors.Chat.TeamNotVisible'
                   - $ref: '#/components/schemas/Errors.Chat.TeamMemberRequired'
                   - $ref: '#/components/schemas/Errors.Chat.ImageFormatInvalid'
@@ -2880,9 +2867,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/MediaUploadRequest'
-            encoding:
-              usage:
-                contentType: application/json
     get:
       operationId: ChatOperations_listTeamAlbumImages
       description: 查看小队相册图片，小队成员可分页查看已上传到相册的图片。
@@ -3155,7 +3139,6 @@ paths:
                   - $ref: '#/components/schemas/UnauthorizedResponse'
                   - $ref: '#/components/schemas/ForbiddenResponse'
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
-                  - $ref: '#/components/schemas/Errors.Chat.InvalidMediaUsage'
                   - $ref: '#/components/schemas/Errors.Chat.TeamNotVisible'
                   - $ref: '#/components/schemas/Errors.Chat.TeamMemberRequired'
       tags:
@@ -3166,9 +3149,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/MediaUploadRequest'
-            encoding:
-              usage:
-                contentType: application/json
     get:
       operationId: ChatOperations_listTeamFiles
       description: 查看群文件，小队成员可分页查看群文件列表。
@@ -4211,7 +4191,7 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Identity.AvatarUploadRequest'
+              $ref: '#/components/schemas/MediaUploadRequest'
   /identity/media/license:
     post:
       operationId: IdentityOperations_uploadMerchantLicense
@@ -4249,7 +4229,6 @@ paths:
                   - $ref: '#/components/schemas/UnauthorizedResponse'
                   - $ref: '#/components/schemas/ForbiddenResponse'
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
-                  - $ref: '#/components/schemas/Errors.Identity.InvalidMediaUsage'
                   - $ref: '#/components/schemas/Errors.Identity.ImageFormatInvalid'
                   - $ref: '#/components/schemas/Errors.Identity.ImageTooLarge'
       tags:
@@ -4260,9 +4239,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/MediaUploadRequest'
-            encoding:
-              usage:
-                contentType: application/json
   /identity/nicknames/availability:
     get:
       operationId: IdentityOperations_checkNickname
@@ -10235,15 +10211,6 @@ components:
         - active
         - banned
       description: 账号状态，控制登录权限。
-    Identity.AvatarUploadRequest:
-      type: object
-      properties:
-        file:
-          type: string
-          format: binary
-          description: 头像文件。
-      required:
-        - file
     Identity.ChangePasswordRequest:
       type: object
       required:
@@ -10690,13 +10657,8 @@ components:
           type: string
           format: binary
           description: 上传文件。
-        usage:
-          allOf:
-            - $ref: '#/components/schemas/MediaUsage'
-          description: 媒体用途。
       required:
         - file
-        - usage
     MediaUsage:
       type: string
       enum:

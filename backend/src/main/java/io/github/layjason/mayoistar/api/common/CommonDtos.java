@@ -1,6 +1,8 @@
 package io.github.layjason.mayoistar.api.common;
 
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import jakarta.annotation.Nullable;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import lombok.Data;
 
@@ -36,7 +38,11 @@ public final class CommonDtos {
         private String contentType;
         private Long sizeBytes;
         private MediaUsage usage;
+
+        @Nullable
         private String url;
+
+        @NotNull
         private String uploadedAt;
     }
 

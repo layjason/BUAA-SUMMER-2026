@@ -53,7 +53,8 @@ public class Qualification {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private QualificationStatus status;
+    @Builder.Default
+    private QualificationStatus status = QualificationStatus.not_submitted;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "license_media_ids", columnDefinition = "jsonb")

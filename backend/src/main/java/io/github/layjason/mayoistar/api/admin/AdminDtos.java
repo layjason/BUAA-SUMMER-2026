@@ -1,9 +1,11 @@
 package io.github.layjason.mayoistar.api.admin;
 
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
+import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
+import io.github.layjason.mayoistar.entity.social.ReportStatus;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -64,7 +66,7 @@ public final class AdminDtos {
     @Data
     public static class ReviewDecisionRequest {
         @NotNull
-        private String result;
+        private ReviewStatus result;
 
         private String reason;
     }
@@ -72,7 +74,7 @@ public final class AdminDtos {
     @Data
     public static class UserReportDecisionRequest {
         @NotNull
-        private String status;
+        private ReportStatus status;
 
         @NotNull
         private String handlingNote;
@@ -88,20 +90,38 @@ public final class AdminDtos {
 
     @Data
     public static class AdminLoginResponse {
+        @NotNull
         private String userId;
+
+        @NotNull
         private IdentityDtos.TokenPair tokens;
     }
 
     @Data
     public static class AdminUserSummary {
+        @NotNull
         private String userId;
+
+        @NotNull
         private String email;
+
         private String nickname;
+
+        @NotNull
         private UserKind kind;
+
+        @NotNull
         private AccountStatus status;
+
         private QualificationStatus qualificationStatus;
+
+        @NotNull
         private Integer activityCount;
+
+        @NotNull
         private Integer teamCount;
+
+        @NotNull
         private String createdAt;
     }
 }

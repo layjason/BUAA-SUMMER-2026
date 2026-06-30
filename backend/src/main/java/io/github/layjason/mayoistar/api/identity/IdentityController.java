@@ -119,13 +119,13 @@ public class IdentityController {
 
     @PostMapping(value = "/media/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>> uploadAvatar(
-            @RequestPart(value = "file", required = false) MultipartFile file) {
+            @RequestPart(value = "file") MultipartFile file) {
         return responseFactory.mediaFile(MediaUsage.avatar);
     }
 
     @PostMapping(value = "/media/license", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
-            uploadMerchantLicense(@RequestPart(value = "file", required = false) MultipartFile file) {
+            uploadMerchantLicense(@RequestPart(value = "file") MultipartFile file) {
         return responseFactory.mediaFile(MediaUsage.merchantLicense);
     }
 

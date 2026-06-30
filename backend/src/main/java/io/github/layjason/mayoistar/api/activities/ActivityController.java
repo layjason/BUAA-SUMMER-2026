@@ -71,13 +71,13 @@ public class ActivityController {
 
     @PostMapping(value = "/media/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
-            uploadActivityImage(@RequestPart(value = "file", required = false) MultipartFile file) {
+            uploadActivityImage(@RequestPart(value = "file") MultipartFile file) {
         return responseFactory.mediaFile(MediaUsage.activityImage);
     }
 
     @PostMapping(value = "/media/review-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
-            uploadActivityReviewImage(@RequestPart(value = "file", required = false) MultipartFile file) {
+            uploadActivityReviewImage(@RequestPart(value = "file") MultipartFile file) {
         return responseFactory.mediaFile(MediaUsage.activityReviewImage);
     }
 
