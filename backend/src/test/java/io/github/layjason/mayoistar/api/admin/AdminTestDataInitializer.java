@@ -3,7 +3,12 @@ package io.github.layjason.mayoistar.api.admin;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.chat.Conversation;
+import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
+import io.github.layjason.mayoistar.entity.identity.MerchantProfile;
+import io.github.layjason.mayoistar.entity.identity.Qualification;
+import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.entity.social.Report;
@@ -15,12 +20,16 @@ import io.github.layjason.mayoistar.entity.social.TeamMember;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
+import io.github.layjason.mayoistar.repository.ConversationRepository;
+import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
+import io.github.layjason.mayoistar.repository.QualificationRepository;
 import io.github.layjason.mayoistar.repository.ReportRepository;
 import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,19 +55,41 @@ public class AdminTestDataInitializer {
     @Bean
     public ApplicationRunner adminTestDataInitializerRunner(
             UserRepository userRepository,
+            MerchantProfileRepository merchantProfileRepository,
+            QualificationRepository qualificationRepository,
             ActivityRepository activityRepository,
             TeamRepository teamRepository,
             TeamMemberRepository teamMemberRepository,
-            ReportRepository reportRepository) {
+            ReportRepository reportRepository,
+            ConversationRepository conversationRepository) {
         return args -> {
-            createPlaceholderUserIfNeeded(userRepository);
+            createPlaceholderMerchantIfNeeded(userRepository, merchantProfileRepository, qualificationRepository);
             createPlaceholderActivityIfNeeded(activityRepository);
+            createPlaceholderConversationIfNeeded(conversationRepository);
             createPlaceholderTeamIfNeeded(teamRepository, teamMemberRepository);
             createPlaceholderReportIfNeeded(reportRepository);
         };
     }
 
-    private void createPlaceholderUserIfNeeded(UserRepository userRepository) {
+    private void createPlaceholderConversationIfNeeded(ConversationRepository conversationRepository) {
+        if (conversationRepository.existsById(PLACEHOLDER + "-chat")) {
+            return;
+        }
+        Instant now = Instant.now();
+        Conversation conversation = Conversation.builder()
+                .conversationId(PLACEHOLDER + "-chat")
+                .kind(ConversationKind.team)
+                .title("Placeholder Chat")
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        conversationRepository.save(conversation);
+    }
+
+    private void createPlaceholderMerchantIfNeeded(
+            UserRepository userRepository,
+            MerchantProfileRepository merchantProfileRepository,
+            QualificationRepository qualificationRepository) {
         if (userRepository.existsById(PLACEHOLDER)) {
             return;
         }
@@ -68,12 +99,29 @@ public class AdminTestDataInitializer {
                 .email("placeholder@example.com")
                 .nickname("placeholder")
                 .passwordHash("$2a$12$dummyhash")
-                .kind(UserKind.personal)
+                .kind(UserKind.merchant)
                 .accountStatus(AccountStatus.active)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
         userRepository.save(user);
+
+        MerchantProfile profile = new MerchantProfile();
+        profile.setUser(user);
+        profile.setMerchantName("Placeholder Merchant");
+        profile.setInterestedActivityFields(List.of());
+        profile.setUpdatedAt(now);
+        merchantProfileRepository.save(profile);
+
+        Qualification qualification = Qualification.builder()
+                .qualificationId(UUID.randomUUID().toString())
+                .userId(PLACEHOLDER)
+                .status(QualificationStatus.pending)
+                .licenseMediaIds(List.of())
+                .submittedAt(now)
+                .createdAt(now)
+                .build();
+        qualificationRepository.save(qualification);
     }
 
     private void createPlaceholderActivityIfNeeded(ActivityRepository activityRepository) {
@@ -86,11 +134,20 @@ public class AdminTestDataInitializer {
                 .organizerId(PLACEHOLDER)
                 .title("Placeholder Activity")
                 .tags(List.of("test"))
+                .introduction("Placeholder introduction text")
                 .startAt(now)
                 .endAt(now.plusSeconds(7200))
+                .pointLon(0.0)
+                .pointLat(0.0)
+                .city("Placeholder City")
+                .address("Placeholder Address")
+                .placeName("Placeholder Place")
+                .safetyNotice("Placeholder safety notice")
                 .capacity(10)
+                .registrationDeadline(now.plusSeconds(3600))
                 .reviewStatus(ActivityReviewStatus.pending)
                 .runtimeStatus(ActivityRuntimeStatus.registering)
+                .manualReviewRequired(false)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -109,9 +166,11 @@ public class AdminTestDataInitializer {
                 .tags(List.of("test"))
                 .joinMode(TeamJoinMode.publicJoin)
                 .capacity(20)
+                .description("Placeholder team description")
                 .status(TeamStatus.active)
                 .creatorId(PLACEHOLDER)
                 .leaderId(PLACEHOLDER)
+                .chatId(PLACEHOLDER + "-chat")
                 .createdAt(now)
                 .updatedAt(now)
                 .build();

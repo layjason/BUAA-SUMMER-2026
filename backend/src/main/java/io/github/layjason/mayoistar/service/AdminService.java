@@ -1161,19 +1161,7 @@ public class AdminService {
         summary.setRuntimeStatus(activity.getRuntimeStatus());
         summary.setRegisteredCount(0);
         summary.setCapacity(activity.getCapacity());
-
-        if (activity.getPointLat() != null && activity.getPointLon() != null) {
-            CommonDtos.LocationInfo location = new CommonDtos.LocationInfo();
-            CommonDtos.GeoPoint point = new CommonDtos.GeoPoint();
-            point.setLongitude(activity.getPointLon());
-            point.setLatitude(activity.getPointLat());
-            location.setPoint(point);
-            location.setCity(activity.getCity() != null ? activity.getCity() : "");
-            location.setAddress(activity.getAddress() != null ? activity.getAddress() : "");
-            location.setPlaceName(activity.getPlaceName());
-            summary.setLocation(location);
-        }
-
+        summary.setLocation(buildLocationInfo(activity));
         return summary;
     }
 
@@ -1199,21 +1187,10 @@ public class AdminService {
         detail.setManualReviewRequired(activity.getManualReviewRequired());
         detail.setImages(List.of());
         detail.setWaitingCount(0);
+        detail.setLocation(buildLocationInfo(activity));
 
         if (activity.getOrganizer() != null) {
             detail.setOrganizerName(activity.getOrganizer().getNickname());
-        }
-
-        if (activity.getPointLat() != null && activity.getPointLon() != null) {
-            CommonDtos.LocationInfo location = new CommonDtos.LocationInfo();
-            CommonDtos.GeoPoint point = new CommonDtos.GeoPoint();
-            point.setLongitude(activity.getPointLon());
-            point.setLatitude(activity.getPointLat());
-            location.setPoint(point);
-            location.setCity(activity.getCity() != null ? activity.getCity() : "");
-            location.setAddress(activity.getAddress() != null ? activity.getAddress() : "");
-            location.setPlaceName(activity.getPlaceName());
-            detail.setLocation(location);
         }
 
         List<ActivityDtos.ReviewRecord> reviewRecords =
@@ -1223,6 +1200,23 @@ public class AdminService {
         detail.setReviewRecords(reviewRecords);
 
         return detail;
+    }
+
+    /**
+     * 构建 LocationInfo，始终填充必填字段（point、city、address）。
+     *
+     * <p>不变量：返回的 LocationInfo 中 point、city、address 非空。
+     */
+    private CommonDtos.LocationInfo buildLocationInfo(Activity activity) {
+        CommonDtos.LocationInfo location = new CommonDtos.LocationInfo();
+        CommonDtos.GeoPoint point = new CommonDtos.GeoPoint();
+        point.setLongitude(activity.getPointLon() != null ? activity.getPointLon() : 0.0);
+        point.setLatitude(activity.getPointLat() != null ? activity.getPointLat() : 0.0);
+        location.setPoint(point);
+        location.setCity(activity.getCity() != null ? activity.getCity() : "");
+        location.setAddress(activity.getAddress() != null ? activity.getAddress() : "");
+        location.setPlaceName(activity.getPlaceName());
+        return location;
     }
 
     private ActivityDtos.ReviewRecord buildReviewRecordDto(ActivityReviewRecord record) {
@@ -1268,6 +1262,7 @@ public class AdminService {
     private SocialDtos.TeamMember buildTeamMemberDto(TeamMember member) {
         SocialDtos.TeamMember dto = new SocialDtos.TeamMember();
         dto.setUserId(member.getUserId());
+        dto.setNickname(member.getUser() != null ? member.getUser().getNickname() : member.getUserId());
         dto.setRole(member.getRole());
         dto.setPoints(member.getPoints());
         dto.setJoinedAt(member.getJoinedAt().toString());
