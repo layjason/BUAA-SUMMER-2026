@@ -6,6 +6,5 @@ package io.github.layjason.mayoistar.entity.chat;
 public enum MessageKind {
     text,
     image,
-    location,
-    emoticon;
+    location;
 }
