@@ -150,5 +150,31 @@
     "avatarUploadFailed": "头像上传失败",
     "save": "保存",
     "saveSuccess": "保存成功"
+  },
+
+  "myActivities": {
+    "title": "我创建的活动",
+    "tabPublished": "已发布",
+    "tabDrafts": "草稿",
+    "draftTitle": "草稿",
+    "participants": "{count}人报名",
+    "statusApproved": "已通过",
+    "statusPending": "审核中",
+    "statusRejected": "已驳回",
+    "statusRegistering": "报名中",
+    "statusRegistrationClosed": "报名截止",
+    "statusOngoing": "进行中",
+    "statusEnded": "已结束",
+    "statusDraft": "草稿"
+  },
+
+  "myRegistrations": {
+    "title": "我的报名",
+    "statusRegistered": "已报名",
+    "statusCheckedIn": "已签到",
+    "statusCanceled": "已取消",
+    "statusWaiting": "候补中",
+    "statusWaitingConfirmation": "待确认",
+    "registrationTime": "报名时间"
   }
 }
