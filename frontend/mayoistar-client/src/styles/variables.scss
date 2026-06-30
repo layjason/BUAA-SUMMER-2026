@@ -1,0 +1,54 @@
+/**
+ * 全局 SCSS 变量
+ *
+ * 定义项目级设计 Token，覆盖 uni.scss 默认值
+ */
+
+/* 品牌色 */
+$primary-color: #1989fa;
+$primary-light: #e8f4ff;
+$success-color: #07c160;
+$warning-color: #ff976a;
+$danger-color: #ee0a24;
+$info-color: #909399;
+
+/* 文字颜色 */
+$text-primary: #323233;
+$text-secondary: #646566;
+$text-placeholder: #c8c9cc;
+
+/* 背景色 */
+$bg-color: #f7f8fa;
+$bg-white: #ffffff;
+$bg-card: #ffffff;
+$bg-divider: #ebedf0;
+
+/* 边框 */
+$border-color: #ebedf0;
+$border-radius-sm: 4rpx;
+$border-radius-md: 8rpx;
+$border-radius-lg: 16rpx;
+$border-radius-round: 9999rpx;
+
+/* 间距 */
+$spacing-xs: 8rpx;
+$spacing-sm: 16rpx;
+$spacing-md: 24rpx;
+$spacing-lg: 32rpx;
+$spacing-xl: 48rpx;
+
+/* 字号 */
+$font-size-xs: 20rpx;
+$font-size-sm: 24rpx;
+$font-size-md: 28rpx;
+$font-size-lg: 32rpx;
+$font-size-xl: 36rpx;
+$font-size-xxl: 40rpx;
+
+/* 阴影 */
+$shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+$shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+$shadow-lg: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);
+
+/* 安全区域 */
+$safe-area-inset-bottom: env(safe-area-inset-bottom, 0);
