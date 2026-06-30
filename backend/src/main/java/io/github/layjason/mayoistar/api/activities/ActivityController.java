@@ -246,7 +246,11 @@ public class ActivityController {
 
     @PostMapping("/{activityId}/submit")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> submitActivity(@PathVariable String activityId) {
-        return responseFactory.activityDetail();
+        return requestActorResolver
+                .resolveCurrentUserId()
+                .map(userId ->
+                        ResponseEntity.ok(ApiResponse.success(activityDraftService.submitActivity(userId, activityId))))
+                .orElseGet(responseFactory::activityDetail);
     }
 
     @PostMapping("/{activityId}/summaries")

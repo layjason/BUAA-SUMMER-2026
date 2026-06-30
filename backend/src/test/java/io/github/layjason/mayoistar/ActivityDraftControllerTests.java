@@ -13,6 +13,7 @@ import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.common.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.identity.UserRepository;
 import io.github.layjason.mayoistar.service.activities.RequestActorResolver;
@@ -42,6 +43,9 @@ class ActivityDraftControllerTests {
     private ActivityImageRepository activityImageRepository;
 
     @Autowired
+    private ActivityReviewRecordRepository activityReviewRecordRepository;
+
+    @Autowired
     private MediaFileRepository mediaFileRepository;
 
     @Autowired
@@ -49,6 +53,7 @@ class ActivityDraftControllerTests {
 
     @AfterEach
     void tearDown() {
+        activityReviewRecordRepository.deleteAll();
         activityImageRepository.deleteAll();
         activityRepository.deleteAll();
         mediaFileRepository.deleteAll();
@@ -116,6 +121,55 @@ class ActivityDraftControllerTests {
         mockMvc.perform(post("/activities/drafts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createDraftRequestJson(List.of(), "桌游局")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.activityId").value("activity-placeholder"));
+    }
+
+    @Test
+    void submitActivityShouldReturnDetailWhenSuccessful() throws Exception {
+        saveUser("user-a");
+        String responseBody = mockMvc.perform(post("/activities/drafts")
+                        .header(RequestActorResolver.USER_ID_HEADER, "user-a")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createDraftRequestJson(List.of(), "提交测试活动")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String activityId = extractActivityId(responseBody);
+
+        mockMvc.perform(post("/activities/{activityId}/submit", activityId)
+                        .header(RequestActorResolver.USER_ID_HEADER, "user-a"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.activityId").value(activityId))
+                .andExpect(jsonPath("$.data.reviewStatus").value("pending"))
+                .andExpect(jsonPath("$.data.organizerName").value("nickname-user-a"))
+                .andExpect(jsonPath("$.data.reviewRecords.length()").value(1));
+    }
+
+    @Test
+    void submitActivityShouldRejectWhenNotOwner() throws Exception {
+        saveUser("user-a");
+        saveUser("user-b");
+        String responseBody = mockMvc.perform(post("/activities/drafts")
+                        .header(RequestActorResolver.USER_ID_HEADER, "user-a")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createDraftRequestJson(List.of(), "桌游局")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String activityId = extractActivityId(responseBody);
+
+        mockMvc.perform(post("/activities/{activityId}/submit", activityId)
+                        .header(RequestActorResolver.USER_ID_HEADER, "user-b"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(20003));
+    }
+
+    @Test
+    void submitActivityShouldFallbackWhenHeaderMissing() throws Exception {
+        mockMvc.perform(post("/activities/{activityId}/submit", "any-id"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.activityId").value("activity-placeholder"));
     }

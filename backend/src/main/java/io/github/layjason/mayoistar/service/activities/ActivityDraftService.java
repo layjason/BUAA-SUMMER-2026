@@ -6,11 +6,14 @@ import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityImage;
+import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.common.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.identity.UserRepository;
 import java.time.Instant;
@@ -42,9 +45,11 @@ public class ActivityDraftService {
 
     private final ActivityRepository activityRepository;
     private final ActivityImageRepository activityImageRepository;
+    private final ActivityReviewRecordRepository activityReviewRecordRepository;
     private final MediaFileRepository mediaFileRepository;
     private final UserRepository userRepository;
     private final ActivityDraftMapper activityDraftMapper;
+    private final SubmitActivityValidator submitActivityValidator;
 
     /**
      * 保存新的活动草稿。
@@ -194,10 +199,131 @@ public class ActivityDraftService {
         return loadDraftDetail(savedActivity);
     }
 
+    /**
+     * 提交活动审核。
+     *
+     * <p>前置条件：调用者用户存在；活动存在且属于调用者本人；活动处于 draft 或 changeRequired 状态；
+     * 活动所有必填字段完整且合法。
+     *
+     * <p>后置条件：活动 reviewStatus 更新为 pending；创建一条审核记录（初始结果为 pending）；
+     * 若容量达到人工审核阈值则标记 manualReviewRequired。
+     *
+     * <p>不变量：organizerId 不变；runtimeStatus 不变。
+     *
+     * @param organizerId 当前调用者 ID
+     * @param activityId 活动 ID
+     * @return 活动详情
+     */
+    @Transactional
+    public ActivityDtos.ActivityDetail submitActivity(String organizerId, String activityId) {
+        validateUserExists(organizerId);
+        Activity activity = findActivityForSubmit(organizerId, activityId);
+        submitActivityValidator.validateForSubmission(activity);
+
+        activity.setReviewStatus(ActivityReviewStatus.pending);
+        activity.setManualReviewRequired(shouldManualReview(activity));
+        activity.setUpdatedAt(Instant.now());
+        Activity savedActivity = activityRepository.save(activity);
+
+        ActivityReviewRecord reviewRecord = createInitialReviewRecord(savedActivity.getActivityId());
+        activityReviewRecordRepository.save(reviewRecord);
+
+        log.info(
+                "已提交活动审核，activityId={}, organizerId={}, manualReviewRequired={}",
+                savedActivity.getActivityId(),
+                organizerId,
+                savedActivity.getManualReviewRequired());
+
+        return loadActivityDetail(savedActivity);
+    }
+
+    private Activity findActivityForSubmit(String organizerId, String activityId) {
+        Activity activity =
+                activityRepository.findById(activityId).orElseThrow(() -> new BusinessException(20002, "活动不存在"));
+        if (!activity.getOrganizerId().equals(organizerId)) {
+            throw new BusinessException(20003, "无权操作其他用户的活动");
+        }
+        return activity;
+    }
+
+    /**
+     * 判断是否需要人工审核。
+     *
+     * <p>前置条件：activity 非空且 capacity 已通过校验。
+     *
+     * <p>后置条件：capacity >= 50 时返回 true，否则返回 false。
+     *
+     * <p>不变量：不修改实体。
+     *
+     * @param activity 活动实体
+     * @return 是否需要人工审核
+     */
+    private boolean shouldManualReview(Activity activity) {
+        return activity.getCapacity() != null && activity.getCapacity() >= 50;
+    }
+
+    /**
+     * 创建初始审核记录。
+     *
+     * <p>前置条件：activityId 非空。
+     *
+     * <p>后置条件：返回一条 result=pending、reviewerId 为空的审核记录。
+     *
+     * <p>不变量：不修改活动实体，不执行除创建外的其他持久化操作。
+     *
+     * @param activityId 活动 ID
+     * @return 初始审核记录
+     */
+    private ActivityReviewRecord createInitialReviewRecord(String activityId) {
+        return ActivityReviewRecord.builder()
+                .recordId(UUID.randomUUID().toString())
+                .activityId(activityId)
+                .result(ReviewStatus.pending)
+                .reviewedAt(Instant.now())
+                .build();
+    }
+
+    /**
+     * 加载活动详情（含发起人昵称、图片、审核记录）。
+     *
+     * <p>前置条件：activity 已持久化。
+     *
+     * <p>后置条件：返回包含完整字段的 ActivityDetail。
+     *
+     * <p>不变量：不修改传入实体。
+     *
+     * @param activity 活动实体
+     * @return 活动详情 DTO
+     */
+    private ActivityDtos.ActivityDetail loadActivityDetail(Activity activity) {
+        List<ActivityImage> activityImages =
+                activityImageRepository.findByActivityIdOrderBySortOrderAsc(activity.getActivityId());
+        List<MediaFile> mediaFiles = loadMediaFiles(activityImages);
+        Map<String, Integer> sortOrderByMediaId = new LinkedHashMap<>();
+        for (ActivityImage activityImage : activityImages) {
+            sortOrderByMediaId.put(activityImage.getMediaId(), activityImage.getSortOrder());
+        }
+        String organizerName = userRepository
+                .findById(activity.getOrganizerId())
+                .map(user -> user.getNickname())
+                .orElse("未知用户");
+        List<ActivityReviewRecord> reviewRecords =
+                activityReviewRecordRepository.findByActivityIdOrderByReviewedAtDesc(activity.getActivityId());
+        List<ActivityDtos.ReviewRecord> reviewRecordDtos =
+                reviewRecords.stream().map(activityDraftMapper::toReviewRecord).toList();
+        return activityDraftMapper.toActivityDetail(
+                activity,
+                organizerName,
+                mediaFiles,
+                mediaId -> sortOrderByMediaId.getOrDefault(mediaId, Integer.MAX_VALUE),
+                reviewRecordDtos,
+                /* registeredCount: 由报名模块补充，提交审核时默认为 0 */ 0,
+                /* waitingCount: 由报名模块补充，提交审核时默认为 0 */ 0);
+    }
+
     private Activity findOwnedDraft(String organizerId, String activityId) {
-        Activity activity = activityRepository
-                .findById(activityId)
-                .orElseThrow(() -> new BusinessException(20002, "活动草稿不存在"));
+        Activity activity =
+                activityRepository.findById(activityId).orElseThrow(() -> new BusinessException(20002, "活动草稿不存在"));
         if (!activity.getOrganizerId().equals(organizerId)) {
             throw new BusinessException(20003, "无权访问其他用户的活动草稿");
         }

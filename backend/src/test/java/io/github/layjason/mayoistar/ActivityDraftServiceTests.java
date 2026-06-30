@@ -16,6 +16,7 @@ import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.common.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.identity.UserRepository;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
@@ -41,6 +42,9 @@ class ActivityDraftServiceTests {
     private ActivityImageRepository activityImageRepository;
 
     @Autowired
+    private ActivityReviewRecordRepository activityReviewRecordRepository;
+
+    @Autowired
     private MediaFileRepository mediaFileRepository;
 
     @Autowired
@@ -48,6 +52,7 @@ class ActivityDraftServiceTests {
 
     @AfterEach
     void tearDown() {
+        activityReviewRecordRepository.deleteAll();
         activityImageRepository.deleteAll();
         activityRepository.deleteAll();
         mediaFileRepository.deleteAll();
@@ -105,6 +110,166 @@ class ActivityDraftServiceTests {
 
         assertThat(activityDraftService.listDrafts(organizer.getUserId(), 1, 20).getItems())
                 .hasSize(1);
+    }
+
+    @Test
+    void submitActivityShouldTransitionFromDraftToPending() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+
+        ActivityDtos.ActivityDetail detail =
+                activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId());
+
+        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.pending);
+        assertThat(detail.getOrganizerName()).isEqualTo(organizer.getNickname());
+        assertThat(detail.getReviewRecords()).hasSize(1);
+        assertThat(detail.getReviewRecords().getFirst().getResult())
+                .isEqualTo(io.github.layjason.mayoistar.entity.common.ReviewStatus.pending);
+
+        Activity savedActivity =
+                activityRepository.findById(draft.getActivityId()).orElseThrow();
+        assertThat(savedActivity.getReviewStatus()).isEqualTo(ActivityReviewStatus.pending);
+        assertThat(savedActivity.getManualReviewRequired()).isFalse();
+    }
+
+    @Test
+    void submitActivityShouldTriggerManualReviewForLargeCapacity() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftUpsertRequest request = createDraftRequest(List.of());
+        request.setCapacity(60);
+        ActivityDtos.ActivityDraftDetail draft = activityDraftService.saveDraft(organizer.getUserId(), request);
+
+        ActivityDtos.ActivityDetail detail =
+                activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId());
+
+        assertThat(detail.getManualReviewRequired()).isTrue();
+        Activity savedActivity =
+                activityRepository.findById(draft.getActivityId()).orElseThrow();
+        assertThat(savedActivity.getManualReviewRequired()).isTrue();
+    }
+
+    @Test
+    void submitActivityShouldRejectNonOwner() {
+        User organizer = saveUser("user-a");
+        saveUser("user-b");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+
+        assertThatThrownBy(() -> activityDraftService.submitActivity("user-b", draft.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("无权操作其他用户的活动");
+    }
+
+    @Test
+    void submitActivityShouldRejectWhenNotFound() {
+        saveUser("user-a");
+
+        assertThatThrownBy(() -> activityDraftService.submitActivity("user-a", "non-existent-id"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("活动不存在");
+    }
+
+    @Test
+    void submitActivityShouldRejectWhenAlreadyPending() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+        activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId());
+
+        assertThatThrownBy(() -> activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("已在审核中");
+    }
+
+    @Test
+    void submitActivityShouldRejectWhenRejected() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+        Activity activity = activityRepository.findById(draft.getActivityId()).orElseThrow();
+        activity.setReviewStatus(ActivityReviewStatus.rejected);
+        activityRepository.save(activity);
+
+        assertThatThrownBy(() -> activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("已被驳回");
+    }
+
+    @Test
+    void submitActivityShouldRejectWhenMissingTitle() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+        // 将标题设为空白，模拟校验边界情况（DB 不允许 NULL，但允许空白字符串）
+        Activity activity = activityRepository.findById(draft.getActivityId()).orElseThrow();
+        activity.setTitle("  ");
+        activityRepository.save(activity);
+
+        assertThatThrownBy(() -> activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("活动名称不能为空");
+    }
+
+    @Test
+    void submitActivityShouldRejectWhenMissingTags() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+        Activity activity = activityRepository.findById(draft.getActivityId()).orElseThrow();
+        activity.setTags(null);
+        activityRepository.save(activity);
+
+        assertThatThrownBy(() -> activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("活动标签不能为空");
+    }
+
+    @Test
+    void submitActivityShouldRejectWhenMissingLocation() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+        Activity activity = activityRepository.findById(draft.getActivityId()).orElseThrow();
+        activity.setPointLon(null);
+        activity.setPointLat(null);
+        activity.setCity(null);
+        activity.setAddress(null);
+        activityRepository.save(activity);
+
+        assertThatThrownBy(() -> activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("活动地点信息不完整");
+    }
+
+    @Test
+    void submitActivityShouldRejectWhenInvalidSchedule() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+        // 直接修改实体将结束时间设为早于开始时间，模拟边界情况
+        Activity activity = activityRepository.findById(draft.getActivityId()).orElseThrow();
+        activity.setEndAt(Instant.parse("2026-07-01T10:00:00Z")); // 早于 startAt 2026-07-02T10:00:00Z
+        activityRepository.save(activity);
+
+        assertThatThrownBy(() -> activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("活动结束时间必须晚于开始时间");
+    }
+
+    @Test
+    void submitActivityShouldAllowResubmitFromChangeRequired() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+        Activity activity = activityRepository.findById(draft.getActivityId()).orElseThrow();
+        activity.setReviewStatus(ActivityReviewStatus.changeRequired);
+        activityRepository.save(activity);
+
+        ActivityDtos.ActivityDetail detail =
+                activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId());
+
+        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.pending);
     }
 
     private User saveUser(String userId) {
