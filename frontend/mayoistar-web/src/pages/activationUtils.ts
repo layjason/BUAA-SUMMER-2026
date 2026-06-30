@@ -1,5 +1,5 @@
-/** 趣聚 APP 深度链接 scheme 前缀 */
-const APP_SCHEME = 'mayoistar://activate';
+/** 趣聚 APP 激活页深度链接基础路径，遵循 UniApp scheme 页面路径规范 */
+const APP_ACTIVATION_BASE = 'mayoistar://pages/activate/index';
 
 /**
  * 从 URL 查询字符串中提取激活 token。
@@ -23,7 +23,7 @@ export function readActivationToken(search: string): string | null {
  */
 export function buildAppActivationUrl(token: string | null): string {
   if (!token) {
-    return APP_SCHEME;
+    return APP_ACTIVATION_BASE;
   }
-  return `${APP_SCHEME}?token=${encodeURIComponent(token)}`;
+  return `${APP_ACTIVATION_BASE}?token=${encodeURIComponent(token)}`;
 }

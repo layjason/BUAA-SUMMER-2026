@@ -33,14 +33,14 @@ describe('readActivationToken', () => {
 
 describe('buildAppActivationUrl', () => {
   it('token 非空时返回带编码 token 的深度链接', () => {
-    expect(buildAppActivationUrl('abc123')).toBe('mayoistar://activate?token=abc123');
+    expect(buildAppActivationUrl('abc123')).toBe('mayoistar://pages/activate/index?token=abc123');
   });
 
   it('token 含特殊字符时进行 URL 编码', () => {
-    expect(buildAppActivationUrl('a b+c')).toBe('mayoistar://activate?token=a%20b%2Bc');
+    expect(buildAppActivationUrl('a b+c')).toBe('mayoistar://pages/activate/index?token=a%20b%2Bc');
   });
 
   it('token 为 null 时返回基础深度链接', () => {
-    expect(buildAppActivationUrl(null)).toBe('mayoistar://activate');
+    expect(buildAppActivationUrl(null)).toBe('mayoistar://pages/activate/index');
   });
 });
