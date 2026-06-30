@@ -61,7 +61,9 @@ public class SecurityToken {
     @Builder.Default
     private Instant createdAt = Instant.now();
 
-    private Boolean used;
+    @Builder.Default
+    private Boolean used = false;
 
-    private Boolean revoked;
+    @Builder.Default
+    private Boolean revoked = false;
 }
