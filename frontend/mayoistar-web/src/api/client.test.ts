@@ -1,0 +1,82 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AdminUsersPage } from '../types';
+
+const adminUsersPage = {
+  items: [],
+  total: 0,
+  page: 1,
+  pageSize: 10,
+  totalPages: 1,
+} satisfies AdminUsersPage;
+
+const successResponse = (data: unknown) =>
+  new Response(JSON.stringify({ code: 200, message: 'For Super Earth!', data }), {
+    headers: { 'Content-Type': 'application/json' },
+    status: 200,
+  });
+
+const businessErrorResponse = (code: number, message: string) =>
+  new Response(JSON.stringify({ code, message, data: {} }), {
+    headers: { 'Content-Type': 'application/json' },
+    status: 200,
+  });
+
+describe('API 请求客户端', () => {
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => store.set(key, value),
+      removeItem: (key: string) => store.delete(key),
+      clear: () => store.clear(),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it('使用 VITE_API_BASE_URL 拼接相对路径请求并携带 Bearer Token', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.test');
+    const fetchMock = vi.fn().mockResolvedValue(successResponse(adminUsersPage));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { request, setAccessToken } = await import('./client');
+    setAccessToken('access-token');
+
+    await expect(request<AdminUsersPage>('/admin/users')).resolves.toEqual(adminUsersPage);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://api.example.test/admin/users');
+    const headers = init.headers as Headers;
+    expect(headers.get('Authorization')).toBe('Bearer access-token');
+    expect(headers.get('Content-Type')).toBe('application/json');
+  });
+
+  it('绝对 URL 请求不追加 API 基础地址', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.test');
+    const fetchMock = vi.fn().mockResolvedValue(successResponse(adminUsersPage));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { request } = await import('./client');
+
+    await request('https://other.example.test/health');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://other.example.test/health');
+  });
+
+  it('仅将契约规定的 code 200 视为业务成功', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(businessErrorResponse(0, 'Legacy success code is invalid'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { request } = await import('./client');
+
+    await expect(request('/admin/users')).rejects.toThrow('Legacy success code is invalid');
+  });
+});

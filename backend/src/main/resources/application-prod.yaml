@@ -1,0 +1,6 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${MAYOISTAR_DB_HOST:postgres}:${MAYOISTAR_DB_PORT:5432}/${POSTGRES_DB:mayoistar}
+    driver-class-name: org.postgresql.Driver
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}

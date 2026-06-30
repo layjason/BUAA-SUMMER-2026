@@ -8,7 +8,6 @@ namespace QujuApi.Identity;
 enum UserKind {
   personal,
   merchant,
-  admin,
 }
 
 @doc("账号状态，控制登录权限。")
@@ -62,6 +61,9 @@ model MerchantRegisterRequest {
 
   @doc("商家账号明文密码，服务端负责加盐哈希保存。")
   password: string;
+
+  @doc("商家全平台唯一昵称，与个人昵称共享唯一约束。")
+  nickname: string;
 }
 
 @doc("令牌响应。")
@@ -204,8 +206,8 @@ model MerchantProfile {
   @doc("商家主体名称。")
   merchantName: string;
 
-  @doc("商家平台展示昵称。")
-  merchantNickname: string;
+  @doc("商家全平台唯一昵称，与个人昵称共享唯一约束。")
+  nickname: string;
 
   @doc("商家头像媒体文件。")
   avatar?: MediaFile;
@@ -228,8 +230,8 @@ model UpdateMerchantProfileRequest {
   @doc("新的商家主体名称。")
   merchantName?: string;
 
-  @doc("新的商家展示昵称。")
-  merchantNickname?: string;
+  @doc("新的商家昵称。")
+  nickname?: string;
 
   @doc("新头像媒体文件标识。")
   avatarMediaId?: EntityId;
@@ -259,16 +261,10 @@ model ResendActivationEmailRequest {
   email: string;
 }
 
-@doc("商家资质提交请求，上传营业执照或营业凭证图片，请求为 multipart/form-data，支持多文件。")
+@doc("商家资质提交请求，营业执照或营业凭证图片需先通过上传接口取得 mediaId，提交接口仅引用已上传媒体。")
 model QualificationSubmitRequest {
-  @doc("营业执照或营业凭证图片。")
-  licenseImages: HttpPart<bytes>[];
-}
-
-@doc("头像上传请求，请求为 multipart/form-data，上传成功后服务端固定媒体用途为 avatar。")
-model AvatarUploadRequest {
-  @doc("头像文件。")
-  file: HttpPart<bytes>;
+  @doc("营业执照或营业凭证媒体文件标识列表。")
+  licenseMediaIds: EntityId[];
 }
 
 @route("/identity")
@@ -280,7 +276,6 @@ interface IdentityOperations {
   uploadMerchantLicense(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
 
-      | QujuApi.Errors.Identity.InvalidMediaUsage
       | QujuApi.Errors.Identity.ImageFormatInvalid
       | QujuApi.Errors.Identity.ImageTooLarge
   >;
@@ -288,11 +283,15 @@ interface IdentityOperations {
   @post
   @route("/media/avatar")
   @doc("上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。")
-  uploadAvatar(
-    @multipartBody body: AvatarUploadRequest,
-  ): APIResponse<MediaFile>;
+  uploadAvatar(@multipartBody body: MediaUploadRequest): APIResult<
+    MediaFile,
+
+      | QujuApi.Errors.Identity.ImageFormatInvalid
+      | QujuApi.Errors.Identity.ImageTooLarge
+  >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/register/personal")
   @doc("注册个人用户，邮箱未注册且昵称唯一，账号进入未激活状态并触发激活邮件，密码只在服务端加盐哈希保存。")
   registerPersonal(@body body: PersonalRegisterRequest): APIResult<
@@ -303,6 +302,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/register/merchant")
   @doc("注册商家用户，邮箱未注册，账号进入未激活状态并触发激活邮件，商家资料和资质提交走独立接口。")
   registerMerchant(@body body: MerchantRegisterRequest): APIResult<
@@ -311,6 +311,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/login")
   @doc("邮箱密码登录，账号已激活且未封禁，返回 JWT 令牌，封禁账号不得登录。")
   login(@body body: EmailPasswordRequest): APIResult<
@@ -327,6 +328,7 @@ interface IdentityOperations {
   logout(): APIResult<EmptyData>;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/activate")
   @doc("激活账号，激活 token 有效且未使用，账号从 inactive 变更为 active，token 只能使用一次。")
   activateAccount(@body body: AccountActivationRequest): APIResult<
@@ -337,6 +339,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/activation-email")
   @doc("重新发送激活邮件，邮箱对应账号未激活，发送新的激活链接，不暴露邮件服务凭据。")
   resendActivationEmail(@body body: ResendActivationEmailRequest): APIResult<
@@ -348,6 +351,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/refresh")
   @doc("刷新访问令牌，刷新令牌有效，返回新的令牌对，不会绕过账号封禁校验。")
   refreshToken(@body body: RefreshTokenRequest): APIResult<
@@ -358,6 +362,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/password-reset-email")
   @doc("发送密码重置邮件，邮箱若属于个人用户或商户账号则发送一次性重置链接，响应不得向未认证调用方暴露账号是否存在。")
   sendPasswordResetEmail(@body body: PasswordResetEmailRequest): APIResult<
@@ -366,6 +371,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/password-reset")
   @doc("通过邮件链接重置个人用户或商户密码，重置 token 有效且未使用，密码更新后旧登录凭据失效。")
   resetPassword(@body body: ResetPasswordRequest): APIResult<
@@ -376,11 +382,13 @@ interface IdentityOperations {
   >;
 
   @get
+  @useAuth(NoAuth)
   @route("/nicknames/availability")
   @doc("校验昵称是否可用，nickname 非空，返回唯一性校验结果，个人昵称和商家昵称共享唯一性约束。")
   checkNickname(@query nickname: string): APIResult<NicknameAvailability>;
 
   @get
+  @useAuth(NoAuth)
   @route("/interest-tags")
   @doc("获取系统预定义的所有兴趣标签列表，供用户选择。")
   getInterestTags(): APIResult<InterestTagItem[]>;
@@ -436,9 +444,9 @@ interface IdentityOperations {
 
   @post
   @route("/me/merchant-qualification")
-  @doc("提交商家资质申请，请求为 multipart/form-data，上传营业执照或营业凭证图片。若已有 pending 或 approved 的申请则拒绝重复提交，rejected 后可重新提交。仅商家用户可调用。")
+  @doc("提交商家资质申请，请求为 JSON，licenseMediaIds 引用已上传的营业执照或营业凭证图片。若已有 pending 或 approved 的申请则拒绝重复提交，rejected 后可重新提交。仅商家用户可调用。")
   submitMerchantQualification(
-    @multipartBody body: QualificationSubmitRequest,
+    @body body: QualificationSubmitRequest,
   ): APIResult<
     EmptyData,
 

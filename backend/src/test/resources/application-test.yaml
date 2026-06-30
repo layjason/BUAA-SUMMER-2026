@@ -4,3 +4,9 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password:
+
+mayoistar:
+  jwt:
+    secret: test-secret-key-that-is-at-least-256-bits-long-for-hs256
+    access-token-expire: 3600
+    refresh-token-expire: 2592000

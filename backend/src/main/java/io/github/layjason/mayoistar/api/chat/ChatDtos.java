@@ -1,0 +1,146 @@
+package io.github.layjason.mayoistar.api.chat;
+
+import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.entity.chat.ConversationKind;
+import io.github.layjason.mayoistar.entity.chat.MessageKind;
+import jakarta.validation.constraints.NotNull;
+import java.util.List;
+import lombok.Data;
+
+/**
+ * 即时通讯接口 DTO 集合。
+ *
+ * <p>类职责：提供与 TypeSpec 聊天接口请求/响应模型同名的普通 DTO。
+ *
+ * <p>类不变量：字段使用 camelCase，必填字段使用 Jakarta Validation 表达。
+ */
+public final class ChatDtos {
+
+    private ChatDtos() {}
+
+    /* ========== 请求 DTO ========== */
+
+    @Data
+    public static class SendMessageRequest {
+        @NotNull
+        private MessageKind kind;
+
+        private String text;
+        private String imageMediaId;
+        private CommonDtos.LocationInfo location;
+        private List<String> mentionedUserIds;
+        private Boolean mentionAll;
+    }
+
+    @Data
+    public static class ForwardMessageRequest {
+        @NotNull
+        private List<String> targetConversationIds;
+    }
+
+    @Data
+    public static class MarkMessagesReadRequest {
+        @NotNull
+        private List<String> messageIds;
+    }
+
+    @Data
+    public static class TeamAnnouncementRequest {
+        @NotNull
+        private String content;
+    }
+
+    @Data
+    public static class DeleteTeamFilesRequest {
+        @NotNull
+        private List<String> mediaIds;
+    }
+
+    @Data
+    public static class DeleteTeamAlbumImagesRequest {
+        @NotNull
+        private List<String> mediaIds;
+    }
+
+    @Data
+    public static class TeamPollCreateRequest {
+        @NotNull
+        private String title;
+
+        @NotNull
+        private List<String> options;
+
+        private String deadline;
+    }
+
+    @Data
+    public static class VotePollRequest {
+        @NotNull
+        private String optionId;
+    }
+
+    /* ========== 响应 DTO ========== */
+
+    @Data
+    public static class ConversationSummary {
+        private String conversationId;
+        private ConversationKind kind;
+        private String title;
+        private CommonDtos.MediaFile avatar;
+        private String lastMessagePreview;
+        private Integer unreadCount;
+        private String updatedAt;
+    }
+
+    @Data
+    public static class ChatMessage {
+        private String messageId;
+        private String conversationId;
+        private String senderId;
+        private MessageKind kind;
+        private String text;
+        private CommonDtos.MediaFile image;
+        private CommonDtos.LocationInfo location;
+        private List<String> mentionedUserIds;
+        private Boolean mentionAll;
+        private String readStatus;
+        private Boolean recalled;
+        private String sentAt;
+    }
+
+    @Data
+    public static class ChatRealtimeEvent {
+        private String kind;
+        private String conversationId;
+        private ChatMessage message;
+        private Integer conversationUnreadCount;
+        private String occurredAt;
+    }
+
+    @Data
+    public static class TeamAnnouncement {
+        private String announcementId;
+        private String teamId;
+        private String content;
+        private String publisherId;
+        private String publishedAt;
+        private Boolean readByCurrentUser;
+    }
+
+    @Data
+    public static class TeamPollOption {
+        private String optionId;
+        private String content;
+        private Integer voteCount;
+    }
+
+    @Data
+    public static class TeamPoll {
+        private String pollId;
+        private String teamId;
+        private String title;
+        private List<TeamPollOption> options;
+        private String deadline;
+        private String createdAt;
+    }
+}
