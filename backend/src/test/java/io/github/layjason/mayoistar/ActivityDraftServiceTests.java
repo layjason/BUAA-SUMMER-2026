@@ -167,7 +167,7 @@ class ActivityDraftServiceTests {
 
         assertThatThrownBy(() -> activityDraftService.submitActivity("user-a", "non-existent-id"))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("活动不存在");
+                .hasMessageContaining("is not visible");
     }
 
     @Test
