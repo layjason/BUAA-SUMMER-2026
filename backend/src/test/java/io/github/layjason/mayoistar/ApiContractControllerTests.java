@@ -11,6 +11,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.layjason.mayoistar.entity.identity.AccountStatus;
+import io.github.layjason.mayoistar.entity.identity.PersonalProfile;
+import io.github.layjason.mayoistar.entity.identity.User;
+import io.github.layjason.mayoistar.entity.identity.UserKind;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
+import io.github.layjason.mayoistar.repository.UserRepository;
 import io.swagger.parser.OpenAPIParser;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -23,6 +29,7 @@ import io.swagger.v3.parser.core.models.ParseOptions;
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,6 +42,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -47,20 +55,35 @@ import org.springframework.test.web.servlet.request.AbstractMockMultipartHttpSer
  * <p>类职责：从 TypeSpec 生成的 OpenAPI 文件自动生成 MockMvc 请求，验证所有 Controller 方法均匹配契约。
  *
  * <p>类不变量：测试只访问内存 Spring 上下文，不调用外部服务，不修改真实业务数据。
+ * 使用所有角色（admin、personal、merchant）的 Mock 用户，确保契约测试可访问所有端点，
+ * 权限校验由专用权限测试覆盖。
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser("test-user-id")
+@WithMockUser(
+        username = "test-user-id",
+        authorities = {"ROLE_admin", "ROLE_personal", "ROLE_merchant"})
 class ApiContractControllerTests {
 
     private static final String OPENAPI_SPEC = "../api-spec/tsp-output/openapi.yaml";
     private static final String JSON_CONTENT_TYPE = "application/json";
     private static final String MULTIPART_CONTENT_TYPE = "multipart/form-data";
     private static final String MULTIPART_BOUNDARY = "MayoiStarContractBoundary";
+    private static final String CONTRACT_USER_ID = "test-user-id";
+    private static final String CONTRACT_PASSWORD = "password-placeholder";
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PersonalProfileRepository personalProfileRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -100,6 +123,7 @@ class ApiContractControllerTests {
      */
     private void assertOperation(OpenAPI openApi, String method, String pathTemplate, Operation operation)
             throws Exception {
+        seedContractUser();
         AbstractMockHttpServletRequestBuilder<?> request = requestBuilder(openApi, method, pathTemplate, operation);
         if (pathTemplate.endsWith("/check-ins/export")) {
             mockMvc.perform(request)
@@ -202,6 +226,12 @@ class ApiContractControllerTests {
         MediaType jsonMediaType = requestBody.getContent().get(JSON_CONTENT_TYPE);
         if (jsonMediaType != null) {
             Object value = schemaValue(openApi, jsonMediaType.getSchema(), "request");
+            if (value instanceof Map<?, ?> body && hasField(body, "oldPassword")) {
+                Map<String, Object> adjustedValue = new LinkedHashMap<>();
+                body.forEach((key, mapValue) -> adjustedValue.put(String.valueOf(key), mapValue));
+                adjustedValue.put("oldPassword", CONTRACT_PASSWORD);
+                value = adjustedValue;
+            }
             builder.contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(value));
         }
@@ -360,6 +390,58 @@ class ApiContractControllerTests {
             throw new IllegalStateException("OpenAPI 解析失败：" + result.getMessages());
         }
         return result.getOpenAPI();
+    }
+
+    /**
+     * 为依赖当前登录用户的契约接口准备稳定数据。
+     *
+     * <p>前置条件：测试使用 @WithMockUser(CONTRACT_USER_ID)，H2 数据库可写。
+     *
+     * <p>后置条件：数据库中存在个人用户及其资料，且密码重置为 CONTRACT_PASSWORD。
+     *
+     * <p>不变量：每个 operation 前都重置同一用户状态，避免动态测试之间互相污染。
+     */
+    private void seedContractUser() {
+        Instant now = Instant.now();
+        User user = userRepository
+                .findById(CONTRACT_USER_ID)
+                .orElseGet(() -> User.builder()
+                        .userId(CONTRACT_USER_ID)
+                        .email("contract-user@example.com")
+                        .nickname("contract-user")
+                        .kind(UserKind.personal)
+                        .createdAt(now)
+                        .build());
+        user.setPasswordHash(passwordEncoder.encode(CONTRACT_PASSWORD));
+        user.setKind(UserKind.personal);
+        user.setAccountStatus(AccountStatus.active);
+        user.setUpdatedAt(now);
+        userRepository.save(user);
+
+        PersonalProfile profile = personalProfileRepository
+                .findByUserId(CONTRACT_USER_ID)
+                .orElseGet(() -> PersonalProfile.builder()
+                        .user(user)
+                        .userId(CONTRACT_USER_ID)
+                        .build());
+        profile.setUser(user);
+        profile.setInterestTags(List.of("contract"));
+        profile.setReputationScore(100);
+        profile.setUpdatedAt(now);
+        personalProfileRepository.save(profile);
+    }
+
+    /**
+     * 判断生成的请求体是否包含指定字段。
+     *
+     * <p>前置条件：body 为根据 OpenAPI schema 生成的请求体 map。
+     *
+     * <p>后置条件：存在字段时返回 true。
+     *
+     * <p>不变量：只检查键名，不读取或修改字段值。
+     */
+    private boolean hasField(Map<?, ?> body, String fieldName) {
+        return body.containsKey(fieldName);
     }
 
     /**
