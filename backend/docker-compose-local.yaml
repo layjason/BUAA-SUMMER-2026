@@ -17,5 +17,12 @@ services:
       - postgres-local-data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  mailhog:
+    image: ${MAILHOG_IMAGE:-mailhog/mailhog:v1.0.1}
+    ports:
+      - "${DEV_MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${DEV_MAILHOG_HTTP_PORT:-8025}:8025"
+    restart: unless-stopped
+
 volumes:
   postgres-local-data:
