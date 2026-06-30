@@ -7,9 +7,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.stereotype.Repository;
 
-@Repository
+/**
+ * 好友关系数据访问层。
+ *
+ * <p>类职责：提供 Friendship 实体的 CRUD 及按用户查询好友列表。
+ */
 public interface FriendshipRepository extends JpaRepository<Friendship, String> {
 
     boolean existsByUserIdAndFriendUserId(String userId, String friendUserId);
@@ -17,6 +20,8 @@ public interface FriendshipRepository extends JpaRepository<Friendship, String> 
     Optional<Friendship> findByUserIdAndFriendUserId(String userId, String friendUserId);
 
     Page<Friendship> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
+
+    void deleteByUserIdAndFriendUserId(String userId, String friendUserId);
 
     @Modifying
     @Query(

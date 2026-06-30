@@ -20,4 +20,16 @@
         <Class name="io.github.layjason.mayoistar.service.JwtService" />
         <Bug pattern="CT_CONSTRUCTOR_THROW" />
     </Match>
+    <!--
+        本项目中 Service 类通过构造器注入 Spring Bean，注入的 Repository 等对象由
+        Spring 容器管理，不存在外部可变对象暴露风险。此模式为 Spring 推荐实践，
+        不应因存储引用而产生告警。
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2" />
+        <Or>
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+ServiceImpl" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+Service" />
+        </Or>
+    </Match>
 </FindBugsFilter>

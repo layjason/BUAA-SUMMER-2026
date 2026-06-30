@@ -14,6 +14,7 @@ import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
 import io.github.layjason.mayoistar.entity.social.ReportTargetType;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
+import io.github.layjason.mayoistar.service.ReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
 
     private final DefaultApiResponseFactory responseFactory;
+    private final ReportService reportService;
 
     @GetMapping("/activities")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> listActivities(
@@ -146,15 +148,17 @@ public class AdminController {
             @RequestParam(required = false) String reporterUserId,
             @RequestParam(required = false) ReportTargetType targetType,
             @RequestParam(required = false) String targetId,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = reportService.listReports(status, reporterUserId, targetType, targetId, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/reports/{reportId}/decision")
     public ResponseEntity<ApiResponse<SocialDtos.Report>> decideReport(
             @PathVariable String reportId, @Valid @RequestBody AdminDtos.ReportDecisionRequest request) {
-        return responseFactory.report();
+        var result = reportService.decideReport(reportId, request.getStatus(), request.getHandlingNote());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/users")

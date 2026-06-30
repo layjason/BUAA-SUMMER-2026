@@ -22,7 +22,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * 测试安全配置，允许所有请求通过并注入测试用户。
  *
  * <p>类职责：在 test profile 下替代主 SecurityConfiguration，
- * 确保集成测试不需要真实 JWT 鉴权，同时为 CurrentUser 提供有效认证信息。
+ * 确保集成测试不需要真实 JWT 鉴权，同时为 SecurityContext 提供有效认证信息。
  */
 @TestConfiguration
 @Profile("test")
