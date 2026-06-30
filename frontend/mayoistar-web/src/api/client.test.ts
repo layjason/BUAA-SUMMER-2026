@@ -79,4 +79,23 @@ describe('API 请求客户端', () => {
 
     await expect(request('/admin/users')).rejects.toThrow('Legacy success code is invalid');
   });
+
+  it('业务错误抛出 BusinessError 并保留 code 和 message', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(businessErrorResponse(10006, 'Activation token is invalid'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { request, BusinessError } = await import('./client');
+
+    try {
+      await request('/identity/auth/activate');
+      expect.fail('Expected BusinessError to be thrown');
+    } catch (error: unknown) {
+      expect(error).toBeInstanceOf(BusinessError);
+      const bizError = error as InstanceType<typeof BusinessError>;
+      expect(bizError.code).toBe(10006);
+      expect(bizError.message).toBe('Activation token is invalid');
+    }
+  });
 });
