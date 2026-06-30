@@ -50,6 +50,7 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final ConversationMemberRepository conversationMemberRepository;
     private final MessageReadRepository messageReadRepository;
+    private final NotificationService notificationService;
 
     // ========================================
     // Send Message
@@ -110,7 +111,9 @@ public class ChatService {
 
         initializeReadStatus(message.getMessageId(), conversationId, senderId);
 
-        return toChatMessageDto(message, MessageReadStatus.read);
+        ChatDtos.ChatMessage result = toChatMessageDto(message, MessageReadStatus.read);
+        notificationService.notifyMessageCreated(result, getRecipientUserIds(conversationId, senderId));
+        return result;
     }
 
     // ========================================
@@ -254,6 +257,8 @@ public class ChatService {
         chatMessageRepository.save(message);
         log.info("消息已撤回: messageId={}", messageId);
 
+        notificationService.notifyMessageRecalled(
+                messageId, message.getConversationId(), getAllMemberUserIds(message.getConversationId()));
         return toChatMessageDto(message, MessageReadStatus.read);
     }
 
@@ -309,7 +314,9 @@ public class ChatService {
 
             chatMessageRepository.save(forwarded);
             initializeReadStatus(forwarded.getMessageId(), targetId, senderId);
-            result.add(toChatMessageDto(forwarded, MessageReadStatus.read));
+            ChatDtos.ChatMessage forwardedDto = toChatMessageDto(forwarded, MessageReadStatus.read);
+            result.add(forwardedDto);
+            notificationService.notifyMessageForwarded(forwardedDto, getRecipientUserIds(targetId, senderId));
             log.info("消息已转发: original={}, target={}", originalMessageId, targetId);
         }
 
@@ -319,6 +326,33 @@ public class ChatService {
     // ========================================
     // Private Helpers
     // ========================================
+
+    /**
+     * 获取会话中除指定用户外的所有成员 ID 列表。
+     *
+     * <p>前置条件：{@code conversationId} 为有效会话。
+     *
+     * <p>后置条件：返回不包含 {@code excludeUserId} 的成员 ID 列表。
+     */
+    private List<String> getRecipientUserIds(String conversationId, String excludeUserId) {
+        return conversationMemberRepository.findByConversationId(conversationId).stream()
+                .map(io.github.layjason.mayoistar.entity.chat.ConversationMember::getUserId)
+                .filter(id -> !id.equals(excludeUserId))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 获取会话中所有成员 ID 列表。
+     *
+     * <p>前置条件：{@code conversationId} 为有效会话。
+     *
+     * <p>后置条件：返回所有成员 ID 列表。
+     */
+    private List<String> getAllMemberUserIds(String conversationId) {
+        return conversationMemberRepository.findByConversationId(conversationId).stream()
+                .map(io.github.layjason.mayoistar.entity.chat.ConversationMember::getUserId)
+                .collect(Collectors.toList());
+    }
 
     /**
      * 校验消息内容与类型匹配。

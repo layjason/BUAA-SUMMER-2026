@@ -55,6 +55,7 @@ public class SocialService {
     private final FriendshipRepository friendshipRepository;
     private final FriendRequestRepository friendRequestRepository;
     private final BlacklistRepository blacklistRepository;
+    private final NotificationService notificationService;
 
     // ========================================
     // Personal Profile
@@ -250,7 +251,10 @@ public class SocialService {
                 .build();
         friendRequestRepository.save(request);
         log.info("好友申请已发送: from={}, to={}", requesterId, targetUserId);
-        return toFriendRequestDto(request);
+
+        SocialDtos.FriendRequest result = toFriendRequestDto(request);
+        notificationService.notifyFriendRequestCreated(result);
+        return result;
     }
 
     /**

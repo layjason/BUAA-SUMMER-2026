@@ -60,6 +60,9 @@ class SocialServiceTest {
     @Autowired
     private BlacklistRepository blacklistRepository;
 
+    @Autowired
+    private NotificationService notificationService;
+
     private User tomori;
     private User anon;
     private User raana;
@@ -265,6 +268,14 @@ class SocialServiceTest {
         assertThat(result.getRequesterId()).isEqualTo(tomori.getUserId());
         assertThat(result.getTargetUserId()).isEqualTo(anon.getUserId());
         assertThat(result.getStatus()).isEqualTo(FriendRequestStatus.pending);
+
+        assertThat(capturingNotification().getFriendRequests()).hasSize(1);
+        assertThat(capturingNotification().getFriendRequests().getFirst().getTargetUserId())
+                .isEqualTo(anon.getUserId());
+    }
+
+    private CapturingNotificationService capturingNotification() {
+        return (CapturingNotificationService) notificationService;
     }
 
     @Test

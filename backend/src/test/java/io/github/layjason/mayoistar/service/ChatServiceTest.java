@@ -45,6 +45,9 @@ class ChatServiceTest {
     private ChatService chatService;
 
     @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -118,6 +121,15 @@ class ChatServiceTest {
                 .allMatch(mr -> mr.getStatus() == MessageReadStatus.read);
         assertThat(messageReadRepository.findByMessageIdInAndUserId(List.of(result.getMessageId()), anon.getUserId()))
                 .allMatch(mr -> mr.getStatus() == MessageReadStatus.unread);
+
+        assertThat(capturingNotification().getCreatedMessages()).isNotEmpty();
+        assertThat(capturingNotification().getCreatedMessages().stream()
+                        .anyMatch(m -> m.getMessageId().equals(result.getMessageId())))
+                .isTrue();
+    }
+
+    private CapturingNotificationService capturingNotification() {
+        return (CapturingNotificationService) notificationService;
     }
 
     @Test
@@ -308,6 +320,11 @@ class ChatServiceTest {
 
         assertThat(result.getRecalled()).isTrue();
         assertThat(result.getText()).isNull();
+
+        assertThat(capturingNotification().getRecalls()).isNotEmpty();
+        assertThat(capturingNotification().getRecalls().stream()
+                        .anyMatch(r -> r.messageId().equals(sent.getMessageId())))
+                .isTrue();
     }
 
     @Test
@@ -377,6 +394,11 @@ class ChatServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getConversationId()).isEqualTo(targetConv.getConversationId());
         assertThat(result.getFirst().getText()).isEqualTo("Forward me");
+
+        assertThat(capturingNotification().getForwardedMessages()).isNotEmpty();
+        assertThat(capturingNotification().getForwardedMessages().stream()
+                        .anyMatch(m -> m.getConversationId().equals(targetConv.getConversationId())))
+                .isTrue();
     }
 
     @Test
