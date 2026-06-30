@@ -136,7 +136,10 @@ const isMerchant = computed(() => authStore.userKind === 'merchant')
 /** 今日日期字符串，用于生日选择器上限 */
 const today = computed(() => {
   const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 })
 
 /** 头像首字符 */
@@ -434,7 +437,6 @@ async function handleSave(): Promise<void> {
 
 <style scoped>
 .page {
-  min-height: 100vh;
   background-color: #f7f8fa;
 }
 
