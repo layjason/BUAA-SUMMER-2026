@@ -20,4 +20,13 @@
         <Class name="io.github.layjason.mayoistar.service.JwtService" />
         <Bug pattern="CT_CONSTRUCTOR_THROW" />
     </Match>
+    <!--
+        AdminService 日志参数均为 UUID 标识符和枚举值，不含自由文本。
+        reason 类用户输入已通过 sanitizeForLog 过滤 CRLF 字符。
+        AdminAuthService 同。
+    -->
+    <Match>
+        <Class name="~io\.github\.layjason\.mayoistar\.service\.Admin.*Service" />
+        <Bug pattern="CRLF_INJECTION_LOGS" />
+    </Match>
 </FindBugsFilter>

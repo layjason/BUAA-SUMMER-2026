@@ -173,7 +173,8 @@ public class AdminService {
                 .findByUserId(merchantId)
                 .orElseThrow(() -> new BusinessException(10008, "User kind is not allowed for this operation"));
 
-        log.info("商家资质审核完成: merchantId={}, adminId={}, result={}", merchantId, adminId, qualification.getStatus());
+        log.info("商家资质审核完成: merchantId={}, adminId={}, result={}",
+                sanitizeForLog(merchantId), sanitizeForLog(adminId), qualification.getStatus());
 
         return buildMerchantProfileResponse(user, profile, qualification);
     }
@@ -440,7 +441,8 @@ public class AdminService {
                 .build();
         banRecordRepository.save(banRecord);
 
-        log.info("用户已被封禁: userId={}, adminId={}, until={}", userId, adminId, bannedUntil);
+        log.info("用户已被封禁: userId={}, adminId={}, until={}",
+                sanitizeForLog(userId), sanitizeForLog(adminId), bannedUntil);
 
         return buildAdminUserSummary(user);
     }
@@ -485,7 +487,7 @@ public class AdminService {
         user.setUpdatedAt(now);
         userRepository.save(user);
 
-        log.info("用户已被解封: userId={}, adminId={}", userId, adminId);
+        log.info("用户已被解封: userId={}, adminId={}", sanitizeForLog(userId), sanitizeForLog(adminId));
 
         return buildAdminUserSummary(user);
     }
@@ -570,7 +572,8 @@ public class AdminService {
         report.setHandledAt(Instant.now());
         reportRepository.save(report);
 
-        log.info("举报已处理: reportId={}, adminId={}, status={}", reportId, adminId, request.getStatus());
+        log.info("举报已处理: reportId={}, adminId={}, status={}",
+                sanitizeForLog(reportId), sanitizeForLog(adminId), request.getStatus());
 
         return buildReportDto(report);
     }
@@ -689,7 +692,8 @@ public class AdminService {
                 .build();
         activityReviewRecordRepository.save(record);
 
-        log.info("活动审核完成: activityId={}, adminId={}, result={}", activityId, adminId, result);
+        log.info("活动审核完成: activityId={}, adminId={}, result={}",
+                sanitizeForLog(activityId), sanitizeForLog(adminId), result);
 
         return buildActivityDetail(activity);
     }
@@ -730,7 +734,8 @@ public class AdminService {
         activity.setUpdatedAt(Instant.now());
         activityRepository.save(activity);
 
-        log.info("活动已下架: activityId={}, adminId={}, reason={}", activityId, adminId, request.getReason());
+        log.info("活动已下架: activityId={}, adminId={}, reason={}", activityId, adminId,
+                sanitizeForLog(request.getReason()));
 
         return buildActivityDetail(activity);
     }
@@ -765,7 +770,8 @@ public class AdminService {
         activity.setUpdatedAt(Instant.now());
         activityRepository.save(activity);
 
-        log.info("活动已恢复: activityId={}, adminId={}", activityId, adminId);
+        log.info("活动已恢复: activityId={}, adminId={}",
+                sanitizeForLog(activityId), sanitizeForLog(adminId));
 
         return buildActivityDetail(activity);
     }
@@ -1002,7 +1008,8 @@ public class AdminService {
                 .build();
         teamModerationRecordRepository.save(record);
 
-        log.info("小队已停用: teamId={}, adminId={}, reason={}", teamId, adminId, request.getReason());
+        log.info("小队已停用: teamId={}, adminId={}, reason={}", teamId, adminId,
+                sanitizeForLog(request.getReason()));
 
         return buildTeamProfile(team);
     }
@@ -1047,7 +1054,8 @@ public class AdminService {
                 .build();
         teamModerationRecordRepository.save(record);
 
-        log.info("小队已恢复: teamId={}, adminId={}", teamId, adminId);
+        log.info("小队已恢复: teamId={}, adminId={}",
+                sanitizeForLog(teamId), sanitizeForLog(adminId));
 
         return buildTeamProfile(team);
     }
@@ -1277,5 +1285,20 @@ public class AdminService {
         dto.setOperatorId(record.getOperatorId());
         dto.setCreatedAt(record.getCreatedAt().toString());
         return dto;
+    }
+
+    /**
+     * 清理日志中可能包含的 CRLF 字符，防止日志注入。
+     *
+     * <p>不变量：返回值中不含 \r 和 \n 字符。
+     *
+     * @param input 原始字符串
+     * @return 清理后的字符串
+     */
+    private static String sanitizeForLog(String input) {
+        if (input == null) {
+            return null;
+        }
+        return input.replace('\r', '_').replace('\n', '_');
     }
 }
