@@ -546,7 +546,7 @@ onLoad((query) => {
 }
 
 .content {
-  padding-bottom: 160rpx;
+  padding-bottom: 320rpx;
 }
 
 .swiper-wrapper {
