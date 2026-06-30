@@ -6,8 +6,8 @@ spring:
   jackson:
     default-property-inclusion: non_null
   mail:
-    host: ${MAYOISTAR_MAIL_HOST:smtp.qq.com}
-    port: ${MAYOISTAR_MAIL_PORT:587}
+    host: ${MAYOISTAR_MAIL_HOST}
+    port: ${MAYOISTAR_MAIL_PORT}
     username: ${MAYOISTAR_MAIL_USERNAME}
     password: ${MAYOISTAR_MAIL_PASSWORD}
     properties:
@@ -20,6 +20,6 @@ mayoistar:
     access-token-expire: 3600
     refresh-token-expire: 2592000
   mail:
-    activation-link-base: ${MAYOISTAR_ACTIVATION_BASE_URL:http://localhost:5173/activate}
-    password-reset-link-base: ${MAYOISTAR_PASSWORD_RESET_BASE_URL:http://localhost:5173/reset-password}
+    activation-link-base: ${MAYOISTAR_ACTIVATION_BASE_URL}
+    password-reset-link-base: ${MAYOISTAR_PASSWORD_RESET_BASE_URL}
     sender: ${MAYOISTAR_MAIL_SENDER}
