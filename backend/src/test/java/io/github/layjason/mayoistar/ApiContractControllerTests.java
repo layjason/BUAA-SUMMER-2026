@@ -11,6 +11,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
+import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.identity.AccountStatus;
+import io.github.layjason.mayoistar.entity.identity.PersonalProfile;
+import io.github.layjason.mayoistar.entity.identity.User;
+import io.github.layjason.mayoistar.entity.identity.UserKind;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
+import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityRepository;
 import io.swagger.parser.OpenAPIParser;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -72,6 +82,18 @@ class ApiContractControllerTests {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PersonalProfileRepository personalProfileRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private ActivityRepository activityRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -384,6 +406,83 @@ class ApiContractControllerTests {
             throw new IllegalStateException("OpenAPI 解析失败：" + result.getMessages());
         }
         return result.getOpenAPI();
+    }
+
+    /**
+     * 为依赖当前登录用户的契约接口准备稳定数据。
+     *
+     * <p>前置条件：测试使用 @WithMockUser(CONTRACT_USER_ID)，H2 数据库可写。
+     *
+     * <p>后置条件：数据库中存在个人用户及其资料，且密码重置为 CONTRACT_PASSWORD。
+     *
+     * <p>不变量：每个 operation 前都重置同一用户状态，避免动态测试之间互相污染。
+     */
+    private void seedContractUser() {
+        Instant now = Instant.now();
+        User user = userRepository
+                .findById(CONTRACT_USER_ID)
+                .orElseGet(() -> User.builder()
+                        .userId(CONTRACT_USER_ID)
+                        .email("contract-user@example.com")
+                        .nickname("contract-user")
+                        .kind(UserKind.personal)
+                        .createdAt(now)
+                        .build());
+        user.setPasswordHash(passwordEncoder.encode(CONTRACT_PASSWORD));
+        user.setKind(UserKind.personal);
+        user.setAccountStatus(AccountStatus.active);
+        user.setUpdatedAt(now);
+        userRepository.save(user);
+
+        final User managedUser = userRepository.findById(CONTRACT_USER_ID).orElseThrow();
+        PersonalProfile profile = personalProfileRepository
+                .findByUserId(CONTRACT_USER_ID)
+                .orElseGet(() -> {
+                    PersonalProfile p = new PersonalProfile();
+                    p.setUser(managedUser);
+                    return p;
+                });
+        profile.setUser(managedUser);
+        profile.setInterestTags(List.of("contract"));
+        profile.setReputationScore(100);
+        profile.setUpdatedAt(now);
+        personalProfileRepository.save(profile);
+
+        // 为使用 placeholder 路径参数的 admin 端点准备种子活动
+        activityRepository.findById("placeholder").orElseGet(() -> activityRepository.save(Activity.builder()
+                .activityId("placeholder")
+                .organizerId(CONTRACT_USER_ID)
+                .title("契约测试活动")
+                .tags(List.of("契约"))
+                .introduction("契约测试活动简介")
+                .startAt(now)
+                .endAt(now.plusSeconds(7200))
+                .pointLon(116.397)
+                .pointLat(39.907)
+                .city("北京")
+                .address("契约测试地址")
+                .placeName("契约测试地点")
+                .safetyNotice("契约测试安全须知")
+                .capacity(20)
+                .registrationDeadline(now.plusSeconds(3600))
+                .reviewStatus(ActivityReviewStatus.approved)
+                .runtimeStatus(ActivityRuntimeStatus.notStarted)
+                .createdAt(now)
+                .updatedAt(now)
+                .build()));
+    }
+
+    /**
+     * 判断生成的请求体是否包含指定字段。
+     *
+     * <p>前置条件：body 为根据 OpenAPI schema 生成的请求体 map。
+     *
+     * <p>后置条件：存在字段时返回 true。
+     *
+     * <p>不变量：只检查键名，不读取或修改字段值。
+     */
+    private boolean hasField(Map<?, ?> body, String fieldName) {
+        return body.containsKey(fieldName);
     }
 
     /**
