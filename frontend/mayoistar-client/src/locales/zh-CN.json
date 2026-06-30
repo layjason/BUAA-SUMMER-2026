@@ -165,6 +165,8 @@
     "statusRegistrationClosed": "报名截止",
     "statusOngoing": "进行中",
     "statusEnded": "已结束",
+    "statusNotStarted": "未开始",
+    "statusTakenDown": "已下架",
     "statusDraft": "草稿"
   },
 

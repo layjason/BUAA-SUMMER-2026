@@ -43,7 +43,9 @@
       <view v-for="item in drafts" :key="item.activityId" class="card">
         <text class="card-title">{{ item.title }}</text>
         <view class="card-row">
-          <text class="tag draft-tag">{{ t('myActivities.draftTitle') }}</text>
+          <text class="tag draft-status" :class="'draft-' + item.reviewStatus">{{
+            reviewStatusText(item.reviewStatus)
+          }}</text>
           <text class="meta">{{ formatDate(item.updatedAt) }}</text>
         </view>
       </view>
@@ -75,10 +77,20 @@ const errorMsg = ref('')
 
 /** 运行时状态文本映射 */
 const runtimeStatusMap: Record<string, string> = {
+  notStarted: t('myActivities.statusNotStarted'),
   registering: t('myActivities.statusRegistering'),
   registrationClosed: t('myActivities.statusRegistrationClosed'),
   ongoing: t('myActivities.statusOngoing'),
   ended: t('myActivities.statusEnded'),
+  takenDown: t('myActivities.statusTakenDown'),
+}
+
+/** 审核状态文本映射 */
+const reviewStatusMap: Record<string, string> = {
+  draft: t('myActivities.statusDraft'),
+  pending: t('myActivities.statusPending'),
+  approved: t('myActivities.statusApproved'),
+  rejected: t('myActivities.statusRejected'),
 }
 
 interface ActivityItem {
@@ -96,6 +108,7 @@ interface DraftItem {
   activityId: string
   title: string
   updatedAt: string
+  reviewStatus: string
 }
 
 const drafts = ref<DraftItem[]>([])
@@ -160,6 +173,16 @@ function formatTags(tags: string[]): string {
  */
 function runtimeStatusText(status: string): string {
   return runtimeStatusMap[status] ?? status
+}
+
+/**
+ * 获取审核状态中文展示文本
+ *
+ * @param status 审核状态值
+ * @returns 中文文本
+ */
+function reviewStatusText(status: string): string {
+  return reviewStatusMap[status] ?? status
 }
 </script>
 
@@ -243,6 +266,27 @@ function runtimeStatusText(status: string): string {
   color: #969799;
 }
 
+.draft-status {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 4rpx;
+}
+
+.draft-draft {
+  background-color: #ebedf0;
+  color: #969799;
+}
+
+.draft-rejected {
+  background-color: #fff2f0;
+  color: #ee0a24;
+}
+
+.draft-pending {
+  background-color: #fff7e6;
+  color: #ed6a0c;
+}
+
 .status-tag {
   font-size: 22rpx;
   padding: 4rpx 12rpx;
@@ -263,6 +307,16 @@ function runtimeStatusText(status: string): string {
 .status-ended {
   background-color: #ebedf0;
   color: #969799;
+}
+
+.status-notStarted {
+  background-color: #ebedf0;
+  color: #969799;
+}
+
+.status-takenDown {
+  background-color: #fff2f0;
+  color: #ee0a24;
 }
 
 .meta {
