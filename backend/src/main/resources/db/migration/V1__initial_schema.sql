@@ -262,21 +262,18 @@ CREATE INDEX idx_friend_requests_status    ON friend_requests (status);
 
 CREATE TABLE friendships (
     friendship_id  VARCHAR(36)  NOT NULL,
-    user_id_a      VARCHAR(36)  NOT NULL,
-    user_id_b      VARCHAR(36)  NOT NULL,
+    user_id        VARCHAR(36)  NOT NULL,
+    friend_user_id VARCHAR(36)  NOT NULL,
     source         VARCHAR(30)  NOT NULL,
-    a_remark       VARCHAR(50),
-    a_group_tags   TEXT,
-    b_remark       VARCHAR(50),
-    b_group_tags   TEXT,
+    remark         VARCHAR(50),
+    group_tags     JSON,
     created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT pk_friendships PRIMARY KEY (friendship_id)
 );
 
-CREATE INDEX idx_friendships_user_a ON friendships (user_id_a);
-CREATE INDEX idx_friendships_user_b ON friendships (user_id_b);
-CREATE UNIQUE INDEX uq_friendships_pair
-    ON friendships (user_id_a, user_id_b);
+CREATE INDEX idx_friendships_user ON friendships (user_id);
+CREATE UNIQUE INDEX uq_friendships_user_friend
+    ON friendships (user_id, friend_user_id);
 
 CREATE TABLE follows (
     follow_id   VARCHAR(36) NOT NULL,
@@ -323,7 +320,7 @@ CREATE INDEX idx_user_reports_status   ON user_reports (status);
 CREATE TABLE teams (
     team_id          VARCHAR(36)  NOT NULL,
     name             VARCHAR(100) NOT NULL,
-    tags             TEXT,
+    tags             JSON,
     join_mode        VARCHAR(30)  NOT NULL,
     capacity         INTEGER      NOT NULL,
     description      TEXT,
@@ -339,6 +336,7 @@ CREATE TABLE teams (
 CREATE INDEX idx_teams_leader_id ON teams (leader_id);
 CREATE INDEX idx_teams_status    ON teams (status);
 CREATE INDEX idx_teams_chat_id   ON teams (chat_id);
+CREATE UNIQUE INDEX uq_teams_name ON teams (name);
 
 CREATE TABLE team_members (
     member_id  VARCHAR(36) NOT NULL,
