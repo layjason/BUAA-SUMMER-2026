@@ -20,5 +20,71 @@
   "首页": "首页",
   "发现": "发现",
   "消息": "消息",
-  "我的": "我的"
+  "我的": "我的",
+
+  "login": {
+    "title": "欢迎回来",
+    "subtitle": "登录您的趣聚账号",
+    "email": "邮箱",
+    "emailPlaceholder": "请输入邮箱",
+    "password": "密码",
+    "passwordPlaceholder": "请输入密码",
+    "button": "登录",
+    "forgotPassword": "忘记密码？",
+    "toRegister": "还没有账号？立即注册",
+    "emailFormatError": "请输入正确的邮箱格式",
+    "passwordRequired": "密码不能为空",
+    "success": "登录成功"
+  },
+
+  "register": {
+    "title": "创建账号",
+    "subtitle": "加入趣聚，发现精彩活动",
+    "email": "邮箱",
+    "emailPlaceholder": "请输入邮箱",
+    "password": "密码",
+    "passwordPlaceholder": "请输入密码（6-20位）",
+    "confirmPassword": "确认密码",
+    "confirmPasswordPlaceholder": "请再次输入密码",
+    "nickname": "昵称",
+    "nicknamePlaceholder": "请输入昵称",
+    "personal": "个人注册",
+    "merchant": "商家注册",
+    "button": "注册",
+    "toLogin": "已有账号？立即登录",
+    "emailFormatError": "请输入正确的邮箱格式",
+    "passwordTooShort": "密码长度至少6位",
+    "passwordMismatch": "两次输入的密码不一致",
+    "nicknameRequired": "昵称不能为空",
+    "nicknameUnavailable": "该昵称已被占用",
+    "nicknameChecking": "检查中...",
+    "nicknameAvailable": "昵称可用",
+    "success": "注册成功，请激活账号"
+  },
+
+  "profile": {
+    "notLoggedInTip": "登录后查看个人信息和活动",
+    "myActivities": "我创建的活动",
+    "myRegistrations": "我的报名",
+    "myReviews": "我的评价",
+    "settings": "设置",
+    "merchant": "商家",
+    "personal": "个人",
+    "userPrefix": "用户"
+  },
+
+  "activate": {
+    "title": "激活账号",
+    "activating": "正在激活...",
+    "success": "激活成功！您现在可以登录了",
+    "failed": "激活失败",
+    "goLogin": "前往登录",
+    "noToken": "缺少激活码，请从邮件链接打开本页",
+    "emailSent": "激活邮件已发送至",
+    "emailSentHint": "请查收邮件并点击激活链接完成激活。若未收到，可点击下方按钮重发。",
+    "resendButton": "重发激活邮件",
+    "resendCooldown": "重发激活邮件（{seconds}秒）",
+    "resendSent": "激活邮件已发送，请查收",
+    "emailWrong": "邮箱不对？重新注册"
+  }
 }
