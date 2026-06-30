@@ -8,7 +8,6 @@ namespace QujuApi.Identity;
 enum UserKind {
   personal,
   merchant,
-  admin,
 }
 
 @doc("账号状态，控制登录权限。")

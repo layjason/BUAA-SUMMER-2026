@@ -1718,7 +1718,7 @@ paths:
                         description: 平台响应消息，成功响应固定为 For Super Earth!。
                       data:
                         allOf:
-                          - $ref: '#/components/schemas/Identity.LoginResult'
+                          - $ref: '#/components/schemas/Admin.AdminLoginResponse'
                         description: 响应数据。
                     description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
                   - $ref: '#/components/schemas/BadRequestResponse'
@@ -7184,6 +7184,21 @@ components:
           type: string
           description: 管理员登录密码。
       description: 管理员登录请求，管理员账号由系统预置，认证成功后返回 JWT，后台不提供管理员注册。
+    Admin.AdminLoginResponse:
+      type: object
+      required:
+        - userId
+        - tokens
+      properties:
+        userId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 管理员标识。
+        tokens:
+          allOf:
+            - $ref: '#/components/schemas/Identity.TokenPair'
+          description: 登录成功后签发的令牌对。
+      description: 管理员登录响应，管理员账号由 admins 表管理，不返回 UserKind（管理员身份已隐含）。
     Admin.AdminUserSummary:
       type: object
       required:
@@ -10581,7 +10596,6 @@ components:
       enum:
         - personal
         - merchant
-        - admin
       description: 用户类型。
     InternalServerErrorResponse:
       type: object

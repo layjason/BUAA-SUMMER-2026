@@ -1,5 +1,6 @@
 package io.github.layjason.mayoistar.api.admin;
 
+import io.github.layjason.mayoistar.api.identity.IdentityDtos;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -81,6 +82,12 @@ public final class AdminDtos {
     }
 
     /* ========== 响应 DTO ========== */
+
+    @Data
+    public static class AdminLoginResponse {
+        private String userId;
+        private IdentityDtos.TokenPair tokens;
+    }
 
     @Data
     public static class AdminUserSummary {

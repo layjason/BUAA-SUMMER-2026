@@ -55,9 +55,9 @@ public class AdminController {
     }
 
     @PostMapping("/auth/login")
-    public ResponseEntity<ApiResponse<IdentityDtos.LoginResult>> login(
+    public ResponseEntity<ApiResponse<AdminDtos.AdminLoginResponse>> login(
             @Valid @RequestBody AdminDtos.AdminLoginRequest request) {
-        return responseFactory.loginResult();
+        return responseFactory.adminLoginResult();
     }
 
     @PostMapping("/auth/password")

@@ -14,9 +14,9 @@ import lombok.Setter;
 import lombok.ToString;
 
 /**
- * 用户账号，统一存储个人用户、商家和管理员三种类型。
+ * 用户账号，统一存储个人用户和商家两种类型。
  *
- * <p>kind 字段区分用户类型，email 与 username 互斥（仅管理员使用 username 登录，其余使用 email）。
+ * <p>kind 字段区分用户类型，个人用户和商家均使用 email 登录。管理员由独立的 admins 表管理。
  */
 @Entity
 @Table(name = "users")
@@ -35,9 +35,6 @@ public class User {
 
     @Column(unique = true)
     private String email;
-
-    @Column(unique = true)
-    private String username;
 
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;

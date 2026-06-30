@@ -210,6 +210,18 @@ public class DefaultApiResponseFactory {
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
+    public ResponseEntity<ApiResponse<AdminDtos.AdminLoginResponse>> adminLoginResult() {
+        IdentityDtos.TokenPair tokens = new IdentityDtos.TokenPair();
+        tokens.setAccessToken("access-token-placeholder");
+        tokens.setRefreshToken("refresh-token-placeholder");
+        tokens.setExpiresAt(NOW);
+
+        AdminDtos.AdminLoginResponse dto = new AdminDtos.AdminLoginResponse();
+        dto.setUserId("admin-placeholder");
+        dto.setTokens(tokens);
+        return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
     public ResponseEntity<ApiResponse<IdentityDtos.PublicUserProfile>> publicUserProfile() {
         IdentityDtos.PublicUserProfile dto = new IdentityDtos.PublicUserProfile();
         dto.setUserId("user-placeholder");
