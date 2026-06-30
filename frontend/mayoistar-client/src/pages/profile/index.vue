@@ -98,33 +98,33 @@ const menuSections: MenuSection[] = [
       {
         key: 'myActivities',
         label: t('profile.myActivities'),
-        route: '/pages/profile/my-activities.vue',
+        route: '/pages/profile/my-activities',
       },
       {
         key: 'myRegistrations',
         label: t('profile.myRegistrations'),
-        route: '/pages/profile/my-registrations.vue',
+        route: '/pages/profile/my-registrations',
       },
     ],
   },
   {
     title: t('profile.sectionSocial'),
     items: [
-      { key: 'myFriends', label: t('profile.myFriends'), route: '/pages/profile/my-friends.vue' },
+      { key: 'myFriends', label: t('profile.myFriends'), route: '/pages/profile/my-friends' },
       {
         key: 'friendRequests',
         label: t('profile.friendRequests'),
-        route: '/pages/profile/friend-requests.vue',
+        route: '/pages/profile/friend-requests',
       },
-      { key: 'myTeams', label: t('profile.myTeams'), route: '/pages/profile/my-teams.vue' },
-      { key: 'blacklist', label: t('profile.blacklist'), route: '/pages/profile/blacklist.vue' },
+      { key: 'myTeams', label: t('profile.myTeams'), route: '/pages/profile/my-teams' },
+      { key: 'blacklist', label: t('profile.blacklist'), route: '/pages/profile/blacklist' },
     ],
   },
   {
     title: t('profile.sectionOther'),
     items: [
-      { key: 'editProfile', label: t('profile.editProfile'), route: '/pages/profile/edit.vue' },
-      { key: 'settings', label: t('profile.settings'), route: '/pages/profile/settings.vue' },
+      { key: 'editProfile', label: t('profile.editProfile'), route: '/pages/profile/edit' },
+      { key: 'settings', label: t('profile.settings'), route: '/pages/profile/settings' },
     ],
   },
 ]
