@@ -8,9 +8,8 @@
 
 <style scoped>
 .page {
-  min-height: 100vh;
   background-color: #f7f8fa;
-  padding: 32rpx;
+  padding: 32rpx 32rpx 48rpx;
 }
 .placeholder {
   display: block;
