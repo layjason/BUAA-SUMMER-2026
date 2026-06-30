@@ -1,5 +1,22 @@
 import type { APIResultEnvelope, PaginatedResult } from '../types';
 
+/**
+ * 业务错误，携带后端返回的业务错误码与消息。
+ *
+ * 前置条件：后端响应 code !== 200 时构造该错误。
+ * 后置条件：调用方可通过 instanceof 区分业务错误与网络错误，并读取 code 做分支处理。
+ * 不变量：不修改原始响应数据，只保存 code 与 message 副本。
+ */
+export class BusinessError extends Error {
+  readonly code: number;
+
+  constructor(code: number, message: string) {
+    super(message);
+    this.name = 'BusinessError';
+    this.code = code;
+  }
+}
+
 const ACCESS_TOKEN_STORAGE_KEY = 'mayoistar_admin_access_token';
 
 let accessToken = localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) || '';
@@ -117,7 +134,7 @@ export async function request<ResponseData>(
 
     if (result.code !== 200) {
       showToast(result.message || '请求执行失败', 'error');
-      throw new Error(result.message || 'API Error');
+      throw new BusinessError(result.code, result.message || 'API Error');
     }
 
     if (result.message && result.message !== 'For Super Earth!') {

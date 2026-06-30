@@ -7,6 +7,7 @@ import { ToastContainer, ToastItem } from './components/Toast';
 
 // Pages
 import { Login } from './pages/Login';
+import { ActivationLanding } from './pages/ActivationLanding';
 import { Workbench } from './pages/Workbench';
 import { Activities } from './pages/Activities';
 import { Users } from './pages/Users';
@@ -70,6 +71,11 @@ export default function App() {
         return <Workbench onNavigate={setCurrentRoute} />;
     }
   };
+
+  // 激活落地页：绕过管理员认证门禁，允许未登录用户直接访问
+  if (window.location.pathname === '/activate') {
+    return <ActivationLanding />;
+  }
 
   if (!isAuthenticated) {
     return (
