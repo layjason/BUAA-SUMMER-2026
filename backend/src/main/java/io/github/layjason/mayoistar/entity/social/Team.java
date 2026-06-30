@@ -36,7 +36,7 @@ public class Team {
     @Column(name = "team_id", length = 36)
     private String teamId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
     @JdbcTypeCode(SqlTypes.JSON)
