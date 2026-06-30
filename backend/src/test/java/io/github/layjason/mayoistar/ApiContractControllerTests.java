@@ -4,6 +4,7 @@ import static com.atlassian.oai.validator.mockmvc.OpenApiValidationMatchers.open
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -20,6 +21,7 @@ import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.parser.core.models.ParseOptions;
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -32,9 +34,11 @@ import org.junit.jupiter.api.TestFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.AbstractMockMultipartHttpServletRequestBuilder;
 
 /**
  * API Controller 契约测试。
@@ -51,6 +55,7 @@ class ApiContractControllerTests {
     private static final String OPENAPI_SPEC = "../api-spec/tsp-output/openapi.yaml";
     private static final String JSON_CONTENT_TYPE = "application/json";
     private static final String MULTIPART_CONTENT_TYPE = "multipart/form-data";
+    private static final String MULTIPART_BOUNDARY = "MayoiStarContractBoundary";
 
     @Autowired
     private MockMvc mockMvc;
@@ -93,7 +98,7 @@ class ApiContractControllerTests {
      */
     private void assertOperation(OpenAPI openApi, String method, String pathTemplate, Operation operation)
             throws Exception {
-        MockHttpServletRequestBuilder request = requestBuilder(openApi, method, pathTemplate, operation);
+        AbstractMockHttpServletRequestBuilder<?> request = requestBuilder(openApi, method, pathTemplate, operation);
         if (pathTemplate.endsWith("/check-ins/export")) {
             mockMvc.perform(request)
                     .andExpect(status().isOk())
@@ -113,12 +118,12 @@ class ApiContractControllerTests {
      *
      * <p>不变量：该方法不依赖 Controller 内部实现，只依据 OpenAPI Schema 生成请求。
      */
-    private MockHttpServletRequestBuilder requestBuilder(
+    private AbstractMockHttpServletRequestBuilder<?> requestBuilder(
             OpenAPI openApi, String method, String pathTemplate, Operation operation) throws Exception {
         String path = materializePath(pathTemplate);
         RequestBody requestBody = resolveRequestBody(openApi, operation.getRequestBody());
         boolean multipartBody = isMultipart(requestBody);
-        MockHttpServletRequestBuilder builder = createBuilder(method, path, multipartBody);
+        AbstractMockHttpServletRequestBuilder<?> builder = createBuilder(method, path, multipartBody);
         addQueryParameters(openApi, builder, operation);
         addRequestBody(openApi, builder, requestBody);
         return builder;
@@ -133,9 +138,9 @@ class ApiContractControllerTests {
      *
      * <p>不变量：multipart 仅用于 OpenAPI 声明 multipart/form-data 的 POST 请求。
      */
-    private MockHttpServletRequestBuilder createBuilder(String method, String path, boolean multipartBody) {
+    private AbstractMockHttpServletRequestBuilder<?> createBuilder(String method, String path, boolean multipartBody) {
         if (multipartBody) {
-            return post(path);
+            return multipart(path);
         }
         return switch (method) {
             case "GET" -> get(path);
@@ -155,7 +160,8 @@ class ApiContractControllerTests {
      *
      * <p>不变量：path 参数已经写入 URL，不再重复加入 query。
      */
-    private void addQueryParameters(OpenAPI openApi, MockHttpServletRequestBuilder builder, Operation operation) {
+    private void addQueryParameters(
+            OpenAPI openApi, AbstractMockHttpServletRequestBuilder<?> builder, Operation operation) {
         for (Parameter parameter :
                 operation.getParameters() == null ? List.<Parameter>of() : operation.getParameters()) {
             Parameter resolved = resolveParameter(openApi, parameter);
@@ -181,7 +187,8 @@ class ApiContractControllerTests {
      *
      * <p>不变量：生成的 body 只服务于契约测试，不代表业务样例。
      */
-    private void addRequestBody(OpenAPI openApi, MockHttpServletRequestBuilder builder, RequestBody requestBody)
+    private void addRequestBody(
+            OpenAPI openApi, AbstractMockHttpServletRequestBuilder<?> builder, RequestBody requestBody)
             throws Exception {
         if (requestBody == null || requestBody.getContent() == null) {
             return;
@@ -205,34 +212,44 @@ class ApiContractControllerTests {
      *
      * <p>后置条件：每个属性都有表单字段或文件字段。
      *
-     * <p>不变量：文件内容为固定字节，不写入磁盘。
+     * <p>不变量：文件内容为固定字节，不写入磁盘，同时保留原始 body 供 OpenAPI validator 校验。
      */
-    private void addMultipartBody(OpenAPI openApi, MockHttpServletRequestBuilder builder, MediaType mediaType) {
-        String boundary = "MayoiStarContractBoundary";
-        StringBuilder body = new StringBuilder();
+    private void addMultipartBody(
+            OpenAPI openApi, AbstractMockHttpServletRequestBuilder<?> builder, MediaType mediaType) {
+        if (!(builder instanceof AbstractMockMultipartHttpServletRequestBuilder<?> multipartBuilder)) {
+            throw new IllegalStateException("multipart 请求必须使用 Spring multipart builder");
+        }
+        StringBuilder rawBody = new StringBuilder();
         Schema<?> schema = resolveSchema(openApi, mediaType.getSchema());
         Map<String, Schema> properties = schema == null ? Map.of() : schema.getProperties();
         for (Map.Entry<String, Schema> entry : properties.entrySet()) {
             Schema<?> property = resolveSchema(openApi, entry.getValue());
-            body.append("--").append(boundary).append("\r\n");
-            if ("binary".equals(property.getFormat())) {
-                body.append("Content-Disposition: form-data; name=\"")
+            rawBody.append("--").append(MULTIPART_BOUNDARY).append("\r\n");
+            if (property != null && "binary".equals(property.getFormat())) {
+                multipartBuilder.file(new MockMultipartFile(
+                        entry.getKey(),
+                        "file.bin",
+                        org.springframework.http.MediaType.APPLICATION_OCTET_STREAM_VALUE,
+                        new byte[] {'x'}));
+                rawBody.append("Content-Disposition: form-data; name=\"")
                         .append(entry.getKey())
                         .append("\"; filename=\"file.bin\"\r\n")
                         .append("Content-Type: application/octet-stream\r\n\r\n")
                         .append("x\r\n");
             } else {
-                body.append("Content-Disposition: form-data; name=\"")
+                String value = String.valueOf(schemaValue(openApi, property, entry.getKey()));
+                multipartBuilder.param(entry.getKey(), value);
+                rawBody.append("Content-Disposition: form-data; name=\"")
                         .append(entry.getKey())
                         .append("\"\r\n\r\n")
-                        .append(schemaValue(openApi, property, entry.getKey()))
+                        .append(value)
                         .append("\r\n");
             }
         }
-        body.append("--").append(boundary).append("--\r\n");
+        rawBody.append("--").append(MULTIPART_BOUNDARY).append("--\r\n");
         builder.contentType(org.springframework.http.MediaType.parseMediaType(
-                        MULTIPART_CONTENT_TYPE + "; boundary=" + boundary))
-                .content(body.toString());
+                        MULTIPART_CONTENT_TYPE + "; boundary=" + MULTIPART_BOUNDARY))
+                .content(rawBody.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     /**
