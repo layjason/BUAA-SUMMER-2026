@@ -1,7 +1,7 @@
 package io.github.layjason.mayoistar.service.activities;
 
-import io.github.layjason.mayoistar.api.common.BusinessException;
 import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.exception.BusinessException;
 import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
