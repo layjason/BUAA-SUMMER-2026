@@ -108,6 +108,12 @@ public final class IdentityDtos {
         private List<String> interestedActivityFields;
     }
 
+    @Data
+    public static class QualificationSubmitRequest {
+        @NotNull
+        private List<String> licenseMediaIds;
+    }
+
     /* ========== 响应 DTO ========== */
 
     @Data

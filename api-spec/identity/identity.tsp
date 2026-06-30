@@ -259,10 +259,10 @@ model ResendActivationEmailRequest {
   email: string;
 }
 
-@doc("商家资质提交请求，上传营业执照或营业凭证图片，请求为 multipart/form-data，支持多文件。")
+@doc("商家资质提交请求，营业执照或营业凭证图片需先通过上传接口取得 mediaId，提交接口仅引用已上传媒体。")
 model QualificationSubmitRequest {
-  @doc("营业执照或营业凭证图片。")
-  licenseImages: HttpPart<bytes>[];
+  @doc("营业执照或营业凭证媒体文件标识列表。")
+  licenseMediaIds: EntityId[];
 }
 
 @doc("头像上传请求，请求为 multipart/form-data，上传成功后服务端固定媒体用途为 avatar。")
@@ -436,9 +436,9 @@ interface IdentityOperations {
 
   @post
   @route("/me/merchant-qualification")
-  @doc("提交商家资质申请，请求为 multipart/form-data，上传营业执照或营业凭证图片。若已有 pending 或 approved 的申请则拒绝重复提交，rejected 后可重新提交。仅商家用户可调用。")
+  @doc("提交商家资质申请，请求为 JSON，licenseMediaIds 引用已上传的营业执照或营业凭证图片。若已有 pending 或 approved 的申请则拒绝重复提交，rejected 后可重新提交。仅商家用户可调用。")
   submitMerchantQualification(
-    @multipartBody body: QualificationSubmitRequest,
+    @body body: QualificationSubmitRequest,
   ): APIResult<
     EmptyData,
 

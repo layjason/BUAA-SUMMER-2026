@@ -3990,7 +3990,7 @@ paths:
   /identity/me/merchant-qualification:
     post:
       operationId: IdentityOperations_submitMerchantQualification
-      description: 提交商家资质申请，请求为 multipart/form-data，上传营业执照或营业凭证图片。若已有 pending 或 approved 的申请则拒绝重复提交，rejected 后可重新提交。仅商家用户可调用。
+      description: 提交商家资质申请，请求为 JSON，licenseMediaIds 引用已上传的营业执照或营业凭证图片。若已有 pending 或 approved 的申请则拒绝重复提交，rejected 后可重新提交。仅商家用户可调用。
       parameters: []
       responses:
         '200':
@@ -4034,7 +4034,7 @@ paths:
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
               $ref: '#/components/schemas/Identity.QualificationSubmitRequest'
   /identity/me/password:
@@ -10472,15 +10472,15 @@ components:
       description: 商家资质审核状态。
     Identity.QualificationSubmitRequest:
       type: object
+      required:
+        - licenseMediaIds
       properties:
-        licenseImages:
+        licenseMediaIds:
           type: array
           items:
-            type: string
-            format: binary
-          description: 营业执照或营业凭证图片。
-      required:
-        - licenseImages
+            $ref: '#/components/schemas/EntityId'
+          description: 营业执照或营业凭证媒体文件标识列表。
+      description: 商家资质提交请求，营业执照或营业凭证图片需先通过上传接口取得 mediaId，提交接口仅引用已上传媒体。
     Identity.RefreshTokenRequest:
       type: object
       required:

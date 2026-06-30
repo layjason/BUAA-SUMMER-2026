@@ -93,9 +93,9 @@ public class IdentityController {
         return responseFactory.merchantProfile();
     }
 
-    @PostMapping(value = "/me/merchant-qualification", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping("/me/merchant-qualification")
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> submitMerchantQualification(
-            @RequestPart(value = "licenseMediaId", required = false) String licenseMediaId) {
+            @Valid @RequestBody IdentityDtos.QualificationSubmitRequest request) {
         return responseFactory.emptyData();
     }
 
