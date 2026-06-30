@@ -49,6 +49,7 @@
       </view>
     </view>
   </view>
+  <view class="bottom-safe" />
 </template>
 
 <script setup lang="ts">
@@ -267,5 +268,9 @@ function runtimeStatusText(status: string): string {
 .meta {
   font-size: 24rpx;
   color: #969799;
+}
+
+.bottom-safe {
+  height: 48rpx;
 }
 </style>
