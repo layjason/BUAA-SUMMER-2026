@@ -11,4 +11,13 @@
     <Match>
         <Bug pattern="SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING" />
     </Match>
+    <!--
+        JwtService 构造器中通过 Keys.hmacShaKeyFor 初始化密钥，密钥长度校验可能抛出
+        IllegalArgumentException。Finalizer 攻击在 Java 25 中已不适用（Finalizer 已被移除），
+        且抛出的异常仅用于参数校验，不影响对象状态完整性。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.JwtService" />
+        <Bug pattern="CT_CONSTRUCTOR_THROW" />
+    </Match>
 </FindBugsFilter>

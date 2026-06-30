@@ -3,36 +3,68 @@ package io.github.layjason.mayoistar.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * 契约骨架阶段的安全配置。
+ * Spring Security 配置。
  *
- * <p>类职责：在真实 JWT 鉴权接入前放行 API 请求，避免 Spring Security 默认登录页影响契约测试。
+ * <p>类职责：配置 JWT 无状态认证、公开/受保护端点路由、密码编码器。
  *
- * <p>类不变量：该配置不创建用户会话，不实现业务鉴权。
+ * <p>类不变量：不使用 Session，所有认证信息由 JWT 承载。
  */
 @Configuration
 public class SecurityConfiguration {
 
+    private static final String[] PUBLIC_ENDPOINTS = {
+        "/identity/auth/register/**",
+        "/identity/auth/login",
+        "/identity/auth/activate",
+        "/identity/auth/activation-email",
+        "/identity/auth/password-reset-email",
+        "/identity/auth/password-reset",
+        "/identity/auth/refresh",
+        "/identity/nicknames/availability",
+        "/identity/interest-tags",
+    };
+
     /**
-     * 创建允许所有请求通过的过滤链。
+     * 创建安全过滤链。
      *
-     * <p>前置条件：当前后端仍处于 API 契约骨架阶段，尚未接入 JWT 认证。
+     * <p>后置条件：公开端点无需认证即可访问，其余端点需要 JWT Bearer Token。
      *
-     * <p>后置条件：所有 HTTP 请求均可到达 Controller，CSRF 校验被关闭以支持占位 POST/DELETE 接口。
-     *
-     * <p>不变量：该方法只配置 Spring Security，不读取或修改业务数据。
-     *
-     * @param http Spring Security HTTP 配置器
+     * @param http      Spring Security HTTP 配置器
+     * @param jwtFilter JWT 认证过滤器
      * @return 安全过滤链
-     * @throws Exception 当安全配置构建失败时抛出
+     * @throws Exception 配置失败时抛出
      */
     @Bean
-    public SecurityFilterChain apiContractSecurityFilterChain(HttpSecurity http) throws Exception {
-        return http.csrf(csrf -> csrf.ignoringRequestMatchers(
-                        "/identity/**", "/activities/**", "/ai/**", "/social/**", "/chat/**", "/admin/**"))
-                .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter)
+            throws Exception {
+        return http.csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(PUBLIC_ENDPOINTS)
+                        .permitAll()
+                        .anyRequest()
+                        .authenticated())
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    /**
+     * 密码编码器 Bean。
+     *
+     * <p>后置条件：返回 BCryptPasswordEncoder，强度为 12。
+     *
+     * @return BCrypt 密码编码器
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12);
     }
 }
