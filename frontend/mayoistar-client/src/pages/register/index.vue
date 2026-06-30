@@ -115,7 +115,7 @@
  * 前置条件：用户未登录
  * 后置条件：注册成功提示激活，跳转登录页
  */
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -157,6 +157,16 @@ onLoad((options?: { email?: string }) => {
   }
 })
 
+/**
+ * 组件卸载时清理昵称防抖定时器
+ */
+onUnmounted(() => {
+  if (nicknameTimer) {
+    clearTimeout(nicknameTimer)
+    nicknameTimer = null
+  }
+})
+
 /** 昵称可用性检查状态 */
 const nicknameChecking = ref(false)
 const nicknameChecked = ref(false)
@@ -180,7 +190,8 @@ function switchType(type: 'personal' | 'merchant'): void {
 /**
  * 昵称输入防抖检查唯一性
  *
- * 输入后等待 500ms，若昵称非空且长度 >= 1 则调用 API 校验
+ * 输入后等待 500ms，若昵称非空且长度 >= 1 则调用 API 校验；
+ * 响应时比对当前输入值，避免竞态条件导致旧结果覆盖新输入
  */
 function onNicknameInput(): void {
   nicknameError.value = ''
@@ -200,6 +211,9 @@ function onNicknameInput(): void {
       const result = await api.get('/identity/nicknames/availability', {
         query: { nickname: value },
       })
+      // 防竞态：仅当输入值未变化时才更新状态
+      if (nickname.value.trim() !== value) return
+
       nicknameAvailable.value = result.available
       nicknameChecked.value = true
 
@@ -209,9 +223,13 @@ function onNicknameInput(): void {
         nicknameError.value = ''
       }
     } catch {
+      // 防竞态：仅当输入值未变化时才标记未检查
+      if (nickname.value.trim() !== value) return
       /* API 调用失败静默处理，允许用户继续 */
       nicknameChecked.value = false
     } finally {
+      // 防竞态：仅当输入值未变化时才停止加载态
+      if (nickname.value.trim() !== value) return
       nicknameChecking.value = false
     }
   }, 500)

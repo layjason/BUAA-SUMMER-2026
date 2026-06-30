@@ -45,6 +45,11 @@
           {{ loading ? '' : t('login.button') }}
         </button>
 
+        <!-- 忘记密码 -->
+        <view class="forgot-password">
+          <text class="link" @click="goForgotPassword">{{ t('login.forgotPassword') }}</text>
+        </view>
+
         <!-- 底部链接 -->
         <view class="footer-links">
           <text class="link" @click="goRegister">{{ t('login.toRegister') }}</text>
@@ -152,7 +157,8 @@ function validateForm(): boolean {
 /**
  * 处理登录
  *
- * 调用登录 API，成功则跳转首页，失败则展示错误提示
+ * 调用登录 API，成功则跳转首页，失败则展示错误提示；
+ * 若账号未激活（10004）则直接跳转激活页
  */
 async function handleLogin() {
   if (loading.value) return
@@ -166,6 +172,19 @@ async function handleLogin() {
     uni.switchTab({ url: '/pages/home/index' })
   } catch (error) {
     if (error instanceof BusinessError) {
+      if (error.code === 10004) {
+        loading.value = false
+        authStore.pendingActivationEmail = email.value.trim()
+        // 保存表单数据，供激活页"邮箱不对？重新注册"回填
+        authStore.savedRegisterForm = {
+          email: email.value.trim(),
+          password: password.value,
+          nickname: '',
+          type: 'personal',
+        }
+        uni.redirectTo({ url: '/pages/activate/index' })
+        return
+      }
       formError.value = getErrorMessage(error.code)
     } else {
       formError.value = getErrorMessage(0, '登录失败，请稍后重试')
@@ -180,6 +199,13 @@ async function handleLogin() {
  */
 function goRegister(): void {
   uni.navigateTo({ url: '/pages/register/index' })
+}
+
+/**
+ * 跳转忘记密码页
+ */
+function goForgotPassword(): void {
+  uni.navigateTo({ url: '/pages/forgot-password/index' })
 }
 </script>
 
@@ -268,6 +294,13 @@ function goRegister(): void {
 
 .login-btn[disabled] {
   opacity: 0.6;
+}
+
+.forgot-password {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16rpx;
+  padding-right: 4rpx;
 }
 
 .footer-links {

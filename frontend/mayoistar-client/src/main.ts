@@ -2,7 +2,13 @@ import { createSSRApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import App from './App.vue'
-import { setTokenGetter, setBaseUrl, setTokenSaver, setOnTokenExpired } from '@/api/client'
+import {
+  setTokenGetter,
+  setBaseUrl,
+  setTokenSaver,
+  setOnTokenExpired,
+  setRefreshTokenGetter,
+} from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import zhCN from './locales/zh-CN.json'
 
@@ -22,11 +28,18 @@ export function createApp() {
   const authStore = useAuthStore()
   authStore.initFromStorage()
   setTokenGetter(() => authStore.getAccessToken())
+  setRefreshTokenGetter(() => authStore.getRefreshToken())
   setBaseUrl('http://localhost:4010')
   setTokenSaver((access, refresh) => authStore.saveTokens(access, refresh))
   setOnTokenExpired(() => {
     authStore.clearTokens()
+    uni.redirectTo({ url: '/pages/login/index' })
   })
+
+  // 应用启动时主动刷新 Token（失败不影响正常启动）
+  if (authStore.isLoggedIn) {
+    authStore.tryRefreshToken()
+  }
 
   return { app }
 }

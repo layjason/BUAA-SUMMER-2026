@@ -163,6 +163,10 @@ export const useAuthStore = defineStore('auth', () => {
     return token.value
   }
 
+  function getRefreshToken(): string | null {
+    return refreshToken.value
+  }
+
   return {
     token,
     refreshToken,
@@ -178,5 +182,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     tryRefreshToken,
     getAccessToken,
+    getRefreshToken,
   }
 })
