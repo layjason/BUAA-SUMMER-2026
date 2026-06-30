@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, AlertCircle, Smartphone, Loader2 } from 'lucide-react';
-import { readActivationToken, buildAppActivationUrl } from './activationUtils';
+import { readActivationToken, buildAppActivationUrl, APP_LOGIN_URL } from './activationUtils';
 import { consumeActivationTokenOnce, type ActivationState } from './activationFlow';
 
 /**
@@ -13,7 +13,11 @@ import { consumeActivationTokenOnce, type ActivationState } from './activationFl
 export const ActivationLanding: React.FC = () => {
   const [state, setState] = useState<ActivationState>('loading');
   const [token] = useState<string | null>(() => readActivationToken(window.location.search));
-  const appUrl = buildAppActivationUrl(token);
+  /**
+   * 根据激活状态构造正确的 APP 深度链接。
+   * 成功时引导用户前往登录页；失败时前往激活页并携带 token 以便 APP 重试。
+   */
+  const appUrl = state === 'success' ? APP_LOGIN_URL : buildAppActivationUrl(token);
 
   /**
    * 页面加载后自动触发激活请求。

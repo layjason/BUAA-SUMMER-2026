@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readActivationToken, buildAppActivationUrl } from './activationUtils';
+import { readActivationToken, buildAppActivationUrl, APP_LOGIN_URL } from './activationUtils';
 
 describe('readActivationToken', () => {
   it('从标准查询字符串中提取 token', () => {
@@ -42,5 +42,11 @@ describe('buildAppActivationUrl', () => {
 
   it('token 为 null 时返回基础深度链接', () => {
     expect(buildAppActivationUrl(null)).toBe('mayoistar://pages/activate/index');
+  });
+});
+
+describe('APP_LOGIN_URL', () => {
+  it('指向 APP 登录页深度链接', () => {
+    expect(APP_LOGIN_URL).toBe('mayoistar://pages/login/index');
   });
 });
