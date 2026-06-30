@@ -110,7 +110,8 @@
 
 ### 数据库
 
-- 请确保数据库模式同时被 H2、PostgreSQL 支持。
+- 请确保数据库模式同时被 H2、PostgreSQL 支持；
+- 若你更新了数据库结构，请确保同时更新正常运行的 PostgreSQL Migration 和测试中的 H2 Migration。
 
 ### 单元测试
 

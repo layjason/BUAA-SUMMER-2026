@@ -9,6 +9,7 @@ import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
+import io.github.layjason.mayoistar.entity.admin.AdminModerationAction;
 import io.github.layjason.mayoistar.entity.chat.MessageKind;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
@@ -18,6 +19,7 @@ import io.github.layjason.mayoistar.entity.social.FriendRequestSource;
 import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
 import io.github.layjason.mayoistar.entity.social.FriendshipSource;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
+import io.github.layjason.mayoistar.entity.social.ReportTargetType;
 import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
 import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
@@ -366,11 +368,12 @@ public class DefaultApiResponseFactory {
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
-    public ResponseEntity<ApiResponse<SocialDtos.UserReport>> userReport() {
-        SocialDtos.UserReport dto = new SocialDtos.UserReport();
+    public ResponseEntity<ApiResponse<SocialDtos.Report>> report() {
+        SocialDtos.Report dto = new SocialDtos.Report();
         dto.setReportId("report-placeholder");
         dto.setReporterUserId("user-placeholder");
-        dto.setTargetUserId("target-placeholder");
+        dto.setTargetType(ReportTargetType.user);
+        dto.setTargetId("target-placeholder");
         dto.setReason("契约占位举报理由");
         dto.setStatus(ReportStatus.pending);
         dto.setCreatedAt(NOW);
@@ -379,6 +382,18 @@ public class DefaultApiResponseFactory {
 
     public ResponseEntity<ApiResponse<AdminDtos.AdminUserSummary>> adminUserSummary() {
         AdminDtos.AdminUserSummary dto = new AdminDtos.AdminUserSummary();
+        dto.setUserId("user-placeholder");
+        dto.setEmail("user@example.com");
+        dto.setKind(UserKind.personal);
+        dto.setStatus(AccountStatus.active);
+        dto.setActivityCount(0);
+        dto.setTeamCount(0);
+        dto.setCreatedAt(NOW);
+        return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
+    public ResponseEntity<ApiResponse<AdminDtos.AdminUserDetail>> adminUserDetail() {
+        AdminDtos.AdminUserDetail dto = new AdminDtos.AdminUserDetail();
         dto.setUserId("user-placeholder");
         dto.setEmail("user@example.com");
         dto.setKind(UserKind.personal);
@@ -398,8 +413,32 @@ public class DefaultApiResponseFactory {
         dto.setCapacity(20);
         dto.setMemberCount(1);
         dto.setStatus(TeamStatus.active);
+        dto.setCreatorId("user-placeholder");
         dto.setLeaderId("user-placeholder");
         dto.setChatId("conversation-placeholder");
+        return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
+    public ResponseEntity<ApiResponse<AdminDtos.AdminTeamDetail>> adminTeamDetail() {
+        AdminDtos.AdminTeamDetail dto = new AdminDtos.AdminTeamDetail();
+        dto.setTeamId("team-placeholder");
+        dto.setName("默认小队");
+        dto.setTags(List.of());
+        dto.setJoinMode(TeamJoinMode.publicJoin);
+        dto.setCapacity(20);
+        dto.setMemberCount(1);
+        dto.setStatus(TeamStatus.active);
+        dto.setCreatorId("user-placeholder");
+        dto.setLeaderId("user-placeholder");
+        dto.setChatId("conversation-placeholder");
+
+        AdminDtos.AdminModerationRecord record = new AdminDtos.AdminModerationRecord();
+        record.setRecordId("moderation-record-placeholder");
+        record.setAction(AdminModerationAction.disableTeam);
+        record.setReason("契约占位治理原因");
+        record.setOperatorId("admin-placeholder");
+        record.setCreatedAt(NOW);
+        dto.setModerationRecords(List.of(record));
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
