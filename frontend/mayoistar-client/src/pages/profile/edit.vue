@@ -420,7 +420,8 @@ async function handleSave(): Promise<void> {
         },
       })
     }
-    uni.navigateBack()
+    uni.showToast({ title: t('editProfile.saveSuccess'), icon: 'success' })
+    loadProfile()
   } catch (error) {
     if (error instanceof BusinessError) {
       formError.value = getErrorMessage(error.code)
