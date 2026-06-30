@@ -40,7 +40,13 @@
 
     <view v-else>
       <view v-if="drafts.length === 0" class="empty-text">{{ t('暂无数据') }}</view>
-      <view v-for="item in drafts" :key="item.activityId" class="card">
+      <view
+        v-for="item in drafts"
+        :key="item.activityId"
+        class="card card-draft"
+        hover-class="card-hover"
+        @click="goEdit(item.activityId)"
+      >
         <text class="card-title">{{ item.title }}</text>
         <view class="card-row">
           <text class="tag draft-status" :class="'draft-' + item.reviewStatus">{{
@@ -184,6 +190,15 @@ function runtimeStatusText(status: string): string {
 function reviewStatusText(status: string): string {
   return reviewStatusMap[status] ?? status
 }
+
+/**
+ * 跳转到活动编辑页
+ *
+ * @param activityId 草稿活动标识
+ */
+function goEdit(activityId: string): void {
+  uni.navigateTo({ url: `/pages/activity/edit?activityId=${activityId}` })
+}
 </script>
 
 <style scoped>
@@ -240,6 +255,14 @@ function reviewStatusText(status: string): string {
   margin: 16rpx 32rpx;
   padding: 28rpx 32rpx;
   border-radius: 12rpx;
+}
+
+.card-hover {
+  opacity: 0.85;
+}
+
+.card-draft {
+  border-left: 6rpx solid #ed6a0c;
 }
 
 .card-title {
