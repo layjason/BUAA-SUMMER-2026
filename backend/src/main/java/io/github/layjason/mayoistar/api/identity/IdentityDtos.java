@@ -5,7 +5,12 @@ import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.Gender;
 import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import lombok.Data;
 
@@ -24,100 +29,132 @@ public final class IdentityDtos {
 
     @Data
     public static class EmailPasswordRequest {
-        @NotNull
+        @NotBlank
+        @Email
+        @Size(max = 255)
         private String email;
 
-        @NotNull
+        @NotBlank
+        @Size(min = 8)
         private String password;
     }
 
     @Data
     public static class PersonalRegisterRequest {
-        @NotNull
+        @NotBlank
+        @Email
+        @Size(max = 255)
         private String email;
 
-        @NotNull
+        @NotBlank
+        @Size(min = 8)
         private String password;
 
-        @NotNull
+        @NotBlank
+        @Size(max = 50)
         private String nickname;
     }
 
     @Data
     public static class MerchantRegisterRequest {
-        @NotNull
+        @NotBlank
+        @Email
+        @Size(max = 255)
         private String email;
 
-        @NotNull
+        @NotBlank
+        @Size(min = 8)
         private String password;
 
-        @NotNull
+        @NotBlank
+        @Size(max = 50)
         private String nickname;
     }
 
     @Data
     public static class RefreshTokenRequest {
-        @NotNull
+        @NotBlank
         private String refreshToken;
     }
 
     @Data
     public static class ChangePasswordRequest {
-        @NotNull
+        @NotBlank
         private String oldPassword;
 
-        @NotNull
+        @NotBlank
+        @Size(min = 8)
         private String newPassword;
     }
 
     @Data
     public static class PasswordResetEmailRequest {
-        @NotNull
+        @NotBlank
+        @Email
+        @Size(max = 255)
         private String email;
     }
 
     @Data
     public static class ResetPasswordRequest {
-        @NotNull
+        @NotBlank
         private String token;
 
-        @NotNull
+        @NotBlank
+        @Size(min = 8)
         private String newPassword;
     }
 
     @Data
     public static class AccountActivationRequest {
-        @NotNull
+        @NotBlank
         private String token;
     }
 
     @Data
     public static class ResendActivationEmailRequest {
-        @NotNull
+        @NotBlank
+        @Email
+        @Size(max = 255)
         private String email;
     }
 
     @Data
     public static class UpdatePersonalProfileRequest {
+        @Size(max = 36)
         private String avatarMediaId;
+
+        @Size(max = 50)
         private String nickname;
+
         private Gender gender;
+
+        @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$")
         private String birthday;
+
+        @Size(max = 500)
         private String signature;
+
         private List<String> interestTags;
     }
 
     @Data
     public static class UpdateMerchantProfileRequest {
+        @Size(max = 100)
         private String merchantName;
+
+        @Size(max = 50)
         private String nickname;
+
+        @Size(max = 36)
         private String avatarMediaId;
+
         private List<String> interestedActivityFields;
     }
 
     @Data
     public static class QualificationSubmitRequest {
-        @NotNull
+        @NotEmpty
         private List<String> licenseMediaIds;
     }
 
