@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiErrorResponse<EmptyData>> handleBusinessException(BusinessException ex) {
-        log.warn("业务异常: code={}, message={}", ex.getCode(), ex.getBusinessMessage(), ex);
+        log.warn("业务异常: code={}, message={}", ex.getCode(), ex.getBusinessMessage());
         ApiErrorResponse<EmptyData> body = new ApiErrorResponse<>();
         body.setCode(ex.getCode());
         body.setMessage(ex.getBusinessMessage());
