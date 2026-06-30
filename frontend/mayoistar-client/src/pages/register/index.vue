@@ -1,13 +1,8 @@
 <template>
   <view class="page">
     <view class="register-container">
-      <!-- 标题区域 -->
-      <view class="header">
-        <text class="title">{{ t('register.title') }}</text>
-        <text class="subtitle">{{ t('register.subtitle') }}</text>
-      </view>
+      <PageHeader :title="t('register.title')" :subtitle="t('register.subtitle')" />
 
-      <!-- 注册类型切换 -->
       <view class="type-tabs">
         <view
           class="type-tab"
@@ -25,22 +20,14 @@
         </view>
       </view>
 
-      <!-- 表单区域 -->
       <view class="form">
-        <!-- 邮箱 -->
-        <view class="form-item">
-          <text class="label">{{ t('register.email') }}</text>
-          <input
-            v-model="email"
-            class="input"
-            type="text"
-            :placeholder="t('register.emailPlaceholder')"
-            placeholder-class="input-placeholder"
-          />
-          <text v-if="emailError" class="field-error">{{ emailError }}</text>
-        </view>
+        <FormInput
+          v-model="email"
+          :label="t('register.email')"
+          :placeholder="t('register.emailPlaceholder')"
+          :error="emailError"
+        />
 
-        <!-- 昵称（仅个人注册） -->
         <view v-if="registerType === 'personal'" class="form-item">
           <text class="label">{{ t('register.nickname') }}</text>
           <view class="input-wrapper">
@@ -62,43 +49,26 @@
           <text v-if="nicknameError" class="field-error">{{ nicknameError }}</text>
         </view>
 
-        <!-- 密码 -->
-        <view class="form-item">
-          <text class="label">{{ t('register.password') }}</text>
-          <input
-            v-model="password"
-            class="input"
-            type="password"
-            :placeholder="t('register.passwordPlaceholder')"
-            placeholder-class="input-placeholder"
-          />
-          <text v-if="passwordError" class="field-error">{{ passwordError }}</text>
-        </view>
+        <FormInput
+          v-model="password"
+          :label="t('register.password')"
+          :placeholder="t('register.passwordPlaceholder')"
+          type="password"
+          :error="passwordError"
+        />
 
-        <!-- 确认密码 -->
-        <view class="form-item">
-          <text class="label">{{ t('register.confirmPassword') }}</text>
-          <input
-            v-model="confirmPassword"
-            class="input"
-            type="password"
-            :placeholder="t('register.confirmPasswordPlaceholder')"
-            placeholder-class="input-placeholder"
-          />
-          <text v-if="confirmPasswordError" class="field-error">{{ confirmPasswordError }}</text>
-        </view>
+        <FormInput
+          v-model="confirmPassword"
+          :label="t('register.confirmPassword')"
+          :placeholder="t('register.confirmPasswordPlaceholder')"
+          type="password"
+          :error="confirmPasswordError"
+        />
 
-        <!-- 错误提示 -->
-        <view v-if="formError" class="form-error">
-          <text>{{ formError }}</text>
-        </view>
+        <FormError :message="formError" />
 
-        <!-- 注册按钮 -->
-        <button class="register-btn" :disabled="loading" :loading="loading" @click="handleRegister">
-          {{ loading ? '' : t('register.button') }}
-        </button>
+        <SubmitButton :text="t('register.button')" :loading="loading" @click="handleRegister" />
 
-        <!-- 底部链接 -->
         <view class="footer-links">
           <text class="link" @click="goLogin">{{ t('register.toLogin') }}</text>
         </view>
@@ -121,6 +91,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
+import { PageHeader, FormInput, FormError, SubmitButton } from '@/components'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -149,10 +120,8 @@ onLoad((options?: { email?: string }) => {
     password.value = saved.password
     nickname.value = saved.nickname
     registerType.value = saved.type
-    // 安全考虑：不恢复确认密码
     confirmPassword.value = ''
   } else if (options?.email) {
-    // 兜底：从 URL 参数回填邮箱
     email.value = options.email
   }
 })
@@ -167,7 +136,6 @@ onUnmounted(() => {
   }
 })
 
-/** 昵称可用性检查状态 */
 const nicknameChecking = ref(false)
 const nicknameChecked = ref(false)
 const nicknameAvailable = ref(false)
@@ -211,7 +179,6 @@ function onNicknameInput(): void {
       const result = await api.get('/identity/nicknames/availability', {
         query: { nickname: value },
       })
-      // 防竞态：仅当输入值未变化时才更新状态
       if (nickname.value.trim() !== value) return
 
       nicknameAvailable.value = result.available
@@ -223,12 +190,9 @@ function onNicknameInput(): void {
         nicknameError.value = ''
       }
     } catch {
-      // 防竞态：仅当输入值未变化时才标记未检查
       if (nickname.value.trim() !== value) return
-      /* API 调用失败静默处理，允许用户继续 */
       nicknameChecked.value = false
     } finally {
-      // 防竞态：仅当输入值未变化时才停止加载态
       if (nickname.value.trim() !== value) return
       nicknameChecking.value = false
     }
@@ -355,7 +319,6 @@ async function handleRegister() {
       })
     }
 
-    // 保存注册信息到 store，供激活页使用
     authStore.pendingActivationEmail = email.value.trim()
     authStore.savedRegisterForm = {
       email: email.value.trim(),
@@ -364,7 +327,6 @@ async function handleRegister() {
       type: registerType.value,
     }
 
-    // 直接跳转激活页
     uni.redirectTo({ url: '/pages/activate/index' })
   } catch (error) {
     if (error instanceof BusinessError) {
@@ -377,9 +339,6 @@ async function handleRegister() {
   }
 }
 
-/**
- * 跳转登录页
- */
 function goLogin(): void {
   uni.navigateBack()
 }
@@ -393,24 +352,6 @@ function goLogin(): void {
 
 .register-container {
   padding: 80rpx 48rpx 0;
-}
-
-.header {
-  margin-bottom: 48rpx;
-}
-
-.title {
-  display: block;
-  font-size: 48rpx;
-  font-weight: 700;
-  color: #323233;
-  margin-bottom: 16rpx;
-}
-
-.subtitle {
-  display: block;
-  font-size: 28rpx;
-  color: #969799;
 }
 
 .type-tabs {
@@ -488,32 +429,6 @@ function goLogin(): void {
   font-size: 24rpx;
   color: #ee0a24;
   margin-top: 8rpx;
-}
-
-.form-error {
-  background-color: #fff2f0;
-  border: 1rpx solid #ffccc7;
-  border-radius: 8rpx;
-  padding: 16rpx 24rpx;
-  margin-bottom: 24rpx;
-  font-size: 26rpx;
-  color: #ee0a24;
-}
-
-.register-btn {
-  width: 100%;
-  height: 88rpx;
-  line-height: 88rpx;
-  background-color: #1989fa;
-  color: #fff;
-  font-size: 32rpx;
-  border-radius: 8rpx;
-  border: none;
-  margin-top: 8rpx;
-}
-
-.register-btn[disabled] {
-  opacity: 0.6;
 }
 
 .footer-links {
