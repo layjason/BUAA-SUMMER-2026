@@ -1,8 +1,6 @@
 <template>
   <view class="page">
     <view class="edit-container">
-      <PageHeader :title="t('editProfile.title')" />
-
       <!-- 头像 -->
       <view class="avatar-section" @click="handleAvatarClick">
         <image v-if="avatarUrl" class="avatar-image" :src="avatarUrl" mode="aspectFill" />
@@ -127,7 +125,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
-import { PageHeader, FormInput, FormError, SubmitButton } from '@/components'
+import { FormInput, FormError, SubmitButton } from '@/components'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
