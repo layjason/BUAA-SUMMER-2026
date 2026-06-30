@@ -1365,4 +1365,210 @@ export const mockData: Record<string, MockResponse> = {
       uploadedAt: new Date().toISOString(),
     },
   },
+
+  'GET /activities/2003': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: '2003',
+      title: '公益植树活动',
+      tags: ['公益活动'],
+      introduction:
+        '一年一度的公益植树活动来啦！一起为城市增添绿色。\n\n' +
+        '活动提供树苗和工具，你只需要带着热情来参加！\n\n' +
+        '活动流程：\n' +
+        '1. 8:00 集合签到\n' +
+        '2. 8:30 植树教学\n' +
+        '3. 9:00-11:00 植树\n' +
+        '4. 11:00-12:00 合影与交流',
+      safetyNotice:
+        '请穿着适合户外活动的服装和鞋子。注意防晒，自备饮用水。' +
+        '使用工具时注意安全，听从工作人员指导。',
+      startAt: '2026-07-20T08:00:00Z',
+      endAt: '2026-07-20T12:00:00Z',
+      location: {
+        address: '朝阳公园',
+        city: '北京',
+        placeName: '朝阳公园南门',
+        point: { longitude: 116.471, latitude: 39.942 },
+      },
+      coverImage: null,
+      images: [],
+      feeAmount: 0,
+      capacity: 30,
+      registeredCount: 25,
+      waitingCount: 0,
+      registrationDeadline: '2026-07-19T23:59:59Z',
+      organizerId: '10001',
+      organizerName: '测试用户',
+      reviewStatus: 'approved',
+      runtimeStatus: 'registering',
+      aiContentReview: null,
+      manualReviewRequired: false,
+      reviewRecords: [],
+    },
+  },
+
+  'GET /activities/2003/participation-state': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      canRegister: false,
+      status: null,
+      waitingRank: null,
+      confirmationDeadline: null,
+      canCancelRegistration: false,
+      canConfirmWaitingSeat: false,
+      canCheckIn: false,
+    },
+  },
+
+  'GET /activities/2004': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: '2004',
+      title: '英语角——职场口语练习',
+      tags: ['学习交流'],
+      introduction:
+        '每周一次的英语角活动，本期主题为职场口语。\n\n' +
+        '适合想要提升英语口语能力的职场人士。外教主持，分组讨论。',
+      safetyNotice: '公共场所请注意个人物品安全。请尊重他人发言，保持友好讨论氛围。',
+      startAt: '2026-07-25T19:00:00Z',
+      endAt: '2026-07-25T21:00:00Z',
+      location: {
+        address: '朝阳区三里屯 soho B 座 3 层',
+        city: '北京',
+        placeName: '三里屯共享会议室',
+        point: { longitude: 116.454, latitude: 39.931 },
+      },
+      coverImage: null,
+      images: [],
+      feeAmount: 0,
+      capacity: 20,
+      registeredCount: 0,
+      waitingCount: 0,
+      registrationDeadline: '2026-07-24T23:59:59Z',
+      organizerId: '10001',
+      organizerName: '测试用户',
+      reviewStatus: 'pending',
+      runtimeStatus: 'notStarted',
+      aiContentReview: null,
+      manualReviewRequired: false,
+      reviewRecords: [],
+    },
+  },
+
+  'GET /activities/2004/participation-state': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      canRegister: false,
+      status: null,
+      waitingRank: null,
+      confirmationDeadline: null,
+      canCancelRegistration: false,
+      canConfirmWaitingSeat: false,
+      canCheckIn: false,
+    },
+  },
+
+  'GET /activities/2006': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: '2006',
+      title: '中秋赏月诗词会',
+      tags: ['学习交流', '公益活动'],
+      introduction:
+        '中秋佳节，一起赏月吟诗！\n\n' +
+        '活动现场提供月饼和茶水，参加者可以自带诗词朗诵。' +
+        '活动设有最佳朗诵奖和最佳创作奖。',
+      safetyNotice: '夜间活动请注意安全，海边风大请携带外套。',
+      startAt: '2026-06-15T19:00:00Z',
+      endAt: '2026-06-15T22:00:00Z',
+      location: {
+        address: '上海浦东海滨公园',
+        city: '上海',
+        placeName: '滨海公园',
+        point: { longitude: 121.606, latitude: 31.187 },
+      },
+      coverImage: { url: 'https://picsum.photos/800/400?random=6', mediaId: 'img2006' },
+      images: [],
+      feeAmount: 0,
+      capacity: 25,
+      registeredCount: 25,
+      waitingCount: 0,
+      registrationDeadline: '2026-06-14T23:59:59Z',
+      organizerId: '10001',
+      organizerName: '测试用户',
+      reviewStatus: 'approved',
+      runtimeStatus: 'ended',
+      aiContentReview: null,
+      manualReviewRequired: false,
+      reviewRecords: [],
+    },
+  },
+
+  'GET /activities/2006/participation-state': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      canRegister: false,
+      status: null,
+      waitingRank: null,
+      confirmationDeadline: null,
+      canCancelRegistration: false,
+      canConfirmWaitingSeat: false,
+      canCheckIn: false,
+    },
+  },
+
+  'GET /activities/2007': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: '2007',
+      title: '违规活动（示例）',
+      tags: [],
+      introduction: '该活动因违规已被下架。',
+      safetyNotice: '',
+      startAt: '2026-08-01T10:00:00Z',
+      endAt: '2026-08-01T18:00:00Z',
+      location: {
+        address: '示例地址',
+        city: '北京',
+        placeName: null,
+        point: { longitude: 116.4, latitude: 39.9 },
+      },
+      coverImage: null,
+      images: [],
+      feeAmount: 0,
+      capacity: 50,
+      registeredCount: 0,
+      waitingCount: 0,
+      registrationDeadline: '2026-07-31T23:59:59Z',
+      organizerId: '10001',
+      organizerName: '测试用户',
+      reviewStatus: 'rejected',
+      runtimeStatus: 'takenDown',
+      aiContentReview: null,
+      manualReviewRequired: false,
+      reviewRecords: [],
+    },
+  },
+
+  'GET /activities/2007/participation-state': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      canRegister: false,
+      status: null,
+      waitingRank: null,
+      confirmationDeadline: null,
+      canCancelRegistration: false,
+      canConfirmWaitingSeat: false,
+      canCheckIn: false,
+    },
+  },
 }

@@ -21,7 +21,13 @@
 
     <view v-else-if="activeTab === 'published'">
       <view v-if="activities.length === 0" class="empty-text">{{ t('暂无数据') }}</view>
-      <view v-for="item in activities" :key="item.activityId" class="card">
+      <view
+        v-for="item in activities"
+        :key="item.activityId"
+        class="card"
+        hover-class="card-hover"
+        @click="goDetail(item.activityId)"
+      >
         <text class="card-title">{{ item.title }}</text>
         <view class="card-row">
           <text class="tag">{{ formatTags(item.tags) }}</text>
@@ -198,6 +204,15 @@ function reviewStatusText(status: string): string {
  */
 function goEdit(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/edit?activityId=${activityId}` })
+}
+
+/**
+ * 跳转到活动详情页
+ *
+ * @param activityId 活动标识
+ */
+function goDetail(activityId: string): void {
+  uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
 }
 </script>
 
