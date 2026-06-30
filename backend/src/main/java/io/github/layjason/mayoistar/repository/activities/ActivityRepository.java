@@ -10,4 +10,6 @@ public interface ActivityRepository extends JpaRepository<Activity, String> {
 
     Page<Activity> findByOrganizerIdAndReviewStatusOrderByUpdatedAtDesc(
             String organizerId, ActivityReviewStatus reviewStatus, Pageable pageable);
+
+    Page<Activity> findByOrganizerIdOrderByUpdatedAtDesc(String organizerId, Pageable pageable);
 }
