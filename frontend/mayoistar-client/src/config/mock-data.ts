@@ -27,7 +27,7 @@ export const mockData: Record<string, MockResponse> = {
     },
   },
 
-  'PATCH /identity/me/profile': {
+  'PUT /identity/me/profile': {
     code: 200,
     message: 'For Super Earth!',
     data: {
@@ -60,7 +60,7 @@ export const mockData: Record<string, MockResponse> = {
     },
   },
 
-  'PATCH /identity/me/merchant-profile': {
+  'PUT /identity/me/merchant-profile': {
     code: 200,
     message: 'For Super Earth!',
     data: {
