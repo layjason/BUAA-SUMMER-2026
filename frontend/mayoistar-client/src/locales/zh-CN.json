@@ -86,5 +86,28 @@
     "resendCooldown": "重发激活邮件（{seconds}秒）",
     "resendSent": "激活邮件已发送，请查收",
     "emailWrong": "邮箱不对？重新注册"
+  },
+
+  "forgotPassword": {
+    "title": "忘记密码",
+    "subtitle": "输入注册邮箱，我们将发送密码重置链接",
+    "email": "邮箱",
+    "emailPlaceholder": "请输入注册邮箱",
+    "emailRequired": "请输入邮箱",
+    "emailFormatError": "请输入正确的邮箱格式",
+    "sendButton": "发送重置邮件",
+    "backToLogin": "返回登录",
+    "emailSent": "重置邮件已发送至",
+    "emailSentHint": "请前往邮件中提供的链接进行密码修改。若未收到可点击下方按钮重发。",
+    "resendButton": "重发重置邮件",
+    "resendCooldown": "重发重置邮件（{seconds}秒）",
+    "resendSent": "重置邮件已发送，请查收"
+  },
+
+  "resetPassword": {
+    "title": "密码重置成功",
+    "success": "密码重置成功！",
+    "successHint": "请使用新密码登录",
+    "goLogin": "返回登录"
   }
 }
