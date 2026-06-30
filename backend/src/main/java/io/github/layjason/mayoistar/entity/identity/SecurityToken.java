@@ -47,7 +47,7 @@ public class SecurityToken {
     @EqualsAndHashCode.Exclude
     private User user;
 
-    @Column(name = "token_hash", nullable = false, length = 255)
+    @Column(name = "token_hash", nullable = false)
     private String tokenHash;
 
     @Enumerated(EnumType.STRING)
