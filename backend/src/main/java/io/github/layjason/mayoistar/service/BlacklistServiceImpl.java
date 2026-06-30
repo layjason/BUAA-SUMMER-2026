@@ -6,6 +6,7 @@ import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.social.Blacklist;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
+import io.github.layjason.mayoistar.repository.FriendshipRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
@@ -28,18 +29,23 @@ public class BlacklistServiceImpl implements BlacklistService {
 
     private final BlacklistRepository blacklistRepository;
     private final UserRepository userRepository;
+    private final FriendshipRepository friendshipRepository;
 
-    public BlacklistServiceImpl(BlacklistRepository blacklistRepository, UserRepository userRepository) {
+    public BlacklistServiceImpl(
+            BlacklistRepository blacklistRepository,
+            UserRepository userRepository,
+            FriendshipRepository friendshipRepository) {
         this.blacklistRepository = blacklistRepository;
         this.userRepository = userRepository;
+        this.friendshipRepository = friendshipRepository;
     }
 
     /**
-     * 将目标用户加入黑名单。
+     * 将目标用户加入黑名单，同时删除双向好友关系。
      *
      * <p>前置条件：targetUserId 对应有效用户，且不是当前用户，且尚未在黑名单中。
      *
-     * <p>后置条件：黑名单记录已持久化。
+     * <p>后置条件：黑名单记录已持久化；若存在好友关系则双向删除。
      *
      * @param currentUserId 当前用户 ID
      * @param targetUserId  目标用户 ID
@@ -64,6 +70,9 @@ public class BlacklistServiceImpl implements BlacklistService {
                 .createdAt(Instant.now())
                 .build();
         blacklistRepository.save(record);
+
+        friendshipRepository.deleteByUserIdAndFriendUserId(currentUserId, targetUserId);
+        friendshipRepository.deleteByUserIdAndFriendUserId(targetUserId, currentUserId);
 
         log.info("拉黑成功: blocker={}, blocked={}", currentUserId, targetUserId);
     }
