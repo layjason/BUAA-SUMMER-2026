@@ -11,11 +11,11 @@ import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
+import io.github.layjason.mayoistar.repository.MediaFileRepository;
+import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityReviewRecordRepository;
-import io.github.layjason.mayoistar.repository.common.MediaFileRepository;
-import io.github.layjason.mayoistar.repository.identity.UserRepository;
 import io.github.layjason.mayoistar.service.activities.RequestActorResolver;
 import java.time.Instant;
 import java.util.List;
@@ -25,12 +25,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@WithMockUser("test-user-id")
 class ActivityDraftControllerTests {
 
     @Autowired

@@ -14,6 +14,7 @@ import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
 import io.github.layjason.mayoistar.entity.social.ReportTargetType;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
+import io.github.layjason.mayoistar.service.activities.AdminActivityService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
 
     private final DefaultApiResponseFactory responseFactory;
+    private final AdminActivityService adminActivityService;
 
     @GetMapping("/activities")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> listActivities(
@@ -45,24 +47,26 @@ public class AdminController {
 
     @GetMapping("/activities/{activityId}")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> getActivity(@PathVariable String activityId) {
-        return responseFactory.activityDetail();
+        return ResponseEntity.ok(ApiResponse.success(adminActivityService.getActivityDetail(activityId)));
     }
 
     @PostMapping("/activities/{activityId}/restore")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> restoreActivity(@PathVariable String activityId) {
-        return responseFactory.activityDetail();
+        return ResponseEntity.ok(ApiResponse.success(adminActivityService.restoreActivity(activityId)));
     }
 
     @PostMapping("/activities/{activityId}/review")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> reviewActivity(
             @PathVariable String activityId, @Valid @RequestBody AdminDtos.ReviewDecisionRequest request) {
-        return responseFactory.activityDetail();
+        return ResponseEntity.ok(ApiResponse.success(
+                adminActivityService.reviewActivity(activityId, request.getResult(), request.getReason())));
     }
 
     @PostMapping("/activities/{activityId}/take-down")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> takeDownActivity(
             @PathVariable String activityId, @Valid @RequestBody AdminDtos.ActivityModerationRequest request) {
-        return responseFactory.activityDetail();
+        return ResponseEntity.ok(
+                ApiResponse.success(adminActivityService.takeDownActivity(activityId, request.getReason())));
     }
 
     @PostMapping("/auth/login")
