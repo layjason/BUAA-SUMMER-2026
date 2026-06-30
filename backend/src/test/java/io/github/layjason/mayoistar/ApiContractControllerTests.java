@@ -47,11 +47,15 @@ import org.springframework.test.web.servlet.request.AbstractMockMultipartHttpSer
  * <p>类职责：从 TypeSpec 生成的 OpenAPI 文件自动生成 MockMvc 请求，验证所有 Controller 方法均匹配契约。
  *
  * <p>类不变量：测试只访问内存 Spring 上下文，不调用外部服务，不修改真实业务数据。
+ * 使用所有角色（admin、personal、merchant）的 Mock 用户，确保契约测试可访问所有端点，
+ * 权限校验由专用权限测试覆盖。
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser("test-user-id")
+@WithMockUser(
+        username = "test-user-id",
+        authorities = {"ROLE_admin", "ROLE_personal", "ROLE_merchant"})
 class ApiContractControllerTests {
 
     private static final String OPENAPI_SPEC = "../api-spec/tsp-output/openapi.yaml";

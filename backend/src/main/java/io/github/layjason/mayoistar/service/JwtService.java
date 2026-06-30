@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.UUID;
 import javax.crypto.SecretKey;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
 /**
@@ -131,15 +132,20 @@ public class JwtService {
     /**
      * 从令牌中提取用户类型。
      *
-     * <p>前置条件：token 已通过 {@link #parseToken} 校验。
+     * <p>前置条件：token 已通过 {@link #parseToken} 校验，且 kind 字段为 UserKind 枚举值。
      *
-     * <p>后置条件：返回 kind 声明的值。
+     * <p>后置条件：返回 kind 字段对应的 UserKind；若 kind 为 "admin"（非 UserKind 枚举值），返回 null。
      *
      * @param claims 解析后的 Claims
-     * @return 用户类型
+     * @return 用户类型，管理员令牌返回 null
      */
+    @Nullable
     public UserKind getUserKind(Claims claims) {
-        return UserKind.valueOf(claims.get("kind", String.class));
+        String kind = claims.get("kind", String.class);
+        if ("admin".equals(kind)) {
+            return null;
+        }
+        return UserKind.valueOf(kind);
     }
 
     /**

@@ -21,7 +21,9 @@ import io.github.layjason.mayoistar.service.AdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/admin")
+@PreAuthorize("hasRole('admin')")
 public class AdminController {
 
     private final DefaultApiResponseFactory responseFactory;
@@ -75,6 +78,7 @@ public class AdminController {
     }
 
     @PostMapping("/auth/login")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<ApiResponse<AdminDtos.AdminLoginResponse>> login(
             @Valid @RequestBody AdminDtos.AdminLoginRequest request) {
         AdminDtos.AdminLoginResponse result = adminAuthService.login(request);
@@ -215,7 +219,8 @@ public class AdminController {
     /**
      * 从 SecurityContext 获取当前认证管理员的 ID。
      *
-     * <p>前置条件：请求已通过 JWT 认证过滤器或测试 @WithMockUser。SecurityContext 中存在有效的 Authentication。
+     * <p>前置条件：请求已通过 JWT 认证过滤器或测试 @WithMockUser。SecurityContext 中存在有效的 Authentication，
+     * 且该认证持有 ROLE_admin 权限。
      *
      * <p>后置条件：返回当前管理员 ID。支持 String principal（JWT 场景）和 UserDetails principal（测试场景）。
      *
@@ -225,6 +230,12 @@ public class AdminController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null) {
             throw new BusinessException(401, "Authentication is required");
+        }
+        boolean hasAdminRole = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_admin"::equals);
+        if (!hasAdminRole) {
+            throw new BusinessException(403, "Permission is denied");
         }
         Object principal = authentication.getPrincipal();
         if (principal instanceof String adminId) {
