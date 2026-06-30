@@ -219,6 +219,7 @@ CREATE INDEX idx_activities_team_id         ON activities (team_id);
 CREATE INDEX idx_activities_review_status   ON activities (review_status);
 CREATE INDEX idx_activities_runtime_status  ON activities (runtime_status);
 CREATE INDEX idx_activities_start_at        ON activities (start_at);
+CREATE INDEX idx_activities_city           ON activities (city);
 
 COMMENT ON TABLE activities IS '活动主体，保存活动的完整信息。地点信息以展平字段存储。review_status 控制审核流程，runtime_status 控制活动生命周期的展示状态。';
 
@@ -237,7 +238,7 @@ COMMENT ON COLUMN activities.address IS '详细地址';
 COMMENT ON COLUMN activities.place_name IS '地点名称，如场馆名、商场名';
 COMMENT ON COLUMN activities.safety_notice IS '安全须知文本';
 COMMENT ON COLUMN activities.capacity IS '容量上限，即最大可报名人数';
-COMMENT ON COLUMN activities.fee_amount IS '活动费用金额，null 表示免费';
+COMMENT ON COLUMN activities.fee_amount IS '活动费用金额，null 表示免费。仅信息展示不做货币计算，若引入支付须改为 DECIMAL';
 COMMENT ON COLUMN activities.fee_description IS '费用说明，如"包含材料费"';
 COMMENT ON COLUMN activities.min_age IS '最低年龄要求，null 表示无限制';
 COMMENT ON COLUMN activities.registration_deadline IS '报名截止时间，UTC 时区，null 表示无截止';
