@@ -17,6 +17,9 @@ public interface FriendRequestRepository extends JpaRepository<FriendRequest, St
     boolean existsByRequesterIdAndTargetUserIdAndStatus(
             String requesterId, String targetUserId, FriendRequestStatus status);
 
+    Optional<FriendRequest> findByRequesterIdAndTargetUserIdAndStatus(
+            String requesterId, String targetUserId, FriendRequestStatus status);
+
     Page<FriendRequest> findByTargetUserIdOrderByCreatedAtDesc(String targetUserId, Pageable pageable);
 
     Page<FriendRequest> findByTargetUserIdAndStatusOrderByCreatedAtDesc(

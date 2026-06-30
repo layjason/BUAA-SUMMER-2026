@@ -5,8 +5,11 @@ import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.social.Blacklist;
+import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
+import io.github.layjason.mayoistar.repository.FollowRepository;
+import io.github.layjason.mayoistar.repository.FriendRequestRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
@@ -33,16 +36,22 @@ public class BlacklistServiceImpl implements BlacklistService {
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
     private final PersonalProfileRepository personalProfileRepository;
+    private final FriendRequestRepository friendRequestRepository;
+    private final FollowRepository followRepository;
 
     public BlacklistServiceImpl(
             BlacklistRepository blacklistRepository,
             UserRepository userRepository,
             FriendshipRepository friendshipRepository,
-            PersonalProfileRepository personalProfileRepository) {
+            PersonalProfileRepository personalProfileRepository,
+            FriendRequestRepository friendRequestRepository,
+            FollowRepository followRepository) {
         this.blacklistRepository = blacklistRepository;
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
         this.personalProfileRepository = personalProfileRepository;
+        this.friendRequestRepository = friendRequestRepository;
+        this.followRepository = followRepository;
     }
 
     /**
@@ -76,8 +85,28 @@ public class BlacklistServiceImpl implements BlacklistService {
                 .build();
         blacklistRepository.save(record);
 
+        friendRequestRepository
+                .findByRequesterIdAndTargetUserIdAndStatus(currentUserId, targetUserId, FriendRequestStatus.pending)
+                .stream()
+                .findFirst()
+                .ifPresent(req -> {
+                    req.setStatus(FriendRequestStatus.canceled);
+                    friendRequestRepository.save(req);
+                });
+        friendRequestRepository
+                .findByRequesterIdAndTargetUserIdAndStatus(targetUserId, currentUserId, FriendRequestStatus.pending)
+                .stream()
+                .findFirst()
+                .ifPresent(req -> {
+                    req.setStatus(FriendRequestStatus.canceled);
+                    friendRequestRepository.save(req);
+                });
+
         friendshipRepository.deleteByUserIdAndFriendUserId(currentUserId, targetUserId);
         friendshipRepository.deleteByUserIdAndFriendUserId(targetUserId, currentUserId);
+
+        followRepository.deleteByFollowerIdAndFollowedId(currentUserId, targetUserId);
+        followRepository.deleteByFollowerIdAndFollowedId(targetUserId, currentUserId);
 
         log.info("拉黑成功: blocker={}, blocked={}", currentUserId, targetUserId);
     }
