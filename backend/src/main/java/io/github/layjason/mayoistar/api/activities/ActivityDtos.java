@@ -6,6 +6,7 @@ import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.activities.ReviewDecision;
 import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
 import java.util.List;
 import lombok.Data;
 
@@ -44,7 +45,7 @@ public final class ActivityDtos {
         @NotNull
         private String registrationDeadline;
 
-        private Double feeAmount;
+        private BigDecimal feeAmount;
         private String feeDescription;
         private Integer minAge;
         private List<String> imageIds;
@@ -61,7 +62,7 @@ public final class ActivityDtos {
         private String safetyNotice;
         private Integer capacity;
         private String registrationDeadline;
-        private Double feeAmount;
+        private BigDecimal feeAmount;
         private String feeDescription;
         private Integer minAge;
         private List<String> imageIds;
@@ -124,7 +125,7 @@ public final class ActivityDtos {
         private String endAt;
         private CommonDtos.LocationInfo location;
         private CommonDtos.MediaFile coverImage;
-        private Double feeAmount;
+        private BigDecimal feeAmount;
         private ActivityReviewStatus reviewStatus;
         private ActivityRuntimeStatus runtimeStatus;
         private Integer registeredCount;
@@ -149,7 +150,7 @@ public final class ActivityDtos {
         private String endAt;
         private CommonDtos.LocationInfo location;
         private CommonDtos.MediaFile coverImage;
-        private Double feeAmount;
+        private BigDecimal feeAmount;
         private ActivityReviewStatus reviewStatus;
         private ActivityRuntimeStatus runtimeStatus;
         private Integer registeredCount;
@@ -177,7 +178,7 @@ public final class ActivityDtos {
         private String safetyNotice;
         private Integer capacity;
         private String registrationDeadline;
-        private Double feeAmount;
+        private BigDecimal feeAmount;
         private String feeDescription;
         private Integer minAge;
         private List<CommonDtos.MediaFile> images;

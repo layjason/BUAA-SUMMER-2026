@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -101,7 +102,7 @@ public class Activity {
     private Integer capacity;
 
     @Column(name = "fee_amount", columnDefinition = "DECIMAL(19,4)")
-    private Double feeAmount;
+    private BigDecimal feeAmount;
 
     @Column(name = "fee_description", length = 500)
     private String feeDescription;
