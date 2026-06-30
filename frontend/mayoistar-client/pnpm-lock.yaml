@@ -96,6 +96,9 @@ importers:
       '@vue/tsconfig':
         specifier: ^0.1.3
         version: 0.1.3(@types/node@26.0.1)
+      editorconfig-checker:
+        specifier: ^6.1.1
+        version: 6.1.1
       eslint:
         specifier: ^9.0.0
         version: 9.39.4(jiti@2.7.0)(supports-color@10.2.2)
@@ -2664,6 +2667,11 @@ packages:
 
   eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
+
+  editorconfig-checker@6.1.1:
+    resolution: {integrity: sha512-kiOb6qaWpMNt7Z/43ba0Pa1Inhr2/t9nKbvEKtCeXJ5AesztoM9AgLOOQVB4QUv/nGjgz3xkbx4pcogVRD2NWw==}
+    engines: {node: '>=20.11.0'}
+    hasBin: true
 
   editorconfig@1.0.7:
     resolution: {integrity: sha512-e0GOtq/aTQhVdNyDU9e02+wz9oDDM+SIOQxWME2QRjzRX5yyLAuHDE+0aE8vHb9XRC8XD37eO2u57+F09JqFhw==}
@@ -8686,6 +8694,8 @@ snapshots:
       gopd: 1.2.0
 
   eastasianwidth@0.2.0: {}
+
+  editorconfig-checker@6.1.1: {}
 
   editorconfig@1.0.7:
     dependencies:
