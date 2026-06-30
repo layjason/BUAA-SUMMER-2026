@@ -171,7 +171,7 @@ async function handleLogin() {
       if (error.code === 10004) {
         loading.value = false
         authStore.pendingActivationEmail = email.value.trim()
-        // 保存表单数据，供激活页"邮箱不对？重新注册"回填
+        authStore.autoResendActivation = true
         authStore.savedRegisterForm = {
           email: email.value.trim(),
           password: password.value,

@@ -129,6 +129,11 @@ onMounted(async () => {
   } else if (pendingEmail.value) {
     // 无 token 有邮箱：APP 注册后正常进入，显示邮件已发送
     state.value = 'sent'
+    // 从登录页 10004 跳转过来时自动调用重发
+    if (authStore.autoResendActivation) {
+      authStore.autoResendActivation = false
+      await handleResend()
+    }
   } else {
     // 无 token 无邮箱：兜底
     state.value = 'idle'

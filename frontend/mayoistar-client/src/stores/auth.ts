@@ -37,6 +37,8 @@ export const useAuthStore = defineStore('auth', () => {
   const pendingActivationEmail = ref<string | null>(null)
   /** 保留的注册表单数据，供激活页返回时回填 */
   const savedRegisterForm = ref<SavedRegisterForm | null>(null)
+  /** 是否需要自动调用重发激活邮件（登录页 10004 跳转过来时设置） */
+  const autoResendActivation = ref(false)
 
   const isLoggedIn = computed(() => token.value !== null && refreshToken.value !== null)
 
@@ -176,6 +178,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoggedIn,
     pendingActivationEmail,
     savedRegisterForm,
+    autoResendActivation,
     initFromStorage,
     saveTokens,
     clearTokens,
