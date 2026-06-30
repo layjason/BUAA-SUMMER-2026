@@ -43,6 +43,9 @@ class UserProfileServiceTest {
     @Mock
     private MediaFileRepository mediaFileRepository;
 
+    @Mock
+    private ReputationService reputationService;
+
     private UserProfileService userProfileService;
 
     private final String userId = UUID.randomUUID().toString();
@@ -50,7 +53,11 @@ class UserProfileServiceTest {
     @BeforeEach
     void setUp() {
         userProfileService = new UserProfileService(
-                userRepository, personalProfileRepository, interestTagRepository, mediaFileRepository);
+                userRepository,
+                personalProfileRepository,
+                interestTagRepository,
+                mediaFileRepository,
+                reputationService);
     }
 
     @Nested
@@ -65,6 +72,7 @@ class UserProfileServiceTest {
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(personalProfileRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
+            when(reputationService.getCurrentScore(userId)).thenReturn(100);
 
             IdentityDtos.PublicUserProfile result = userProfileService.getProfile(userId);
 
@@ -101,6 +109,7 @@ class UserProfileServiceTest {
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(personalProfileRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
+            when(reputationService.getCurrentScore(userId)).thenReturn(100);
             when(userRepository.existsByNickname("newname")).thenReturn(false);
 
             IdentityDtos.UpdatePersonalProfileRequest request = new IdentityDtos.UpdatePersonalProfileRequest();
