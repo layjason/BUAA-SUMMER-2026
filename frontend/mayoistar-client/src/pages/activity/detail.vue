@@ -1,11 +1,11 @@
 <template>
   <view class="page">
-    <view v-if="loading" class="loading-text">{{ t('activityDetail.loading') }}</view>
+    <view v-if="loading" class="state-text">{{ t('activityDetail.loading') }}</view>
 
-    <view v-else-if="errorMsg" class="error-text">{{ errorMsg }}</view>
+    <view v-else-if="errorMsg" class="state-text state-text--error">{{ errorMsg }}</view>
 
     <template v-else-if="activity">
-      <view class="content">
+      <scroll-view class="scroll-area" scroll-y>
         <!-- 图片轮播 -->
         <view v-if="activity.images.length > 0" class="swiper-wrapper">
           <swiper
@@ -90,7 +90,7 @@
             </view>
           </view>
         </view>
-      </view>
+      </scroll-view>
 
       <!-- 底部操作按钮 -->
       <view class="action-bar">
@@ -530,23 +530,27 @@ onLoad((query) => {
 <style scoped>
 .page {
   background-color: #f7f8fa;
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.loading-text,
-.error-text {
+.state-text {
   text-align: center;
   font-size: 28rpx;
   color: #969799;
   padding-top: 120rpx;
 }
 
-.error-text {
+.state-text--error {
   color: #ee0a24;
 }
 
-.content {
-  padding-bottom: 320rpx;
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .swiper-wrapper {
@@ -718,15 +722,10 @@ onLoad((query) => {
 }
 
 .action-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
   padding: 16rpx 32rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background-color: #fff;
   border-top: 2rpx solid #ebedf0;
-  box-sizing: border-box;
 }
 
 .action-btn {
@@ -802,5 +801,4 @@ onLoad((query) => {
   font-size: 28rpx;
   color: #c8c9cc;
 }
-
 </style>

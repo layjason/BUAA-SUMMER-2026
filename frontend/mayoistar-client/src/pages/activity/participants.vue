@@ -1,12 +1,12 @@
 <template>
   <view class="page">
-    <view v-if="loading" class="loading-text">{{ t('加载中') }}</view>
+    <view v-if="loading" class="state-text">{{ t('加载中') }}</view>
 
-    <view v-else-if="errorMsg" class="error-text">{{ errorMsg }}</view>
+    <view v-else-if="errorMsg" class="state-text state-text--error">{{ errorMsg }}</view>
 
-    <view v-else-if="participants.length === 0" class="empty-text">{{ t('暂无数据') }}</view>
+    <view v-else-if="participants.length === 0" class="state-text">{{ t('暂无数据') }}</view>
 
-    <view v-else>
+    <scroll-view v-else class="scroll-area" scroll-y>
       <view v-for="p in participants" :key="p.registrationId" class="card">
         <view class="card-left">
           <view class="avatar-placeholder">
@@ -18,7 +18,7 @@
           registrationStatusText(p.registrationStatus)
         }}</text>
       </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -65,7 +65,9 @@ onLoad(async (query) => {
   try {
     const result = (await api.get('/activities/{activityId}/participants', {
       path: { activityId },
-    })) as { items: { registrationId: string; nickname: string; registrationStatus: string }[] }
+    })) as {
+      items: { registrationId: string; nickname: string; registrationStatus: string }[]
+    }
     participants.value = result.items
   } catch (error) {
     if (error instanceof BusinessError) {
@@ -82,20 +84,27 @@ onLoad(async (query) => {
 <style scoped>
 .page {
   background-color: #f7f8fa;
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.loading-text,
-.error-text,
-.empty-text {
+.state-text {
   text-align: center;
   font-size: 28rpx;
   color: #969799;
   padding-top: 120rpx;
 }
 
-.error-text {
+.state-text--error {
   color: #ee0a24;
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .card {
