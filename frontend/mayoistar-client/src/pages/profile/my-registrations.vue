@@ -24,6 +24,7 @@
         </view>
       </view>
     </view>
+    <view class="bottom-safe" />
   </view>
 </template>
 
@@ -167,5 +168,9 @@ function statusText(status: string): string {
 .meta {
   font-size: 24rpx;
   color: #969799;
+}
+
+.bottom-safe {
+  height: 48rpx;
 }
 </style>
