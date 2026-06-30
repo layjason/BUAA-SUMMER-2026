@@ -56,6 +56,10 @@
             <text class="info-label">{{ t('activityDetail.fee') }}</text>
             <text class="info-value">{{ feeText }}</text>
           </view>
+          <view class="info-row">
+            <text class="info-label">{{ t('activityDetail.registrationDeadline') }}</text>
+            <text class="info-value">{{ formatDateTime(activity.registrationDeadline) }}</text>
+          </view>
           <view v-if="activity.tags.length" class="info-row">
             <text class="info-label">{{ tagsLabel }}</text>
             <view class="tag-row">
@@ -105,7 +109,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
-import { formatTimeRange } from '@/utils/date'
+import { formatDateTime, formatTimeRange } from '@/utils/date'
 
 const { t } = useI18n()
 
