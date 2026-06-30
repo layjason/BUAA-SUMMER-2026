@@ -2,6 +2,9 @@ package io.github.layjason.mayoistar.service;
 
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
+import io.github.layjason.mayoistar.entity.chat.Conversation;
+import io.github.layjason.mayoistar.entity.chat.ConversationKind;
+import io.github.layjason.mayoistar.entity.chat.ConversationMember;
 import io.github.layjason.mayoistar.entity.social.FriendRequest;
 import io.github.layjason.mayoistar.entity.social.FriendRequestSource;
 import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
@@ -9,6 +12,8 @@ import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.entity.social.FriendshipSource;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
+import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
+import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.FriendRequestRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
@@ -36,18 +41,24 @@ public class FriendRequestServiceImpl implements FriendRequestService {
     private final BlacklistRepository blacklistRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final ConversationRepository conversationRepository;
+    private final ConversationMemberRepository conversationMemberRepository;
 
     public FriendRequestServiceImpl(
             FriendRequestRepository friendRequestRepository,
             FriendshipRepository friendshipRepository,
             BlacklistRepository blacklistRepository,
             UserRepository userRepository,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            ConversationRepository conversationRepository,
+            ConversationMemberRepository conversationMemberRepository) {
         this.friendRequestRepository = friendRequestRepository;
         this.friendshipRepository = friendshipRepository;
         this.blacklistRepository = blacklistRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.conversationRepository = conversationRepository;
+        this.conversationMemberRepository = conversationMemberRepository;
     }
 
     /**
@@ -137,24 +148,58 @@ public class FriendRequestServiceImpl implements FriendRequestService {
             friendRequestRepository.save(request);
 
             Instant now = Instant.now();
-            Friendship fsAtoB = Friendship.builder()
-                    .friendshipId(UUID.randomUUID().toString())
-                    .userId(request.getRequesterId())
-                    .friendUserId(request.getTargetUserId())
-                    .source(FriendshipSource.manualRequest)
-                    .createdAt(now)
-                    .build();
-            Friendship fsBtoA = Friendship.builder()
-                    .friendshipId(UUID.randomUUID().toString())
-                    .userId(request.getTargetUserId())
-                    .friendUserId(request.getRequesterId())
-                    .source(FriendshipSource.manualRequest)
-                    .createdAt(now)
-                    .build();
-            friendshipRepository.save(fsAtoB);
-            friendshipRepository.save(fsBtoA);
+            if (!friendshipRepository.existsByUserIdAndFriendUserId(
+                    request.getRequesterId(), request.getTargetUserId())) {
+                Friendship fsAtoB = Friendship.builder()
+                        .friendshipId(UUID.randomUUID().toString())
+                        .userId(request.getRequesterId())
+                        .friendUserId(request.getTargetUserId())
+                        .source(FriendshipSource.manualRequest)
+                        .createdAt(now)
+                        .build();
+                friendshipRepository.save(fsAtoB);
+            }
+            if (!friendshipRepository.existsByUserIdAndFriendUserId(
+                    request.getTargetUserId(), request.getRequesterId())) {
+                Friendship fsBtoA = Friendship.builder()
+                        .friendshipId(UUID.randomUUID().toString())
+                        .userId(request.getTargetUserId())
+                        .friendUserId(request.getRequesterId())
+                        .source(FriendshipSource.manualRequest)
+                        .createdAt(now)
+                        .build();
+                friendshipRepository.save(fsBtoA);
+            }
 
-            log.info("好友申请通过，好友关系建立: {} <-> {}", request.getRequesterId(), request.getTargetUserId());
+            String conversationId = UUID.randomUUID().toString();
+            Conversation conversation = Conversation.builder()
+                    .conversationId(conversationId)
+                    .kind(ConversationKind.friend)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
+            conversationRepository.save(conversation);
+
+            ConversationMember memberA = ConversationMember.builder()
+                    .memberId(UUID.randomUUID().toString())
+                    .conversationId(conversationId)
+                    .userId(request.getRequesterId())
+                    .joinedAt(now)
+                    .build();
+            ConversationMember memberB = ConversationMember.builder()
+                    .memberId(UUID.randomUUID().toString())
+                    .conversationId(conversationId)
+                    .userId(request.getTargetUserId())
+                    .joinedAt(now)
+                    .build();
+            conversationMemberRepository.save(memberA);
+            conversationMemberRepository.save(memberB);
+
+            log.info(
+                    "好友申请通过，好友关系与会话建立: {} <-> {}, conversationId={}",
+                    request.getRequesterId(),
+                    request.getTargetUserId(),
+                    conversationId);
         } else {
             request.setStatus(FriendRequestStatus.rejected);
             friendRequestRepository.save(request);

@@ -11,7 +11,12 @@ import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.entity.social.FriendshipSource;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.repository.ChatMessageRepository;
+import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
+import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
+import io.github.layjason.mayoistar.repository.MessageReadRepository;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
@@ -41,11 +46,33 @@ class FriendshipServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ConversationRepository conversationRepository;
+
+    @Mock
+    private ConversationMemberRepository conversationMemberRepository;
+
+    @Mock
+    private ChatMessageRepository chatMessageRepository;
+
+    @Mock
+    private MessageReadRepository messageReadRepository;
+
+    @Mock
+    private PersonalProfileRepository personalProfileRepository;
+
     private FriendshipService service;
 
     @BeforeEach
     void setUp() {
-        service = new FriendshipServiceImpl(friendshipRepository, userRepository);
+        service = new FriendshipServiceImpl(
+                friendshipRepository,
+                userRepository,
+                personalProfileRepository,
+                conversationRepository,
+                conversationMemberRepository,
+                chatMessageRepository,
+                messageReadRepository);
     }
 
     private User buildUser(String userId, String nickname) {
@@ -82,7 +109,7 @@ class FriendshipServiceTest {
                     .thenReturn(page);
             when(userRepository.findById("user-b")).thenReturn(Optional.of(buildUser("user-b", "userB")));
 
-            var result = service.listFriends("user-a", 1, 20);
+            var result = service.listFriends("user-a", 1, 20, null);
 
             assertThat(result.getItems()).hasSize(1);
             assertThat(result.getItems().get(0).getUserId()).isEqualTo("user-b");
@@ -138,6 +165,8 @@ class FriendshipServiceTest {
         void deleteFriendBidirectional() {
             when(friendshipRepository.existsByUserIdAndFriendUserId("user-a", "user-b"))
                     .thenReturn(true);
+            when(conversationMemberRepository.findCommonConversationIds("user-a", "user-b"))
+                    .thenReturn(List.of());
 
             service.deleteFriend("user-a", "user-b");
 

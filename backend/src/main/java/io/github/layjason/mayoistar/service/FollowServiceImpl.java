@@ -1,8 +1,9 @@
 package io.github.layjason.mayoistar.service;
 
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
-import io.github.layjason.mayoistar.entity.identity.User;
+import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.social.Follow;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.entity.social.FriendshipSource;
@@ -10,6 +11,7 @@ import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
 import io.github.layjason.mayoistar.repository.FollowRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
@@ -35,16 +37,19 @@ public class FollowServiceImpl implements FollowService {
     private final FriendshipRepository friendshipRepository;
     private final BlacklistRepository blacklistRepository;
     private final UserRepository userRepository;
+    private final PersonalProfileRepository personalProfileRepository;
 
     public FollowServiceImpl(
             FollowRepository followRepository,
             FriendshipRepository friendshipRepository,
             BlacklistRepository blacklistRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            PersonalProfileRepository personalProfileRepository) {
         this.followRepository = followRepository;
         this.friendshipRepository = friendshipRepository;
         this.blacklistRepository = blacklistRepository;
         this.userRepository = userRepository;
+        this.personalProfileRepository = personalProfileRepository;
     }
 
     /**
@@ -121,6 +126,7 @@ public class FollowServiceImpl implements FollowService {
      * <p>后置条件：返回关注对象列表，mutual 表示对方是否也关注当前用户。
      */
     @Override
+    @Transactional(readOnly = true)
     public PageResult<SocialDtos.FollowItem> listFollows(String userId, int page, int pageSize) {
         var follows = followRepository.findByFollowerIdOrderByCreatedAtDesc(userId, PageRequest.of(page - 1, pageSize));
         return toPageResult(follows, page, pageSize, true, userId);
@@ -134,6 +140,7 @@ public class FollowServiceImpl implements FollowService {
      * <p>后置条件：返回粉丝列表，mutual 表示当前用户是否也关注该粉丝。
      */
     @Override
+    @Transactional(readOnly = true)
     public PageResult<SocialDtos.FollowItem> listFollowers(String userId, int page, int pageSize) {
         var followers =
                 followRepository.findByFollowedIdOrderByCreatedAtDesc(userId, PageRequest.of(page - 1, pageSize));
@@ -213,13 +220,36 @@ public class FollowServiceImpl implements FollowService {
         String relatedUserId = listingFollows ? follow.getFollowedId() : follow.getFollowerId();
         SocialDtos.FollowItem item = new SocialDtos.FollowItem();
         item.setUserId(relatedUserId);
-        item.setNickname(
-                userRepository.findById(relatedUserId).map(User::getNickname).orElse("unknown"));
         item.setFollowedAt(follow.getCreatedAt().toString());
         item.setMutual(
                 listingFollows
                         ? followRepository.existsByFollowerIdAndFollowedId(relatedUserId, currentUserId)
                         : followRepository.existsByFollowerIdAndFollowedId(currentUserId, relatedUserId));
+
+        userRepository.findById(relatedUserId).ifPresent(user -> {
+            item.setNickname(user.getNickname());
+            personalProfileRepository.findByUserId(user.getUserId()).ifPresent(profile -> {
+                if (profile.getAvatar() != null) {
+                    item.setAvatar(toMediaFileDto(profile.getAvatar()));
+                }
+            });
+        });
+
+        if (item.getNickname() == null) {
+            item.setNickname("unknown");
+        }
         return item;
+    }
+
+    private CommonDtos.MediaFile toMediaFileDto(MediaFile entity) {
+        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
+        dto.setMediaId(entity.getMediaId());
+        dto.setFileName(entity.getFileName());
+        dto.setContentType(entity.getContentType());
+        dto.setSizeBytes(entity.getSizeBytes());
+        dto.setUsage(entity.getUsage());
+        dto.setUrl(entity.getUrl());
+        dto.setUploadedAt(entity.getUploadedAt().toString());
+        return dto;
     }
 }

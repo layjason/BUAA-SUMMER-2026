@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * 好友关系数据访问层。
@@ -27,4 +28,10 @@ public interface FriendshipRepository extends JpaRepository<Friendship, String> 
     @Query(
             "DELETE FROM Friendship f WHERE (f.userId = :userIdA AND f.friendUserId = :userIdB) OR (f.userId = :userIdB AND f.friendUserId = :userIdA)")
     void deleteBilateral(String userIdA, String userIdB);
+
+    @Query("SELECT f FROM Friendship f JOIN User u ON f.friendUserId = u.userId "
+            + "WHERE f.userId = :userId AND LOWER(u.nickname) LIKE LOWER(CONCAT('%', :keyword, '%')) "
+            + "ORDER BY f.createdAt DESC")
+    Page<Friendship> findByUserIdAndFriendNicknameContaining(
+            @Param("userId") String userId, @Param("keyword") String keyword, Pageable pageable);
 }

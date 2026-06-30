@@ -25,4 +25,9 @@ public interface MessageReadRepository extends JpaRepository<MessageRead, String
     @Modifying
     @Query("UPDATE MessageRead mr SET mr.status = :status WHERE mr.messageId = :messageId")
     int updateStatusByMessageId(String messageId, MessageReadStatus status);
+
+    @Modifying
+    @Query("DELETE FROM MessageRead mr WHERE mr.messageId IN "
+            + "(SELECT cm.messageId FROM ChatMessage cm WHERE cm.conversationId = :conversationId)")
+    void deleteByConversationId(String conversationId);
 }

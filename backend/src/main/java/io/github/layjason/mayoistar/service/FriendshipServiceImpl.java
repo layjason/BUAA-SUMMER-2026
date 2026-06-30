@@ -1,11 +1,18 @@
 package io.github.layjason.mayoistar.service;
 
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
-import io.github.layjason.mayoistar.entity.identity.User;
+import io.github.layjason.mayoistar.entity.chat.ConversationKind;
+import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.repository.ChatMessageRepository;
+import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
+import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
+import io.github.layjason.mayoistar.repository.MessageReadRepository;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -26,10 +33,27 @@ public class FriendshipServiceImpl implements FriendshipService {
 
     private final FriendshipRepository friendshipRepository;
     private final UserRepository userRepository;
+    private final PersonalProfileRepository personalProfileRepository;
+    private final ConversationRepository conversationRepository;
+    private final ConversationMemberRepository conversationMemberRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final MessageReadRepository messageReadRepository;
 
-    public FriendshipServiceImpl(FriendshipRepository friendshipRepository, UserRepository userRepository) {
+    public FriendshipServiceImpl(
+            FriendshipRepository friendshipRepository,
+            UserRepository userRepository,
+            PersonalProfileRepository personalProfileRepository,
+            ConversationRepository conversationRepository,
+            ConversationMemberRepository conversationMemberRepository,
+            ChatMessageRepository chatMessageRepository,
+            MessageReadRepository messageReadRepository) {
         this.friendshipRepository = friendshipRepository;
         this.userRepository = userRepository;
+        this.personalProfileRepository = personalProfileRepository;
+        this.conversationRepository = conversationRepository;
+        this.conversationMemberRepository = conversationMemberRepository;
+        this.chatMessageRepository = chatMessageRepository;
+        this.messageReadRepository = messageReadRepository;
     }
 
     /**
@@ -40,9 +64,12 @@ public class FriendshipServiceImpl implements FriendshipService {
      * <p>后置条件：返回分页 FriendItem，含昵称。
      */
     @Override
-    public PageResult<SocialDtos.FriendItem> listFriends(String userId, int page, int pageSize) {
-        var friendshipPage =
-                friendshipRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page - 1, pageSize));
+    @Transactional(readOnly = true)
+    public PageResult<SocialDtos.FriendItem> listFriends(String userId, int page, int pageSize, String keyword) {
+        var friendshipPage = (keyword != null && !keyword.isBlank())
+                ? friendshipRepository.findByUserIdAndFriendNicknameContaining(
+                        userId, keyword, PageRequest.of(page - 1, pageSize))
+                : friendshipRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page - 1, pageSize));
 
         List<SocialDtos.FriendItem> items =
                 friendshipPage.getContent().stream().map(this::toFriendItem).toList();
@@ -84,17 +111,32 @@ public class FriendshipServiceImpl implements FriendshipService {
     }
 
     /**
-     * 删除好友，双向关系同时解除。
+     * 删除好友，双向关系同时解除，并清理关联的会话数据。
      *
      * <p>前置条件：好友关系存在。
      *
-     * <p>后置条件：A→B 和 B→A 两笔 Friendship 记录均删除。
+     * <p>后置条件：双向 Friendship 记录删除；共享的好友会话及其中消息、已读状态、成员关系均清理。
      */
     @Override
     @Transactional
     public void deleteFriend(String userId, String friendUserId) {
         if (!friendshipRepository.existsByUserIdAndFriendUserId(userId, friendUserId)) {
             throw new BusinessException(40004, "Friendship state does not allow this operation");
+        }
+
+        List<String> commonConversationIds =
+                conversationMemberRepository.findCommonConversationIds(userId, friendUserId);
+
+        for (String conversationId : commonConversationIds) {
+            conversationRepository.findById(conversationId).ifPresent(conversation -> {
+                if (conversation.getKind() == ConversationKind.friend) {
+                    messageReadRepository.deleteByConversationId(conversationId);
+                    chatMessageRepository.deleteByConversationId(conversationId);
+                    conversationMemberRepository.deleteByConversationId(conversationId);
+                    conversationRepository.delete(conversation);
+                    log.info("好友会话已清理: conversationId={}", conversationId);
+                }
+            });
         }
 
         friendshipRepository.deleteByUserIdAndFriendUserId(userId, friendUserId);
@@ -106,13 +148,34 @@ public class FriendshipServiceImpl implements FriendshipService {
     private SocialDtos.FriendItem toFriendItem(Friendship friendship) {
         SocialDtos.FriendItem item = new SocialDtos.FriendItem();
         item.setUserId(friendship.getFriendUserId());
-        item.setNickname(userRepository
-                .findById(friendship.getFriendUserId())
-                .map(User::getNickname)
-                .orElse("unknown"));
         item.setRemark(friendship.getRemark());
         item.setGroupTags(friendship.getGroupTags());
         item.setSource(friendship.getSource());
+
+        userRepository.findById(friendship.getFriendUserId()).ifPresent(user -> {
+            item.setNickname(user.getNickname());
+            personalProfileRepository.findByUserId(user.getUserId()).ifPresent(profile -> {
+                if (profile.getAvatar() != null) {
+                    item.setAvatar(toMediaFileDto(profile.getAvatar()));
+                }
+            });
+        });
+
+        if (item.getNickname() == null) {
+            item.setNickname("unknown");
+        }
         return item;
+    }
+
+    private CommonDtos.MediaFile toMediaFileDto(MediaFile entity) {
+        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
+        dto.setMediaId(entity.getMediaId());
+        dto.setFileName(entity.getFileName());
+        dto.setContentType(entity.getContentType());
+        dto.setSizeBytes(entity.getSizeBytes());
+        dto.setUsage(entity.getUsage());
+        dto.setUrl(entity.getUrl());
+        dto.setUploadedAt(entity.getUploadedAt().toString());
+        return dto;
     }
 }

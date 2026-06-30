@@ -486,7 +486,8 @@ CREATE TABLE blacklists (
     blocker_id     VARCHAR(36) NOT NULL,
     blocked_user_id VARCHAR(36) NOT NULL,
     created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
-    CONSTRAINT pk_blacklists PRIMARY KEY (blacklist_id)
+    CONSTRAINT pk_blacklists PRIMARY KEY (blacklist_id),
+    CONSTRAINT ck_blacklists_self CHECK (blocker_id != blocked_user_id)
 );
 
 
@@ -661,6 +662,32 @@ COMMENT ON COLUMN team_moderation_records.action IS '治理动作。不变量：
 COMMENT ON COLUMN team_moderation_records.reason IS '治理原因或说明';
 COMMENT ON COLUMN team_moderation_records.operator_id IS '操作管理员 ID';
 COMMENT ON COLUMN team_moderation_records.created_at IS '治理时间，UTC 时区';
+
+-- reputation - 信誉积分
+
+CREATE TABLE reputation_records (
+    record_id    VARCHAR(36)  NOT NULL,
+    user_id      VARCHAR(36)  NOT NULL,
+    score_change INTEGER      NOT NULL,
+    reason       TEXT         NOT NULL,
+    source       VARCHAR(30)  NOT NULL,
+    reference_id VARCHAR(36),
+    created_at   TIMESTAMP WITH TIME ZONE NOT NULL,
+    CONSTRAINT pk_reputation_records PRIMARY KEY (record_id)
+);
+
+CREATE INDEX idx_reputation_records_user ON reputation_records (user_id);
+CREATE UNIQUE INDEX uk_reputation_records_source_reference ON reputation_records (source, reference_id);
+ALTER TABLE reputation_records ADD CONSTRAINT ck_reputation_records_source CHECK (source IN ('report', 'admin_manual'));
+
+COMMENT ON TABLE reputation_records IS '信誉积分变更记录，记录每次积分变动的原因和关联信息。仅保存审计流水，当前信誉分由举报事实重算。';
+COMMENT ON COLUMN reputation_records.record_id IS '记录唯一标识，UUID 格式';
+COMMENT ON COLUMN reputation_records.user_id IS '用户 ID，被变更积分的用户';
+COMMENT ON COLUMN reputation_records.score_change IS '积分变动量，正数为加分，负数为扣分';
+COMMENT ON COLUMN reputation_records.reason IS '变更原因描述';
+COMMENT ON COLUMN reputation_records.source IS '变更来源。report — 举报核实后的扣分；admin_manual — 管理员手动调整';
+COMMENT ON COLUMN reputation_records.reference_id IS '关联实体 ID，如举报 ID，便于审计追溯';
+COMMENT ON COLUMN reputation_records.created_at IS '变更时间，UTC 时区';
 
 -- --------------------------------------------------------------------------
 -- chat - 即时通讯
@@ -963,6 +990,8 @@ ALTER TABLE team_point_records ADD CONSTRAINT fk_team_points_user FOREIGN KEY (u
 ALTER TABLE team_moderation_records ADD CONSTRAINT fk_team_moderation_records_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE;
 ALTER TABLE team_moderation_records ADD CONSTRAINT fk_team_moderation_records_operator FOREIGN KEY (operator_id) REFERENCES admins(admin_id) ON DELETE RESTRICT;
 
+ALTER TABLE reputation_records ADD CONSTRAINT fk_reputation_records_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
 -- chat - 即时通讯
 ALTER TABLE conversations ADD CONSTRAINT fk_conversations_avatar FOREIGN KEY (avatar_media_id) REFERENCES media_files(media_id) ON DELETE SET NULL;
 
@@ -1037,7 +1066,7 @@ ALTER TABLE team_moderation_records ADD CONSTRAINT ck_team_moderation_records_ac
 -- chat
 ALTER TABLE conversations ADD CONSTRAINT ck_conversations_kind CHECK (kind IN ('friend', 'team'));
 
-ALTER TABLE chat_messages ADD CONSTRAINT ck_chat_messages_kind CHECK (kind IN ('text', 'image', 'location'));
+ALTER TABLE chat_messages ADD CONSTRAINT ck_chat_messages_kind CHECK (kind IN ('text', 'image', 'location', 'emoticon'));
 
 ALTER TABLE message_reads ADD CONSTRAINT ck_message_reads_status CHECK (status IN ('unread', 'read'));
 

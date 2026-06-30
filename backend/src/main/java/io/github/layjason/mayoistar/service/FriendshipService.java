@@ -12,7 +12,7 @@ import java.util.List;
 public interface FriendshipService {
 
     /**
-     * 分页查询当前用户的好友列表。
+     * 分页查询当前用户的好友列表，可按昵称搜索。
      *
      * <p>前置条件：无。
      *
@@ -21,9 +21,10 @@ public interface FriendshipService {
      * @param userId   当前用户 ID
      * @param page     页码
      * @param pageSize 每页条数
+     * @param keyword  昵称搜索关键词（null 或空表示不筛选）
      * @return 好友分页结果
      */
-    PageResult<SocialDtos.FriendItem> listFriends(String userId, int page, int pageSize);
+    PageResult<SocialDtos.FriendItem> listFriends(String userId, int page, int pageSize, String keyword);
 
     /**
      * 更新好友的备注和分组标签。
