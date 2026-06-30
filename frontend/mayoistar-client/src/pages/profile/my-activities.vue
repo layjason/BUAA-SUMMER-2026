@@ -164,7 +164,6 @@ function runtimeStatusText(status: string): string {
 
 <style scoped>
 .page {
-  min-height: 100vh;
   background-color: #f7f8fa;
 }
 
