@@ -1,0 +1,226 @@
+package io.github.layjason.mayoistar.api.identity;
+
+import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.entity.identity.AccountStatus;
+import io.github.layjason.mayoistar.entity.identity.Gender;
+import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
+import io.github.layjason.mayoistar.entity.identity.UserKind;
+import jakarta.validation.constraints.NotNull;
+import java.util.List;
+import lombok.Data;
+
+/**
+ * 身份与资料接口 DTO 集合。
+ *
+ * <p>类职责：提供与 TypeSpec 身份接口请求/响应模型同名的普通 DTO。
+ *
+ * <p>类不变量：字段使用 camelCase，必填字段使用 Jakarta Validation 表达。
+ */
+public final class IdentityDtos {
+
+    private IdentityDtos() {}
+
+    /* ========== 请求 DTO ========== */
+
+    @Data
+    public static class EmailPasswordRequest {
+        @NotNull
+        private String email;
+
+        @NotNull
+        private String password;
+    }
+
+    @Data
+    public static class PersonalRegisterRequest {
+        @NotNull
+        private String email;
+
+        @NotNull
+        private String password;
+
+        @NotNull
+        private String nickname;
+    }
+
+    @Data
+    public static class MerchantRegisterRequest {
+        @NotNull
+        private String email;
+
+        @NotNull
+        private String password;
+
+        @NotNull
+        private String nickname;
+    }
+
+    @Data
+    public static class RefreshTokenRequest {
+        @NotNull
+        private String refreshToken;
+    }
+
+    @Data
+    public static class ChangePasswordRequest {
+        @NotNull
+        private String oldPassword;
+
+        @NotNull
+        private String newPassword;
+    }
+
+    @Data
+    public static class PasswordResetEmailRequest {
+        @NotNull
+        private String email;
+    }
+
+    @Data
+    public static class ResetPasswordRequest {
+        @NotNull
+        private String token;
+
+        @NotNull
+        private String newPassword;
+    }
+
+    @Data
+    public static class AccountActivationRequest {
+        @NotNull
+        private String token;
+    }
+
+    @Data
+    public static class ResendActivationEmailRequest {
+        @NotNull
+        private String email;
+    }
+
+    @Data
+    public static class UpdatePersonalProfileRequest {
+        private String avatarMediaId;
+        private String nickname;
+        private Gender gender;
+        private String birthday;
+        private String signature;
+        private List<String> interestTags;
+    }
+
+    @Data
+    public static class UpdateMerchantProfileRequest {
+        private String merchantName;
+        private String nickname;
+        private String avatarMediaId;
+        private List<String> interestedActivityFields;
+    }
+
+    @Data
+    public static class QualificationSubmitRequest {
+        @NotNull
+        private List<String> licenseMediaIds;
+    }
+
+    /* ========== 响应 DTO ========== */
+
+    @Data
+    public static class TokenPair {
+        @NotNull
+        private String accessToken;
+
+        @NotNull
+        private String refreshToken;
+
+        @NotNull
+        private String expiresAt;
+    }
+
+    @Data
+    public static class LoginResult {
+        @NotNull
+        private String userId;
+
+        @NotNull
+        private UserKind kind;
+
+        @NotNull
+        private AccountStatus accountStatus;
+
+        @NotNull
+        private TokenPair tokens;
+    }
+
+    @Data
+    public static class PublicUserProfile {
+        @NotNull
+        private String userId;
+
+        @NotNull
+        private String nickname;
+
+        private CommonDtos.MediaFile avatar;
+        private Gender gender;
+        private String birthday;
+        private String signature;
+
+        @NotNull
+        private List<String> interestTags;
+
+        @NotNull
+        private Integer reputationScore;
+
+        @NotNull
+        private UserKind kind;
+    }
+
+    @Data
+    public static class QualificationDetail {
+        @NotNull
+        private QualificationStatus status;
+
+        private String submittedAt;
+        private String reviewedAt;
+        private String rejectReason;
+        private List<String> licenseImageUrls;
+    }
+
+    @Data
+    public static class MerchantProfile {
+        @NotNull
+        private String userId;
+
+        @NotNull
+        private String merchantName;
+
+        @NotNull
+        private String nickname;
+
+        private CommonDtos.MediaFile avatar;
+
+        @NotNull
+        private List<String> interestedActivityFields;
+
+        @NotNull
+        private AccountStatus accountStatus;
+
+        @NotNull
+        private QualificationStatus qualificationStatus;
+
+        private QualificationDetail qualification;
+    }
+
+    @Data
+    public static class InterestTagItem {
+        @NotNull
+        private String name;
+    }
+
+    @Data
+    public static class NicknameAvailability {
+        @NotNull
+        private String nickname;
+
+        @NotNull
+        private Boolean available;
+    }
+}

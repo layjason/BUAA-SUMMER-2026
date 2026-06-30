@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!--
+        MayoiStar 后端 API 使用 Authorization: Bearer JWT 传递认证凭据，不使用浏览器自动携带的
+        Cookie/Session 作为 API 认证机制，因此传统 CSRF 风险模型不适用于这些 JSON API Controller。
+        后续若新增 Cookie/Session 页面端点，应为页面端点单独启用 CSRF 防护。
+    -->
+    <Match>
+        <Bug pattern="SPRING_CSRF_PROTECTION_DISABLED" />
+    </Match>
+    <Match>
+        <Bug pattern="SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING" />
+    </Match>
+</FindBugsFilter>

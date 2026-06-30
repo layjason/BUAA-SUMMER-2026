@@ -8,7 +8,6 @@ namespace QujuApi.Identity;
 enum UserKind {
   personal,
   merchant,
-  admin,
 }
 
 @doc("账号状态，控制登录权限。")
@@ -62,6 +61,9 @@ model MerchantRegisterRequest {
 
   @doc("商家账号明文密码，服务端负责加盐哈希保存。")
   password: string;
+
+  @doc("商家全平台唯一昵称，与个人昵称共享唯一约束。")
+  nickname: string;
 }
 
 @doc("令牌响应。")
@@ -204,8 +206,8 @@ model MerchantProfile {
   @doc("商家主体名称。")
   merchantName: string;
 
-  @doc("商家平台展示昵称。")
-  merchantNickname: string;
+  @doc("商家全平台唯一昵称，与个人昵称共享唯一约束。")
+  nickname: string;
 
   @doc("商家头像媒体文件。")
   avatar?: MediaFile;
@@ -228,8 +230,8 @@ model UpdateMerchantProfileRequest {
   @doc("新的商家主体名称。")
   merchantName?: string;
 
-  @doc("新的商家展示昵称。")
-  merchantNickname?: string;
+  @doc("新的商家昵称。")
+  nickname?: string;
 
   @doc("新头像媒体文件标识。")
   avatarMediaId?: EntityId;
@@ -259,16 +261,10 @@ model ResendActivationEmailRequest {
   email: string;
 }
 
-@doc("商家资质提交请求，上传营业执照或营业凭证图片，请求为 multipart/form-data，支持多文件。")
+@doc("商家资质提交请求，营业执照或营业凭证图片需先通过上传接口取得 mediaId，提交接口仅引用已上传媒体。")
 model QualificationSubmitRequest {
-  @doc("营业执照或营业凭证图片。")
-  licenseImages: HttpPart<bytes>[];
-}
-
-@doc("头像上传请求，请求为 multipart/form-data，上传成功后服务端固定媒体用途为 avatar。")
-model AvatarUploadRequest {
-  @doc("头像文件。")
-  file: HttpPart<bytes>;
+  @doc("营业执照或营业凭证媒体文件标识列表。")
+  licenseMediaIds: EntityId[];
 }
 
 @route("/identity")
@@ -280,7 +276,6 @@ interface IdentityOperations {
   uploadMerchantLicense(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
 
-      | QujuApi.Errors.Identity.InvalidMediaUsage
       | QujuApi.Errors.Identity.ImageFormatInvalid
       | QujuApi.Errors.Identity.ImageTooLarge
   >;
@@ -288,9 +283,7 @@ interface IdentityOperations {
   @post
   @route("/media/avatar")
   @doc("上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。")
-  uploadAvatar(
-    @multipartBody body: AvatarUploadRequest,
-  ): APIResponse<MediaFile>;
+  uploadAvatar(@multipartBody body: MediaUploadRequest): APIResponse<MediaFile>;
 
   @post
   @route("/auth/register/personal")
@@ -436,9 +429,9 @@ interface IdentityOperations {
 
   @post
   @route("/me/merchant-qualification")
-  @doc("提交商家资质申请，请求为 multipart/form-data，上传营业执照或营业凭证图片。若已有 pending 或 approved 的申请则拒绝重复提交，rejected 后可重新提交。仅商家用户可调用。")
+  @doc("提交商家资质申请，请求为 JSON，licenseMediaIds 引用已上传的营业执照或营业凭证图片。若已有 pending 或 approved 的申请则拒绝重复提交，rejected 后可重新提交。仅商家用户可调用。")
   submitMerchantQualification(
-    @multipartBody body: QualificationSubmitRequest,
+    @body body: QualificationSubmitRequest,
   ): APIResult<
     EmptyData,
 

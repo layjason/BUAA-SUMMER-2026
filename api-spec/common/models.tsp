@@ -178,13 +178,10 @@ model MediaFile {
   uploadedAt: DateTimeString;
 }
 
-@doc("通用媒体上传请求，调用方使用 multipart/form-data，服务端保存文件并返回媒体元数据，业务对象只保存 mediaId。")
+@doc("通用媒体上传请求，调用方使用 multipart/form-data，服务端根据调用端点自动设置媒体用途，业务对象只保存 mediaId。")
 model MediaUploadRequest {
   @doc("上传文件。")
   file: HttpPart<bytes>;
-
-  @doc("媒体用途。")
-  usage: HttpPart<MediaUsage>;
 }
 
 @doc("审核状态。")

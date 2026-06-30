@@ -574,18 +574,16 @@ interface ActivityOperations {
   uploadActivityImage(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
 
-      | QujuApi.Errors.Activities.InvalidMediaUsage
       | QujuApi.Errors.Activities.ImageFormatInvalid
       | QujuApi.Errors.Activities.ImageTooLarge
   >;
 
   @post
   @route("/media/review-images")
-  @doc("上传活动评价 Markdown 内链图片，请求为 multipart/form-data，媒体用途必须为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。")
+  @doc("上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。")
   uploadActivityReviewImage(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
 
-      | QujuApi.Errors.Activities.InvalidMediaUsage
       | QujuApi.Errors.Activities.ImageFormatInvalid
       | QujuApi.Errors.Activities.ImageTooLarge
   >;
