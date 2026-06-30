@@ -148,22 +148,28 @@ public class FriendRequestServiceImpl implements FriendRequestService {
             friendRequestRepository.save(request);
 
             Instant now = Instant.now();
-            Friendship fsAtoB = Friendship.builder()
-                    .friendshipId(UUID.randomUUID().toString())
-                    .userId(request.getRequesterId())
-                    .friendUserId(request.getTargetUserId())
-                    .source(FriendshipSource.manualRequest)
-                    .createdAt(now)
-                    .build();
-            Friendship fsBtoA = Friendship.builder()
-                    .friendshipId(UUID.randomUUID().toString())
-                    .userId(request.getTargetUserId())
-                    .friendUserId(request.getRequesterId())
-                    .source(FriendshipSource.manualRequest)
-                    .createdAt(now)
-                    .build();
-            friendshipRepository.save(fsAtoB);
-            friendshipRepository.save(fsBtoA);
+            if (!friendshipRepository.existsByUserIdAndFriendUserId(
+                    request.getRequesterId(), request.getTargetUserId())) {
+                Friendship fsAtoB = Friendship.builder()
+                        .friendshipId(UUID.randomUUID().toString())
+                        .userId(request.getRequesterId())
+                        .friendUserId(request.getTargetUserId())
+                        .source(FriendshipSource.manualRequest)
+                        .createdAt(now)
+                        .build();
+                friendshipRepository.save(fsAtoB);
+            }
+            if (!friendshipRepository.existsByUserIdAndFriendUserId(
+                    request.getTargetUserId(), request.getRequesterId())) {
+                Friendship fsBtoA = Friendship.builder()
+                        .friendshipId(UUID.randomUUID().toString())
+                        .userId(request.getTargetUserId())
+                        .friendUserId(request.getRequesterId())
+                        .source(FriendshipSource.manualRequest)
+                        .createdAt(now)
+                        .build();
+                friendshipRepository.save(fsBtoA);
+            }
 
             String conversationId = UUID.randomUUID().toString();
             Conversation conversation = Conversation.builder()

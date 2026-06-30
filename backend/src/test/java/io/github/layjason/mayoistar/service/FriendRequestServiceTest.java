@@ -214,6 +214,10 @@ class FriendRequestServiceTest {
                     .createdAt(Instant.now())
                     .build();
             when(friendRequestRepository.findById("fr-1")).thenReturn(Optional.of(request));
+            when(friendshipRepository.existsByUserIdAndFriendUserId("user-a", "user-b"))
+                    .thenReturn(false);
+            when(friendshipRepository.existsByUserIdAndFriendUserId("user-b", "user-a"))
+                    .thenReturn(false);
 
             var result = service.decideFriendRequest("user-b", "fr-1", true);
 
@@ -289,6 +293,32 @@ class FriendRequestServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
                     .isEqualTo(40005);
+        }
+
+        /**
+         * 验证互关好友已存在时，好友申请接受不应重复创建。
+         */
+        @Test
+        @DisplayName("互关好友已存在时不重复创建Friendship")
+        void acceptRequestDoesNotDuplicateExistingFriendship() {
+            FriendRequest request = FriendRequest.builder()
+                    .requestId("fr-1")
+                    .requesterId("user-a")
+                    .targetUserId("user-b")
+                    .source(FriendRequestSource.profile)
+                    .status(FriendRequestStatus.pending)
+                    .createdAt(Instant.now())
+                    .build();
+            when(friendRequestRepository.findById("fr-1")).thenReturn(Optional.of(request));
+            when(friendshipRepository.existsByUserIdAndFriendUserId("user-a", "user-b"))
+                    .thenReturn(true);
+            when(friendshipRepository.existsByUserIdAndFriendUserId("user-b", "user-a"))
+                    .thenReturn(true);
+
+            var result = service.decideFriendRequest("user-b", "fr-1", true);
+
+            assertThat(result.getStatus()).isEqualTo(FriendRequestStatus.accepted);
+            verify(friendshipRepository, never()).save(any(Friendship.class));
         }
     }
 
