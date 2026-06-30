@@ -163,6 +163,8 @@ public final class ActivityDtos {
         private List<CommonDtos.MediaFile> images;
         private Integer waitingCount;
         private Boolean manualReviewRequired;
+        private String feeDescription;
+        private Integer minAge;
         private List<ReviewRecord> reviewRecords;
     }
 
