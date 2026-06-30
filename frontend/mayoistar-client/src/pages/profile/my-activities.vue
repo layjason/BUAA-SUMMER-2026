@@ -181,13 +181,13 @@ function runtimeStatusText(status: string): string {
 }
 
 .tab-bar-spacer {
-  height: 96rpx;
+  height: 104rpx;
 }
 
 .tab {
   flex: 1;
   text-align: center;
-  padding: 28rpx 0;
+  padding: 24rpx 0;
   font-size: 28rpx;
   color: #646566;
   border-bottom: 4rpx solid transparent;
