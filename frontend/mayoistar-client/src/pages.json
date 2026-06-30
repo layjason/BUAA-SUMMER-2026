@@ -6,103 +6,120 @@
     {
       "path": "pages/home/index",
       "style": {
-        "navigationBarTitleText": "趣聚"
+        "navigationBarTitleText": "趣聚",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/discover/index",
       "style": {
-        "navigationBarTitleText": "发现"
+        "navigationBarTitleText": "发现",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/messages/index",
       "style": {
-        "navigationBarTitleText": "消息"
+        "navigationBarTitleText": "消息",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/profile/index",
       "style": {
-        "navigationBarTitleText": "我的"
+        "navigationBarTitleText": "我的",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/login/index",
       "style": {
-        "navigationBarTitleText": "登录"
+        "navigationBarTitleText": "登录",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/register/index",
       "style": {
-        "navigationBarTitleText": "注册"
+        "navigationBarTitleText": "注册",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/activate/index",
       "style": {
-        "navigationBarTitleText": "账号激活"
+        "navigationBarTitleText": "账号激活",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/forgot-password/index",
       "style": {
-        "navigationBarTitleText": "忘记密码"
+        "navigationBarTitleText": "忘记密码",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/reset-password/index",
       "style": {
-        "navigationBarTitleText": "重置密码"
+        "navigationBarTitleText": "重置密码",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/profile/edit",
       "style": {
-        "navigationBarTitleText": "编辑资料"
+        "navigationBarTitleText": "编辑资料",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/profile/my-activities",
       "style": {
-        "navigationBarTitleText": "我创建的活动"
+        "navigationBarTitleText": "我创建的活动",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/profile/my-registrations",
       "style": {
-        "navigationBarTitleText": "我的报名"
+        "navigationBarTitleText": "我的报名",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/profile/my-friends",
       "style": {
-        "navigationBarTitleText": "我的好友"
+        "navigationBarTitleText": "我的好友",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/profile/friend-requests",
       "style": {
-        "navigationBarTitleText": "好友申请"
+        "navigationBarTitleText": "好友申请",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/profile/my-teams",
       "style": {
-        "navigationBarTitleText": "我的小队"
+        "navigationBarTitleText": "我的小队",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/profile/blacklist",
       "style": {
-        "navigationBarTitleText": "黑名单"
+        "navigationBarTitleText": "黑名单",
+        "disableScroll": true
       }
     },
     {
       "path": "pages/profile/settings",
       "style": {
-        "navigationBarTitleText": "设置"
+        "navigationBarTitleText": "设置",
+        "disableScroll": true
       }
     },
     {

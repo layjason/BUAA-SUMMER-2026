@@ -1,37 +1,40 @@
 <template>
   <view class="page">
-    <view v-if="loading" class="loading-text">{{ t('加载中') }}</view>
+    <scroll-view class="scroll-area" scroll-y>
+      <view v-if="loading" class="loading-text">{{ t('加载中') }}</view>
 
-    <view v-else-if="errorMsg" class="error-text">{{ errorMsg }}</view>
+      <view v-else-if="errorMsg" class="error-text">{{ errorMsg }}</view>
 
-    <view v-else-if="registrations.length === 0" class="empty-text">{{ t('暂无数据') }}</view>
+      <view v-else-if="registrations.length === 0" class="empty-text">{{ t('暂无数据') }}</view>
 
-    <view v-else>
-      <view
-        v-for="item in registrations"
-        :key="item.registrationId"
-        class="card"
-        :class="'card-' + item.status"
-        hover-class="card-hover"
-        @click="goDetail(item.activityId)"
-      >
-        <view class="card-header">
-          <text class="card-title">{{ item.activityTitle }}</text>
-          <text class="status-tag" :class="'status-' + item.status">{{
-            statusText(item.status)
-          }}</text>
-        </view>
-        <view class="card-row">
-          <text class="meta"
-            >{{ t('myRegistrations.registrationTime') }}: {{ formatDate(item.registeredAt) }}</text
-          >
-        </view>
-        <view class="card-row">
-          <text class="meta">{{ formatDate(item.activityStartAt) }}</text>
+      <view v-else>
+        <view
+          v-for="item in registrations"
+          :key="item.registrationId"
+          class="card"
+          :class="'card-' + item.status"
+          hover-class="card-hover"
+          @click="goDetail(item.activityId)"
+        >
+          <view class="card-header">
+            <text class="card-title">{{ item.activityTitle }}</text>
+            <text class="status-tag" :class="'status-' + item.status">{{
+              statusText(item.status)
+            }}</text>
+          </view>
+          <view class="card-row">
+            <text class="meta"
+              >{{ t('myRegistrations.registrationTime') }}:
+              {{ formatDate(item.registeredAt) }}</text
+            >
+          </view>
+          <view class="card-row">
+            <text class="meta">{{ formatDate(item.activityStartAt) }}</text>
+          </view>
         </view>
       </view>
-    </view>
-    <view class="bottom-safe" />
+      <view class="bottom-safe" />
+    </scroll-view>
   </view>
 </template>
 
@@ -210,7 +213,18 @@ function goDetail(activityId: string): void {
   color: #969799;
 }
 
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .bottom-safe {
   height: 48rpx;
+}
+
+<style > page {
+  height: 100%;
+  overflow: hidden;
 }
 </style>

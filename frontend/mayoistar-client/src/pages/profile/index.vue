@@ -1,41 +1,43 @@
 <template>
   <view class="page">
-    <view class="profile-container">
-      <!-- 用户卡片：未登录/已登录共用布局 -->
-      <view class="user-card" @click="onCardClick">
-        <view class="avatar-placeholder">
-          <text class="avatar-text">{{ initialChar }}</text>
+    <scroll-view class="scroll-area" scroll-y>
+      <view class="profile-container">
+        <!-- 用户卡片：未登录/已登录共用布局 -->
+        <view class="user-card" @click="onCardClick">
+          <view class="avatar-placeholder">
+            <text class="avatar-text">{{ initialChar }}</text>
+          </view>
+          <view class="user-info">
+            <text class="user-id">{{ displayName }}</text>
+            <text v-if="authStore.isLoggedIn" class="user-kind">{{
+              authStore.userKind === 'merchant' ? t('profile.merchant') : t('profile.personal')
+            }}</text>
+          </view>
         </view>
-        <view class="user-info">
-          <text class="user-id">{{ displayName }}</text>
-          <text v-if="authStore.isLoggedIn" class="user-kind">{{
-            authStore.userKind === 'merchant' ? t('profile.merchant') : t('profile.personal')
-          }}</text>
-        </view>
-      </view>
 
-      <!-- 菜单：仅登录后可见 -->
-      <view v-if="authStore.isLoggedIn">
-        <view v-for="section in menuSections" :key="section.title" class="menu-section">
-          <text class="menu-section-title">{{ section.title }}</text>
-          <view class="menu-list">
-            <view
-              v-for="item in section.items"
-              :key="item.key"
-              class="menu-item"
-              @click="goToPage(item.route)"
-            >
-              <text class="menu-text">{{ item.label }}</text>
-              <text class="menu-arrow">&gt;</text>
+        <!-- 菜单：仅登录后可见 -->
+        <view v-if="authStore.isLoggedIn">
+          <view v-for="section in menuSections" :key="section.title" class="menu-section">
+            <text class="menu-section-title">{{ section.title }}</text>
+            <view class="menu-list">
+              <view
+                v-for="item in section.items"
+                :key="item.key"
+                class="menu-item"
+                @click="goToPage(item.route)"
+              >
+                <text class="menu-text">{{ item.label }}</text>
+                <text class="menu-arrow">&gt;</text>
+              </view>
             </view>
           </view>
         </view>
-      </view>
 
-      <button v-if="authStore.isLoggedIn" class="logout-btn" @click="handleLogout">
-        {{ t('退出登录') }}
-      </button>
-    </view>
+        <button v-if="authStore.isLoggedIn" class="logout-btn" @click="handleLogout">
+          {{ t('退出登录') }}
+        </button>
+      </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -204,6 +206,12 @@ async function handleLogout(): Promise<void> {
   background-color: #f7f8fa;
 }
 
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .profile-container {
   padding: 32rpx 32rpx 48rpx;
 }
@@ -300,5 +308,22 @@ async function handleLogout(): Promise<void> {
   border-radius: 12rpx;
   border: none;
   margin-top: 16rpx;
+}
+
+<style > page {
+  height: 100%;
+  overflow: hidden;
+}
+
+<style > page {
+  height: 100%;
+  overflow: hidden;
+}
+</style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
 }
 </style>

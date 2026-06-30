@@ -1,9 +1,11 @@
 <template>
   <view class="page">
-    <view class="placeholder">
-      <text class="placeholder-text">发现</text>
-      <text class="placeholder-desc">搜索与发现活动即将上线</text>
-    </view>
+    <scroll-view class="scroll-area" scroll-y>
+      <view class="placeholder">
+        <text class="placeholder-text">发现</text>
+        <text class="placeholder-desc">搜索与发现活动即将上线</text>
+      </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -18,8 +20,18 @@
 <style scoped>
 .page {
   background-color: #f7f8fa;
-  padding-bottom: 48rpx;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .placeholder {
   display: flex;
   flex-direction: column;
@@ -27,14 +39,23 @@
   justify-content: center;
   padding-top: 200rpx;
 }
+
 .placeholder-text {
   font-size: 36rpx;
   color: #323233;
   font-weight: 600;
 }
+
 .placeholder-desc {
   font-size: 28rpx;
   color: #969799;
   margin-top: 16rpx;
+}
+</style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
 }
 </style>

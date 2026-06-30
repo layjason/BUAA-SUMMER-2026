@@ -172,7 +172,10 @@ function goRegister(): void {
 
 <style scoped>
 .page {
-  min-height: 100vh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background-color: #f7f8fa;
 }
 
@@ -228,5 +231,10 @@ function goRegister(): void {
   font-size: 24rpx;
   color: #07c160;
   margin-bottom: 16rpx;
+}
+
+<style > page {
+  height: 100%;
+  overflow: hidden;
 }
 </style>

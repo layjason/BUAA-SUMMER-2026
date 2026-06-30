@@ -156,7 +156,10 @@ function goLogin(): void {
 
 <style scoped>
 .page {
-  min-height: 100vh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background-color: #f7f8fa;
 }
 
@@ -219,5 +222,10 @@ function goLogin(): void {
   color: #969799;
   line-height: 1.6;
   margin-bottom: 32rpx;
+}
+
+<style > page {
+  height: 100%;
+  overflow: hidden;
 }
 </style>

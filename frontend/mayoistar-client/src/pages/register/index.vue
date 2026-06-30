@@ -360,7 +360,10 @@ function goLogin(): void {
 
 <style scoped>
 .page {
-  min-height: 100vh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background-color: #f7f8fa;
 }
 
@@ -454,5 +457,10 @@ function goLogin(): void {
 .link {
   font-size: 28rpx;
   color: #1989fa;
+}
+
+<style > page {
+  height: 100%;
+  overflow: hidden;
 }
 </style>

@@ -1,114 +1,116 @@
 <template>
   <view class="page">
-    <view class="edit-container">
-      <!-- 头像 -->
-      <view class="avatar-section" @click="handleAvatarClick">
-        <image v-if="avatarUrl" class="avatar-image" :src="avatarUrl" mode="aspectFill" />
-        <view v-else class="avatar-placeholder">
-          <text class="avatar-placeholder-text">{{ initialChar }}</text>
-        </view>
-        <text class="avatar-hint">{{ t('editProfile.changeAvatar') }}</text>
-      </view>
-
-      <!-- 表单 -->
-      <view class="form">
-        <!-- 昵称 -->
-        <FormInput
-          v-model="formNickname"
-          :label="t('editProfile.nickname')"
-          :placeholder="t('editProfile.nicknamePlaceholder')"
-          :error="nicknameError"
-          @blur="checkNickname"
-        />
-
-        <!-- 商家名称（仅商家） -->
-        <FormInput
-          v-if="isMerchant"
-          v-model="formMerchantName"
-          :label="t('editProfile.merchantName')"
-          :placeholder="t('editProfile.merchantNamePlaceholder')"
-          :error="merchantNameError"
-        />
-
-        <!-- 性别（仅个人） -->
-        <view v-if="!isMerchant" class="form-item">
-          <text class="label">{{ t('editProfile.gender') }}</text>
-          <view class="gender-row">
-            <view
-              v-for="opt in genderOptions"
-              :key="opt.value"
-              class="gender-option"
-              :class="{ active: formGender === opt.value }"
-              @click="formGender = opt.value"
-            >
-              <text>{{ opt.label }}</text>
-            </view>
+    <scroll-view class="scroll-area" scroll-y>
+      <view class="edit-container">
+        <!-- 头像 -->
+        <view class="avatar-section" @click="handleAvatarClick">
+          <image v-if="avatarUrl" class="avatar-image" :src="avatarUrl" mode="aspectFill" />
+          <view v-else class="avatar-placeholder">
+            <text class="avatar-placeholder-text">{{ initialChar }}</text>
           </view>
+          <text class="avatar-hint">{{ t('editProfile.changeAvatar') }}</text>
         </view>
 
-        <!-- 生日（仅个人） -->
-        <view v-if="!isMerchant" class="form-item">
-          <text class="label">{{ t('editProfile.birthday') }}</text>
-          <picker mode="date" :value="formBirthday" :end="today" @change="onBirthdayChange">
-            <view class="picker-value">
-              <text :class="{ placeholder: !formBirthday }">
-                {{ formBirthday || t('editProfile.birthdayPlaceholder') }}
-              </text>
-            </view>
-          </picker>
-        </view>
-
-        <!-- 个性签名（仅个人） -->
-        <view v-if="!isMerchant" class="form-item">
-          <text class="label">{{ t('editProfile.signature') }}</text>
-          <textarea
-            v-model="formSignature"
-            class="textarea"
-            :placeholder="t('editProfile.signaturePlaceholder')"
-            :maxlength="200"
-            auto-height
+        <!-- 表单 -->
+        <view class="form">
+          <!-- 昵称 -->
+          <FormInput
+            v-model="formNickname"
+            :label="t('editProfile.nickname')"
+            :placeholder="t('editProfile.nicknamePlaceholder')"
+            :error="nicknameError"
+            @blur="checkNickname"
           />
-          <text class="char-count">{{ formSignature.length }}/200</text>
-        </view>
 
-        <!-- 兴趣标签 / 关注领域 -->
-        <view class="form-item">
-          <text class="label">{{ tagLabel }}</text>
-          <scroll-view v-if="availableTags.length" class="tag-scroll" scroll-x>
-            <view class="tag-row">
+          <!-- 商家名称（仅商家） -->
+          <FormInput
+            v-if="isMerchant"
+            v-model="formMerchantName"
+            :label="t('editProfile.merchantName')"
+            :placeholder="t('editProfile.merchantNamePlaceholder')"
+            :error="merchantNameError"
+          />
+
+          <!-- 性别（仅个人） -->
+          <view v-if="!isMerchant" class="form-item">
+            <text class="label">{{ t('editProfile.gender') }}</text>
+            <view class="gender-row">
               <view
-                v-for="tag in availableTags"
-                :key="tag.name"
-                class="tag-chip"
-                :class="{ active: selectedTags.has(tag.name) }"
-                @click="toggleTag(tag.name)"
+                v-for="opt in genderOptions"
+                :key="opt.value"
+                class="gender-option"
+                :class="{ active: formGender === opt.value }"
+                @click="formGender = opt.value"
               >
-                <text>{{ tag.name }}</text>
+                <text>{{ opt.label }}</text>
               </view>
             </view>
-          </scroll-view>
-          <text v-else class="hint">{{ t('editProfile.loadingTags') }}</text>
-        </view>
-
-        <!-- 商家资质（只读） -->
-        <view v-if="isMerchant && qualification" class="form-item">
-          <text class="label">{{ t('editProfile.qualification') }}</text>
-          <view class="qualification-status">
-            <text class="qualification-text">
-              {{ t('editProfile.qualificationStatus') }}:
-              {{ qualificationStatusText }}
-            </text>
-            <text v-if="qualification.rejectReason" class="qualification-reject">
-              {{ t('editProfile.rejectReason') }}: {{ qualification.rejectReason }}
-            </text>
           </view>
+
+          <!-- 生日（仅个人） -->
+          <view v-if="!isMerchant" class="form-item">
+            <text class="label">{{ t('editProfile.birthday') }}</text>
+            <picker mode="date" :value="formBirthday" :end="today" @change="onBirthdayChange">
+              <view class="picker-value">
+                <text :class="{ placeholder: !formBirthday }">
+                  {{ formBirthday || t('editProfile.birthdayPlaceholder') }}
+                </text>
+              </view>
+            </picker>
+          </view>
+
+          <!-- 个性签名（仅个人） -->
+          <view v-if="!isMerchant" class="form-item">
+            <text class="label">{{ t('editProfile.signature') }}</text>
+            <textarea
+              v-model="formSignature"
+              class="textarea"
+              :placeholder="t('editProfile.signaturePlaceholder')"
+              :maxlength="200"
+              auto-height
+            />
+            <text class="char-count">{{ formSignature.length }}/200</text>
+          </view>
+
+          <!-- 兴趣标签 / 关注领域 -->
+          <view class="form-item">
+            <text class="label">{{ tagLabel }}</text>
+            <scroll-view v-if="availableTags.length" class="tag-scroll" scroll-x>
+              <view class="tag-row">
+                <view
+                  v-for="tag in availableTags"
+                  :key="tag.name"
+                  class="tag-chip"
+                  :class="{ active: selectedTags.has(tag.name) }"
+                  @click="toggleTag(tag.name)"
+                >
+                  <text>{{ tag.name }}</text>
+                </view>
+              </view>
+            </scroll-view>
+            <text v-else class="hint">{{ t('editProfile.loadingTags') }}</text>
+          </view>
+
+          <!-- 商家资质（只读） -->
+          <view v-if="isMerchant && qualification" class="form-item">
+            <text class="label">{{ t('editProfile.qualification') }}</text>
+            <view class="qualification-status">
+              <text class="qualification-text">
+                {{ t('editProfile.qualificationStatus') }}:
+                {{ qualificationStatusText }}
+              </text>
+              <text v-if="qualification.rejectReason" class="qualification-reject">
+                {{ t('editProfile.rejectReason') }}: {{ qualification.rejectReason }}
+              </text>
+            </view>
+          </view>
+
+          <FormError :message="formError" />
+
+          <SubmitButton :text="t('editProfile.save')" :loading="saving" @click="handleSave" />
         </view>
-
-        <FormError :message="formError" />
-
-        <SubmitButton :text="t('editProfile.save')" :loading="saving" @click="handleSave" />
       </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -436,8 +438,10 @@ async function handleSave(): Promise<void> {
 </script>
 
 <style scoped>
-.page {
-  background-color: #f7f8fa;
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .edit-container {
@@ -604,5 +608,10 @@ async function handleSave(): Promise<void> {
   font-size: 26rpx;
   color: #ee0a24;
   margin-top: 8rpx;
+}
+
+<style > page {
+  height: 100%;
+  overflow: hidden;
 }
 </style>

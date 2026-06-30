@@ -1,10 +1,11 @@
 <template>
   <view class="page">
-    <view class="placeholder">
-      <text class="placeholder-text">首页</text>
-      <text class="placeholder-desc">活动信息流即将上线</text>
-    </view>
-
+    <scroll-view class="scroll-area" scroll-y>
+      <view class="placeholder">
+        <text class="placeholder-text">首页</text>
+        <text class="placeholder-desc">活动信息流即将上线</text>
+      </view>
+    </scroll-view>
     <view class="fab" @click="goCreate">
       <text class="fab-icon">+</text>
     </view>
@@ -15,13 +16,9 @@
 /**
  * 首页 - 活动信息流
  *
- * 展示推荐/最新/附近 Tab 活动列表
  * 前置条件：用户可未登录浏览
  */
 
-/**
- * 跳转到活动创建页
- */
 function goCreate(): void {
   uni.navigateTo({ url: '/pages/activity/edit' })
 }
@@ -30,8 +27,16 @@ function goCreate(): void {
 <style scoped>
 .page {
   background-color: #f7f8fa;
-  padding-bottom: 48rpx;
-  min-height: 100vh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .placeholder {
@@ -73,5 +78,12 @@ function goCreate(): void {
   color: #fff;
   line-height: 1;
   margin-top: -4rpx;
+}
+</style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
 }
 </style>
