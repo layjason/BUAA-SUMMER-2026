@@ -935,3 +935,48 @@ ALTER TABLE poll_votes ADD CONSTRAINT fk_poll_votes_user FOREIGN KEY (user_id) R
 -- admin - 后台管理
 ALTER TABLE ban_records ADD CONSTRAINT fk_ban_records_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE RESTRICT;
 ALTER TABLE ban_records ADD CONSTRAINT fk_ban_records_operator FOREIGN KEY (operator_id) REFERENCES admins(admin_id) ON DELETE RESTRICT;
+
+-- ============================================================================
+-- CHECK Constraints (enum validation)
+-- ============================================================================
+
+-- identity
+ALTER TABLE users ADD CONSTRAINT ck_users_kind CHECK (kind IN ('personal', 'merchant'));
+ALTER TABLE users ADD CONSTRAINT ck_users_account_status CHECK (account_status IN ('inactive', 'active', 'banned'));
+
+ALTER TABLE personal_profiles ADD CONSTRAINT ck_personal_profiles_gender CHECK (gender IN ('unspecified', 'female', 'male', 'other'));
+
+ALTER TABLE qualifications ADD CONSTRAINT ck_qualifications_status CHECK (status IN ('not_submitted', 'pending', 'approved', 'rejected'));
+
+ALTER TABLE security_tokens ADD CONSTRAINT ck_security_tokens_token_type CHECK (token_type IN ('activation', 'password_reset', 'refresh'));
+
+-- common
+ALTER TABLE media_files ADD CONSTRAINT ck_media_files_usage CHECK (usage IN ('avatar', 'merchantLicense', 'activityImage', 'chatImage', 'teamFile', 'teamAlbum', 'summaryImage', 'activityReviewImage'));
+
+-- activities
+ALTER TABLE activities ADD CONSTRAINT ck_activities_review_status CHECK (review_status IN ('draft', 'pending', 'approved', 'rejected', 'changeRequired'));
+ALTER TABLE activities ADD CONSTRAINT ck_activities_runtime_status CHECK (runtime_status IN ('notStarted', 'registering', 'registrationClosed', 'ongoing', 'ended', 'takenDown'));
+
+ALTER TABLE activity_review_records ADD CONSTRAINT ck_review_records_result CHECK (result IN ('approved', 'rejected'));
+
+ALTER TABLE activity_registrations ADD CONSTRAINT ck_registrations_status CHECK (status IN ('registered', 'waiting', 'waitingConfirmation', 'canceled', 'checkedIn'));
+
+-- social
+ALTER TABLE friend_requests ADD CONSTRAINT ck_friend_requests_source CHECK (source IN ('profile', 'activityParticipants', 'team', 'qrCode'));
+ALTER TABLE friend_requests ADD CONSTRAINT ck_friend_requests_status CHECK (status IN ('pending', 'accepted', 'rejected', 'canceled'));
+
+ALTER TABLE friendships ADD CONSTRAINT ck_friendships_source CHECK (source IN ('manualRequest', 'mutualFollow'));
+
+ALTER TABLE user_reports ADD CONSTRAINT ck_user_reports_status CHECK (status IN ('pending', 'processing', 'resolved', 'rejected'));
+
+ALTER TABLE teams ADD CONSTRAINT ck_teams_join_mode CHECK (join_mode IN ('publicJoin', 'approvalRequired'));
+ALTER TABLE teams ADD CONSTRAINT ck_teams_status CHECK (status IN ('active', 'dissolved', 'disabled'));
+
+ALTER TABLE team_members ADD CONSTRAINT ck_team_members_role CHECK (role IN ('leader', 'admin', 'member'));
+
+ALTER TABLE team_join_requests ADD CONSTRAINT ck_team_join_requests_status CHECK (status IN ('pending', 'accepted', 'rejected', 'canceled'));
+
+-- chat
+ALTER TABLE conversations ADD CONSTRAINT ck_conversations_kind CHECK (kind IN ('friend', 'team'));
+
+ALTER TABLE chat_messages ADD CONSTRAINT ck_chat_messages_kind CHECK (kind IN ('text', 'image', 'location'));
