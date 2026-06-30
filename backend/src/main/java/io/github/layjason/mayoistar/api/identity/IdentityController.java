@@ -117,16 +117,19 @@ public class IdentityController {
         return responseFactory.publicUserProfile();
     }
 
+    // TODO(real-impl): 改为 required = true 以匹配 TypeSpec 契约
     @PostMapping(value = "/media/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>> uploadAvatar(
-            @RequestPart(value = "file") MultipartFile file) {
+            @RequestPart(value = "file", required = false) MultipartFile file) {
         return responseFactory.mediaFile(MediaUsage.avatar);
     }
 
+    // TODO(real-impl): 改为 required = true 以匹配 TypeSpec 契约
     @PostMapping(value = "/media/license", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
             uploadMerchantLicense(
-                    @RequestPart(value = "file") MultipartFile file, @RequestPart(value = "usage") String usage) {
+                    @RequestPart(value = "file", required = false) MultipartFile file,
+                    @RequestPart(value = "usage", required = false) String usage) {
         return responseFactory.mediaFile(MediaUsage.merchantLicense);
     }
 
