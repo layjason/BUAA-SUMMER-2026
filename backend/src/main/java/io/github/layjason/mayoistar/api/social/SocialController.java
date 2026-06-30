@@ -5,8 +5,13 @@ import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.EmptyData;
 import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.common.SecurityUtils;
 import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
+import io.github.layjason.mayoistar.service.BlacklistService;
+import io.github.layjason.mayoistar.service.FriendRequestService;
+import io.github.layjason.mayoistar.service.FriendshipService;
+import io.github.layjason.mayoistar.service.ReportService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -27,96 +32,117 @@ import org.springframework.web.bind.annotation.RestController;
 public class SocialController {
 
     private final DefaultApiResponseFactory responseFactory;
+    private final BlacklistService blacklistService;
+    private final FriendRequestService friendRequestService;
+    private final FriendshipService friendshipService;
+    private final ReportService reportService;
+    private final SecurityUtils securityUtils;
+
+    /* ========== 黑名单 ========== */
 
     @GetMapping("/blacklist")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.BlacklistItem>>> listBlacklist(
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = blacklistService.listBlacklist(securityUtils.getCurrentUserId(), page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/blacklist/{targetUserId}")
     public ResponseEntity<ApiResponse<EmptyData>> blockUser(@PathVariable String targetUserId) {
-        return responseFactory.emptyData();
+        blacklistService.blockUser(securityUtils.getCurrentUserId(), targetUserId);
+        return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
     }
 
     @DeleteMapping("/blacklist/{targetUserId}")
     public ResponseEntity<ApiResponse<EmptyData>> unblockUser(@PathVariable String targetUserId) {
-        return responseFactory.emptyData();
+        blacklistService.unblockUser(securityUtils.getCurrentUserId(), targetUserId);
+        return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
     }
 
-    @GetMapping("/followers")
-    public ResponseEntity<ApiResponse<PageResult<SocialDtos.FollowItem>>> listFollowers(
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
-    }
-
-    @GetMapping("/follows")
-    public ResponseEntity<ApiResponse<PageResult<SocialDtos.FollowItem>>> listFollows(
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
-    }
-
-    @PostMapping("/follows/{targetUserId}")
-    public ResponseEntity<ApiResponse<SocialDtos.FollowRelation>> followUser(@PathVariable String targetUserId) {
-        return responseFactory.followRelation();
-    }
-
-    @DeleteMapping("/follows/{targetUserId}")
-    public ResponseEntity<ApiResponse<SocialDtos.FollowRelation>> unfollowUser(@PathVariable String targetUserId) {
-        return responseFactory.followRelation();
-    }
+    /* ========== 好友申请 ========== */
 
     @PostMapping("/friend-requests")
     public ResponseEntity<ApiResponse<SocialDtos.FriendRequest>> createFriendRequest(
             @Valid @RequestBody SocialDtos.FriendRequestCreate request) {
-        return responseFactory.friendRequest();
+        var result = friendRequestService.createFriendRequest(
+                securityUtils.getCurrentUserId(), request.getTargetUserId(),
+                request.getSource(), request.getMessage());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/friend-requests/received")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.FriendRequest>>> listReceivedFriendRequests(
             @RequestParam(required = false) FriendRequestStatus status,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result =
+                friendRequestService.listReceivedRequests(securityUtils.getCurrentUserId(), status, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/friend-requests/sent")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.FriendRequest>>> listSentFriendRequests(
             @RequestParam(required = false) FriendRequestStatus status,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = friendRequestService.listSentRequests(securityUtils.getCurrentUserId(), status, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/friend-requests/{requestId}/decision")
     public ResponseEntity<ApiResponse<SocialDtos.FriendRequest>> decideFriendRequest(
             @PathVariable String requestId, @Valid @RequestBody SocialDtos.FriendRequestDecision request) {
-        return responseFactory.friendRequest();
+        var result = friendRequestService.decideFriendRequest(
+                securityUtils.getCurrentUserId(), requestId, request.getAccepted());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
+
+    /* ========== 好友管理 ========== */
 
     @GetMapping("/friends")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.FriendItem>>> listFriends(
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = friendshipService.listFriends(securityUtils.getCurrentUserId(), page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PatchMapping("/friends/{userId}")
     public ResponseEntity<ApiResponse<SocialDtos.FriendItem>> updateFriendRemark(
             @PathVariable String userId, @Valid @RequestBody SocialDtos.FriendRemarkUpdate request) {
-        return responseFactory.friendItem();
+        var result = friendshipService.updateFriendRemark(
+                securityUtils.getCurrentUserId(), userId, request.getRemark(), request.getGroupTags());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @DeleteMapping("/friends/{userId}")
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> deleteFriend(
-            @PathVariable String userId) {
-        return responseFactory.emptyData();
+    public ResponseEntity<ApiResponse<EmptyData>> deleteFriend(@PathVariable String userId) {
+        friendshipService.deleteFriend(securityUtils.getCurrentUserId(), userId);
+        return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
     }
 
-    @GetMapping("/profiles/{userId}")
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.identity.IdentityDtos.PublicUserProfile>>
-            getUserProfile(@PathVariable String userId) {
-        return responseFactory.publicUserProfile();
+    /* ========== 举报 ========== */
+
+    @PostMapping("/reports")
+    public ResponseEntity<ApiResponse<SocialDtos.Report>> createReport(
+            @Valid @RequestBody SocialDtos.ReportCreateRequest request) {
+        var result = reportService.createReport(
+                securityUtils.getCurrentUserId(), request.getTargetType(),
+                request.getTargetId(), request.getReason());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
+
+    @GetMapping("/reports")
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.Report>>> listMyReports(
+            @RequestParam(required = false) ReportStatus status,
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = reportService.listMyReports(securityUtils.getCurrentUserId(), status, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /* ========== 小队（未实现，保持stub） ========== */
 
     @PostMapping("/teams")
     public ResponseEntity<ApiResponse<SocialDtos.TeamProfile>> createTeam(
@@ -139,8 +165,7 @@ public class SocialController {
     }
 
     @DeleteMapping("/teams/{teamId}")
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> dissolveTeam(
-            @PathVariable String teamId) {
+    public ResponseEntity<ApiResponse<EmptyData>> dissolveTeam(@PathVariable String teamId) {
         return responseFactory.emptyData();
     }
 
@@ -187,8 +212,7 @@ public class SocialController {
     }
 
     @PostMapping("/teams/{teamId}/leave")
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.EmptyData>> leaveTeam(
-            @PathVariable String teamId) {
+    public ResponseEntity<ApiResponse<EmptyData>> leaveTeam(@PathVariable String teamId) {
         return responseFactory.emptyData();
     }
 
@@ -216,17 +240,33 @@ public class SocialController {
         return responseFactory.emptyPage();
     }
 
-    @PostMapping("/reports")
-    public ResponseEntity<ApiResponse<SocialDtos.Report>> createReport(
-            @Valid @RequestBody SocialDtos.ReportCreateRequest request) {
-        return responseFactory.report();
+    /* ========== 关注与资料（未实现，保持stub） ========== */
+
+    @GetMapping("/followers")
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.FollowItem>>> listFollowers(
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
+        return responseFactory.emptyPage();
     }
 
-    @GetMapping("/reports")
-    public ResponseEntity<ApiResponse<PageResult<SocialDtos.Report>>> listMyReports(
-            @RequestParam(required = false) ReportStatus status,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
+    @GetMapping("/follows")
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.FollowItem>>> listFollows(
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
         return responseFactory.emptyPage();
+    }
+
+    @PostMapping("/follows/{targetUserId}")
+    public ResponseEntity<ApiResponse<SocialDtos.FollowRelation>> followUser(@PathVariable String targetUserId) {
+        return responseFactory.followRelation();
+    }
+
+    @DeleteMapping("/follows/{targetUserId}")
+    public ResponseEntity<ApiResponse<SocialDtos.FollowRelation>> unfollowUser(@PathVariable String targetUserId) {
+        return responseFactory.followRelation();
+    }
+
+    @GetMapping("/profiles/{userId}")
+    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.identity.IdentityDtos.PublicUserProfile>>
+            getUserProfile(@PathVariable String userId) {
+        return responseFactory.publicUserProfile();
     }
 }
