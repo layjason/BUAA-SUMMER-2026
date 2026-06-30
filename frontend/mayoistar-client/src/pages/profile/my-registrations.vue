@@ -7,7 +7,14 @@
     <view v-else-if="registrations.length === 0" class="empty-text">{{ t('暂无数据') }}</view>
 
     <view v-else>
-      <view v-for="item in registrations" :key="item.registrationId" class="card">
+      <view
+        v-for="item in registrations"
+        :key="item.registrationId"
+        class="card"
+        :class="'card-' + item.status"
+        hover-class="card-hover"
+        @click="goDetail(item.activityId)"
+      >
         <view class="card-header">
           <text class="card-title">{{ item.activityTitle }}</text>
           <text class="status-tag" :class="'status-' + item.status">{{
@@ -96,6 +103,15 @@ onShow(async () => {
 function statusText(status: string): string {
   return statusMap[status] ?? status
 }
+
+/**
+ * 跳转到活动详情页
+ *
+ * @param activityId 活动标识
+ */
+function goDetail(activityId: string): void {
+  uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
+}
 </script>
 
 <style scoped>
@@ -121,6 +137,20 @@ function statusText(status: string): string {
   margin: 16rpx 32rpx;
   padding: 28rpx 32rpx;
   border-radius: 12rpx;
+}
+
+.card-hover {
+  opacity: 0.85;
+}
+
+/* 已取消：降低视觉权重 */
+.card-canceled {
+  opacity: 0.65;
+}
+
+/* 已签到：绿色左边框暗示完成 */
+.card-checkedIn {
+  border-left: 6rpx solid #07c160;
 }
 
 .card-header {
