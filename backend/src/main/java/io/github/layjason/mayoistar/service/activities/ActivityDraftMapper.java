@@ -8,7 +8,6 @@ import io.github.layjason.mayoistar.entity.common.MediaFile;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
@@ -22,39 +21,6 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class ActivityDraftMapper {
-
-    /**
-     * 解析草稿请求中的地点信息。
-     *
-     * <p>前置条件：location 可以为空；非空时应满足 LocationInfo 结构。
-     *
-     * <p>后置条件：返回可供业务层使用的地点对象；结构非法时抛出参数异常。
-     *
-     * <p>不变量：该方法只做内存转换，不访问数据库。
-     *
-     * @param location 活动地点请求对象
-     * @return 解析后的地点信息
-     */
-    public CommonDtos.LocationInfo toLocationInfo(Object location) {
-        if (location == null) {
-            return null;
-        }
-        if (!(location instanceof Map<?, ?> locationMap)) {
-            throw new IllegalArgumentException("活动地点信息格式不合法");
-        }
-        CommonDtos.LocationInfo locationInfo = new CommonDtos.LocationInfo();
-        locationInfo.setCity(stringValue(locationMap.get("city")));
-        locationInfo.setAddress(stringValue(locationMap.get("address")));
-        locationInfo.setPlaceName(stringValue(locationMap.get("placeName")));
-        Object pointObject = locationMap.get("point");
-        if (pointObject instanceof Map<?, ?> pointMap) {
-            CommonDtos.GeoPoint point = new CommonDtos.GeoPoint();
-            point.setLongitude(doubleValue(pointMap.get("longitude")));
-            point.setLatitude(doubleValue(pointMap.get("latitude")));
-            locationInfo.setPoint(point);
-        }
-        return locationInfo;
-    }
 
     public PageResult<ActivityDtos.ActivityDraftSummary> toDraftSummaryPage(Page<Activity> activityPage) {
         List<ActivityDtos.ActivityDraftSummary> items =
@@ -105,24 +71,31 @@ public class ActivityDraftMapper {
         return dto;
     }
 
+    /**
+     * 将活动实体中的地点字段转换为 LocationInfo DTO。
+     *
+     * <p>前置条件：activity 非空。
+     *
+     * <p>后置条件：仅当 point（经纬度均非空）、city、address 三者齐全时返回 LocationInfo，
+     * 否则返回 null，确保返回值符合 TypeSpec LocationInfo 契约（point/city/address 均为必填）。
+     *
+     * <p>不变量：不修改传入实体。
+     */
     private CommonDtos.LocationInfo toLocationInfo(Activity activity) {
-        if (activity.getPointLon() == null
-                && activity.getPointLat() == null
-                && activity.getCity() == null
-                && activity.getAddress() == null
-                && activity.getPlaceName() == null) {
+        Double lon = activity.getPointLon();
+        Double lat = activity.getPointLat();
+        String city = activity.getCity();
+        String address = activity.getAddress();
+        if (lon == null || lat == null || city == null || address == null) {
             return null;
         }
-        CommonDtos.GeoPoint point = null;
-        if (activity.getPointLon() != null || activity.getPointLat() != null) {
-            point = new CommonDtos.GeoPoint();
-            point.setLongitude(activity.getPointLon());
-            point.setLatitude(activity.getPointLat());
-        }
+        CommonDtos.GeoPoint point = new CommonDtos.GeoPoint();
+        point.setLongitude(lon);
+        point.setLatitude(lat);
         CommonDtos.LocationInfo dto = new CommonDtos.LocationInfo();
         dto.setPoint(point);
-        dto.setCity(activity.getCity());
-        dto.setAddress(activity.getAddress());
+        dto.setCity(city);
+        dto.setAddress(address);
         dto.setPlaceName(activity.getPlaceName());
         return dto;
     }
@@ -141,19 +114,5 @@ public class ActivityDraftMapper {
 
     private String formatInstant(Instant instant) {
         return instant == null ? null : instant.toString();
-    }
-
-    private String stringValue(Object value) {
-        return value == null ? null : String.valueOf(value);
-    }
-
-    private Double doubleValue(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return Double.parseDouble(String.valueOf(value));
     }
 }

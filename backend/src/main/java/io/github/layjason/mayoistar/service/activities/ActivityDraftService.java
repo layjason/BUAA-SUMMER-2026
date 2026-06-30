@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.service.activities;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
+import io.github.layjason.mayoistar.api.common.BusinessException;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
@@ -24,10 +25,8 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * 活动草稿服务。
@@ -64,7 +63,7 @@ public class ActivityDraftService {
     public ActivityDtos.ActivityDraftDetail saveDraft(
             String organizerId, ActivityDtos.ActivityDraftUpsertRequest request) {
         validateUserExists(organizerId);
-        CommonDtos.LocationInfo location = activityDraftMapper.toLocationInfo(request.getLocation());
+        CommonDtos.LocationInfo location = request.getLocation();
         validateDraftRequest(request, location);
 
         Instant now = Instant.now();
@@ -169,7 +168,7 @@ public class ActivityDraftService {
             String organizerId, String activityId, ActivityDtos.ActivityDraftUpsertRequest request) {
         validateUserExists(organizerId);
         Activity activity = findOwnedDraft(organizerId, activityId);
-        CommonDtos.LocationInfo location = activityDraftMapper.toLocationInfo(request.getLocation());
+        CommonDtos.LocationInfo location = request.getLocation();
         validateDraftRequest(request, location);
 
         activity.setTitle(request.getTitle());
@@ -198,12 +197,12 @@ public class ActivityDraftService {
     private Activity findOwnedDraft(String organizerId, String activityId) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "活动草稿不存在"));
+                .orElseThrow(() -> new BusinessException(20002, "活动草稿不存在"));
         if (!activity.getOrganizerId().equals(organizerId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权访问其他用户的活动草稿");
+            throw new BusinessException(20003, "无权访问其他用户的活动草稿");
         }
         if (activity.getReviewStatus() != ActivityReviewStatus.draft) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "当前活动不允许按草稿规则访问");
+            throw new BusinessException(20005, "当前活动不允许按草稿规则访问");
         }
         return activity;
     }
@@ -251,13 +250,13 @@ public class ActivityDraftService {
     private void validateMediaFiles(Collection<String> mediaIds) {
         List<MediaFile> mediaFiles = mediaFileRepository.findByMediaIdIn(mediaIds);
         if (mediaFiles.size() != mediaIds.size()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "存在不可用的活动图片");
+            throw new BusinessException(20017, "存在不可用的活动图片");
         }
     }
 
     private void validateUserExists(String organizerId) {
         if (!userRepository.existsById(organizerId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "当前调用者不存在");
+            throw new BusinessException(400, "当前调用者不存在");
         }
     }
 
@@ -266,23 +265,23 @@ public class ActivityDraftService {
         Instant startAt = parseInstant(request.getStartAt(), "活动开始时间");
         Instant endAt = parseInstant(request.getEndAt(), "活动结束时间");
         if (startAt != null && endAt != null && !endAt.isAfter(startAt)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "活动结束时间必须晚于开始时间");
+            throw new BusinessException(20004, "活动结束时间必须晚于开始时间");
         }
         Instant registrationDeadline = parseInstant(request.getRegistrationDeadline(), "报名截止时间");
         if (registrationDeadline != null && startAt != null && registrationDeadline.isAfter(startAt)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "报名截止时间不能晚于活动开始时间");
+            throw new BusinessException(20004, "报名截止时间不能晚于活动开始时间");
         }
         if (request.getCapacity() != null && request.getCapacity() < 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "活动人数上限必须大于 0");
+            throw new BusinessException(20004, "活动人数上限必须大于 0");
         }
         if (request.getMinAge() != null && request.getMinAge() < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "最小年龄不能为负数");
+            throw new BusinessException(20004, "最小年龄不能为负数");
         }
         if (location != null && location.getPoint() != null) {
             Double longitude = location.getPoint().getLongitude();
             Double latitude = location.getPoint().getLatitude();
             if (longitude == null || latitude == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "活动地点坐标必须同时提供经纬度");
+                throw new BusinessException(20004, "活动地点坐标必须同时提供经纬度");
             }
         }
     }
@@ -294,7 +293,7 @@ public class ActivityDraftService {
         try {
             return Instant.parse(value);
         } catch (DateTimeParseException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + "格式不合法");
+            throw new BusinessException(20004, fieldName + "格式不合法");
         }
     }
 
