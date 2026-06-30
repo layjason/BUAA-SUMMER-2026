@@ -1,27 +1,21 @@
 <template>
   <view class="page">
-    <!-- 未登录：登录入口 -->
-    <view v-if="!authStore.isLoggedIn" class="placeholder">
-      <text class="placeholder-text">{{ t('我的') }}</text>
-      <text class="placeholder-desc">{{ t('profile.notLoggedInTip') }}</text>
-      <button class="login-entry-btn" @click="goLogin">{{ t('登录') }}</button>
-    </view>
-
-    <!-- 已登录：个人中心 -->
-    <view v-else class="profile-container">
-      <view class="user-card">
+    <view class="profile-container">
+      <!-- 用户卡片：未登录/已登录共用布局 -->
+      <view class="user-card" @click="onCardClick">
         <view class="avatar-placeholder">
           <text class="avatar-text">{{ initialChar }}</text>
         </view>
         <view class="user-info">
-          <text class="user-id">{{ t('profile.userPrefix') }} {{ authStore.userId }}</text>
-          <text class="user-kind">{{
+          <text class="user-id">{{ displayName }}</text>
+          <text v-if="authStore.isLoggedIn" class="user-kind">{{
             authStore.userKind === 'merchant' ? t('profile.merchant') : t('profile.personal')
           }}</text>
         </view>
       </view>
 
-      <view class="menu-list">
+      <!-- 菜单：仅登录后可见 -->
+      <view v-if="authStore.isLoggedIn" class="menu-list">
         <view class="menu-item">
           <text class="menu-text">{{ t('profile.myActivities') }}</text>
           <text class="menu-arrow">&gt;</text>
@@ -40,7 +34,9 @@
         </view>
       </view>
 
-      <button class="logout-btn" @click="handleLogout">{{ t('退出登录') }}</button>
+      <button v-if="authStore.isLoggedIn" class="logout-btn" @click="handleLogout">
+        {{ t('退出登录') }}
+      </button>
     </view>
   </view>
 </template>
@@ -49,12 +45,14 @@
 /**
  * 我的 - 个人中心
  *
- * 未登录时展示登录入口，已登录时展示用户信息和功能菜单。
+ * 未登录时显示与已登录相同的卡片布局，"点我登录/注册"替代昵称；
+ * 首次进入本 Tab 时若未登录则自动跳转登录页。
  * 前置条件：无
- * 后置条件：登出后清除认证状态并刷新页面状态
+ * 后置条件：登出后清除认证状态；未登录时自动跳转登录页
  */
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { onShow } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api'
 
@@ -62,7 +60,27 @@ const { t } = useI18n()
 const authStore = useAuthStore()
 
 /**
- * 用户头像首字符
+ * 防止自动跳转死循环的标志
+ *
+ * 首次进入本页且未登录时自动跳转登录页并设置此标志。
+ * 标志仅在登录成功后重置，避免 navigateTo 异步导致 onHide 误判。
+ */
+let autoRedirected = false
+
+/**
+ * 登录成功后重置自动跳转标志，允许下次未登录时再次触发跳转
+ */
+watch(
+  () => authStore.isLoggedIn,
+  (isLoggedIn) => {
+    if (isLoggedIn) {
+      autoRedirected = false
+    }
+  },
+)
+
+/**
+ * 头像首字符
  */
 const initialChar = computed(() => {
   if (!authStore.userId) return '?'
@@ -70,10 +88,38 @@ const initialChar = computed(() => {
 })
 
 /**
- * 跳转登录页
+ * 卡片显示名称：已登录显示用户ID，未登录显示引导文案
  */
-function goLogin(): void {
-  uni.navigateTo({ url: '/pages/login/index' })
+const displayName = computed(() => {
+  if (authStore.isLoggedIn) {
+    return t('profile.userPrefix') + ' ' + authStore.userId
+  }
+  return t('profile.tapToLogin')
+})
+
+/**
+ * Tab 页面每次显示时检查登录态，未登录则自动跳转登录页
+ *
+ * 使用 navigateTo 以便用户可从登录页返回本页查看引导卡片。
+ * autoRedirected 标志防止返回后再次跳转形成死循环，
+ * 标志在登录成功后重置。
+ */
+onShow(() => {
+  if (!authStore.isLoggedIn && !autoRedirected) {
+    autoRedirected = true
+    uni.navigateTo({ url: '/pages/login/index' })
+  }
+})
+
+/**
+ * 点击用户卡片
+ *
+ * 未登录时跳转登录页；已登录时暂无操作（预留给后续个人资料编辑入口）
+ */
+function onCardClick(): void {
+  if (!authStore.isLoggedIn) {
+    uni.navigateTo({ url: '/pages/login/index' })
+  }
 }
 
 /**
@@ -90,6 +136,7 @@ async function handleLogout(): Promise<void> {
     /* 即使服务端调用失败也清除本地状态 */
   }
   authStore.clearTokens()
+  autoRedirected = false
 }
 </script>
 
@@ -99,40 +146,6 @@ async function handleLogout(): Promise<void> {
   background-color: #f7f8fa;
 }
 
-/* 未登录 */
-.placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-top: 200rpx;
-}
-
-.placeholder-text {
-  font-size: 36rpx;
-  color: #323233;
-  font-weight: 600;
-}
-
-.placeholder-desc {
-  font-size: 28rpx;
-  color: #969799;
-  margin-top: 16rpx;
-}
-
-.login-entry-btn {
-  margin-top: 48rpx;
-  width: 320rpx;
-  height: 80rpx;
-  line-height: 80rpx;
-  background-color: #1989fa;
-  color: #fff;
-  font-size: 30rpx;
-  border-radius: 40rpx;
-  border: none;
-}
-
-/* 已登录 - 用户卡片 */
 .profile-container {
   padding: 32rpx 32rpx 0;
 }
@@ -181,7 +194,6 @@ async function handleLogout(): Promise<void> {
   margin-top: 8rpx;
 }
 
-/* 菜单 */
 .menu-list {
   background-color: #fff;
   border-radius: 12rpx;
@@ -210,7 +222,6 @@ async function handleLogout(): Promise<void> {
   color: #c8c9cc;
 }
 
-/* 退出按钮 */
 .logout-btn {
   width: 100%;
   height: 88rpx;
