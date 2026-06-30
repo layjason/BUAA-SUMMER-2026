@@ -1,8 +1,55 @@
 <template>
   <view class="page">
-    <view class="placeholder">
-      <text class="placeholder-text">登录</text>
-      <text class="placeholder-desc">登录页面即将在 M1 中实现</text>
+    <view class="login-container">
+      <!-- 标题区域 -->
+      <view class="header">
+        <text class="title">{{ t('login.title') }}</text>
+        <text class="subtitle">{{ t('login.subtitle') }}</text>
+      </view>
+
+      <!-- 表单区域 -->
+      <view class="form">
+        <!-- 邮箱 -->
+        <view class="form-item">
+          <text class="label">{{ t('login.email') }}</text>
+          <input
+            v-model="email"
+            class="input"
+            type="text"
+            :placeholder="t('login.emailPlaceholder')"
+            placeholder-class="input-placeholder"
+          />
+          <text v-if="emailError" class="field-error">{{ emailError }}</text>
+        </view>
+
+        <!-- 密码 -->
+        <view class="form-item">
+          <text class="label">{{ t('login.password') }}</text>
+          <input
+            v-model="password"
+            class="input"
+            type="password"
+            :placeholder="t('login.passwordPlaceholder')"
+            placeholder-class="input-placeholder"
+          />
+          <text v-if="passwordError" class="field-error">{{ passwordError }}</text>
+        </view>
+
+        <!-- 错误提示 -->
+        <view v-if="formError" class="form-error">
+          <text>{{ formError }}</text>
+        </view>
+
+        <!-- 登录按钮 -->
+        <button class="login-btn" :disabled="loading" :loading="loading" @click="handleLogin">
+          {{ loading ? '' : t('login.button') }}
+        </button>
+
+        <!-- 底部链接 -->
+        <view class="footer-links">
+          <text class="link" @click="goRegister">{{ t('login.toRegister') }}</text>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -11,10 +58,129 @@
 /**
  * 登录页
  *
- * M1 将在此实现邮箱密码登录
+ * 实现邮箱密码登录功能。
  * 前置条件：用户未登录
- * 后置条件：登录成功跳转首页
+ * 后置条件：登录成功跳转首页 TabBar
  */
+import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
+import { BusinessError } from '@/api'
+import { getErrorMessage } from '@/utils/error'
+
+const { t } = useI18n()
+const authStore = useAuthStore()
+
+const email = ref('')
+const password = ref('')
+const loading = ref(false)
+
+const emailError = ref('')
+const passwordError = ref('')
+const formError = ref('')
+
+/**
+ * 若已登录，直接跳转首页
+ */
+onMounted(() => {
+  if (authStore.isLoggedIn) {
+    uni.switchTab({ url: '/pages/home/index' })
+  }
+})
+
+/**
+ * 校验邮箱格式
+ *
+ * @returns true 表示校验通过
+ */
+function validateEmail(): boolean {
+  emailError.value = ''
+  const value = email.value.trim()
+  if (!value) {
+    emailError.value = '' // 邮箱为空不作为单独字段错误，按钮校验时统一处理
+    return false
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(value)) {
+    emailError.value = t('login.emailFormatError')
+    return false
+  }
+  return true
+}
+
+/**
+ * 校验密码非空
+ *
+ * @returns true 表示校验通过
+ */
+function validatePassword(): boolean {
+  passwordError.value = ''
+  if (!password.value) {
+    passwordError.value = '' // 密码为空不作为单独字段错误
+    return false
+  }
+  return true
+}
+
+/**
+ * 整体校验
+ *
+ * @returns true 表示全部校验通过
+ */
+function validateForm(): boolean {
+  formError.value = ''
+  const emailValid = validateEmail()
+  const passwordValid = validatePassword()
+
+  if (!email.value.trim() && !password.value) {
+    formError.value = t('login.emailFormatError')
+    return false
+  }
+  if (!email.value.trim()) {
+    formError.value = t('login.emailFormatError')
+    return false
+  }
+  if (!password.value) {
+    formError.value = t('login.passwordRequired')
+    return false
+  }
+  if (!emailValid) return false
+  if (!passwordValid) return false
+  return true
+}
+
+/**
+ * 处理登录
+ *
+ * 调用登录 API，成功则跳转首页，失败则展示错误提示
+ */
+async function handleLogin() {
+  if (loading.value) return
+  if (!validateForm()) return
+
+  loading.value = true
+  formError.value = ''
+
+  try {
+    await authStore.login(email.value.trim(), password.value)
+    uni.switchTab({ url: '/pages/home/index' })
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      formError.value = getErrorMessage(error.code)
+    } else {
+      formError.value = getErrorMessage(0, '登录失败，请稍后重试')
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+/**
+ * 跳转注册页
+ */
+function goRegister(): void {
+  uni.navigateTo({ url: '/pages/register/index' })
+}
 </script>
 
 <style scoped>
@@ -22,21 +188,96 @@
   min-height: 100vh;
   background-color: #f7f8fa;
 }
-.placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-top: 200rpx;
+
+.login-container {
+  padding: 120rpx 48rpx 0;
 }
-.placeholder-text {
-  font-size: 36rpx;
+
+.header {
+  margin-bottom: 64rpx;
+}
+
+.title {
+  display: block;
+  font-size: 48rpx;
+  font-weight: 700;
   color: #323233;
-  font-weight: 600;
+  margin-bottom: 16rpx;
 }
-.placeholder-desc {
+
+.subtitle {
+  display: block;
   font-size: 28rpx;
   color: #969799;
+}
+
+.form-item {
+  margin-bottom: 32rpx;
+}
+
+.label {
+  display: block;
+  font-size: 28rpx;
+  color: #323233;
+  margin-bottom: 12rpx;
+}
+
+.input {
+  width: 100%;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background-color: #fff;
+  border-radius: 8rpx;
+  font-size: 30rpx;
+  color: #323233;
+  box-sizing: border-box;
+}
+
+.input-placeholder {
+  color: #c8c9cc;
+}
+
+.field-error {
+  display: block;
+  font-size: 24rpx;
+  color: #ee0a24;
+  margin-top: 8rpx;
+}
+
+.form-error {
+  background-color: #fff2f0;
+  border: 1rpx solid #ffccc7;
+  border-radius: 8rpx;
+  padding: 16rpx 24rpx;
+  margin-bottom: 24rpx;
+  font-size: 26rpx;
+  color: #ee0a24;
+}
+
+.login-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background-color: #1989fa;
+  color: #fff;
+  font-size: 32rpx;
+  border-radius: 8rpx;
+  border: none;
   margin-top: 16rpx;
+}
+
+.login-btn[disabled] {
+  opacity: 0.6;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  margin-top: 32rpx;
+}
+
+.link {
+  font-size: 28rpx;
+  color: #1989fa;
 }
 </style>
