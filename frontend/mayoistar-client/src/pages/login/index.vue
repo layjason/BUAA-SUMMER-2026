@@ -1,51 +1,27 @@
 <template>
   <view class="page">
     <view class="login-container">
-      <!-- 标题区域 -->
-      <view class="header">
-        <text class="title">{{ t('login.title') }}</text>
-        <text class="subtitle">{{ t('login.subtitle') }}</text>
-      </view>
+      <PageHeader :title="t('login.title')" :subtitle="t('login.subtitle')" />
 
-      <!-- 表单区域 -->
       <view class="form">
-        <!-- 邮箱 -->
-        <view class="form-item">
-          <text class="label">{{ t('login.email') }}</text>
-          <input
-            v-model="email"
-            class="input"
-            type="text"
-            :placeholder="t('login.emailPlaceholder')"
-            placeholder-class="input-placeholder"
-          />
-          <text v-if="emailError" class="field-error">{{ emailError }}</text>
-        </view>
+        <FormInput
+          v-model="email"
+          :label="t('login.email')"
+          :placeholder="t('login.emailPlaceholder')"
+          :error="emailError"
+        />
+        <FormInput
+          v-model="password"
+          :label="t('login.password')"
+          :placeholder="t('login.passwordPlaceholder')"
+          type="password"
+          :error="passwordError"
+        />
 
-        <!-- 密码 -->
-        <view class="form-item">
-          <text class="label">{{ t('login.password') }}</text>
-          <input
-            v-model="password"
-            class="input"
-            type="password"
-            :placeholder="t('login.passwordPlaceholder')"
-            placeholder-class="input-placeholder"
-          />
-          <text v-if="passwordError" class="field-error">{{ passwordError }}</text>
-        </view>
+        <FormError :message="formError" />
 
-        <!-- 错误提示 -->
-        <view v-if="formError" class="form-error">
-          <text>{{ formError }}</text>
-        </view>
+        <SubmitButton :text="t('login.button')" :loading="loading" @click="handleLogin" />
 
-        <!-- 登录按钮 -->
-        <button class="login-btn" :disabled="loading" :loading="loading" @click="handleLogin">
-          {{ loading ? '' : t('login.button') }}
-        </button>
-
-        <!-- 底部链接 -->
         <view class="footer-links">
           <text class="link" @click="goForgotPassword">{{ t('login.forgotPassword') }}</text>
           <text class="link" @click="goRegister">{{ t('login.toRegister') }}</text>
@@ -68,6 +44,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
+import { PageHeader, FormInput, FormError, SubmitButton } from '@/components'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -98,7 +75,7 @@ function validateEmail(): boolean {
   emailError.value = ''
   const value = email.value.trim()
   if (!value) {
-    emailError.value = '' // 邮箱为空不作为单独字段错误，按钮校验时统一处理
+    emailError.value = ''
     return false
   }
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -117,7 +94,7 @@ function validateEmail(): boolean {
 function validatePassword(): boolean {
   passwordError.value = ''
   if (!password.value) {
-    passwordError.value = '' // 密码为空不作为单独字段错误
+    passwordError.value = ''
     return false
   }
   return true
@@ -190,16 +167,10 @@ async function handleLogin() {
   }
 }
 
-/**
- * 跳转注册页
- */
 function goRegister(): void {
   uni.navigateTo({ url: '/pages/register/index' })
 }
 
-/**
- * 跳转忘记密码页
- */
 function goForgotPassword(): void {
   uni.navigateTo({ url: '/pages/forgot-password/index' })
 }
@@ -213,83 +184,6 @@ function goForgotPassword(): void {
 
 .login-container {
   padding: 120rpx 48rpx 0;
-}
-
-.header {
-  margin-bottom: 64rpx;
-}
-
-.title {
-  display: block;
-  font-size: 48rpx;
-  font-weight: 700;
-  color: #323233;
-  margin-bottom: 16rpx;
-}
-
-.subtitle {
-  display: block;
-  font-size: 28rpx;
-  color: #969799;
-}
-
-.form-item {
-  margin-bottom: 32rpx;
-}
-
-.label {
-  display: block;
-  font-size: 28rpx;
-  color: #323233;
-  margin-bottom: 12rpx;
-}
-
-.input {
-  width: 100%;
-  height: 88rpx;
-  padding: 0 24rpx;
-  background-color: #fff;
-  border-radius: 8rpx;
-  font-size: 30rpx;
-  color: #323233;
-  box-sizing: border-box;
-}
-
-.input-placeholder {
-  color: #c8c9cc;
-}
-
-.field-error {
-  display: block;
-  font-size: 24rpx;
-  color: #ee0a24;
-  margin-top: 8rpx;
-}
-
-.form-error {
-  background-color: #fff2f0;
-  border: 1rpx solid #ffccc7;
-  border-radius: 8rpx;
-  padding: 16rpx 24rpx;
-  margin-bottom: 24rpx;
-  font-size: 26rpx;
-  color: #ee0a24;
-}
-
-.login-btn {
-  width: 100%;
-  height: 88rpx;
-  line-height: 88rpx;
-  background-color: #1989fa;
-  color: #fff;
-  font-size: 32rpx;
-  border-radius: 8rpx;
-  border: none;
-  margin-top: 16rpx;
-}
-
-.login-btn[disabled] {
-  opacity: 0.6;
 }
 
 .footer-links {
