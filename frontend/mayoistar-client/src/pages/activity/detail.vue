@@ -5,7 +5,7 @@
     <view v-else-if="errorMsg" class="error-text">{{ errorMsg }}</view>
 
     <template v-else>
-      <scroll-view class="scroll-area" scroll-y>
+      <view class="content">
         <!-- 图片轮播 -->
         <view v-if="activity.images.length > 0" class="swiper-wrapper">
           <swiper
@@ -78,9 +78,7 @@
           </view>
           <text v-if="safetyExpanded" class="section-body">{{ activity.safetyNotice }}</text>
         </view>
-
-        <view class="bottom-spacer" />
-      </scroll-view>
+      </view>
 
       <!-- 底部操作按钮 -->
       <view class="action-bar">
@@ -340,9 +338,7 @@ onLoad((query) => {
 <style scoped>
 .page {
   background-color: #f7f8fa;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
+  min-height: 100vh;
 }
 
 .loading-text,
@@ -357,10 +353,9 @@ onLoad((query) => {
   color: #ee0a24;
 }
 
-/* ---- 滚动区域 ---- */
-.scroll-area {
-  flex: 1;
-  overflow-y: auto;
+/* ---- 内容区域（为固定按钮留出底部空间） ---- */
+.content {
+  padding-bottom: 160rpx;
 }
 
 /* ---- 图片轮播 ---- */
@@ -534,11 +529,6 @@ onLoad((query) => {
   color: #646566;
   line-height: 1.7;
   white-space: pre-wrap;
-}
-
-/* ---- 底部间距 ---- */
-.bottom-spacer {
-  height: 48rpx;
 }
 
 /* ---- 底部操作按钮 ---- */
