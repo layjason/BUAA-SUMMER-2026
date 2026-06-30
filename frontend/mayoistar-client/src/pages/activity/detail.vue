@@ -98,6 +98,23 @@
         >
           {{ t('activityDetail.viewParticipants') }}
         </button>
+        <button v-if="canReview" class="action-btn action-btn-secondary" @click="goReview">
+          {{ t('activityDetail.writeReview') }}
+        </button>
+        <button
+          v-if="isOrganizer && activity.runtimeStatus === 'ended'"
+          class="action-btn action-btn-secondary"
+          @click="goSummary"
+        >
+          {{ t('activityDetail.writeSummary') }}
+        </button>
+        <button
+          v-if="isOrganizer"
+          class="action-btn action-btn-secondary"
+          @click="handleViewCheckIns"
+        >
+          {{ t('activityDetail.checkInManagement') }}
+        </button>
       </view>
     </template>
   </view>
@@ -126,6 +143,16 @@ const loading = ref(true)
 const errorMsg = ref('')
 const activityId = ref('')
 
+interface MediaFile {
+  mediaId: string
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  usage: string
+  url?: string
+  uploadedAt: string
+}
+
 interface ActivityDetail {
   activityId: string
   title: string
@@ -140,8 +167,8 @@ interface ActivityDetail {
     placeName?: string
     point: { longitude: number; latitude: number }
   }
-  coverImage: { url?: string; mediaId: string } | null
-  images: { url?: string; mediaId: string }[]
+  coverImage: MediaFile | null
+  images: MediaFile[]
   feeAmount?: number
   feeDescription?: string
   minAge?: number
@@ -205,6 +232,21 @@ const tagsLabel = computed(() => {
 const isOrganizer = computed(() => {
   return activity.value?.organizerId === authStore.userId
 })
+
+/** 当前用户是否可以评价（已签到且活动已结束） */
+const canReview = computed(() => {
+  return participation.value?.status === 'checkedIn' && activity.value?.runtimeStatus === 'ended'
+})
+
+/** 跳转到评价页 */
+function goReview(): void {
+  uni.navigateTo({ url: `/pages/activity/review?activityId=${activityId.value}` })
+}
+
+/** 跳转到总结页 */
+function goSummary(): void {
+  uni.navigateTo({ url: `/pages/activity/summary?activityId=${activityId.value}` })
+}
 
 const isFull = computed(() => {
   if (!activity.value) return false
@@ -300,6 +342,31 @@ async function handleViewParticipants(): Promise<void> {
   } catch {
     uni.showModal({
       title: '参与者列表',
+      content: '加载失败',
+      showCancel: false,
+    })
+  }
+}
+
+/**
+ * 查看签到管理列表
+ */
+async function handleViewCheckIns(): Promise<void> {
+  try {
+    const result = (await api.get('/activities/{activityId}/check-ins', {
+      path: { activityId: activityId.value },
+    })) as { items: { nickname: string; registrationStatus: string }[] }
+    const list = result.items
+      .map((p) => `${p.nickname}（${p.registrationStatus === 'checkedIn' ? '已签到' : '未签到'}）`)
+      .join('\n')
+    uni.showModal({
+      title: t('activityDetail.checkInManagement'),
+      content: list || '暂无签到记录',
+      showCancel: false,
+    })
+  } catch {
+    uni.showModal({
+      title: t('activityDetail.checkInManagement'),
       content: '加载失败',
       showCancel: false,
     })

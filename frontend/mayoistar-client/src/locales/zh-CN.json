@@ -204,7 +204,10 @@
     "images": "活动图片",
     "safetyNotice": "安全须知",
     "loading": "加载中...",
-    "viewParticipants": "参与者列表"
+    "viewParticipants": "参与者列表",
+    "writeReview": "评价活动",
+    "writeSummary": "发布总结",
+    "checkInManagement": "签到管理"
   },
 
   "activityEdit": {
@@ -257,5 +260,29 @@
     "timeRangeInvalid": "结束时间不能早于开始时间",
     "deadlineInvalid": "报名截止时间不能晚于活动开始时间",
     "loadFailed": "加载活动信息失败"
+  },
+
+  "activityReview": {
+    "title": "评价活动",
+    "rating": "评分",
+    "content": "评价内容",
+    "contentPlaceholder": "分享你的活动体验...",
+    "submit": "提交评价",
+    "success": "评价提交成功",
+    "failed": "评价提交失败"
+  },
+
+  "activitySummary": {
+    "title": "发布活动图文总结",
+    "images": "总结图片",
+    "summaryTitle": "总结标题",
+    "summaryTitlePlaceholder": "请输入总结标题",
+    "content": "总结正文",
+    "contentPlaceholder": "请详细描述活动过程和亮点...",
+    "submit": "发布总结",
+    "success": "总结发布成功",
+    "failed": "总结发布失败",
+    "titleRequired": "请输入总结标题",
+    "contentRequired": "请输入总结正文"
   }
 }

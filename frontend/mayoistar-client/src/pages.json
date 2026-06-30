@@ -116,6 +116,18 @@
       "style": {
         "navigationBarTitleText": "编辑活动"
       }
+    },
+    {
+      "path": "pages/activity/review",
+      "style": {
+        "navigationBarTitleText": "评价活动"
+      }
+    },
+    {
+      "path": "pages/activity/summary",
+      "style": {
+        "navigationBarTitleText": "发布活动总结"
+      }
     }
   ],
   "tabBar": {

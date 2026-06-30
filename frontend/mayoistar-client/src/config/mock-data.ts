@@ -1656,4 +1656,58 @@ export const mockData: Record<string, MockResponse> = {
       totalPages: 1,
     },
   },
+
+  /* ===================== 评价/总结/签到管理 ===================== */
+
+  'POST /activities/2001/reviews': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {},
+  },
+
+  'POST /activities/2001/summaries': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      summaryId: 'sum001',
+      activityId: '2001',
+      title: '周末羽毛球友谊赛总结',
+      content: '这是一次非常愉快的活动...',
+      images: [],
+      imageTags: [],
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  'GET /activities/2001/check-ins': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      items: [
+        {
+          registrationId: 'r001',
+          userId: '10003',
+          nickname: '小红',
+          registrationStatus: 'registered',
+        },
+        {
+          registrationId: 'r002',
+          userId: '10004',
+          nickname: '登山达人老李',
+          registrationStatus: 'checkedIn',
+          checkedInAt: '2026-07-05T14:15:00Z',
+        },
+        {
+          registrationId: 'r003',
+          userId: '10010',
+          nickname: '新用户001',
+          registrationStatus: 'registered',
+        },
+      ],
+      total: 3,
+      page: 1,
+      pageSize: 20,
+      totalPages: 1,
+    },
+  },
 }
