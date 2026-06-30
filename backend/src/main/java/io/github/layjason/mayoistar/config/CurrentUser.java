@@ -7,32 +7,30 @@ import org.springframework.stereotype.Component;
 /**
  * 当前用户持有者，从 SecurityContext 中获取当前登录用户 ID。
  *
- * <p>类职责：为 Service 层提供统一的当前用户身份获取方式。
+ * <p>类职责：为 Controller 层提供统一的当前用户身份获取方式。
  *
- * <p>类不变量：在已认证请求中返回 JWT 中的真实用户 ID，未认证时返回占位用户 ID。
+ * <p>前置条件：JwtAuthenticationFilter（或 TestSecurityConfiguration）
+ * 已完成认证并设置 SecurityContext。
  *
- * <p>前置条件：JwtAuthenticationFilter 已完成认证并设置 SecurityContext。
- *
- * <p>后置条件：返回当前请求用户的 userId。
+ * <p>后置条件：返回当前请求用户的 userId，非空。
  */
 @Component
 public class CurrentUser {
 
-    private static final String PLACEHOLDER_USER_ID = "00000000-0000-0000-0000-000000000001";
-
     /**
      * 获取当前登录用户 ID。
      *
-     * <p>前置条件：若请求已通过 JWT 认证，则 SecurityContext 中包含 userId。
-     * 否则返回占位用户 ID（用于测试场景）。
+     * <p>前置条件：SecurityContext 中已设置认证信息，principal 为 userId 字符串。
      *
-     * <p>后置条件：返回当前用户 ID，非空。
+     * <p>后置条件：返回当前用户 ID。
+     *
+     * @throws IllegalStateException 未认证时抛出
      */
     public String getUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof String userId) {
             return userId;
         }
-        return PLACEHOLDER_USER_ID;
+        throw new IllegalStateException("无法获取当前用户：SecurityContext 中无有效认证信息");
     }
 }
