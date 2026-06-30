@@ -2,21 +2,41 @@ package io.github.layjason.mayoistar.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.layjason.mayoistar.api.admin.AdminDtos;
+import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
+import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.admin.Admin;
+import io.github.layjason.mayoistar.entity.admin.BanRecord;
+import io.github.layjason.mayoistar.entity.admin.TeamModerationRecord;
+import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.MerchantProfile;
 import io.github.layjason.mayoistar.entity.identity.Qualification;
 import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
+import io.github.layjason.mayoistar.entity.social.Report;
+import io.github.layjason.mayoistar.entity.social.ReportStatus;
+import io.github.layjason.mayoistar.entity.social.ReportTargetType;
+import io.github.layjason.mayoistar.entity.social.Team;
+import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.repository.ActivityRepository;
+import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.AdminRepository;
+import io.github.layjason.mayoistar.repository.BanRecordRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
 import io.github.layjason.mayoistar.repository.QualificationRepository;
+import io.github.layjason.mayoistar.repository.ReportRepository;
+import io.github.layjason.mayoistar.repository.TeamMemberRepository;
+import io.github.layjason.mayoistar.repository.TeamModerationRecordRepository;
+import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
@@ -48,10 +68,34 @@ class AdminServiceTest {
     @Mock
     private MediaFileRepository mediaFileRepository;
 
+    @Mock
+    private BanRecordRepository banRecordRepository;
+
+    @Mock
+    private ActivityRepository activityRepository;
+
+    @Mock
+    private ActivityReviewRecordRepository activityReviewRecordRepository;
+
+    @Mock
+    private TeamRepository teamRepository;
+
+    @Mock
+    private TeamMemberRepository teamMemberRepository;
+
+    @Mock
+    private TeamModerationRecordRepository teamModerationRecordRepository;
+
+    @Mock
+    private ReportRepository reportRepository;
+
     private AdminService adminService;
 
     private final String adminId = UUID.randomUUID().toString();
-    private final String merchantId = UUID.randomUUID().toString();
+    private final String userId = UUID.randomUUID().toString();
+    private final String teamId = UUID.randomUUID().toString();
+    private final String activityId = UUID.randomUUID().toString();
+    private final String reportId = UUID.randomUUID().toString();
 
     @BeforeEach
     void setUp() {
@@ -60,8 +104,17 @@ class AdminServiceTest {
                 merchantProfileRepository,
                 qualificationRepository,
                 adminRepository,
-                mediaFileRepository);
+                mediaFileRepository,
+                banRecordRepository,
+                activityRepository,
+                activityReviewRecordRepository,
+                teamRepository,
+                teamMemberRepository,
+                teamModerationRecordRepository,
+                reportRepository);
     }
+
+    // ======================== 商家审核 ========================
 
     @Nested
     @DisplayName("审核商家资质")
@@ -76,15 +129,15 @@ class AdminServiceTest {
             Qualification qualification = buildPendingQualification();
 
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(admin));
-            when(userRepository.findById(merchantId)).thenReturn(Optional.of(user));
-            when(qualificationRepository.findByUserIdAndStatus(merchantId, QualificationStatus.pending))
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(qualificationRepository.findByUserIdAndStatus(userId, QualificationStatus.pending))
                     .thenReturn(Optional.of(qualification));
-            when(merchantProfileRepository.findByUserId(merchantId)).thenReturn(Optional.of(profile));
+            when(merchantProfileRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
 
             AdminDtos.MerchantReviewRequest request = new AdminDtos.MerchantReviewRequest();
             request.setApproved(true);
 
-            var result = adminService.reviewMerchantQualification(merchantId, adminId, request);
+            var result = adminService.reviewMerchantQualification(userId, adminId, request);
 
             assertThat(result.getQualificationStatus()).isEqualTo(QualificationStatus.approved);
             assertThat(qualification.getStatus()).isEqualTo(QualificationStatus.approved);
@@ -101,19 +154,18 @@ class AdminServiceTest {
             Qualification qualification = buildPendingQualification();
 
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(admin));
-            when(userRepository.findById(merchantId)).thenReturn(Optional.of(user));
-            when(qualificationRepository.findByUserIdAndStatus(merchantId, QualificationStatus.pending))
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(qualificationRepository.findByUserIdAndStatus(userId, QualificationStatus.pending))
                     .thenReturn(Optional.of(qualification));
-            when(merchantProfileRepository.findByUserId(merchantId)).thenReturn(Optional.of(profile));
+            when(merchantProfileRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
 
             AdminDtos.MerchantReviewRequest request = new AdminDtos.MerchantReviewRequest();
             request.setApproved(false);
             request.setReason("资质不清晰");
 
-            var result = adminService.reviewMerchantQualification(merchantId, adminId, request);
+            var result = adminService.reviewMerchantQualification(userId, adminId, request);
 
             assertThat(result.getQualificationStatus()).isEqualTo(QualificationStatus.rejected);
-            assertThat(qualification.getStatus()).isEqualTo(QualificationStatus.rejected);
             assertThat(qualification.getRejectReason()).isEqualTo("资质不清晰");
         }
 
@@ -125,14 +177,14 @@ class AdminServiceTest {
             Qualification qualification = buildPendingQualification();
 
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(admin));
-            when(userRepository.findById(merchantId)).thenReturn(Optional.of(user));
-            when(qualificationRepository.findByUserIdAndStatus(merchantId, QualificationStatus.pending))
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(qualificationRepository.findByUserIdAndStatus(userId, QualificationStatus.pending))
                     .thenReturn(Optional.of(qualification));
 
             AdminDtos.MerchantReviewRequest request = new AdminDtos.MerchantReviewRequest();
             request.setApproved(false);
 
-            assertThatThrownBy(() -> adminService.reviewMerchantQualification(merchantId, adminId, request))
+            assertThatThrownBy(() -> adminService.reviewMerchantQualification(userId, adminId, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
                     .isEqualTo(60006);
@@ -145,48 +197,460 @@ class AdminServiceTest {
             User user = buildMerchantUser();
 
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(admin));
-            when(userRepository.findById(merchantId)).thenReturn(Optional.of(user));
-            when(qualificationRepository.findByUserIdAndStatus(merchantId, QualificationStatus.pending))
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(qualificationRepository.findByUserIdAndStatus(userId, QualificationStatus.pending))
                     .thenReturn(Optional.empty());
 
             AdminDtos.MerchantReviewRequest request = new AdminDtos.MerchantReviewRequest();
             request.setApproved(true);
 
-            assertThatThrownBy(() -> adminService.reviewMerchantQualification(merchantId, adminId, request))
+            assertThatThrownBy(() -> adminService.reviewMerchantQualification(userId, adminId, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
                     .isEqualTo(60005);
         }
+    }
+
+    // ======================== 用户封禁/解封 ========================
+
+    @Nested
+    @DisplayName("封禁用户")
+    class BanUser {
 
         @Test
-        @DisplayName("用户不存在时抛出 60002")
-        void shouldThrowWhenUserNotFound() {
+        @DisplayName("成功封禁用户")
+        void shouldBanUser() {
+            User user = buildActiveUser();
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
-            when(userRepository.findById(merchantId)).thenReturn(Optional.empty());
+            when(activityRepository.countByOrganizerId(userId)).thenReturn(3L);
+            when(teamRepository.countByCreatorId(userId)).thenReturn(1L);
+            when(banRecordRepository.save(any(BanRecord.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            AdminDtos.MerchantReviewRequest request = new AdminDtos.MerchantReviewRequest();
-            request.setApproved(true);
+            AdminDtos.BanUserRequest request = new AdminDtos.BanUserRequest();
+            request.setReason("违规行为");
+            request.setBannedUntil(Instant.now().plusSeconds(86400).toString());
 
-            assertThatThrownBy(() -> adminService.reviewMerchantQualification(merchantId, adminId, request))
+            AdminDtos.AdminUserSummary result = adminService.banUser(userId, adminId, request);
+
+            assertThat(user.getAccountStatus()).isEqualTo(AccountStatus.banned);
+            assertThat(result.getStatus()).isEqualTo(AccountStatus.banned);
+            verify(banRecordRepository).save(any(BanRecord.class));
+        }
+
+        @Test
+        @DisplayName("已封禁用户再次封禁抛出 60003")
+        void shouldThrowWhenAlreadyBanned() {
+            User user = buildActiveUser();
+            user.setAccountStatus(AccountStatus.banned);
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+            AdminDtos.BanUserRequest request = new AdminDtos.BanUserRequest();
+            request.setReason("再次违规");
+            request.setBannedUntil(Instant.now().plusSeconds(86400).toString());
+
+            assertThatThrownBy(() -> adminService.banUser(userId, adminId, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60003);
+        }
+
+        @Test
+        @DisplayName("封禁原因为空抛出 60006")
+        void shouldThrowWhenReasonIsBlank() {
+            User user = buildActiveUser();
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+
+            AdminDtos.BanUserRequest request = new AdminDtos.BanUserRequest();
+            request.setReason("");
+            request.setBannedUntil(Instant.now().plusSeconds(86400).toString());
+
+            assertThatThrownBy(() -> adminService.banUser(userId, adminId, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60006);
+        }
+    }
+
+    @Nested
+    @DisplayName("解封用户")
+    class UnbanUser {
+
+        @Test
+        @DisplayName("成功解封用户")
+        void shouldUnbanUser() {
+            User user = buildActiveUser();
+            user.setAccountStatus(AccountStatus.banned);
+            BanRecord banRecord = buildBanRecord();
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(banRecordRepository.findActiveBanByUserId(userId)).thenReturn(Optional.of(banRecord));
+            when(activityRepository.countByOrganizerId(userId)).thenReturn(0L);
+            when(teamRepository.countByCreatorId(userId)).thenReturn(0L);
+
+            AdminDtos.AdminUserSummary result = adminService.unbanUser(userId, adminId);
+
+            assertThat(user.getAccountStatus()).isEqualTo(AccountStatus.active);
+            assertThat(result.getStatus()).isEqualTo(AccountStatus.active);
+            assertThat(banRecord.getUnbannedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("未封禁用户解封抛出 60004")
+        void shouldThrowWhenNotBanned() {
+            User user = buildActiveUser();
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> adminService.unbanUser(userId, adminId))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60004);
+        }
+    }
+
+    // ======================== 用户查询 ========================
+
+    @Nested
+    @DisplayName("获取用户详情")
+    class GetUser {
+
+        @Test
+        @DisplayName("获取未封禁用户详情")
+        void shouldGetUserDetailWithoutBan() {
+            User user = buildActiveUser();
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(activityRepository.countByOrganizerId(userId)).thenReturn(2L);
+            when(teamRepository.countByCreatorId(userId)).thenReturn(1L);
+            when(banRecordRepository.findActiveBanByUserId(userId)).thenReturn(Optional.empty());
+
+            AdminDtos.AdminUserDetail result = adminService.getUser(userId);
+
+            assertThat(result.getUserId()).isEqualTo(userId);
+            assertThat(result.getCurrentBanInfo()).isNull();
+        }
+
+        @Test
+        @DisplayName("获取已封禁用户详情含封禁信息")
+        void shouldGetUserDetailWithBan() {
+            User user = buildActiveUser();
+            user.setAccountStatus(AccountStatus.banned);
+            BanRecord banRecord = buildBanRecord();
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(activityRepository.countByOrganizerId(userId)).thenReturn(0L);
+            when(teamRepository.countByCreatorId(userId)).thenReturn(0L);
+            when(banRecordRepository.findActiveBanByUserId(userId)).thenReturn(Optional.of(banRecord));
+
+            AdminDtos.AdminUserDetail result = adminService.getUser(userId);
+
+            assertThat(result.getCurrentBanInfo()).isNotNull();
+            assertThat(result.getCurrentBanInfo().getReason()).isEqualTo("违规行为");
+        }
+
+        @Test
+        @DisplayName("用户不存在抛出 60002")
+        void shouldThrowWhenUserNotFound() {
+            when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> adminService.getUser(userId))
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
                     .isEqualTo(60002);
         }
+    }
+
+    // ======================== 举报管理 ========================
+
+    @Nested
+    @DisplayName("处理举报")
+    class DecideReport {
 
         @Test
-        @DisplayName("管理员不存在时抛出 60000")
-        void shouldThrowWhenAdminNotFound() {
-            when(adminRepository.findById(adminId)).thenReturn(Optional.empty());
+        @DisplayName("成功处理举报")
+        void shouldDecideReport() {
+            Report report = buildReport();
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(reportRepository.findById(reportId)).thenReturn(Optional.of(report));
 
-            AdminDtos.MerchantReviewRequest request = new AdminDtos.MerchantReviewRequest();
-            request.setApproved(true);
+            AdminDtos.ReportDecisionRequest request = new AdminDtos.ReportDecisionRequest();
+            request.setStatus(ReportStatus.resolved);
+            request.setHandlingNote("已处理");
 
-            assertThatThrownBy(() -> adminService.reviewMerchantQualification(merchantId, adminId, request))
+            var result = adminService.decideReport(reportId, adminId, request);
+
+            assertThat(result.getStatus()).isEqualTo(ReportStatus.resolved);
+            assertThat(report.getStatus()).isEqualTo(ReportStatus.resolved);
+            assertThat(report.getHandlingNote()).isEqualTo("已处理");
+        }
+
+        @Test
+        @DisplayName("举报不存在抛出 60007")
+        void shouldThrowWhenReportNotFound() {
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(reportRepository.findById(reportId)).thenReturn(Optional.empty());
+
+            AdminDtos.ReportDecisionRequest request = new AdminDtos.ReportDecisionRequest();
+            request.setStatus(ReportStatus.resolved);
+            request.setHandlingNote("已处理");
+
+            assertThatThrownBy(() -> adminService.decideReport(reportId, adminId, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
-                    .isEqualTo(60000);
+                    .isEqualTo(60007);
         }
     }
+
+    // ======================== 活动管理 ========================
+
+    @Nested
+    @DisplayName("获取活动详情")
+    class GetActivity {
+
+        @Test
+        @DisplayName("成功获取活动详情")
+        void shouldGetActivity() {
+            Activity activity = buildActivity();
+            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
+            when(activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activityId))
+                    .thenReturn(List.of());
+
+            var result = adminService.getActivity(activityId);
+
+            assertThat(result.getActivityId()).isEqualTo(activityId);
+            assertThat(result.getTitle()).isEqualTo("测试活动");
+        }
+
+        @Test
+        @DisplayName("活动不存在抛出 60008")
+        void shouldThrowWhenActivityNotFound() {
+            when(activityRepository.findById(activityId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> adminService.getActivity(activityId))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60008);
+        }
+    }
+
+    @Nested
+    @DisplayName("下架活动")
+    class TakeDownActivity {
+
+        @Test
+        @DisplayName("成功下架活动")
+        void shouldTakeDownActivity() {
+            Activity activity = buildActivity();
+            activity.setRuntimeStatus(ActivityRuntimeStatus.registering);
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
+            when(activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activityId))
+                    .thenReturn(List.of());
+
+            AdminDtos.ActivityModerationRequest request = new AdminDtos.ActivityModerationRequest();
+            request.setReason("违规内容");
+
+            var result = adminService.takeDownActivity(activityId, adminId, request);
+
+            assertThat(activity.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.takenDown);
+        }
+
+        @Test
+        @DisplayName("已下架活动再次下架抛出 60009")
+        void shouldThrowWhenAlreadyTakenDown() {
+            Activity activity = buildActivity();
+            activity.setRuntimeStatus(ActivityRuntimeStatus.takenDown);
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
+
+            AdminDtos.ActivityModerationRequest request = new AdminDtos.ActivityModerationRequest();
+            request.setReason("再次违规");
+
+            assertThatThrownBy(() -> adminService.takeDownActivity(activityId, adminId, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60009);
+        }
+    }
+
+    @Nested
+    @DisplayName("恢复活动")
+    class RestoreActivity {
+
+        @Test
+        @DisplayName("成功恢复活动")
+        void shouldRestoreActivity() {
+            Activity activity = buildActivity();
+            activity.setRuntimeStatus(ActivityRuntimeStatus.takenDown);
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
+            when(activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activityId))
+                    .thenReturn(List.of());
+
+            var result = adminService.restoreActivity(activityId, adminId);
+
+            assertThat(activity.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.registering);
+        }
+
+        @Test
+        @DisplayName("未下架活动恢复抛出 60009")
+        void shouldThrowWhenNotTakenDown() {
+            Activity activity = buildActivity();
+            activity.setRuntimeStatus(ActivityRuntimeStatus.registering);
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
+
+            assertThatThrownBy(() -> adminService.restoreActivity(activityId, adminId))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60009);
+        }
+    }
+
+    // ======================== 小队管理 ========================
+
+    @Nested
+    @DisplayName("获取小队详情")
+    class GetTeam {
+
+        @Test
+        @DisplayName("成功获取小队详情含治理记录")
+        void shouldGetTeamDetail() {
+            Team team = buildTeam();
+            when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+            when(teamMemberRepository.countByTeamId(teamId)).thenReturn(3L);
+            when(teamModerationRecordRepository.findByTeamIdOrderByCreatedAtAsc(teamId))
+                    .thenReturn(List.of());
+
+            var result = adminService.getTeam(teamId);
+
+            assertThat(result.getTeamId()).isEqualTo(teamId);
+            assertThat(result.getName()).isEqualTo("测试小队");
+        }
+
+        @Test
+        @DisplayName("小队不存在抛出 60010")
+        void shouldThrowWhenTeamNotFound() {
+            when(teamRepository.findById(teamId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> adminService.getTeam(teamId))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60010);
+        }
+    }
+
+    @Nested
+    @DisplayName("停用小隊")
+    class DisableTeam {
+
+        @Test
+        @DisplayName("成功停用小队")
+        void shouldDisableTeam() {
+            Team team = buildTeam();
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+            when(teamMemberRepository.countByTeamId(teamId)).thenReturn(2L);
+
+            AdminDtos.TeamModerationRequest request = new AdminDtos.TeamModerationRequest();
+            request.setReason("违规行为");
+
+            var result = adminService.disableTeam(teamId, adminId, request);
+
+            assertThat(team.getStatus()).isEqualTo(TeamStatus.disabled);
+            verify(teamModerationRecordRepository).save(any(TeamModerationRecord.class));
+        }
+
+        @Test
+        @DisplayName("非活跃小队停用抛出 60011")
+        void shouldThrowWhenNotActive() {
+            Team team = buildTeam();
+            team.setStatus(TeamStatus.dissolved);
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+
+            AdminDtos.TeamModerationRequest request = new AdminDtos.TeamModerationRequest();
+            request.setReason("违规");
+
+            assertThatThrownBy(() -> adminService.disableTeam(teamId, adminId, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60011);
+        }
+    }
+
+    @Nested
+    @DisplayName("恢复小队")
+    class RestoreTeam {
+
+        @Test
+        @DisplayName("成功恢复小队")
+        void shouldRestoreTeam() {
+            Team team = buildTeam();
+            team.setStatus(TeamStatus.disabled);
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+            when(teamMemberRepository.countByTeamId(teamId)).thenReturn(1L);
+
+            var result = adminService.restoreTeam(teamId, adminId);
+
+            assertThat(team.getStatus()).isEqualTo(TeamStatus.active);
+            verify(teamModerationRecordRepository).save(any(TeamModerationRecord.class));
+        }
+
+        @Test
+        @DisplayName("非停用小队恢复抛出 60011")
+        void shouldThrowWhenNotDisabled() {
+            Team team = buildTeam();
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+
+            assertThatThrownBy(() -> adminService.restoreTeam(teamId, adminId))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60011);
+        }
+    }
+
+    @Nested
+    @DisplayName("活动审核")
+    class ReviewActivity {
+
+        @Test
+        @DisplayName("审核通过活动")
+        void shouldApproveActivity() {
+            Activity activity = buildActivity();
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
+            when(activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activityId))
+                    .thenReturn(List.of());
+
+            AdminDtos.ReviewDecisionRequest request = new AdminDtos.ReviewDecisionRequest();
+            request.setResult(ReviewStatus.approved);
+
+            var result = adminService.reviewActivity(activityId, adminId, request);
+
+            assertThat(activity.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
+            verify(activityReviewRecordRepository).save(any());
+        }
+
+        @Test
+        @DisplayName("驳回活动但不给原因抛出 60006")
+        void shouldThrowWhenRejectWithoutReason() {
+            Activity activity = buildActivity();
+            when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
+            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
+
+            AdminDtos.ReviewDecisionRequest request = new AdminDtos.ReviewDecisionRequest();
+            request.setResult(ReviewStatus.rejected);
+
+            assertThatThrownBy(() -> adminService.reviewActivity(activityId, adminId, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60006);
+        }
+    }
+
+    // ======================== 辅助构建方法 ========================
 
     private Admin buildAdmin() {
         return Admin.builder()
@@ -196,9 +660,22 @@ class AdminServiceTest {
                 .build();
     }
 
+    private User buildActiveUser() {
+        return User.builder()
+                .userId(userId)
+                .email("user@example.com")
+                .nickname("testuser")
+                .passwordHash("hash")
+                .kind(UserKind.personal)
+                .accountStatus(AccountStatus.active)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+    }
+
     private User buildMerchantUser() {
         return User.builder()
-                .userId(merchantId)
+                .userId(userId)
                 .email("merchant@example.com")
                 .nickname("merchant")
                 .passwordHash("hash")
@@ -211,7 +688,7 @@ class AdminServiceTest {
 
     private MerchantProfile buildMerchantProfile() {
         return MerchantProfile.builder()
-                .userId(merchantId)
+                .userId(userId)
                 .merchantName("测试商家")
                 .updatedAt(Instant.now())
                 .build();
@@ -220,10 +697,63 @@ class AdminServiceTest {
     private Qualification buildPendingQualification() {
         return Qualification.builder()
                 .qualificationId(UUID.randomUUID().toString())
-                .userId(merchantId)
+                .userId(userId)
                 .status(QualificationStatus.pending)
                 .licenseMediaIds(List.of(UUID.randomUUID().toString()))
                 .submittedAt(Instant.now())
+                .createdAt(Instant.now())
+                .build();
+    }
+
+    private BanRecord buildBanRecord() {
+        return BanRecord.builder()
+                .banId(UUID.randomUUID().toString())
+                .userId(userId)
+                .operatorId(adminId)
+                .reason("违规行为")
+                .bannedAt(Instant.now())
+                .bannedUntil(Instant.now().plusSeconds(86400))
+                .build();
+    }
+
+    private Activity buildActivity() {
+        return Activity.builder()
+                .activityId(activityId)
+                .organizerId(userId)
+                .title("测试活动")
+                .tags(List.of("运动"))
+                .startAt(Instant.now())
+                .endAt(Instant.now().plusSeconds(7200))
+                .capacity(10)
+                .reviewStatus(ActivityReviewStatus.pending)
+                .runtimeStatus(ActivityRuntimeStatus.registering)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+    }
+
+    private Team buildTeam() {
+        return Team.builder()
+                .teamId(teamId)
+                .name("测试小队")
+                .tags(List.of("运动"))
+                .capacity(20)
+                .status(TeamStatus.active)
+                .creatorId(userId)
+                .leaderId(userId)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+    }
+
+    private Report buildReport() {
+        return Report.builder()
+                .reportId(reportId)
+                .reporterUserId(userId)
+                .targetType(ReportTargetType.user)
+                .targetId(UUID.randomUUID().toString())
+                .reason("违规内容")
+                .status(ReportStatus.pending)
                 .createdAt(Instant.now())
                 .build();
     }

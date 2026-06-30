@@ -4,6 +4,7 @@ import io.github.layjason.mayoistar.entity.social.Report;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
 import io.github.layjason.mayoistar.entity.social.ReportTargetType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,7 +13,7 @@ import org.springframework.data.repository.query.Param;
  *
  * <p>类职责：提供 Report 实体的 CRUD 及举报统计查询，用于信誉分评定。
  */
-public interface ReportRepository extends JpaRepository<Report, String> {
+public interface ReportRepository extends JpaRepository<Report, String>, JpaSpecificationExecutor<Report> {
 
     /**
      * 统计针对指定用户的举报总数（只计算已处理的举报）。
