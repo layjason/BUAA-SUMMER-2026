@@ -15,22 +15,20 @@
       </view>
 
       <!-- 菜单：仅登录后可见 -->
-      <view v-if="authStore.isLoggedIn" class="menu-list">
-        <view class="menu-item">
-          <text class="menu-text">{{ t('profile.myActivities') }}</text>
-          <text class="menu-arrow">&gt;</text>
-        </view>
-        <view class="menu-item">
-          <text class="menu-text">{{ t('profile.myRegistrations') }}</text>
-          <text class="menu-arrow">&gt;</text>
-        </view>
-        <view class="menu-item">
-          <text class="menu-text">{{ t('profile.myReviews') }}</text>
-          <text class="menu-arrow">&gt;</text>
-        </view>
-        <view class="menu-item">
-          <text class="menu-text">{{ t('profile.settings') }}</text>
-          <text class="menu-arrow">&gt;</text>
+      <view v-if="authStore.isLoggedIn">
+        <view v-for="section in menuSections" :key="section.title" class="menu-section">
+          <text class="menu-section-title">{{ section.title }}</text>
+          <view class="menu-list">
+            <view
+              v-for="item in section.items"
+              :key="item.key"
+              class="menu-item"
+              @click="goToPage(item.route)"
+            >
+              <text class="menu-text">{{ item.label }}</text>
+              <text class="menu-arrow">&gt;</text>
+            </view>
+          </view>
         </view>
       </view>
 
@@ -78,6 +76,67 @@ watch(
     }
   },
 )
+
+/**
+ * 菜单分组数据
+ */
+interface MenuItem {
+  key: string
+  label: string
+  route: string
+}
+
+interface MenuSection {
+  title: string
+  items: MenuItem[]
+}
+
+const menuSections: MenuSection[] = [
+  {
+    title: t('profile.sectionMyContent'),
+    items: [
+      {
+        key: 'myActivities',
+        label: t('profile.myActivities'),
+        route: '/pages/profile/my-activities.vue',
+      },
+      {
+        key: 'myRegistrations',
+        label: t('profile.myRegistrations'),
+        route: '/pages/profile/my-registrations.vue',
+      },
+    ],
+  },
+  {
+    title: t('profile.sectionSocial'),
+    items: [
+      { key: 'myFriends', label: t('profile.myFriends'), route: '/pages/profile/my-friends.vue' },
+      {
+        key: 'friendRequests',
+        label: t('profile.friendRequests'),
+        route: '/pages/profile/friend-requests.vue',
+      },
+      { key: 'myTeams', label: t('profile.myTeams'), route: '/pages/profile/my-teams.vue' },
+      { key: 'blacklist', label: t('profile.blacklist'), route: '/pages/profile/blacklist.vue' },
+    ],
+  },
+  {
+    title: t('profile.sectionOther'),
+    items: [
+      { key: 'editProfile', label: t('profile.editProfile'), route: '/pages/profile/edit.vue' },
+      { key: 'settings', label: t('profile.settings'), route: '/pages/profile/settings.vue' },
+    ],
+  },
+]
+
+/**
+ * 跳转子页面
+ *
+ * @param route 目标页面路径
+ */
+function goToPage(route: string): void {
+  uni.navigateTo({ url: route })
+}
 
 /**
  * 头像首字符
@@ -194,10 +253,20 @@ async function handleLogout(): Promise<void> {
   margin-top: 8rpx;
 }
 
+.menu-section {
+  margin-bottom: 24rpx;
+}
+
+.menu-section-title {
+  display: block;
+  font-size: 26rpx;
+  color: #969799;
+  padding: 0 4rpx 16rpx;
+}
+
 .menu-list {
   background-color: #fff;
   border-radius: 12rpx;
-  margin-bottom: 24rpx;
 }
 
 .menu-item {

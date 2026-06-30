@@ -65,9 +65,16 @@
 
   "profile": {
     "notLoggedInTip": "登录后查看个人信息和活动",
+    "sectionMyContent": "我的内容",
+    "sectionSocial": "社交",
+    "sectionOther": "其他",
     "myActivities": "我创建的活动",
     "myRegistrations": "我的报名",
-    "myReviews": "我的评价",
+    "myFriends": "我的好友",
+    "friendRequests": "好友申请",
+    "myTeams": "我的小队",
+    "blacklist": "黑名单",
+    "editProfile": "编辑资料",
     "settings": "设置",
     "merchant": "商家",
     "personal": "个人",
