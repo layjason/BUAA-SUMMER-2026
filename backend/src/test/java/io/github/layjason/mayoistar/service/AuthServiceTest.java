@@ -16,6 +16,7 @@ import io.github.layjason.mayoistar.entity.identity.TokenType;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.SecurityTokenRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
@@ -42,6 +43,9 @@ class AuthServiceTest {
     private PersonalProfileRepository personalProfileRepository;
 
     @Mock
+    private MerchantProfileRepository merchantProfileRepository;
+
+    @Mock
     private SecurityTokenRepository securityTokenRepository;
 
     @Mock
@@ -61,6 +65,7 @@ class AuthServiceTest {
         authService = new AuthService(
                 userRepository,
                 personalProfileRepository,
+                merchantProfileRepository,
                 securityTokenRepository,
                 passwordEncoder,
                 jwtService,
