@@ -102,33 +102,31 @@
         >
           {{ buttonText }}
         </button>
-        <button v-if="canReview" class="action-btn action-btn-secondary" @click="goReview">
-          {{ t('activityDetail.writeReview') }}
-        </button>
-        <button
-          v-if="isOrganizer && activity.runtimeStatus === 'ended'"
-          class="action-btn action-btn-secondary"
-          @click="goSummary"
-        >
-          {{ t('activityDetail.writeSummary') }}
-        </button>
-        <button
-          v-if="isOrganizer"
-          class="action-btn action-btn-secondary"
-          @click="handleViewCheckIns"
-        >
-          {{ t('activityDetail.checkInManagement') }}
-        </button>
-        <button
-          v-if="
-            isOrganizer &&
-            (activity.runtimeStatus === 'registering' || activity.runtimeStatus === 'ongoing')
-          "
-          class="action-btn action-btn-secondary"
-          @click="handleGenerateQrCode"
-        >
-          {{ t('activityDetail.generateQrCode') }}
-        </button>
+        <view class="action-row">
+          <button
+            v-if="
+              isOrganizer &&
+              (activity.runtimeStatus === 'registering' || activity.runtimeStatus === 'ongoing')
+            "
+            class="action-btn-sm"
+            @click="handleGenerateQrCode"
+          >
+            {{ t('activityDetail.generateQrCode') }}
+          </button>
+          <button v-if="isOrganizer" class="action-btn-sm" @click="handleViewCheckIns">
+            {{ t('activityDetail.checkInManagement') }}
+          </button>
+          <button v-if="canReview" class="action-btn-sm" @click="goReview">
+            {{ t('activityDetail.writeReview') }}
+          </button>
+          <button
+            v-if="isOrganizer && activity.runtimeStatus === 'ended'"
+            class="action-btn-sm"
+            @click="goSummary"
+          >
+            {{ t('activityDetail.writeSummary') }}
+          </button>
+        </view>
       </view>
     </template>
   </view>
@@ -749,6 +747,27 @@ onLoad((query) => {
   color: #fff;
 }
 
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.action-btn-sm {
+  flex: 1;
+  min-width: 160rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #1989fa;
+  background-color: #f0f6ff;
+  border-radius: 8rpx;
+  border: none;
+  padding: 0 12rpx;
+}
+
 /* ---- 参与者菜单 ---- */
 .menu-card {
   background-color: #fff;
@@ -783,11 +802,5 @@ onLoad((query) => {
   font-size: 28rpx;
   color: #c8c9cc;
 }
-
-.action-btn-secondary {
-  background-color: #fff;
-  color: #1989fa;
-  border: 2rpx solid #1989fa;
-  margin-top: 12rpx;
 }
 </style>
