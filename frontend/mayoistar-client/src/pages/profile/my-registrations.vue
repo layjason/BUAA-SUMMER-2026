@@ -8,8 +8,8 @@
 
     <view v-else>
       <view v-for="item in registrations" :key="item.registrationId" class="card">
-        <text class="card-title">{{ item.activityTitle }}</text>
-        <view class="card-row">
+        <view class="card-header">
+          <text class="card-title">{{ item.activityTitle }}</text>
           <text class="status-tag" :class="'status-' + item.status">{{
             statusText(item.status)
           }}</text>
@@ -100,7 +100,6 @@ function statusText(status: string): string {
 
 <style scoped>
 .page {
-  min-height: 100vh;
   background-color: #f7f8fa;
 }
 
@@ -124,12 +123,23 @@ function statusText(status: string): string {
   border-radius: 12rpx;
 }
 
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
 .card-title {
   display: block;
   font-size: 30rpx;
   color: #323233;
   font-weight: 600;
-  margin-bottom: 16rpx;
+  flex: 1;
+  margin-right: 16rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-row {
