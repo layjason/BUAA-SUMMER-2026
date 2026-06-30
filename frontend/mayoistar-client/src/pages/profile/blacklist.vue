@@ -1,15 +1,10 @@
 <template>
   <view class="page">
-    <PageHeader :title="title" />
     <text class="placeholder">功能开发中</text>
   </view>
 </template>
 
-<script setup lang="ts">
-import { PageHeader } from '@/components'
-
-const title = '功能开发中'
-</script>
+<script setup lang="ts"></script>
 
 <style scoped>
 .page {
