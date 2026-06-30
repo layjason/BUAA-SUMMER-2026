@@ -4,9 +4,9 @@
  * 基于 uni.request 的类型安全 HTTP 客户端。
  * 所有请求/响应类型均从 OpenAPI schema.d.ts 派生，零手写。
  *
- * 前置条件：调用 API 前需初始化 baseUrl 和 tokenGetter
+ * 前置条件：调用 API 前需初始化 baseUrl、tokenGetter 和 onTokenExpired
  * 后置条件：返回成功响应 data 字段
- * 不变量：JSON 响应统一经过 APIResult 包装解析
+ * 不变量：Token 过期时自动刷新一次并重试，刷新失败时调用 onTokenExpired
  */
 import type { paths } from './types/schema'
 import { BusinessError, TokenExpiredError } from './types'
@@ -24,6 +24,22 @@ let tokenGetter: TokenGetter = () => null
 
 export function setTokenGetter(getter: TokenGetter): void {
   tokenGetter = getter
+}
+
+/** Token 过期回调，刷新失败时调用，典型用途：清除认证状态并跳转登录页 */
+type TokenExpiredHandler = () => void
+let onTokenExpired: TokenExpiredHandler = () => {}
+
+export function setOnTokenExpired(handler: TokenExpiredHandler): void {
+  onTokenExpired = handler
+}
+
+/** 刷新 Token 并更新 tokenGetter 的回调 */
+type TokenSaver = (accessToken: string, refreshToken: string) => void
+let tokenSaver: TokenSaver = () => {}
+
+export function setTokenSaver(saver: TokenSaver): void {
+  tokenSaver = saver
 }
 
 /* ---- 从路径直接提取操作类型 ---- */
@@ -92,9 +108,20 @@ function buildHeaders(): Record<string, string> {
   return headers
 }
 
-/* ---- 核心请求 ---- */
+/* ---- Token 刷新拦截器 ---- */
 
-function rawRequest(
+/** 是否正在刷新 Token（防止并发刷新） */
+let refreshing = false
+/** 刷新期间挂起的请求队列 */
+let pendingQueue: Array<{
+  resolve: (value: { code: number; message: string; data: unknown }) => void
+  reject: (reason: unknown) => void
+}> = []
+
+/**
+ * 内部请求 — 不走 Token 刷新拦截器，用于刷新 Token 请求自身
+ */
+function internalRawRequest(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   url: string,
   body?: unknown,
@@ -103,13 +130,110 @@ function rawRequest(
     const opts: UniApp.RequestOptions = {
       url: `${baseUrl}${url}`,
       method,
+      header: { 'Content-Type': 'application/json', ...buildHeaders() },
+      success: (res) => {
+        const resBody = res.data as { code: number; message: string; data: unknown }
+        if (res.statusCode === 200 && resBody.code === 200) resolve(resBody)
+        else
+          reject(new BusinessError(resBody.code ?? res.statusCode, resBody.message ?? '请求失败'))
+      },
+      fail: (err) => reject(new Error(`网络请求失败: ${err.errMsg}`)),
+    }
+    if (body !== undefined) opts.data = body as Record<string, unknown>
+    uni.request(opts)
+  })
+}
+
+/**
+ * 刷新 Token 并重试挂起队列中的所有请求
+ *
+ * 前置条件：refreshing 为 false，pendingQueue 非空
+ * 后置条件：成功则更新 tokenSaver 重试所有请求；失败则拒绝所有请求并调用 onTokenExpired
+ */
+async function refreshAndRetry(): Promise<void> {
+  refreshing = true
+  try {
+    const token = tokenGetter()
+    if (!token) throw new TokenExpiredError()
+
+    const result = await internalRawRequest('POST', '/identity/auth/refresh', {
+      refreshToken: token,
+    })
+
+    tokenSaver(
+      (result.data as { accessToken: string; refreshToken: string }).accessToken,
+      (result.data as { accessToken: string; refreshToken: string }).refreshToken,
+    )
+
+    // 重试挂起队列中的所有请求
+    const queue = pendingQueue
+    pendingQueue = []
+    for (const { resolve, reject } of queue) {
+      try {
+        const res = await doRawRequest(
+          getRetryContext(queue),
+          false, // 不复入拦截器
+        )
+        resolve(res)
+      } catch (err) {
+        reject(err)
+      }
+    }
+  } catch {
+    // 刷新失败：通知所有挂起请求
+    const queue = pendingQueue
+    pendingQueue = []
+    const expiredErr = new TokenExpiredError()
+    for (const { reject } of queue) {
+      reject(expiredErr)
+    }
+    onTokenExpired()
+  } finally {
+    refreshing = false
+  }
+}
+
+// 保存每个挂起请求的上下文以便重试
+const retryContextMap = new WeakMap<object, { method: string; url: string; body?: unknown }>()
+
+function setRetryContext(ctx: object, info: { method: string; url: string; body?: unknown }): void {
+  retryContextMap.set(ctx, info)
+}
+
+function getRetryContext(ctx: object): { method: string; url: string; body?: unknown } {
+  return retryContextMap.get(ctx) ?? { method: 'GET', url: '' }
+}
+
+/* ---- 核心请求 ---- */
+
+function doRawRequest(
+  retryCtx: object,
+  allowRefresh: boolean,
+): Promise<{ code: number; message: string; data: unknown }> {
+  const { method, url, body } = getRetryContext(retryCtx)
+  return new Promise((resolve, reject) => {
+    const opts: UniApp.RequestOptions = {
+      url: `${baseUrl}${url}`,
+      method: method as UniApp.RequestOptions['method'],
       header: buildHeaders(),
       success: (res) => {
         const resBody = res.data as { code: number; message: string; data: unknown }
         if (res.statusCode === 200) {
-          if (resBody.code === 200) resolve(resBody)
-          else if (resBody.code === 401) reject(new TokenExpiredError())
-          else reject(new BusinessError(resBody.code, resBody.message))
+          if (resBody.code === 200) {
+            resolve(resBody)
+          } else if (resBody.code === 401 && allowRefresh) {
+            pendingQueue.push({ resolve, reject })
+            setRetryContext(retryCtx, { method, url, body })
+            if (!refreshing) refreshAndRetry()
+          } else if (resBody.code === 401) {
+            reject(new TokenExpiredError())
+          } else {
+            reject(new BusinessError(resBody.code, resBody.message))
+          }
+        } else if (res.statusCode === 401 && allowRefresh) {
+          pendingQueue.push({ resolve, reject })
+          setRetryContext(retryCtx, { method, url, body })
+          if (!refreshing) refreshAndRetry()
         } else if (res.statusCode === 401) {
           reject(new TokenExpiredError())
         } else {
@@ -126,6 +250,16 @@ function rawRequest(
     if (body !== undefined) opts.data = body as Record<string, unknown>
     uni.request(opts)
   })
+}
+
+function rawRequest(
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  url: string,
+  body?: unknown,
+): Promise<{ code: number; message: string; data: unknown }> {
+  const ctx = {}
+  setRetryContext(ctx, { method, url, body })
+  return doRawRequest(ctx, true)
 }
 
 async function extractData<T>(

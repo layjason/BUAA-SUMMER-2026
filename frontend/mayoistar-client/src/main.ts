@@ -2,7 +2,7 @@ import { createSSRApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import App from './App.vue'
-import { setTokenGetter, setBaseUrl } from '@/api/client'
+import { setTokenGetter, setBaseUrl, setTokenSaver, setOnTokenExpired } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import zhCN from './locales/zh-CN.json'
 
@@ -23,6 +23,10 @@ export function createApp() {
   authStore.initFromStorage()
   setTokenGetter(() => authStore.getAccessToken())
   setBaseUrl('http://localhost:4010')
+  setTokenSaver((access, refresh) => authStore.saveTokens(access, refresh))
+  setOnTokenExpired(() => {
+    authStore.clearTokens()
+  })
 
   return { app }
 }
