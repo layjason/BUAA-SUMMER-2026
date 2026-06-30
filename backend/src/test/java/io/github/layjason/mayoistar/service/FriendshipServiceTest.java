@@ -11,7 +11,11 @@ import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.entity.social.FriendshipSource;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.repository.ChatMessageRepository;
+import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
+import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
+import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
@@ -41,11 +45,29 @@ class FriendshipServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ConversationRepository conversationRepository;
+
+    @Mock
+    private ConversationMemberRepository conversationMemberRepository;
+
+    @Mock
+    private ChatMessageRepository chatMessageRepository;
+
+    @Mock
+    private MessageReadRepository messageReadRepository;
+
     private FriendshipService service;
 
     @BeforeEach
     void setUp() {
-        service = new FriendshipServiceImpl(friendshipRepository, userRepository);
+        service = new FriendshipServiceImpl(
+                friendshipRepository,
+                userRepository,
+                conversationRepository,
+                conversationMemberRepository,
+                chatMessageRepository,
+                messageReadRepository);
     }
 
     private User buildUser(String userId, String nickname) {
@@ -138,6 +160,8 @@ class FriendshipServiceTest {
         void deleteFriendBidirectional() {
             when(friendshipRepository.existsByUserIdAndFriendUserId("user-a", "user-b"))
                     .thenReturn(true);
+            when(conversationMemberRepository.findCommonConversationIds("user-a", "user-b"))
+                    .thenReturn(List.of());
 
             service.deleteFriend("user-a", "user-b");
 

@@ -2,10 +2,15 @@ package io.github.layjason.mayoistar.service;
 
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
+import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.repository.ChatMessageRepository;
+import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
+import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
+import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -26,10 +31,24 @@ public class FriendshipServiceImpl implements FriendshipService {
 
     private final FriendshipRepository friendshipRepository;
     private final UserRepository userRepository;
+    private final ConversationRepository conversationRepository;
+    private final ConversationMemberRepository conversationMemberRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final MessageReadRepository messageReadRepository;
 
-    public FriendshipServiceImpl(FriendshipRepository friendshipRepository, UserRepository userRepository) {
+    public FriendshipServiceImpl(
+            FriendshipRepository friendshipRepository,
+            UserRepository userRepository,
+            ConversationRepository conversationRepository,
+            ConversationMemberRepository conversationMemberRepository,
+            ChatMessageRepository chatMessageRepository,
+            MessageReadRepository messageReadRepository) {
         this.friendshipRepository = friendshipRepository;
         this.userRepository = userRepository;
+        this.conversationRepository = conversationRepository;
+        this.conversationMemberRepository = conversationMemberRepository;
+        this.chatMessageRepository = chatMessageRepository;
+        this.messageReadRepository = messageReadRepository;
     }
 
     /**
@@ -84,17 +103,32 @@ public class FriendshipServiceImpl implements FriendshipService {
     }
 
     /**
-     * 删除好友，双向关系同时解除。
+     * 删除好友，双向关系同时解除，并清理关联的会话数据。
      *
      * <p>前置条件：好友关系存在。
      *
-     * <p>后置条件：A→B 和 B→A 两笔 Friendship 记录均删除。
+     * <p>后置条件：双向 Friendship 记录删除；共享的好友会话及其中消息、已读状态、成员关系均清理。
      */
     @Override
     @Transactional
     public void deleteFriend(String userId, String friendUserId) {
         if (!friendshipRepository.existsByUserIdAndFriendUserId(userId, friendUserId)) {
             throw new BusinessException(40004, "Friendship state does not allow this operation");
+        }
+
+        List<String> commonConversationIds =
+                conversationMemberRepository.findCommonConversationIds(userId, friendUserId);
+
+        for (String conversationId : commonConversationIds) {
+            conversationRepository.findById(conversationId).ifPresent(conversation -> {
+                if (conversation.getKind() == ConversationKind.friend) {
+                    messageReadRepository.deleteByConversationId(conversationId);
+                    chatMessageRepository.deleteByConversationId(conversationId);
+                    conversationMemberRepository.deleteByConversationId(conversationId);
+                    conversationRepository.delete(conversation);
+                    log.info("好友会话已清理: conversationId={}", conversationId);
+                }
+            });
         }
 
         friendshipRepository.deleteByUserIdAndFriendUserId(userId, friendUserId);
