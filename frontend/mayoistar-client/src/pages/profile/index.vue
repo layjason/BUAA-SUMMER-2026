@@ -204,6 +204,10 @@ async function handleLogout(): Promise<void> {
 <style scoped>
 .page {
   background-color: #f7f8fa;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .scroll-area {

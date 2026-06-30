@@ -106,11 +106,12 @@
           </view>
 
           <FormError :message="formError" />
-
-          <SubmitButton :text="t('editProfile.save')" :loading="saving" @click="handleSave" />
         </view>
       </view>
     </scroll-view>
+    <view class="action-bar">
+      <SubmitButton :text="t('editProfile.save')" :loading="saving" @click="handleSave" />
+    </view>
   </view>
 </template>
 
@@ -438,6 +439,14 @@ async function handleSave(): Promise<void> {
 </script>
 
 <style scoped>
+.page {
+  background-color: #f7f8fa;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .scroll-area {
   flex: 1;
   overflow-y: auto;
@@ -445,7 +454,15 @@ async function handleSave(): Promise<void> {
 }
 
 .edit-container {
-  padding: 32rpx 32rpx 0;
+  padding: 32rpx 32rpx 48rpx;
+}
+
+.action-bar {
+  padding: 16rpx 32rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background-color: #fff;
+  border-top: 2rpx solid #ebedf0;
+  flex-shrink: 0;
 }
 
 .avatar-section {
