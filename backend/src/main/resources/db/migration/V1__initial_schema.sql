@@ -839,3 +839,99 @@ COMMENT ON COLUMN ban_records.reason IS '封禁原因';
 COMMENT ON COLUMN ban_records.banned_at IS '封禁时间，UTC 时区';
 COMMENT ON COLUMN ban_records.banned_until IS '封禁截止时间，UTC 时区。超过此时间后应自动解封';
 COMMENT ON COLUMN ban_records.unbanned_at IS '实际解封时间，UTC 时区。null 表示尚未解封（可能仍在封禁期内或永久封禁）';
+
+-- ============================================================================
+-- Foreign Key Constraints
+-- ============================================================================
+
+-- identity - 身份与资料
+ALTER TABLE personal_profiles ADD CONSTRAINT fk_personal_profiles_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+ALTER TABLE personal_profiles ADD CONSTRAINT fk_personal_profiles_avatar FOREIGN KEY (avatar_media_id) REFERENCES media_files(media_id) ON DELETE SET NULL;
+
+ALTER TABLE merchant_profiles ADD CONSTRAINT fk_merchant_profiles_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+ALTER TABLE merchant_profiles ADD CONSTRAINT fk_merchant_profiles_avatar FOREIGN KEY (avatar_media_id) REFERENCES media_files(media_id) ON DELETE SET NULL;
+
+ALTER TABLE qualifications ADD CONSTRAINT fk_qualifications_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+ALTER TABLE qualifications ADD CONSTRAINT fk_qualifications_reviewer FOREIGN KEY (reviewer_id) REFERENCES admins(admin_id) ON DELETE SET NULL;
+
+ALTER TABLE security_tokens ADD CONSTRAINT fk_security_tokens_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
+ALTER TABLE media_files ADD CONSTRAINT fk_media_files_uploader FOREIGN KEY (uploaded_by) REFERENCES users(user_id) ON DELETE RESTRICT;
+
+-- activities - 活动
+ALTER TABLE activities ADD CONSTRAINT fk_activities_organizer FOREIGN KEY (organizer_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+ALTER TABLE activities ADD CONSTRAINT fk_activities_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE SET NULL;
+
+ALTER TABLE activity_images ADD CONSTRAINT fk_activity_images_activity FOREIGN KEY (activity_id) REFERENCES activities(activity_id) ON DELETE CASCADE;
+ALTER TABLE activity_images ADD CONSTRAINT fk_activity_images_media FOREIGN KEY (media_id) REFERENCES media_files(media_id) ON DELETE RESTRICT;
+
+ALTER TABLE activity_review_records ADD CONSTRAINT fk_review_records_activity FOREIGN KEY (activity_id) REFERENCES activities(activity_id) ON DELETE CASCADE;
+ALTER TABLE activity_review_records ADD CONSTRAINT fk_review_records_reviewer FOREIGN KEY (reviewer_id) REFERENCES admins(admin_id) ON DELETE SET NULL;
+
+ALTER TABLE activity_templates ADD CONSTRAINT fk_templates_cover_image FOREIGN KEY (default_cover_image_media_id) REFERENCES media_files(media_id) ON DELETE SET NULL;
+
+ALTER TABLE activity_registrations ADD CONSTRAINT fk_registrations_activity FOREIGN KEY (activity_id) REFERENCES activities(activity_id) ON DELETE CASCADE;
+ALTER TABLE activity_registrations ADD CONSTRAINT fk_registrations_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+
+ALTER TABLE activity_summary_posts ADD CONSTRAINT fk_summary_posts_activity FOREIGN KEY (activity_id) REFERENCES activities(activity_id) ON DELETE CASCADE;
+ALTER TABLE activity_summary_posts ADD CONSTRAINT fk_summary_posts_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+
+ALTER TABLE activity_summary_images ADD CONSTRAINT fk_summary_images_post FOREIGN KEY (summary_id) REFERENCES activity_summary_posts(summary_id) ON DELETE CASCADE;
+ALTER TABLE activity_summary_images ADD CONSTRAINT fk_summary_images_media FOREIGN KEY (media_id) REFERENCES media_files(media_id) ON DELETE RESTRICT;
+
+ALTER TABLE activity_reviews ADD CONSTRAINT fk_reviews_activity FOREIGN KEY (activity_id) REFERENCES activities(activity_id) ON DELETE CASCADE;
+ALTER TABLE activity_reviews ADD CONSTRAINT fk_reviews_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+
+-- social - 好友社群
+ALTER TABLE friend_requests ADD CONSTRAINT fk_friend_requests_from FOREIGN KEY (requester_id) REFERENCES users(user_id) ON DELETE CASCADE;
+ALTER TABLE friend_requests ADD CONSTRAINT fk_friend_requests_to FOREIGN KEY (target_user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
+ALTER TABLE friendships ADD CONSTRAINT fk_friendships_user_a FOREIGN KEY (user_id_a) REFERENCES users(user_id) ON DELETE CASCADE;
+ALTER TABLE friendships ADD CONSTRAINT fk_friendships_user_b FOREIGN KEY (user_id_b) REFERENCES users(user_id) ON DELETE CASCADE;
+
+ALTER TABLE follows ADD CONSTRAINT fk_follows_follower FOREIGN KEY (follower_id) REFERENCES users(user_id) ON DELETE CASCADE;
+ALTER TABLE follows ADD CONSTRAINT fk_follows_followed FOREIGN KEY (followed_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
+ALTER TABLE blacklists ADD CONSTRAINT fk_blacklists_blocker FOREIGN KEY (blocker_id) REFERENCES users(user_id) ON DELETE CASCADE;
+ALTER TABLE blacklists ADD CONSTRAINT fk_blacklists_blocked FOREIGN KEY (blocked_user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
+ALTER TABLE user_reports ADD CONSTRAINT fk_user_reports_from FOREIGN KEY (reporter_user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+ALTER TABLE user_reports ADD CONSTRAINT fk_user_reports_target FOREIGN KEY (target_user_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+
+ALTER TABLE teams ADD CONSTRAINT fk_teams_leader FOREIGN KEY (leader_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+ALTER TABLE teams ADD CONSTRAINT fk_teams_chat FOREIGN KEY (chat_id) REFERENCES conversations(conversation_id) ON DELETE SET NULL;
+ALTER TABLE teams ADD CONSTRAINT fk_teams_avatar FOREIGN KEY (avatar_media_id) REFERENCES media_files(media_id) ON DELETE SET NULL;
+
+ALTER TABLE team_members ADD CONSTRAINT fk_team_members_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE;
+ALTER TABLE team_members ADD CONSTRAINT fk_team_members_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+
+ALTER TABLE team_join_requests ADD CONSTRAINT fk_team_join_req_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE;
+ALTER TABLE team_join_requests ADD CONSTRAINT fk_team_join_req_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
+ALTER TABLE team_point_records ADD CONSTRAINT fk_team_points_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE;
+ALTER TABLE team_point_records ADD CONSTRAINT fk_team_points_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+
+-- chat - 即时通讯
+ALTER TABLE conversations ADD CONSTRAINT fk_conversations_avatar FOREIGN KEY (avatar_media_id) REFERENCES media_files(media_id) ON DELETE SET NULL;
+
+ALTER TABLE conversation_members ADD CONSTRAINT fk_conv_members_conv FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE;
+ALTER TABLE conversation_members ADD CONSTRAINT fk_conv_members_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+
+ALTER TABLE chat_messages ADD CONSTRAINT fk_chat_messages_conv FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE;
+ALTER TABLE chat_messages ADD CONSTRAINT fk_chat_messages_sender FOREIGN KEY (sender_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+ALTER TABLE chat_messages ADD CONSTRAINT fk_chat_messages_image FOREIGN KEY (image_media_id) REFERENCES media_files(media_id) ON DELETE SET NULL;
+
+ALTER TABLE team_announcements ADD CONSTRAINT fk_announcements_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE;
+ALTER TABLE team_announcements ADD CONSTRAINT fk_announcements_pub FOREIGN KEY (publisher_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+
+ALTER TABLE team_polls ADD CONSTRAINT fk_team_polls_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE;
+
+ALTER TABLE poll_options ADD CONSTRAINT fk_poll_options_poll FOREIGN KEY (poll_id) REFERENCES team_polls(poll_id) ON DELETE CASCADE;
+
+ALTER TABLE poll_votes ADD CONSTRAINT fk_poll_votes_poll FOREIGN KEY (poll_id) REFERENCES team_polls(poll_id) ON DELETE CASCADE;
+ALTER TABLE poll_votes ADD CONSTRAINT fk_poll_votes_option FOREIGN KEY (option_id) REFERENCES poll_options(option_id) ON DELETE CASCADE;
+ALTER TABLE poll_votes ADD CONSTRAINT fk_poll_votes_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
+-- admin - 后台管理
+ALTER TABLE ban_records ADD CONSTRAINT fk_ban_records_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+ALTER TABLE ban_records ADD CONSTRAINT fk_ban_records_operator FOREIGN KEY (operator_id) REFERENCES admins(admin_id) ON DELETE RESTRICT;
