@@ -196,7 +196,7 @@ const buttonText = computed(() => {
   const p = participation.value
   if (!p) return ''
 
-  if (p.canCheckIn) return t('activityDetail.checkedInTag')
+  if (p.canCheckIn) return t('activityDetail.checkIn')
   if (p.canConfirmWaitingSeat) return t('activityDetail.confirmWaiting')
   if (p.canRegister) {
     if (isFull.value) {

@@ -197,6 +197,7 @@
     "cancelRegistration": "取消报名",
     "waitingRank": "等待中 (排位第{rank})",
     "confirmWaiting": "确认候补名额",
+    "checkIn": "签到",
     "checkedInTag": "已签到",
     "disabledTag": "不可操作",
     "introduction": "活动简介",
