@@ -1571,4 +1571,89 @@ export const mockData: Record<string, MockResponse> = {
       canCheckIn: false,
     },
   },
+
+  /* ===================== 参与者列表 ===================== */
+
+  'GET /activities/2001/participants': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      items: [
+        {
+          registrationId: 'r001',
+          userId: '10003',
+          nickname: '小红',
+          avatar: null,
+          registrationStatus: 'registered',
+          registeredAt: '2026-07-01T10:00:00Z',
+        },
+        {
+          registrationId: 'r002',
+          userId: '10004',
+          nickname: '登山达人老李',
+          avatar: null,
+          registrationStatus: 'registered',
+          registeredAt: '2026-07-01T11:00:00Z',
+        },
+        {
+          registrationId: 'r003',
+          userId: '10010',
+          nickname: '新用户001',
+          avatar: null,
+          registrationStatus: 'registered',
+          registeredAt: '2026-07-02T08:00:00Z',
+        },
+      ],
+      total: 3,
+      page: 1,
+      pageSize: 20,
+      totalPages: 1,
+    },
+  },
+
+  'GET /activities/2002/participants': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      items: [
+        {
+          registrationId: 'r011',
+          userId: '10003',
+          nickname: '小红',
+          avatar: null,
+          registrationStatus: 'registered',
+          registeredAt: '2026-07-01T09:00:00Z',
+        },
+        {
+          registrationId: 'r012',
+          userId: '10004',
+          nickname: '登山达人老李',
+          avatar: null,
+          registrationStatus: 'registered',
+          registeredAt: '2026-07-01T09:30:00Z',
+        },
+        {
+          registrationId: 'r013',
+          userId: '10010',
+          nickname: '新用户001',
+          avatar: null,
+          registrationStatus: 'checkedIn',
+          registeredAt: '2026-07-01T10:00:00Z',
+          checkedInAt: '2026-07-12T19:15:00Z',
+        },
+        {
+          registrationId: 'r014',
+          userId: '10013',
+          nickname: '摄影师小王',
+          avatar: null,
+          registrationStatus: 'canceled',
+          registeredAt: '2026-07-01T12:00:00Z',
+        },
+      ],
+      total: 4,
+      page: 1,
+      pageSize: 20,
+      totalPages: 1,
+    },
+  },
 }

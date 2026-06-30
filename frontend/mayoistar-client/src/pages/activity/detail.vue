@@ -4,7 +4,7 @@
 
     <view v-else-if="errorMsg" class="error-text">{{ errorMsg }}</view>
 
-    <template v-else>
+    <template v-else-if="activity">
       <view class="content">
         <!-- 图片轮播 -->
         <view v-if="activity.images.length > 0" class="swiper-wrapper">
@@ -91,6 +91,13 @@
         >
           {{ buttonText }}
         </button>
+        <button
+          v-if="isOrganizer"
+          class="action-btn action-btn-secondary"
+          @click="handleViewParticipants"
+        >
+          {{ t('activityDetail.viewParticipants') }}
+        </button>
       </view>
     </template>
   </view>
@@ -110,8 +117,10 @@ import { useI18n } from 'vue-i18n'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
 import { formatDateTime, formatTimeRange } from '@/utils/date'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const errorMsg = ref('')
@@ -134,6 +143,8 @@ interface ActivityDetail {
   coverImage: { url?: string; mediaId: string } | null
   images: { url?: string; mediaId: string }[]
   feeAmount?: number
+  feeDescription?: string
+  minAge?: number
   capacity: number
   registeredCount: number
   waitingCount: number
@@ -142,6 +153,14 @@ interface ActivityDetail {
   organizerName: string
   reviewStatus: string
   runtimeStatus: string
+  manualReviewRequired: boolean
+  reviewRecords: {
+    reviewId: string
+    result: string
+    reason?: string
+    reviewerId?: string
+    reviewedAt: string
+  }[]
 }
 
 interface ParticipationState {
@@ -154,8 +173,8 @@ interface ParticipationState {
   canCheckIn: boolean
 }
 
-const activity = ref<ActivityDetail>(null!)
-const participation = ref<ParticipationState>(null!)
+const activity = ref<ActivityDetail | null>(null)
+const participation = ref<ParticipationState | null>(null)
 
 const runtimeStatusMap: Record<string, string> = {
   notStarted: t('myActivities.statusNotStarted'),
@@ -166,32 +185,32 @@ const runtimeStatusMap: Record<string, string> = {
   takenDown: t('myActivities.statusTakenDown'),
 }
 
-/**
- * 获取运行时状态中文展示文本
- */
 function runtimeStatusText(status: string): string {
   return runtimeStatusMap[status] ?? status
 }
 
-/** 费用展示文本 */
 const feeText = computed(() => {
+  if (!activity.value) return ''
   if (activity.value.feeAmount == null || activity.value.feeAmount === 0) {
     return t('activityDetail.free')
   }
   return t('activityDetail.feeAmount', { amount: activity.value.feeAmount })
 })
 
-/** 标签行标签 */
 const tagsLabel = computed(() => {
   return t('activityDetail.tags')
 })
 
-/** 是否已满 */
+/** 当前用户是否为活动发起人 */
+const isOrganizer = computed(() => {
+  return activity.value?.organizerId === authStore.userId
+})
+
 const isFull = computed(() => {
+  if (!activity.value) return false
   return activity.value.registeredCount >= activity.value.capacity
 })
 
-/** 按钮文案 */
 const buttonText = computed(() => {
   const p = participation.value
   if (!p) return ''
@@ -200,14 +219,15 @@ const buttonText = computed(() => {
   if (p.canConfirmWaitingSeat) return t('activityDetail.confirmWaiting')
   if (p.canRegister) {
     if (isFull.value) {
-      return t('activityDetail.registerFull', { count: activity.value.waitingCount })
+      return t('activityDetail.registerFull', { count: activity.value!.waitingCount })
     }
     return t('activityDetail.registerNow', {
-      count: activity.value.registeredCount,
-      total: activity.value.capacity,
+      count: activity.value!.registeredCount,
+      total: activity.value!.capacity,
     })
   }
-  if (p.status === 'registered') return t('activityDetail.cancelRegistration')
+  if (p.status === 'registered' && p.canCancelRegistration)
+    return t('activityDetail.cancelRegistration')
   if (p.status === 'waiting') {
     return t('activityDetail.waitingRank', { rank: p.waitingRank ?? '?' })
   }
@@ -215,25 +235,20 @@ const buttonText = computed(() => {
   return t('activityDetail.disabledTag')
 })
 
-/** 按钮是否禁用 */
 const buttonDisabled = computed(() => {
   const p = participation.value
   if (!p) return true
   if (p.canCheckIn) return false
   if (p.canConfirmWaitingSeat) return false
   if (p.canRegister) return false
-  if (p.status === 'registered') return false
+  if (p.status === 'registered') return !p.canCancelRegistration
   return true
 })
 
-/**
- * 处理按钮点击
- */
 function handleAction(): void {
   const p = participation.value
-  if (!p) return
+  if (!p || buttonDisabled.value) return
   if (p.canCheckIn) {
-    // 签到功能待实现
     uni.showToast({ title: '签到功能即将上线', icon: 'none' })
     return
   }
@@ -242,21 +257,61 @@ function handleAction(): void {
     return
   }
   if (p.canRegister) {
-    handleRegister()
+    showSafetyConfirm()
     return
   }
-  if (p.status === 'registered') {
+  if (p.status === 'registered' && p.canCancelRegistration) {
     handleCancelRegistration()
     return
   }
 }
 
 /**
- * 报名
+ * 弹出安全须知确认弹窗，确认后再报名
  */
+function showSafetyConfirm(): void {
+  uni.showModal({
+    title: t('activityDetail.safetyNotice'),
+    content: activity.value?.safetyNotice ?? '',
+    confirmText: '我已阅读并同意',
+    cancelText: '取消报名',
+    success: (res) => {
+      if (res.confirm) {
+        handleRegister()
+      }
+    },
+  })
+}
+
+/**
+ * 查看参与者列表
+ */
+async function handleViewParticipants(): Promise<void> {
+  try {
+    const result = (await api.get('/activities/{activityId}/participants', {
+      path: { activityId: activityId.value },
+    })) as { items: { nickname: string; registrationStatus: string }[] }
+    const list = result.items.map((p) => `${p.nickname}（${p.registrationStatus}）`).join('\n')
+    uni.showModal({
+      title: '参与者列表',
+      content: list || '暂无参与者',
+      showCancel: false,
+    })
+  } catch {
+    uni.showModal({
+      title: '参与者列表',
+      content: '加载失败',
+      showCancel: false,
+    })
+  }
+}
+
 async function handleRegister(): Promise<void> {
   try {
-    await api.post(`/activities/${activityId.value}/registrations`)
+    await api.post('/activities/{activityId}/registrations', {
+      path: { activityId: activityId.value },
+      body: { acceptedSafetyNotice: true },
+    })
     uni.showToast({ title: '报名成功', icon: 'success' })
     await loadData()
   } catch (error) {
@@ -268,12 +323,11 @@ async function handleRegister(): Promise<void> {
   }
 }
 
-/**
- * 取消报名
- */
 async function handleCancelRegistration(): Promise<void> {
   try {
-    await api.post(`/activities/${activityId.value}/registrations/cancel`)
+    await api.post('/activities/{activityId}/registrations/cancel', {
+      path: { activityId: activityId.value },
+    })
     uni.showToast({ title: '已取消报名', icon: 'success' })
     await loadData()
   } catch (error) {
@@ -285,12 +339,12 @@ async function handleCancelRegistration(): Promise<void> {
   }
 }
 
-/**
- * 确认候补名额
- */
 async function handleConfirmWaiting(): Promise<void> {
   try {
-    await api.post(`/activities/${activityId.value}/waiting-confirmations`)
+    await api.post('/activities/{activityId}/waiting-confirmations', {
+      path: { activityId: activityId.value },
+      body: { confirmed: true },
+    })
     uni.showToast({ title: '已确认名额', icon: 'success' })
     await loadData()
   } catch (error) {
@@ -302,14 +356,13 @@ async function handleConfirmWaiting(): Promise<void> {
   }
 }
 
-/**
- * 加载活动详情 + 用户参与状态
- */
 async function loadData(): Promise<void> {
   try {
     const [act, state] = await Promise.all([
-      api.get(`/activities/${activityId.value}`),
-      api.get(`/activities/${activityId.value}/participation-state`),
+      api.get('/activities/{activityId}', { path: { activityId: activityId.value } }),
+      api.get('/activities/{activityId}/participation-state', {
+        path: { activityId: activityId.value },
+      }),
     ])
     activity.value = act as ActivityDetail
     participation.value = state as ParticipationState
@@ -353,12 +406,10 @@ onLoad((query) => {
   color: #ee0a24;
 }
 
-/* ---- 内容区域（为固定按钮留出底部空间） ---- */
 .content {
   padding-bottom: 160rpx;
 }
 
-/* ---- 图片轮播 ---- */
 .swiper-wrapper {
   width: 100%;
   height: 420rpx;
@@ -389,7 +440,6 @@ onLoad((query) => {
   font-size: 80rpx;
 }
 
-/* ---- 卡片 ---- */
 .section {
   margin: 16rpx 32rpx;
 }
@@ -400,7 +450,6 @@ onLoad((query) => {
   padding: 28rpx 32rpx;
 }
 
-/* ---- 标题 ---- */
 .title-row {
   display: flex;
   justify-content: space-between;
@@ -454,7 +503,6 @@ onLoad((query) => {
   color: #ee0a24;
 }
 
-/* ---- 信息行 ---- */
 .info-card {
   padding: 20rpx 32rpx;
 }
@@ -499,7 +547,6 @@ onLoad((query) => {
   border-radius: 4rpx;
 }
 
-/* ---- 简介 / 安全须知 ---- */
 .section-title {
   display: block;
   font-size: 30rpx;
@@ -531,7 +578,6 @@ onLoad((query) => {
   white-space: pre-wrap;
 }
 
-/* ---- 底部操作按钮 ---- */
 .action-bar {
   position: fixed;
   left: 0;
@@ -560,5 +606,12 @@ onLoad((query) => {
 .action-btn.disabled {
   background-color: #c8c9cc;
   color: #fff;
+}
+
+.action-btn-secondary {
+  background-color: #fff;
+  color: #1989fa;
+  border: 2rpx solid #1989fa;
+  margin-top: 12rpx;
 }
 </style>

@@ -300,7 +300,7 @@ function onDeadlineTimeChange(e: { detail: { value: string } }): void {
 
 function toISO(date: string, time: string): string | null {
   if (!date || !time) return null
-  return `${date}T${time}:00Z`
+  return `${date}T${time}:00`
 }
 
 // ================= 图片上传 =================
@@ -431,7 +431,10 @@ async function handleSaveDraft(): Promise<void> {
   try {
     const payload = buildPayload()
     if (isEdit.value) {
-      await api.patch(`/activities/drafts/${activityId.value}`, { body: payload })
+      await api.patch('/activities/drafts/{activityId}', {
+        path: { activityId: activityId.value },
+        body: payload,
+      })
     } else {
       const result = (await api.post('/activities/drafts', { body: payload })) as {
         activityId: string
@@ -470,10 +473,13 @@ async function handleSubmit(): Promise<void> {
       id = result.activityId
       activityId.value = id
     } else {
-      await api.patch(`/activities/drafts/${id}`, { body: payload })
+      await api.patch('/activities/drafts/{activityId}', {
+        path: { activityId: id },
+        body: payload,
+      })
     }
 
-    await api.post(`/activities/${id}/submit`)
+    await api.post('/activities/{activityId}/submit', { path: { activityId: id } })
     uni.showToast({ title: t('activityEdit.submitSuccess'), icon: 'success' })
     setTimeout(() => uni.navigateBack(), 1500)
   } catch (error) {

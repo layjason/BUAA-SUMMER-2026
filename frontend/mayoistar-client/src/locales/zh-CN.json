@@ -203,7 +203,8 @@
     "introduction": "活动简介",
     "images": "活动图片",
     "safetyNotice": "安全须知",
-    "loading": "加载中..."
+    "loading": "加载中...",
+    "viewParticipants": "参与者列表"
   },
 
   "activityEdit": {

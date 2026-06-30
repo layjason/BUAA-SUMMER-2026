@@ -4,11 +4,11 @@
       <view
         class="tab"
         :class="{ active: activeTab === 'published' }"
-        @click="activeTab = 'published'"
+        @click="switchTab('published')"
       >
         <text>{{ t('myActivities.tabPublished') }}</text>
       </view>
-      <view class="tab" :class="{ active: activeTab === 'drafts' }" @click="activeTab = 'drafts'">
+      <view class="tab" :class="{ active: activeTab === 'drafts' }" @click="switchTab('drafts')">
         <text>{{ t('myActivities.tabDrafts') }}</text>
       </view>
     </view>
@@ -158,13 +158,34 @@ async function loadDrafts(): Promise<void> {
 }
 
 /**
- * 每次进入页面时重新加载
+ * 每次进入页面或切换 Tab 时加载当前 Tab 数据
  */
-onShow(async () => {
+async function loadCurrentTab(): Promise<void> {
   loading.value = true
   errorMsg.value = ''
-  await Promise.all([loadActivities(), loadDrafts()])
-  loading.value = false
+  try {
+    if (activeTab.value === 'published') {
+      await loadActivities()
+    } else {
+      await loadDrafts()
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+/**
+ * 切换 Tab
+ *
+ * @param tab Tab 名称
+ */
+function switchTab(tab: 'published' | 'drafts'): void {
+  activeTab.value = tab
+  loadCurrentTab()
+}
+
+onShow(() => {
+  loadCurrentTab()
 })
 
 /**
