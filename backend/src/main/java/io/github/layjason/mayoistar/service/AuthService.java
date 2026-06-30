@@ -2,12 +2,14 @@ package io.github.layjason.mayoistar.service;
 
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
+import io.github.layjason.mayoistar.entity.identity.MerchantProfile;
 import io.github.layjason.mayoistar.entity.identity.PersonalProfile;
 import io.github.layjason.mayoistar.entity.identity.SecurityToken;
 import io.github.layjason.mayoistar.entity.identity.TokenType;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.SecurityTokenRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
@@ -31,14 +33,21 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PersonalProfileRepository personalProfileRepository;
+    private final MerchantProfileRepository merchantProfileRepository;
     private final SecurityTokenRepository securityTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final MailService mailService;
 
     /**
+     * 邮件发送冷却时间（秒），激活邮件和密码重置邮件共用。
+     */
+    private static final long EMAIL_COOLDOWN_SECONDS = 60;
+
+    /**
      * @param userRepository             用户数据访问
      * @param personalProfileRepository  个人资料数据访问
+     * @param merchantProfileRepository  商家资料数据访问
      * @param securityTokenRepository    令牌数据访问
      * @param passwordEncoder            密码编码器
      * @param jwtService                 JWT 服务
@@ -47,12 +56,14 @@ public class AuthService {
     public AuthService(
             UserRepository userRepository,
             PersonalProfileRepository personalProfileRepository,
+            MerchantProfileRepository merchantProfileRepository,
             SecurityTokenRepository securityTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             MailService mailService) {
         this.userRepository = userRepository;
         this.personalProfileRepository = personalProfileRepository;
+        this.merchantProfileRepository = merchantProfileRepository;
         this.securityTokenRepository = securityTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -104,6 +115,50 @@ public class AuthService {
 
         mailService.sendActivationEmail(request.getEmail(), activationToken);
         log.info("个人用户注册成功: userId={}, email={}", userId, request.getEmail());
+    }
+
+    /**
+     * 注册商家用户。
+     *
+     * <p>前置条件：email 未注册，nickname 全平台唯一。
+     *
+     * <p>后置条件：创建 User (inactive) + MerchantProfile，生成激活令牌并存储哈希，发送激活邮件。
+     *
+     * @param request 注册请求
+     */
+    @Transactional
+    public void registerMerchant(IdentityDtos.MerchantRegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessException(10001, "Email is already registered");
+        }
+        if (userRepository.existsByNickname(request.getNickname())) {
+            throw new BusinessException(10002, "Nickname is unavailable");
+        }
+
+        String userId = UUID.randomUUID().toString();
+        Instant now = Instant.now();
+
+        User user = User.builder()
+                .userId(userId)
+                .email(request.getEmail())
+                .nickname(request.getNickname())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .kind(UserKind.merchant)
+                .accountStatus(AccountStatus.inactive)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        user = userRepository.save(user);
+
+        MerchantProfile profile =
+                MerchantProfile.builder().user(user).updatedAt(now).build();
+        merchantProfileRepository.save(profile);
+
+        String activationToken = JwtService.generateRandomToken();
+        saveToken(userId, activationToken, TokenType.activation);
+
+        mailService.sendActivationEmail(request.getEmail(), activationToken);
+        log.info("商家用户注册成功: userId={}, email={}", userId, request.getEmail());
     }
 
     /**
@@ -202,7 +257,7 @@ public class AuthService {
      *
      * <p>前置条件：邮箱对应账号存在且状态为 inactive。
      *
-     * <p>后置条件：生成新激活令牌，作废旧令牌，发送新激活邮件。
+     * <p>后置条件：生成新激活令牌，作废旧令牌，发送新激活邮件。若在冷却期内则拒绝发送。
      *
      * @param email 账号邮箱
      */
@@ -219,6 +274,9 @@ public class AuthService {
             throw new BusinessException(10005, "Account is banned");
         }
 
+        checkEmailCooldown(
+                user.getUserId(), TokenType.activation, 10015, "Activation email resend rate limit has been exceeded");
+
         securityTokenRepository.revokeAllByUserIdAndTokenType(user.getUserId(), TokenType.activation);
 
         String activationToken = JwtService.generateRandomToken();
@@ -233,7 +291,7 @@ public class AuthService {
      *
      * <p>前置条件：email 对应的账号存在（不向调用方暴露是否存在）。
      *
-     * <p>后置条件：若账号存在，生成密码重置令牌并发送邮件；若不存在，静默返回。
+     * <p>后置条件：若账号存在且不在冷却期内，生成密码重置令牌并发送邮件；若不存在或在冷却期内，静默返回。
      *
      * @param email 账号邮箱
      */
@@ -241,6 +299,10 @@ public class AuthService {
     public void sendPasswordResetEmail(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
             if (user.getAccountStatus() == AccountStatus.banned) {
+                return;
+            }
+            if (isEmailCooldownActive(user.getUserId(), TokenType.password_reset)) {
+                log.info("密码重置邮件在冷却期内，静默返回: userId={}", user.getUserId());
                 return;
             }
             securityTokenRepository.revokeAllByUserIdAndTokenType(user.getUserId(), TokenType.password_reset);
@@ -359,7 +421,17 @@ public class AuthService {
         }
 
         String tokenHash = JwtService.hashToken(refreshToken);
-        if (securityTokenRepository.findByTokenHash(tokenHash).isEmpty()) {
+        SecurityToken securityToken = securityTokenRepository
+                .findByTokenHash(tokenHash)
+                .orElseThrow(() -> new BusinessException(10007, "Refresh token is invalid"));
+
+        if (Boolean.TRUE.equals(securityToken.getUsed())) {
+            throw new BusinessException(10007, "Refresh token is invalid");
+        }
+        if (Boolean.TRUE.equals(securityToken.getRevoked())) {
+            throw new BusinessException(10007, "Refresh token is invalid");
+        }
+        if (securityToken.getExpiresAt().isBefore(Instant.now())) {
             throw new BusinessException(10007, "Refresh token is invalid");
         }
 
@@ -392,6 +464,52 @@ public class AuthService {
     public void logout(String userId) {
         securityTokenRepository.revokeAllByUserIdAndTokenType(userId, TokenType.refresh);
         log.info("用户登出成功: userId={}", userId);
+    }
+
+    /**
+     * 检查邮件发送是否在冷却期内，若在冷却期内则抛出指定业务异常。
+     *
+     * <p>前置条件：userId、tokenType、errorCode、errorMessage 均非空。
+     *
+     * <p>后置条件：若最近一次该类型令牌在冷却期内创建，抛出 BusinessException。
+     *
+     * @param userId       用户 ID
+     * @param tokenType    令牌类型
+     * @param errorCode    限流错误码
+     * @param errorMessage 限流错误消息
+     */
+    private void checkEmailCooldown(String userId, TokenType tokenType, int errorCode, String errorMessage) {
+        securityTokenRepository
+                .findFirstByUserIdAndTokenTypeOrderByCreatedAtDesc(userId, tokenType)
+                .ifPresent(lastToken -> {
+                    if (lastToken
+                            .getCreatedAt()
+                            .plusSeconds(EMAIL_COOLDOWN_SECONDS)
+                            .isAfter(Instant.now())) {
+                        throw new BusinessException(errorCode, errorMessage);
+                    }
+                });
+    }
+
+    /**
+     * 检查邮件发送是否在冷却期内。
+     *
+     * <p>前置条件：userId 和 tokenType 非空。
+     *
+     * <p>后置条件：返回 true 表示处于冷却期内。
+     *
+     * @param userId    用户 ID
+     * @param tokenType 令牌类型
+     * @return 是否在冷却期内
+     */
+    private boolean isEmailCooldownActive(String userId, TokenType tokenType) {
+        return securityTokenRepository
+                .findFirstByUserIdAndTokenTypeOrderByCreatedAtDesc(userId, tokenType)
+                .map(lastToken -> lastToken
+                        .getCreatedAt()
+                        .plusSeconds(EMAIL_COOLDOWN_SECONDS)
+                        .isAfter(Instant.now()))
+                .orElse(false);
     }
 
     /**

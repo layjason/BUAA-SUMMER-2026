@@ -36,22 +36,26 @@ public class UserProfileService {
     private final PersonalProfileRepository personalProfileRepository;
     private final InterestTagRepository interestTagRepository;
     private final MediaFileRepository mediaFileRepository;
+    private final ReputationService reputationService;
 
     /**
      * @param userRepository              用户数据访问
      * @param personalProfileRepository   个人资料数据访问
      * @param interestTagRepository       兴趣标签数据访问
      * @param mediaFileRepository         媒体文件数据访问
+     * @param reputationService           信誉分服务
      */
     public UserProfileService(
             UserRepository userRepository,
             PersonalProfileRepository personalProfileRepository,
             InterestTagRepository interestTagRepository,
-            MediaFileRepository mediaFileRepository) {
+            MediaFileRepository mediaFileRepository,
+            ReputationService reputationService) {
         this.userRepository = userRepository;
         this.personalProfileRepository = personalProfileRepository;
         this.interestTagRepository = interestTagRepository;
         this.mediaFileRepository = mediaFileRepository;
+        this.reputationService = reputationService;
     }
 
     /**
@@ -255,8 +259,7 @@ public class UserProfileService {
         dto.setBirthday(profile.getBirthday());
         dto.setSignature(profile.getSignature());
         dto.setInterestTags(profile.getInterestTags() != null ? profile.getInterestTags() : List.of());
-        // TODO: 信誉分评定标准待确定，当前返回默认值
-        dto.setReputationScore(profile.getReputationScore() != null ? profile.getReputationScore() : 100);
+        dto.setReputationScore(reputationService.getCurrentScore(user.getUserId()));
         dto.setKind(user.getKind());
         return dto;
     }

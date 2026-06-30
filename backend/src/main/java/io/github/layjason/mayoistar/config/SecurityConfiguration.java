@@ -2,6 +2,7 @@ package io.github.layjason.mayoistar.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -13,11 +14,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Spring Security 配置。
  *
- * <p>类职责：配置 JWT 无状态认证、公开/受保护端点路由、密码编码器。
+ * <p>类职责：配置 JWT 无状态认证、角色路由规则、方法级安全、密码编码器。
  *
- * <p>类不变量：不使用 Session，所有认证信息由 JWT 承载。
+ * <p>不变量：不使用 Session，所有认证信息由 JWT 承载。路由级规则优先于方法级注解。
  */
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfiguration {
 
     private static final String[] PUBLIC_ENDPOINTS = {
@@ -30,12 +32,23 @@ public class SecurityConfiguration {
         "/identity/auth/refresh",
         "/identity/nicknames/availability",
         "/identity/interest-tags",
+        "/admin/auth/login",
+    };
+
+    private static final String[] MERCHANT_ENDPOINTS = {
+        "/identity/me/merchant-profile", "/identity/me/merchant-qualification", "/identity/media/license",
     };
 
     /**
      * 创建安全过滤链。
      *
-     * <p>后置条件：公开端点无需认证即可访问，其余端点需要 JWT Bearer Token。
+     * <p>后置条件：
+     * <ul>
+     *   <li>公开端点无需认证即可访问</li>
+     *   <li>/admin/** 端点需要 ROLE_admin</li>
+     *   <li>商家专属端点需要 ROLE_merchant</li>
+     *   <li>其余端点需要 JWT Bearer Token 认证</li>
+     * </ul>
      *
      * @param http      Spring Security HTTP 配置器
      * @param jwtFilter JWT 认证过滤器
@@ -50,6 +63,10 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(PUBLIC_ENDPOINTS)
                         .permitAll()
+                        .requestMatchers("/admin/**")
+                        .hasRole("admin")
+                        .requestMatchers(MERCHANT_ENDPOINTS)
+                        .hasRole("merchant")
                         .anyRequest()
                         .authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)

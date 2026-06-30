@@ -16,6 +16,7 @@ import io.github.layjason.mayoistar.entity.identity.TokenType;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.SecurityTokenRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
@@ -42,6 +43,9 @@ class AuthServiceTest {
     private PersonalProfileRepository personalProfileRepository;
 
     @Mock
+    private MerchantProfileRepository merchantProfileRepository;
+
+    @Mock
     private SecurityTokenRepository securityTokenRepository;
 
     @Mock
@@ -61,6 +65,7 @@ class AuthServiceTest {
         authService = new AuthService(
                 userRepository,
                 personalProfileRepository,
+                merchantProfileRepository,
                 securityTokenRepository,
                 passwordEncoder,
                 jwtService,
@@ -362,6 +367,307 @@ class AuthServiceTest {
             when(userRepository.findByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
 
             authService.sendPasswordResetEmail("nonexistent@example.com");
+
+            verify(mailService, never()).sendPasswordResetEmail(anyString(), anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("刷新令牌")
+    class RefreshToken {
+
+        private final String userId = UUID.randomUUID().toString();
+
+        @Test
+        @DisplayName("有效刷新令牌正常刷新")
+        void shouldRefreshValidToken() {
+            User user = User.builder()
+                    .userId(userId)
+                    .email("test@example.com")
+                    .nickname("testuser")
+                    .passwordHash("hash")
+                    .kind(UserKind.personal)
+                    .accountStatus(AccountStatus.active)
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            String refreshToken = jwtService.generateRefreshToken(userId, UserKind.personal);
+            String tokenHash = JwtService.hashToken(refreshToken);
+
+            SecurityToken securityToken = SecurityToken.builder()
+                    .tokenId(UUID.randomUUID().toString())
+                    .userId(userId)
+                    .tokenHash(tokenHash)
+                    .tokenType(TokenType.refresh)
+                    .expiresAt(Instant.now().plusSeconds(3600))
+                    .createdAt(Instant.now())
+                    .used(false)
+                    .revoked(false)
+                    .build();
+
+            when(securityTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(securityToken));
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+            IdentityDtos.TokenPair result = authService.refreshToken(refreshToken);
+
+            assertThat(result.getAccessToken()).isNotBlank();
+            assertThat(result.getRefreshToken()).isNotBlank();
+        }
+
+        @Test
+        @DisplayName("已吊销的刷新令牌抛出 10007")
+        void shouldThrowOnRevokedToken() {
+            User user = User.builder()
+                    .userId(userId)
+                    .email("test@example.com")
+                    .nickname("testuser")
+                    .passwordHash("hash")
+                    .kind(UserKind.personal)
+                    .accountStatus(AccountStatus.active)
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            String refreshToken = jwtService.generateRefreshToken(userId, UserKind.personal);
+            String tokenHash = JwtService.hashToken(refreshToken);
+
+            SecurityToken securityToken = SecurityToken.builder()
+                    .tokenId(UUID.randomUUID().toString())
+                    .userId(userId)
+                    .tokenHash(tokenHash)
+                    .tokenType(TokenType.refresh)
+                    .expiresAt(Instant.now().plusSeconds(3600))
+                    .createdAt(Instant.now())
+                    .used(false)
+                    .revoked(true)
+                    .build();
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(securityTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(securityToken));
+
+            assertThatThrownBy(() -> authService.refreshToken(refreshToken))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(10007);
+        }
+
+        @Test
+        @DisplayName("已使用的刷新令牌抛出 10007")
+        void shouldThrowOnUsedToken() {
+            String refreshToken = jwtService.generateRefreshToken(userId, UserKind.personal);
+            String tokenHash = JwtService.hashToken(refreshToken);
+
+            User user = User.builder()
+                    .userId(userId)
+                    .email("test@example.com")
+                    .nickname("testuser")
+                    .passwordHash("hash")
+                    .kind(UserKind.personal)
+                    .accountStatus(AccountStatus.active)
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            SecurityToken securityToken = SecurityToken.builder()
+                    .tokenId(UUID.randomUUID().toString())
+                    .userId(userId)
+                    .tokenHash(tokenHash)
+                    .tokenType(TokenType.refresh)
+                    .expiresAt(Instant.now().plusSeconds(3600))
+                    .createdAt(Instant.now())
+                    .used(true)
+                    .revoked(false)
+                    .build();
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(securityTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(securityToken));
+
+            assertThatThrownBy(() -> authService.refreshToken(refreshToken))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(10007);
+        }
+
+        @Test
+        @DisplayName("已过期的刷新令牌抛出 10007")
+        void shouldThrowOnExpiredToken() {
+            String refreshToken = jwtService.generateRefreshToken(userId, UserKind.personal);
+            String tokenHash = JwtService.hashToken(refreshToken);
+
+            User user = User.builder()
+                    .userId(userId)
+                    .email("test@example.com")
+                    .nickname("testuser")
+                    .passwordHash("hash")
+                    .kind(UserKind.personal)
+                    .accountStatus(AccountStatus.active)
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            SecurityToken securityToken = SecurityToken.builder()
+                    .tokenId(UUID.randomUUID().toString())
+                    .userId(userId)
+                    .tokenHash(tokenHash)
+                    .tokenType(TokenType.refresh)
+                    .expiresAt(Instant.now().minusSeconds(3600))
+                    .createdAt(Instant.now().minusSeconds(7200))
+                    .used(false)
+                    .revoked(false)
+                    .build();
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(securityTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(securityToken));
+
+            assertThatThrownBy(() -> authService.refreshToken(refreshToken))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(10007);
+        }
+
+        @Test
+        @DisplayName("非 refresh 类型令牌抛出 10007")
+        void shouldThrowOnWrongTokenType() {
+            String accessToken = jwtService.generateAccessToken(userId, UserKind.personal);
+
+            assertThatThrownBy(() -> authService.refreshToken(accessToken))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(10007);
+        }
+    }
+
+    @Nested
+    @DisplayName("邮件频率限制")
+    class EmailRateLimit {
+
+        @Test
+        @DisplayName("首次重发激活邮件无限制")
+        void shouldAllowFirstActivationEmailResend() {
+            User user = User.builder()
+                    .userId(UUID.randomUUID().toString())
+                    .email("test@example.com")
+                    .nickname("testuser")
+                    .passwordHash("hash")
+                    .kind(UserKind.personal)
+                    .accountStatus(AccountStatus.inactive)
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
+            when(securityTokenRepository.findFirstByUserIdAndTokenTypeOrderByCreatedAtDesc(
+                            user.getUserId(), TokenType.activation))
+                    .thenReturn(Optional.empty());
+
+            authService.resendActivationEmail("test@example.com");
+
+            verify(mailService).sendActivationEmail(anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("冷却期内重发激活邮件抛出 10015")
+        void shouldThrowWhenResendInCooldown() {
+            User user = User.builder()
+                    .userId(UUID.randomUUID().toString())
+                    .email("test@example.com")
+                    .nickname("testuser")
+                    .passwordHash("hash")
+                    .kind(UserKind.personal)
+                    .accountStatus(AccountStatus.inactive)
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            SecurityToken recentToken = SecurityToken.builder()
+                    .tokenId(UUID.randomUUID().toString())
+                    .userId(user.getUserId())
+                    .tokenHash("hash")
+                    .tokenType(TokenType.activation)
+                    .expiresAt(Instant.now().plusSeconds(86400))
+                    .createdAt(Instant.now().minusSeconds(10))
+                    .used(false)
+                    .revoked(false)
+                    .build();
+
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
+            when(securityTokenRepository.findFirstByUserIdAndTokenTypeOrderByCreatedAtDesc(
+                            user.getUserId(), TokenType.activation))
+                    .thenReturn(Optional.of(recentToken));
+
+            assertThatThrownBy(() -> authService.resendActivationEmail("test@example.com"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(10015);
+        }
+
+        @Test
+        @DisplayName("冷却期过后重发激活邮件成功")
+        void shouldAllowResendAfterCooldown() {
+            User user = User.builder()
+                    .userId(UUID.randomUUID().toString())
+                    .email("test@example.com")
+                    .nickname("testuser")
+                    .passwordHash("hash")
+                    .kind(UserKind.personal)
+                    .accountStatus(AccountStatus.inactive)
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            SecurityToken oldToken = SecurityToken.builder()
+                    .tokenId(UUID.randomUUID().toString())
+                    .userId(user.getUserId())
+                    .tokenHash("hash")
+                    .tokenType(TokenType.activation)
+                    .expiresAt(Instant.now().plusSeconds(86400))
+                    .createdAt(Instant.now().minusSeconds(120))
+                    .used(false)
+                    .revoked(false)
+                    .build();
+
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
+            when(securityTokenRepository.findFirstByUserIdAndTokenTypeOrderByCreatedAtDesc(
+                            user.getUserId(), TokenType.activation))
+                    .thenReturn(Optional.of(oldToken));
+
+            authService.resendActivationEmail("test@example.com");
+
+            verify(mailService).sendActivationEmail(anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("冷却期内密码重置邮件静默不发送")
+        void shouldSilentlySkipPasswordResetInCooldown() {
+            User user = User.builder()
+                    .userId(UUID.randomUUID().toString())
+                    .email("test@example.com")
+                    .nickname("testuser")
+                    .passwordHash("hash")
+                    .kind(UserKind.personal)
+                    .accountStatus(AccountStatus.active)
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            SecurityToken recentToken = SecurityToken.builder()
+                    .tokenId(UUID.randomUUID().toString())
+                    .userId(user.getUserId())
+                    .tokenHash("hash")
+                    .tokenType(TokenType.password_reset)
+                    .expiresAt(Instant.now().plusSeconds(86400))
+                    .createdAt(Instant.now().minusSeconds(10))
+                    .used(false)
+                    .revoked(false)
+                    .build();
+
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
+            when(securityTokenRepository.findFirstByUserIdAndTokenTypeOrderByCreatedAtDesc(
+                            user.getUserId(), TokenType.password_reset))
+                    .thenReturn(Optional.of(recentToken));
+
+            authService.sendPasswordResetEmail("test@example.com");
 
             verify(mailService, never()).sendPasswordResetEmail(anyString(), anyString());
         }

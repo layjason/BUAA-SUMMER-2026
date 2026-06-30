@@ -7,6 +7,7 @@ import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 class JwtServiceTest {
@@ -69,5 +70,41 @@ class JwtServiceTest {
         assertThat(hash1).isEqualTo(hash2);
         assertThat(hash1).isNotEqualTo(hash3);
         assertThat(hash1.length()).isEqualTo(64); // SHA-256 输出 64 十六进制字符
+    }
+
+    @Nested
+    @DisplayName("管理员令牌")
+    class AdminToken {
+
+        @Test
+        @DisplayName("生成并校验管理员访问令牌")
+        void shouldGenerateAndValidateAdminAccessToken() {
+            String token = jwtService.generateAdminAccessToken("admin-456");
+            Claims claims = jwtService.parseToken(token);
+
+            assertThat(claims).isNotNull();
+            assertThat(jwtService.getUserId(claims)).isEqualTo("admin-456");
+            assertThat(jwtService.isAdmin(claims)).isTrue();
+            assertThat(claims.get("kind", String.class)).isEqualTo("admin");
+            assertThat(claims.get("type", String.class)).isEqualTo("access");
+        }
+
+        @Test
+        @DisplayName("管理员令牌的 getUserKind 返回 null")
+        void adminToken_getUserKind_shouldReturnNull() {
+            String token = jwtService.generateAdminAccessToken("admin-456");
+            Claims claims = jwtService.parseToken(token);
+
+            assertThat(jwtService.getUserKind(claims)).isNull();
+        }
+
+        @Test
+        @DisplayName("普通令牌的 isAdmin 返回 false")
+        void personalToken_isAdmin_shouldReturnFalse() {
+            String token = jwtService.generateAccessToken("user-123", UserKind.personal);
+            Claims claims = jwtService.parseToken(token);
+
+            assertThat(jwtService.isAdmin(claims)).isFalse();
+        }
     }
 }

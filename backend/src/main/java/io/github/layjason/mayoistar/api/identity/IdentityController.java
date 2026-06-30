@@ -2,11 +2,10 @@ package io.github.layjason.mayoistar.api.identity;
 
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
-import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.EmptyData;
-import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.service.AuthService;
+import io.github.layjason.mayoistar.service.MerchantProfileService;
 import io.github.layjason.mayoistar.service.UserProfileService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -33,12 +32,19 @@ public class IdentityController {
 
     private final AuthService authService;
     private final UserProfileService userProfileService;
-    private final DefaultApiResponseFactory responseFactory;
+    private final MerchantProfileService merchantProfileService;
 
     @PostMapping("/auth/register/personal")
     public ResponseEntity<ApiResponse<EmptyData>> registerPersonal(
             @Valid @RequestBody IdentityDtos.PersonalRegisterRequest request) {
         authService.registerPersonal(request);
+        return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
+    }
+
+    @PostMapping("/auth/register/merchant")
+    public ResponseEntity<ApiResponse<EmptyData>> registerMerchant(
+            @Valid @RequestBody IdentityDtos.MerchantRegisterRequest request) {
+        authService.registerMerchant(request);
         return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
     }
 
@@ -114,6 +120,29 @@ public class IdentityController {
         return ResponseEntity.ok(ApiResponse.success(profile));
     }
 
+    @GetMapping("/me/merchant-profile")
+    public ResponseEntity<ApiResponse<IdentityDtos.MerchantProfile>> getMyMerchantProfile() {
+        String userId = getCurrentUserId();
+        IdentityDtos.MerchantProfile profile = merchantProfileService.getMerchantProfile(userId);
+        return ResponseEntity.ok(ApiResponse.success(profile));
+    }
+
+    @PatchMapping("/me/merchant-profile")
+    public ResponseEntity<ApiResponse<IdentityDtos.MerchantProfile>> updateMerchantProfile(
+            @Valid @RequestBody IdentityDtos.UpdateMerchantProfileRequest request) {
+        String userId = getCurrentUserId();
+        IdentityDtos.MerchantProfile profile = merchantProfileService.updateMerchantProfile(userId, request);
+        return ResponseEntity.ok(ApiResponse.success(profile));
+    }
+
+    @PostMapping("/me/merchant-qualification")
+    public ResponseEntity<ApiResponse<EmptyData>> submitMerchantQualification(
+            @Valid @RequestBody IdentityDtos.QualificationSubmitRequest request) {
+        String userId = getCurrentUserId();
+        merchantProfileService.submitQualification(userId, request);
+        return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
+    }
+
     @GetMapping("/interest-tags")
     public ResponseEntity<ApiResponse<List<IdentityDtos.InterestTagItem>>> getInterestTags() {
         List<IdentityDtos.InterestTagItem> tags = userProfileService.getInterestTags();
@@ -134,35 +163,12 @@ public class IdentityController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
-    // ---- 以下为商家相关占位端点，将在第二阶段实现 ----
-
-    @PostMapping("/auth/register/merchant")
-    public ResponseEntity<ApiResponse<EmptyData>> registerMerchant(
-            @Valid @RequestBody IdentityDtos.MerchantRegisterRequest request) {
-        return responseFactory.emptyData();
-    }
-
-    @GetMapping("/me/merchant-profile")
-    public ResponseEntity<ApiResponse<IdentityDtos.MerchantProfile>> getMyMerchantProfile() {
-        return responseFactory.merchantProfile();
-    }
-
-    @PatchMapping("/me/merchant-profile")
-    public ResponseEntity<ApiResponse<IdentityDtos.MerchantProfile>> updateMerchantProfile(
-            @Valid @RequestBody IdentityDtos.UpdateMerchantProfileRequest request) {
-        return responseFactory.merchantProfile();
-    }
-
-    @PostMapping("/me/merchant-qualification")
-    public ResponseEntity<ApiResponse<EmptyData>> submitMerchantQualification(
-            @Valid @RequestBody IdentityDtos.QualificationSubmitRequest request) {
-        return responseFactory.emptyData();
-    }
-
     @PostMapping(value = "/media/license", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> uploadMerchantLicense(
             @RequestPart(value = "file") MultipartFile file) {
-        return responseFactory.mediaFile(MediaUsage.merchantLicense);
+        String userId = getCurrentUserId();
+        CommonDtos.MediaFile result = merchantProfileService.uploadLicense(userId, file);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     /**
