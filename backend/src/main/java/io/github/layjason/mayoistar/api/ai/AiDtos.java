@@ -1,6 +1,8 @@
 package io.github.layjason.mayoistar.api.ai;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Positive;
 import java.util.List;
 import lombok.Data;
 
@@ -19,18 +21,21 @@ public final class AiDtos {
 
     @Data
     public static class ActivityPlanningRequest {
-        @NotNull
+        @NotBlank
         private String topic;
 
         private String activityType;
         private String city;
+
+        @Positive
         private Integer expectedParticipants;
+
         private String additionalRequirements;
     }
 
     @Data
     public static class ImageClassificationRequest {
-        @NotNull
+        @NotEmpty
         private List<String> mediaIds;
     }
 
