@@ -137,6 +137,8 @@ public class ActivityDtoMapper {
         // waitingCount 由报名模块补充，当前暂为 0
         dto.setWaitingCount(0);
         dto.setManualReviewRequired(activity.getManualReviewRequired());
+        dto.setFeeDescription(activity.getFeeDescription());
+        dto.setMinAge(activity.getMinAge());
         dto.setReviewRecords(reviewRecords);
         return dto;
     }
@@ -191,6 +193,31 @@ public class ActivityDtoMapper {
         dto.setUsage(mediaFile.getUsage());
         dto.setUrl(mediaFile.getUrl());
         dto.setUploadedAt(formatInstant(mediaFile.getUploadedAt()));
+        return dto;
+    }
+
+    /**
+     * 将活动实体转为地图点 DTO。
+     *
+     * <p>前置条件：activity 非空且包含有效坐标。
+     *
+     * <p>后置条件：返回包含 ID、标题、坐标、运行状态和开始时间的 DTO。
+     *
+     * <p>不变量：不修改传入实体。
+     *
+     * @param activity 活动实体
+     * @return 地图点 DTO
+     */
+    public ActivityDtos.ActivityMapPoint toActivityMapPoint(Activity activity) {
+        ActivityDtos.ActivityMapPoint dto = new ActivityDtos.ActivityMapPoint();
+        dto.setActivityId(activity.getActivityId());
+        dto.setTitle(activity.getTitle());
+        CommonDtos.GeoPoint point = new CommonDtos.GeoPoint();
+        point.setLongitude(activity.getPointLon());
+        point.setLatitude(activity.getPointLat());
+        dto.setPoint(point);
+        dto.setRuntimeStatus(activity.getRuntimeStatus());
+        dto.setStartAt(formatInstant(activity.getStartAt()));
         return dto;
     }
 

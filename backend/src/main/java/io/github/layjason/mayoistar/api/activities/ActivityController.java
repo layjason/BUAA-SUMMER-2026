@@ -98,9 +98,8 @@ public class ActivityController {
             @RequestParam(required = false) Integer distanceMeters,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return ResponseEntity.ok(ApiResponse.success(activitySearchService.mapPoints(toSearchCriteria(
+        return ResponseEntity.ok(ApiResponse.success(activityQueryService.getMapPoints(
                 keyword,
-                activityTypes,
                 city,
                 startAtFrom,
                 startAtTo,
@@ -110,7 +109,7 @@ public class ActivityController {
                 longitude,
                 distanceMeters,
                 page,
-                pageSize))));
+                pageSize)));
     }
 
     @PostMapping(value = "/media/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

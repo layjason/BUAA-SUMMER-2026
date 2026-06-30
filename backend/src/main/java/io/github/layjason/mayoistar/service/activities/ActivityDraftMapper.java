@@ -171,6 +171,8 @@ public class ActivityDraftMapper {
                 .toList());
         dto.setWaitingCount(waitingCount);
         dto.setManualReviewRequired(activity.getManualReviewRequired());
+        dto.setFeeDescription(activity.getFeeDescription());
+        dto.setMinAge(activity.getMinAge());
         dto.setReviewRecords(reviewRecords);
         return dto;
     }

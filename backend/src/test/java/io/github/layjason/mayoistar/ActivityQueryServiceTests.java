@@ -230,6 +230,106 @@ class ActivityQueryServiceTests {
                 .hasMessageContaining("无效的审核状态筛选条件");
     }
 
+    // ========== getMapPoints ==========
+
+    @Test
+    void getMapPointsShouldReturnApprovedActivitiesWithCoordinates() {
+        User organizer = saveUser("user-a");
+        saveApprovedActivity(organizer.getUserId(), "北京活动");
+        saveApprovedActivity(organizer.getUserId(), "上海活动");
+
+        List<ActivityDtos.ActivityMapPoint> result =
+                activityQueryService.getMapPoints(null, null, null, null, null, null, null, null, null, 1, 20);
+
+        assertThat(result).hasSize(2);
+        assertThat(result).allMatch(point -> point.getPoint() != null);
+        assertThat(result).allMatch(point -> point.getPoint().getLatitude() != null);
+        assertThat(result).allMatch(point -> point.getPoint().getLongitude() != null);
+    }
+
+    @Test
+    void getMapPointsShouldExcludeDrafts() {
+        User organizer = saveUser("user-a");
+        saveDraftActivity(organizer.getUserId(), "草稿");
+        saveApprovedActivity(organizer.getUserId(), "已通过");
+
+        List<ActivityDtos.ActivityMapPoint> result =
+                activityQueryService.getMapPoints(null, null, null, null, null, null, null, null, null, 1, 20);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getTitle()).isEqualTo("已通过");
+    }
+
+    @Test
+    void getMapPointsShouldExcludeTakenDown() {
+        User organizer = saveUser("user-a");
+        saveTakenDownActivity(organizer.getUserId());
+        saveApprovedActivity(organizer.getUserId(), "正常活动");
+
+        List<ActivityDtos.ActivityMapPoint> result =
+                activityQueryService.getMapPoints(null, null, null, null, null, null, null, null, null, 1, 20);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getTitle()).isEqualTo("正常活动");
+    }
+
+    @Test
+    void getMapPointsShouldFilterByKeyword() {
+        User organizer = saveUser("user-a");
+        saveApprovedActivity(organizer.getUserId(), "桌游之夜");
+        saveApprovedActivity(organizer.getUserId(), "羽毛球赛");
+
+        List<ActivityDtos.ActivityMapPoint> result =
+                activityQueryService.getMapPoints("桌游", null, null, null, null, null, null, null, null, 1, 20);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getTitle()).isEqualTo("桌游之夜");
+    }
+
+    @Test
+    void getMapPointsShouldFilterByCity() {
+        User organizer = saveUser("user-a");
+        saveApprovedActivity(organizer.getUserId(), "北京活动");
+        activityRepository.save(Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizer.getUserId())
+                .title("上海活动")
+                .tags(List.of("社交"))
+                .introduction("简介")
+                .startAt(Instant.parse("2026-07-02T10:00:00Z"))
+                .endAt(Instant.parse("2026-07-02T12:00:00Z"))
+                .pointLon(121.473)
+                .pointLat(31.230)
+                .city("上海")
+                .address("浦东新区")
+                .safetyNotice("注意安全")
+                .capacity(8)
+                .reviewStatus(ActivityReviewStatus.approved)
+                .runtimeStatus(ActivityRuntimeStatus.notStarted)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build());
+
+        List<ActivityDtos.ActivityMapPoint> result =
+                activityQueryService.getMapPoints(null, "上海", null, null, null, null, null, null, null, 1, 20);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getTitle()).isEqualTo("上海活动");
+    }
+
+    @Test
+    void getMapPointsShouldPaginate() {
+        User organizer = saveUser("user-a");
+        saveApprovedActivity(organizer.getUserId(), "活动1");
+        saveApprovedActivity(organizer.getUserId(), "活动2");
+        saveApprovedActivity(organizer.getUserId(), "活动3");
+
+        List<ActivityDtos.ActivityMapPoint> page1 =
+                activityQueryService.getMapPoints(null, null, null, null, null, null, null, null, null, 1, 2);
+
+        assertThat(page1).hasSize(2);
+    }
+
     // ========== 辅助方法 ==========
 
     private User saveUser(String userId) {

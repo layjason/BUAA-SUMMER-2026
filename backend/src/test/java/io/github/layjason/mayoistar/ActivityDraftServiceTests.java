@@ -272,6 +272,55 @@ class ActivityDraftServiceTests {
         assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.pending);
     }
 
+    @Test
+    void getDraftShouldAllowChangeRequiredStatus() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+        Activity activity = activityRepository.findById(draft.getActivityId()).orElseThrow();
+        activity.setReviewStatus(ActivityReviewStatus.changeRequired);
+        activityRepository.save(activity);
+
+        ActivityDtos.ActivityDraftDetail result =
+                activityDraftService.getDraft(organizer.getUserId(), draft.getActivityId());
+
+        assertThat(result.getActivityId()).isEqualTo(draft.getActivityId());
+        assertThat(result.getReviewStatus()).isEqualTo(ActivityReviewStatus.changeRequired);
+    }
+
+    @Test
+    void updateDraftShouldAllowChangeRequiredStatus() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+        Activity activity = activityRepository.findById(draft.getActivityId()).orElseThrow();
+        activity.setReviewStatus(ActivityReviewStatus.changeRequired);
+        activityRepository.save(activity);
+
+        ActivityDtos.ActivityDraftUpsertRequest request = createDraftRequest(List.of());
+        request.setTitle("修改后标题");
+        ActivityDtos.ActivityDraftDetail result =
+                activityDraftService.updateDraft(organizer.getUserId(), draft.getActivityId(), request);
+
+        assertThat(result.getTitle()).isEqualTo("修改后标题");
+    }
+
+    @Test
+    void listDraftsShouldIncludeChangeRequiredActivities() {
+        User organizer = saveUser("user-a");
+        // 创建一条 draft 状态的草稿
+        activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+        // 创建第二条草稿并设为 changeRequired
+        ActivityDtos.ActivityDraftDetail draft2 =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+        Activity activity2 = activityRepository.findById(draft2.getActivityId()).orElseThrow();
+        activity2.setReviewStatus(ActivityReviewStatus.changeRequired);
+        activityRepository.save(activity2);
+
+        assertThat(activityDraftService.listDrafts(organizer.getUserId(), 1, 20).getItems())
+                .hasSize(2);
+    }
+
     private User saveUser(String userId) {
         return userRepository.save(User.builder()
                 .userId(userId)

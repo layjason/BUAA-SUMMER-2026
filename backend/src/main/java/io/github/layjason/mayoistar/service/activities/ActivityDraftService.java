@@ -8,12 +8,14 @@ import io.github.layjason.mayoistar.entity.activities.ActivityImage;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityReviewRecordRepository;
 import java.time.Instant;
@@ -23,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>类职责：管理活动草稿的保存、读取和更新流程，保证草稿仅能由创建者访问，并维护草稿关联图片顺序。
  *
- * <p>类不变量：草稿记录的 organizerId 一旦创建后不被修改；草稿服务只操作 reviewStatus=draft 的草稿。
+ * <p>类不变量：草稿记录的 organizerId 一旦创建后不被修改；草稿服务操作 reviewStatus=draft 或 changeRequired
+ * 的活动。
  */
 @Slf4j
 @Service
@@ -45,6 +49,7 @@ public class ActivityDraftService {
 
     private final ActivityRepository activityRepository;
     private final ActivityImageRepository activityImageRepository;
+    private final ActivityRegistrationRepository activityRegistrationRepository;
     private final ActivityReviewRecordRepository activityReviewRecordRepository;
     private final MediaFileRepository mediaFileRepository;
     private final UserRepository userRepository;
@@ -108,9 +113,9 @@ public class ActivityDraftService {
      *
      * <p>前置条件：调用者用户存在；分页参数为空时采用默认值。
      *
-     * <p>后置条件：仅返回调用者自己创建且仍处于草稿状态的活动，按更新时间倒序排列。
+     * <p>后置条件：仅返回调用者自己创建且处于草稿状态或要求修改状态的活动，按更新时间倒序排列。
      *
-     * <p>不变量：不会返回已提交审核或其他状态的活动。
+     * <p>不变量：不会返回已提交审核、已通过、已驳回的活动。
      *
      * @param organizerId 当前调用者 ID
      * @param page 页码，从 1 开始
@@ -124,8 +129,10 @@ public class ActivityDraftService {
         int resolvedPage = page == null || page < 1 ? 1 : page;
         int resolvedPageSize = pageSize == null || pageSize < 1 ? 20 : pageSize;
         PageResult<ActivityDtos.ActivityDraftSummary> result = activityDraftMapper.toDraftSummaryPage(
-                activityRepository.findByOrganizerIdAndReviewStatusOrderByUpdatedAtDesc(
-                        organizerId, ActivityReviewStatus.draft, PageRequest.of(resolvedPage - 1, resolvedPageSize)));
+                activityRepository.findByOrganizerIdAndReviewStatusInOrderByUpdatedAtDesc(
+                        organizerId,
+                        Set.of(ActivityReviewStatus.draft, ActivityReviewStatus.changeRequired),
+                        PageRequest.of(resolvedPage - 1, resolvedPageSize)));
         log.debug(
                 "已查询活动草稿列表，organizerId={}, page={}, pageSize={}, total={}",
                 organizerId,
@@ -142,7 +149,7 @@ public class ActivityDraftService {
      *
      * <p>后置条件：当草稿属于调用者本人时返回详情，否则抛出 403 或 404。
      *
-     * <p>不变量：仅允许读取 reviewStatus=draft 的活动。
+     * <p>不变量：仅允许读取 reviewStatus=draft 或 changeRequired 的活动。
      *
      * @param organizerId 当前调用者 ID
      * @param activityId 草稿 ID
@@ -157,7 +164,7 @@ public class ActivityDraftService {
     /**
      * 更新活动草稿。
      *
-     * <p>前置条件：调用者用户存在；草稿存在且属于调用者本人；草稿仍处于 draft 状态。
+     * <p>前置条件：调用者用户存在；草稿存在且属于调用者本人；草稿处于 draft 或 changeRequired 状态。
      *
      * <p>后置条件：草稿信息和图片顺序被新请求覆盖，updatedAt 刷新为当前时间。
      *
@@ -318,8 +325,9 @@ public class ActivityDraftService {
                 mediaFiles,
                 mediaId -> sortOrderByMediaId.getOrDefault(mediaId, Integer.MAX_VALUE),
                 reviewRecordDtos,
-                /* registeredCount: 由报名模块补充，提交审核时默认为 0 */ 0,
-                /* waitingCount: 由报名模块补充，提交审核时默认为 0 */ 0);
+                countByStatus(activity.getActivityId(), RegistrationStatus.registered, RegistrationStatus.checkedIn),
+                countByStatus(
+                        activity.getActivityId(), RegistrationStatus.waiting, RegistrationStatus.waitingConfirmation));
     }
 
     private Activity findOwnedDraft(String organizerId, String activityId) {
@@ -329,7 +337,8 @@ public class ActivityDraftService {
         if (!activity.getOrganizerId().equals(organizerId)) {
             throw new BusinessException(20003, "无权访问其他用户的活动草稿");
         }
-        if (activity.getReviewStatus() != ActivityReviewStatus.draft) {
+        if (activity.getReviewStatus() != ActivityReviewStatus.draft
+                && activity.getReviewStatus() != ActivityReviewStatus.changeRequired) {
             throw new BusinessException(20005, "当前活动不允许按草稿规则访问");
         }
         return activity;
@@ -439,5 +448,14 @@ public class ActivityDraftService {
         return location == null || location.getPoint() == null
                 ? null
                 : location.getPoint().getLatitude();
+    }
+
+    /**
+     * 统计指定活动在给定状态集合中的报名记录数。
+     */
+    private int countByStatus(String activityId, RegistrationStatus... statuses) {
+        return activityRegistrationRepository
+                .findByActivityIdAndStatusIn(activityId, Set.of(statuses))
+                .size();
     }
 }

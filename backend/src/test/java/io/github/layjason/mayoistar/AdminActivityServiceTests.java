@@ -238,6 +238,16 @@ class AdminActivityServiceTests {
         assertThat(records.getFirst().getReason()).isEqualTo("违规内容");
     }
 
+    @Test
+    void takeDownShouldRejectDraftActivity() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveDraftActivity(organizer.getUserId(), "草稿活动");
+
+        assertThatThrownBy(() -> adminActivityService.takeDownActivity(activity.getActivityId(), "下架草稿"))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", 60010);
+    }
+
     /* ========== restoreActivity ========== */
 
     @Test
@@ -270,6 +280,20 @@ class AdminActivityServiceTests {
                 .hasFieldOrPropertyWithValue("code", 60009);
     }
 
+    @Test
+    void restoreActivityShouldCreateAuditRecord() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveTakenDownActivity(organizer.getUserId());
+
+        adminActivityService.restoreActivity(activity.getActivityId());
+
+        List<ActivityReviewRecord> records =
+                activityReviewRecordRepository.findByActivityIdOrderByReviewedAtDesc(activity.getActivityId());
+        assertThat(records).hasSize(1);
+        assertThat(records.getFirst().getResult()).isEqualTo(ReviewStatus.approved);
+        assertThat(records.getFirst().getReason()).isEqualTo("管理员恢复活动");
+    }
+
     /* ========== 辅助方法 ========== */
 
     private User saveUser(String userId) {
@@ -295,6 +319,13 @@ class AdminActivityServiceTests {
     private Activity savePendingActivity(String organizerId, String title) {
         return activityRepository.save(activityBuilder(organizerId, title)
                 .reviewStatus(ActivityReviewStatus.pending)
+                .runtimeStatus(ActivityRuntimeStatus.notStarted)
+                .build());
+    }
+
+    private Activity saveDraftActivity(String organizerId, String title) {
+        return activityRepository.save(activityBuilder(organizerId, title)
+                .reviewStatus(ActivityReviewStatus.draft)
                 .runtimeStatus(ActivityRuntimeStatus.notStarted)
                 .build());
     }
