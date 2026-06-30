@@ -18,20 +18,20 @@ model AdminChangePasswordRequest {
   @doc("当前密码。")
   oldPassword: string;
 
-    @doc("新密码。")
-    newPassword: string;
-  }
+  @doc("新密码。")
+  newPassword: string;
+}
 
-  @doc("管理员登录响应，管理员账号由 admins 表管理，不返回 UserKind（管理员身份已隐含）。")
-  model AdminLoginResponse {
-    @doc("管理员标识。")
-    userId: EntityId;
+@doc("管理员登录响应，管理员账号由 admins 表管理，不返回 UserKind（管理员身份已隐含）。")
+model AdminLoginResponse {
+  @doc("管理员标识。")
+  userId: EntityId;
 
-    @doc("登录成功后签发的令牌对。")
-    tokens: QujuApi.Identity.TokenPair;
-  }
+  @doc("登录成功后签发的令牌对。")
+  tokens: QujuApi.Identity.TokenPair;
+}
 
-  @doc("用户管理查询条件。")
+@doc("用户管理查询条件。")
 model AdminUserQuery extends PageQuery {
   @doc("按邮箱、昵称或商家名称搜索的关键词。")
   @query
