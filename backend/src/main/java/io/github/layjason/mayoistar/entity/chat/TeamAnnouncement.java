@@ -1,8 +1,13 @@
 package io.github.layjason.mayoistar.entity.chat;
 
+import io.github.layjason.mayoistar.entity.identity.User;
+import io.github.layjason.mayoistar.entity.social.Team;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -34,8 +39,20 @@ public class TeamAnnouncement {
     @Column(name = "team_id", length = 36, nullable = false)
     private String teamId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Team team;
+
     @Column(name = "publisher_id", length = 36, nullable = false)
     private String publisherId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "publisher_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User publisher;
 
     @Column(columnDefinition = "text", nullable = false)
     private String content;

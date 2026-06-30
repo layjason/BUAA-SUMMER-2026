@@ -1,8 +1,13 @@
 package io.github.layjason.mayoistar.entity.chat;
 
+import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -36,8 +41,20 @@ public class ChatMessage {
     @Column(name = "conversation_id", length = 36, nullable = false)
     private String conversationId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "conversation_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Conversation conversation;
+
     @Column(name = "sender_id", length = 36, nullable = false)
     private String senderId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sender_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User sender;
 
     @Column(nullable = false, length = 20)
     private String kind;
@@ -47,6 +64,12 @@ public class ChatMessage {
 
     @Column(name = "image_media_id", length = 36)
     private String imageMediaId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "image_media_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private MediaFile image;
 
     @Column(name = "location_lon")
     private Double locationLon;

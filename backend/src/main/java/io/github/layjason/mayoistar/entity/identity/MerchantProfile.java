@@ -1,8 +1,14 @@
 package io.github.layjason.mayoistar.entity.identity;
 
+import io.github.layjason.mayoistar.entity.common.MediaFile;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -33,11 +39,24 @@ public class MerchantProfile {
     @Column(name = "user_id", length = 36)
     private String userId;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @MapsId
+    @JoinColumn(name = "user_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User user;
+
     @Column(name = "merchant_name")
     private String merchantName;
 
     @Column(name = "avatar_media_id", length = 36)
     private String avatarMediaId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "avatar_media_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private MediaFile avatar;
 
     @Column(name = "interested_activity_fields", columnDefinition = "text")
     private String interestedActivityFields;

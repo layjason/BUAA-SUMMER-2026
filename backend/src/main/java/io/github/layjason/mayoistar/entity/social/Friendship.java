@@ -1,8 +1,12 @@
 package io.github.layjason.mayoistar.entity.social;
 
+import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -37,8 +41,20 @@ public class Friendship {
     @Column(name = "user_id_a", length = 36, nullable = false)
     private String userIdA;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id_a", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User userA;
+
     @Column(name = "user_id_b", length = 36, nullable = false)
     private String userIdB;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id_b", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User userB;
 
     @Column(nullable = false, length = 30)
     private String source;

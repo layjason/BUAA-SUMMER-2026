@@ -1,8 +1,12 @@
 package io.github.layjason.mayoistar.entity.chat;
 
+import io.github.layjason.mayoistar.entity.common.MediaFile;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -40,6 +44,12 @@ public class Conversation {
 
     @Column(name = "avatar_media_id", length = 36)
     private String avatarMediaId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "avatar_media_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private MediaFile avatar;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

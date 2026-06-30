@@ -1,8 +1,12 @@
 package io.github.layjason.mayoistar.entity.activities;
 
+import io.github.layjason.mayoistar.entity.admin.Admin;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -36,6 +40,12 @@ public class ActivityReviewRecord {
     @Column(name = "activity_id", length = 36, nullable = false)
     private String activityId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "activity_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Activity activity;
+
     @Column(nullable = false, length = 30)
     private String result;
 
@@ -44,6 +54,12 @@ public class ActivityReviewRecord {
 
     @Column(name = "reviewer_id", length = 36)
     private String reviewerId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reviewer_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Admin reviewer;
 
     @Column(name = "reviewed_at", nullable = false)
     private Instant reviewedAt;

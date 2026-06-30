@@ -1,8 +1,14 @@
 package io.github.layjason.mayoistar.entity.social;
 
+import io.github.layjason.mayoistar.entity.chat.Conversation;
+import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -51,14 +57,32 @@ public class Team {
     @Column(name = "avatar_media_id", length = 36)
     private String avatarMediaId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "avatar_media_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private MediaFile avatar;
+
     @Column(nullable = false, length = 20)
     private String status;
 
     @Column(name = "leader_id", length = 36, nullable = false)
     private String leaderId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "leader_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User leader;
+
     @Column(name = "chat_id", length = 36)
     private String chatId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chat_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Conversation chat;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
