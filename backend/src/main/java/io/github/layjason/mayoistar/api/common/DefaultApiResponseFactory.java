@@ -6,6 +6,22 @@ import io.github.layjason.mayoistar.api.ai.AiDtos;
 import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
+import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
+import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
+import io.github.layjason.mayoistar.entity.chat.MessageKind;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.identity.AccountStatus;
+import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
+import io.github.layjason.mayoistar.entity.identity.UserKind;
+import io.github.layjason.mayoistar.entity.social.FriendRequestSource;
+import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
+import io.github.layjason.mayoistar.entity.social.FriendshipSource;
+import io.github.layjason.mayoistar.entity.social.ReportStatus;
+import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
+import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
+import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
+import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -67,7 +83,7 @@ public class DefaultApiResponseFactory {
      * @param usage 媒体用途
      * @return 媒体文件响应
      */
-    public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> mediaFile(String usage) {
+    public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> mediaFile(MediaUsage usage) {
         CommonDtos.MediaFile file = new CommonDtos.MediaFile();
         file.setMediaId("media-placeholder");
         file.setFileName("placeholder.png");
@@ -85,7 +101,7 @@ public class DefaultApiResponseFactory {
         dto.setActivityId("activity-placeholder");
         dto.setTags(List.of());
         dto.setImages(List.of());
-        dto.setReviewStatus("draft");
+        dto.setReviewStatus(ActivityReviewStatus.draft);
         dto.setUpdatedAt(NOW);
         dto.setCreatedAt(NOW);
         return ResponseEntity.ok(ApiResponse.success(dto));
@@ -99,8 +115,8 @@ public class DefaultApiResponseFactory {
         dto.setStartAt(NOW);
         dto.setEndAt(NOW);
         dto.setLocation(location());
-        dto.setReviewStatus("approved");
-        dto.setRuntimeStatus("notStarted");
+        dto.setReviewStatus(ActivityReviewStatus.approved);
+        dto.setRuntimeStatus(ActivityRuntimeStatus.notStarted);
         dto.setRegisteredCount(0);
         dto.setCapacity(20);
         dto.setIntroduction("默认活动简介");
@@ -125,7 +141,7 @@ public class DefaultApiResponseFactory {
         ActivityDtos.RegistrationResult dto = new ActivityDtos.RegistrationResult();
         dto.setRegistrationId("registration-placeholder");
         dto.setActivityId("activity-placeholder");
-        dto.setStatus("registered");
+        dto.setStatus(RegistrationStatus.registered);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
@@ -151,7 +167,7 @@ public class DefaultApiResponseFactory {
         dto.setRegistrationId("registration-placeholder");
         dto.setUserId("user-placeholder");
         dto.setNickname("MayoiStar");
-        dto.setRegistrationStatus("checkedIn");
+        dto.setRegistrationStatus(RegistrationStatus.checkedIn);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
@@ -196,8 +212,8 @@ public class DefaultApiResponseFactory {
 
         IdentityDtos.LoginResult dto = new IdentityDtos.LoginResult();
         dto.setUserId("user-placeholder");
-        dto.setKind("personal");
-        dto.setAccountStatus("active");
+        dto.setKind(UserKind.personal);
+        dto.setAccountStatus(AccountStatus.active);
         dto.setTokens(tokens);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
@@ -210,13 +226,25 @@ public class DefaultApiResponseFactory {
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
+    public ResponseEntity<ApiResponse<AdminDtos.AdminLoginResponse>> adminLoginResult() {
+        IdentityDtos.TokenPair tokens = new IdentityDtos.TokenPair();
+        tokens.setAccessToken("access-token-placeholder");
+        tokens.setRefreshToken("refresh-token-placeholder");
+        tokens.setExpiresAt(NOW);
+
+        AdminDtos.AdminLoginResponse dto = new AdminDtos.AdminLoginResponse();
+        dto.setUserId("admin-placeholder");
+        dto.setTokens(tokens);
+        return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
     public ResponseEntity<ApiResponse<IdentityDtos.PublicUserProfile>> publicUserProfile() {
         IdentityDtos.PublicUserProfile dto = new IdentityDtos.PublicUserProfile();
         dto.setUserId("user-placeholder");
         dto.setNickname("MayoiStar");
         dto.setInterestTags(List.of());
         dto.setReputationScore(100);
-        dto.setKind("personal");
+        dto.setKind(UserKind.personal);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
@@ -224,10 +252,10 @@ public class DefaultApiResponseFactory {
         IdentityDtos.MerchantProfile dto = new IdentityDtos.MerchantProfile();
         dto.setUserId("merchant-placeholder");
         dto.setMerchantName("默认商家");
-        dto.setMerchantNickname("默认商家昵称");
+        dto.setNickname("默认商家昵称");
         dto.setInterestedActivityFields(List.of());
-        dto.setAccountStatus("active");
-        dto.setQualificationStatus("not_submitted");
+        dto.setAccountStatus(AccountStatus.active);
+        dto.setQualificationStatus(QualificationStatus.not_submitted);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
@@ -249,7 +277,7 @@ public class DefaultApiResponseFactory {
         dto.setMessageId("message-placeholder");
         dto.setConversationId("conversation-placeholder");
         dto.setSenderId("user-placeholder");
-        dto.setKind("text");
+        dto.setKind(MessageKind.text);
         dto.setText("默认消息");
         dto.setReadStatus("unread");
         dto.setRecalled(false);
@@ -266,7 +294,7 @@ public class DefaultApiResponseFactory {
         message.setMessageId("message-placeholder");
         message.setConversationId("conversation-placeholder");
         message.setSenderId("user-placeholder");
-        message.setKind("text");
+        message.setKind(MessageKind.text);
         message.setText("默认消息");
         message.setReadStatus("unread");
         message.setRecalled(false);
@@ -323,8 +351,8 @@ public class DefaultApiResponseFactory {
         dto.setRequestId("request-placeholder");
         dto.setRequesterId("user-placeholder");
         dto.setTargetUserId("target-placeholder");
-        dto.setSource("profile");
-        dto.setStatus("pending");
+        dto.setSource(FriendRequestSource.profile);
+        dto.setStatus(FriendRequestStatus.pending);
         dto.setCreatedAt(NOW);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
@@ -334,7 +362,7 @@ public class DefaultApiResponseFactory {
         dto.setUserId("user-placeholder");
         dto.setNickname("MayoiStar");
         dto.setGroupTags(List.of());
-        dto.setSource("manualRequest");
+        dto.setSource(FriendshipSource.manualRequest);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
@@ -344,7 +372,7 @@ public class DefaultApiResponseFactory {
         dto.setReporterUserId("user-placeholder");
         dto.setTargetUserId("target-placeholder");
         dto.setReason("契约占位举报理由");
-        dto.setStatus("pending");
+        dto.setStatus(ReportStatus.pending);
         dto.setCreatedAt(NOW);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
@@ -353,8 +381,8 @@ public class DefaultApiResponseFactory {
         AdminDtos.AdminUserSummary dto = new AdminDtos.AdminUserSummary();
         dto.setUserId("user-placeholder");
         dto.setEmail("user@example.com");
-        dto.setKind("personal");
-        dto.setStatus("active");
+        dto.setKind(UserKind.personal);
+        dto.setStatus(AccountStatus.active);
         dto.setActivityCount(0);
         dto.setTeamCount(0);
         dto.setCreatedAt(NOW);
@@ -366,10 +394,10 @@ public class DefaultApiResponseFactory {
         dto.setTeamId("team-placeholder");
         dto.setName("默认小队");
         dto.setTags(List.of());
-        dto.setJoinMode("publicJoin");
+        dto.setJoinMode(TeamJoinMode.publicJoin);
         dto.setCapacity(20);
         dto.setMemberCount(1);
-        dto.setStatus("active");
+        dto.setStatus(TeamStatus.active);
         dto.setLeaderId("user-placeholder");
         dto.setChatId("conversation-placeholder");
         return ResponseEntity.ok(ApiResponse.success(dto));
@@ -380,7 +408,7 @@ public class DefaultApiResponseFactory {
         dto.setRequestId("request-placeholder");
         dto.setTeamId("team-placeholder");
         dto.setUserId("user-placeholder");
-        dto.setStatus("pending");
+        dto.setStatus(TeamJoinRequestStatus.pending);
         dto.setCreatedAt(NOW);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
@@ -389,7 +417,7 @@ public class DefaultApiResponseFactory {
         SocialDtos.TeamMember dto = new SocialDtos.TeamMember();
         dto.setUserId("user-placeholder");
         dto.setNickname("MayoiStar");
-        dto.setRole("member");
+        dto.setRole(TeamMemberRole.member);
         dto.setPoints(0);
         dto.setJoinedAt(NOW);
         return ResponseEntity.ok(ApiResponse.success(dto));
@@ -434,8 +462,8 @@ public class DefaultApiResponseFactory {
         dto.setStartAt(NOW);
         dto.setEndAt(NOW);
         dto.setLocation(location());
-        dto.setReviewStatus("approved");
-        dto.setRuntimeStatus("notStarted");
+        dto.setReviewStatus(ActivityReviewStatus.approved);
+        dto.setRuntimeStatus(ActivityRuntimeStatus.notStarted);
         dto.setRegisteredCount(0);
         dto.setCapacity(20);
     }

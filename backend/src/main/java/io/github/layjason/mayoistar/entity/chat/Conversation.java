@@ -1,8 +1,14 @@
 package io.github.layjason.mayoistar.entity.chat;
 
+import io.github.layjason.mayoistar.entity.common.MediaFile;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -33,17 +39,27 @@ public class Conversation {
     @Column(name = "conversation_id", length = 36)
     private String conversationId;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String kind;
+    private ConversationKind kind;
 
+    @Column(length = 100)
     private String title;
 
     @Column(name = "avatar_media_id", length = 36)
     private String avatarMediaId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "avatar_media_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private MediaFile avatar;
+
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
 }

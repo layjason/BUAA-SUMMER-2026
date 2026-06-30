@@ -1,8 +1,14 @@
 package io.github.layjason.mayoistar.entity.activities;
 
+import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -36,13 +42,26 @@ public class ActivityRegistration {
     @Column(name = "activity_id", length = 36, nullable = false)
     private String activityId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "activity_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Activity activity;
+
     @Column(name = "user_id", length = 36, nullable = false)
     private String userId;
 
-    @Column(nullable = false, length = 30)
-    private String status;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User user;
 
-    @Column(name = "participant_note")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private RegistrationStatus status;
+
+    @Column(name = "participant_note", columnDefinition = "text")
     private String participantNote;
 
     @Column(name = "accepted_safety_notice", nullable = false)
@@ -55,7 +74,8 @@ public class ActivityRegistration {
     private Instant confirmationDeadline;
 
     @Column(name = "registered_at", nullable = false)
-    private Instant registeredAt;
+    @Builder.Default
+    private Instant registeredAt = Instant.now();
 
     @Column(name = "checked_in_at")
     private Instant checkedInAt;

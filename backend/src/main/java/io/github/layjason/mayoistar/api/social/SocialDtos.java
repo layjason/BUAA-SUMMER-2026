@@ -1,6 +1,14 @@
 package io.github.layjason.mayoistar.api.social;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.entity.social.FriendRequestSource;
+import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
+import io.github.layjason.mayoistar.entity.social.FriendshipSource;
+import io.github.layjason.mayoistar.entity.social.ReportStatus;
+import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
+import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
+import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
+import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import lombok.Data;
@@ -24,7 +32,7 @@ public final class SocialDtos {
         private String targetUserId;
 
         @NotNull
-        private String source;
+        private FriendRequestSource source;
 
         private String message;
     }
@@ -59,7 +67,7 @@ public final class SocialDtos {
         private List<String> tags;
 
         @NotNull
-        private String joinMode;
+        private TeamJoinMode joinMode;
 
         @NotNull
         private Integer capacity;
@@ -82,7 +90,7 @@ public final class SocialDtos {
     @Data
     public static class TeamMemberRoleUpdate {
         @NotNull
-        private String role;
+        private TeamMemberRole role;
     }
 
     /* ========== 响应 DTO ========== */
@@ -100,9 +108,9 @@ public final class SocialDtos {
         private String requestId;
         private String requesterId;
         private String targetUserId;
-        private String source;
+        private FriendRequestSource source;
         private String message;
-        private String status;
+        private FriendRequestStatus status;
         private String createdAt;
     }
 
@@ -113,7 +121,7 @@ public final class SocialDtos {
         private CommonDtos.MediaFile avatar;
         private String remark;
         private List<String> groupTags;
-        private String source;
+        private FriendshipSource source;
     }
 
     @Data
@@ -139,7 +147,7 @@ public final class SocialDtos {
         private String reporterUserId;
         private String targetUserId;
         private String reason;
-        private String status;
+        private ReportStatus status;
         private String handlingNote;
         private String createdAt;
         private String handledAt;
@@ -150,12 +158,12 @@ public final class SocialDtos {
         private String teamId;
         private String name;
         private List<String> tags;
-        private String joinMode;
+        private TeamJoinMode joinMode;
         private Integer capacity;
         private Integer memberCount;
         private String description;
         private CommonDtos.MediaFile avatar;
-        private String status;
+        private TeamStatus status;
         private String leaderId;
         private String chatId;
     }
@@ -166,7 +174,7 @@ public final class SocialDtos {
         private String teamId;
         private String userId;
         private String message;
-        private String status;
+        private TeamJoinRequestStatus status;
         private String createdAt;
     }
 
@@ -175,7 +183,7 @@ public final class SocialDtos {
         private String userId;
         private String nickname;
         private CommonDtos.MediaFile avatar;
-        private String role;
+        private TeamMemberRole role;
         private Integer points;
         private String joinedAt;
     }

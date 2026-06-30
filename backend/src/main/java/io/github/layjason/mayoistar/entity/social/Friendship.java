@@ -1,8 +1,14 @@
 package io.github.layjason.mayoistar.entity.social;
 
+import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.List;
@@ -47,19 +53,33 @@ public class Friendship {
     @Column(name = "user_id", length = 36, nullable = false)
     private String userId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User user;
+
     @Column(name = "friend_user_id", length = 36, nullable = false)
     private String friendUserId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "friend_user_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User friendUser;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private String source;
+    private FriendshipSource source;
 
     @Column(length = 50)
     private String remark;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "group_tags", columnDefinition = "json")
+    @Column(name = "group_tags", columnDefinition = "jsonb")
     private List<String> groupTags;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }

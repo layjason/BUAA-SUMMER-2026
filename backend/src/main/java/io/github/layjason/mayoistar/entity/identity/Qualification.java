@@ -1,10 +1,17 @@
 package io.github.layjason.mayoistar.entity.identity;
 
+import io.github.layjason.mayoistar.entity.admin.Admin;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -12,6 +19,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 商家资质审核记录，与 MerchantProfile 一对一关联。
@@ -36,11 +45,19 @@ public class Qualification {
     @Column(name = "user_id", length = 36, nullable = false)
     private String userId;
 
-    @Column(nullable = false, length = 30)
-    private String status;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User user;
 
-    @Column(name = "license_media_ids", columnDefinition = "text")
-    private String licenseMediaIds;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private QualificationStatus status;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "license_media_ids", columnDefinition = "jsonb")
+    private List<String> licenseMediaIds;
 
     @Column(name = "submitted_at")
     private Instant submittedAt;
@@ -54,6 +71,13 @@ public class Qualification {
     @Column(name = "reviewer_id", length = 36)
     private String reviewerId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reviewer_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Admin admin;
+
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }

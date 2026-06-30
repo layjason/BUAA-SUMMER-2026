@@ -1,10 +1,17 @@
 package io.github.layjason.mayoistar.entity.identity;
 
+import io.github.layjason.mayoistar.entity.common.MediaFile;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -12,11 +19,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 商家资料，与 User 一对一关联。
  *
- * <p>商家昵称全平台唯一（与个人用户昵称共享唯一性约束）。
+ * <p>昵称已上移至 User 实体。
  */
 @Entity
 @Table(name = "merchant_profiles")
@@ -33,18 +42,30 @@ public class MerchantProfile {
     @Column(name = "user_id", length = 36)
     private String userId;
 
-    @Column(name = "merchant_name")
-    private String merchantName;
+    @OneToOne(fetch = FetchType.LAZY)
+    @MapsId
+    @JoinColumn(name = "user_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User user;
 
-    @Column(name = "merchant_nickname", unique = true, length = 50)
-    private String merchantNickname;
+    @Column(name = "merchant_name", length = 100)
+    private String merchantName;
 
     @Column(name = "avatar_media_id", length = 36)
     private String avatarMediaId;
 
-    @Column(name = "interested_activity_fields", columnDefinition = "text")
-    private String interestedActivityFields;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "avatar_media_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private MediaFile avatar;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "interested_activity_fields", columnDefinition = "jsonb")
+    private List<String> interestedActivityFields;
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
 }

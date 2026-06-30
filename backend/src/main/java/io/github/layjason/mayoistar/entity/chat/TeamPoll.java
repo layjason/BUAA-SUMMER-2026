@@ -1,8 +1,12 @@
 package io.github.layjason.mayoistar.entity.chat;
 
+import io.github.layjason.mayoistar.entity.social.Team;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -34,11 +38,18 @@ public class TeamPoll {
     @Column(name = "team_id", length = 36, nullable = false)
     private String teamId;
 
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Team team;
+
+    @Column(nullable = false, length = 200)
     private String title;
 
     private Instant deadline;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }

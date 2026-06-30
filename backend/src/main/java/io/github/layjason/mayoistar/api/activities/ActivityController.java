@@ -3,6 +3,7 @@ package io.github.layjason.mayoistar.api.activities;
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -71,13 +72,13 @@ public class ActivityController {
     @PostMapping(value = "/media/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
             uploadActivityImage(@RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.mediaFile("activityImage");
+        return responseFactory.mediaFile(MediaUsage.activityImage);
     }
 
     @PostMapping(value = "/media/review-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
             uploadActivityReviewImage(@RequestPart(value = "file", required = false) MultipartFile file) {
-        return responseFactory.mediaFile("activityReviewImage");
+        return responseFactory.mediaFile(MediaUsage.activityReviewImage);
     }
 
     @GetMapping("/mine")

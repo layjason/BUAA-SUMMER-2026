@@ -1,8 +1,14 @@
 package io.github.layjason.mayoistar.entity.common;
 
+import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -33,26 +39,35 @@ public class MediaFile {
     @Column(name = "media_id", length = 36)
     private String mediaId;
 
-    @Column(name = "file_name", nullable = false)
+    @Column(name = "file_name", nullable = false, length = 255)
     private String fileName;
 
-    @Column(name = "content_type", nullable = false)
+    @Column(name = "content_type", nullable = false, length = 127)
     private String contentType;
 
     @Column(name = "size_bytes", nullable = false)
     private Long sizeBytes;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private String usage;
+    private MediaUsage usage;
 
-    @Column(name = "storage_path", nullable = false)
+    @Column(name = "storage_path", nullable = false, length = 500)
     private String storagePath;
 
+    @Column(length = 500)
     private String url;
 
     @Column(name = "uploaded_by", length = 36, nullable = false)
     private String uploadedBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "uploaded_by", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User user;
+
     @Column(name = "uploaded_at", nullable = false)
-    private Instant uploadedAt;
+    @Builder.Default
+    private Instant uploadedAt = Instant.now();
 }

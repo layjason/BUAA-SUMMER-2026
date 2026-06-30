@@ -1,5 +1,9 @@
 package io.github.layjason.mayoistar.api.admin;
 
+import io.github.layjason.mayoistar.api.identity.IdentityDtos;
+import io.github.layjason.mayoistar.entity.identity.AccountStatus;
+import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
+import io.github.layjason.mayoistar.entity.identity.UserKind;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -83,13 +87,19 @@ public final class AdminDtos {
     /* ========== 响应 DTO ========== */
 
     @Data
+    public static class AdminLoginResponse {
+        private String userId;
+        private IdentityDtos.TokenPair tokens;
+    }
+
+    @Data
     public static class AdminUserSummary {
         private String userId;
         private String email;
         private String nickname;
-        private String kind;
-        private String status;
-        private String qualificationStatus;
+        private UserKind kind;
+        private AccountStatus status;
+        private QualificationStatus qualificationStatus;
         private Integer activityCount;
         private Integer teamCount;
         private String createdAt;

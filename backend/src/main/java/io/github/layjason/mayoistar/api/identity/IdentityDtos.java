@@ -1,6 +1,10 @@
 package io.github.layjason.mayoistar.api.identity;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.entity.identity.AccountStatus;
+import io.github.layjason.mayoistar.entity.identity.Gender;
+import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
+import io.github.layjason.mayoistar.entity.identity.UserKind;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import lombok.Data;
@@ -46,6 +50,9 @@ public final class IdentityDtos {
 
         @NotNull
         private String password;
+
+        @NotNull
+        private String nickname;
     }
 
     @Data
@@ -103,7 +110,7 @@ public final class IdentityDtos {
     @Data
     public static class UpdateMerchantProfileRequest {
         private String merchantName;
-        private String merchantNickname;
+        private String nickname;
         private String avatarMediaId;
         private List<String> interestedActivityFields;
     }
@@ -126,8 +133,8 @@ public final class IdentityDtos {
     @Data
     public static class LoginResult {
         private String userId;
-        private String kind;
-        private String accountStatus;
+        private UserKind kind;
+        private AccountStatus accountStatus;
         private TokenPair tokens;
     }
 
@@ -136,17 +143,17 @@ public final class IdentityDtos {
         private String userId;
         private String nickname;
         private CommonDtos.MediaFile avatar;
-        private String gender;
+        private Gender gender;
         private String birthday;
         private String signature;
         private List<String> interestTags;
         private Integer reputationScore;
-        private String kind;
+        private UserKind kind;
     }
 
     @Data
     public static class QualificationDetail {
-        private String status;
+        private QualificationStatus status;
         private String submittedAt;
         private String reviewedAt;
         private String rejectReason;
@@ -157,11 +164,11 @@ public final class IdentityDtos {
     public static class MerchantProfile {
         private String userId;
         private String merchantName;
-        private String merchantNickname;
+        private String nickname;
         private CommonDtos.MediaFile avatar;
         private List<String> interestedActivityFields;
-        private String accountStatus;
-        private String qualificationStatus;
+        private AccountStatus accountStatus;
+        private QualificationStatus qualificationStatus;
         private QualificationDetail qualification;
     }
 

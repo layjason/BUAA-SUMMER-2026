@@ -1,8 +1,12 @@
 package io.github.layjason.mayoistar.entity.social;
 
+import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -34,9 +38,22 @@ public class Blacklist {
     @Column(name = "blocker_id", length = 36, nullable = false)
     private String blockerId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "blocker_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User blocker;
+
     @Column(name = "blocked_user_id", length = 36, nullable = false)
     private String blockedUserId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "blocked_user_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User blockedUser;
+
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }

@@ -1,10 +1,19 @@
 package io.github.layjason.mayoistar.entity.activities;
 
+import io.github.layjason.mayoistar.entity.identity.User;
+import io.github.layjason.mayoistar.entity.social.Team;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -12,6 +21,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 活动主体，保存活动的完整信息。
@@ -36,14 +47,27 @@ public class Activity {
     @Column(name = "organizer_id", length = 36, nullable = false)
     private String organizerId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organizer_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User organizer;
+
     @Column(name = "team_id", length = 36)
     private String teamId;
 
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Team team;
+
+    @Column(nullable = false, length = 200)
     private String title;
 
-    @Column(columnDefinition = "text")
-    private String tags;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<String> tags;
 
     @Column(columnDefinition = "text")
     private String introduction;
@@ -60,11 +84,13 @@ public class Activity {
     @Column(name = "point_lat")
     private Double pointLat;
 
+    @Column(length = 100)
     private String city;
 
+    @Column(length = 500)
     private String address;
 
-    @Column(name = "place_name")
+    @Column(name = "place_name", length = 200)
     private String placeName;
 
     @Column(name = "safety_notice", columnDefinition = "text")
@@ -73,10 +99,10 @@ public class Activity {
     @Column(nullable = false)
     private Integer capacity;
 
-    @Column(name = "fee_amount")
-    private Double feeAmount;
+    @Column(name = "fee_amount", columnDefinition = "DECIMAL(19,4)")
+    private BigDecimal feeAmount;
 
-    @Column(name = "fee_description")
+    @Column(name = "fee_description", length = 500)
     private String feeDescription;
 
     @Column(name = "min_age")
@@ -85,19 +111,23 @@ public class Activity {
     @Column(name = "registration_deadline")
     private Instant registrationDeadline;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "review_status", nullable = false, length = 30)
-    private String reviewStatus;
+    private ActivityReviewStatus reviewStatus;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "runtime_status", nullable = false, length = 30)
-    private String runtimeStatus;
+    private ActivityRuntimeStatus runtimeStatus;
 
     @Column(name = "manual_review_required", nullable = false)
     @Builder.Default
     private Boolean manualReviewRequired = false;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
 }

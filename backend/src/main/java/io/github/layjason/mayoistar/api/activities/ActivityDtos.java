@@ -1,7 +1,12 @@
 package io.github.layjason.mayoistar.api.activities;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
+import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
+import io.github.layjason.mayoistar.entity.activities.ReviewDecision;
 import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
 import java.util.List;
 import lombok.Data;
 
@@ -40,7 +45,7 @@ public final class ActivityDtos {
         @NotNull
         private String registrationDeadline;
 
-        private Double feeAmount;
+        private BigDecimal feeAmount;
         private String feeDescription;
         private Integer minAge;
         private List<String> imageIds;
@@ -57,7 +62,7 @@ public final class ActivityDtos {
         private String safetyNotice;
         private Integer capacity;
         private String registrationDeadline;
-        private Double feeAmount;
+        private BigDecimal feeAmount;
         private String feeDescription;
         private Integer minAge;
         private List<String> imageIds;
@@ -120,9 +125,9 @@ public final class ActivityDtos {
         private String endAt;
         private CommonDtos.LocationInfo location;
         private CommonDtos.MediaFile coverImage;
-        private Double feeAmount;
-        private String reviewStatus;
-        private String runtimeStatus;
+        private BigDecimal feeAmount;
+        private ActivityReviewStatus reviewStatus;
+        private ActivityRuntimeStatus runtimeStatus;
         private Integer registeredCount;
         private Integer capacity;
     }
@@ -131,7 +136,7 @@ public final class ActivityDtos {
     public static class ReviewRecord {
         private String reviewerId;
         private String reviewerName;
-        private String status;
+        private ReviewDecision status;
         private String reason;
         private String reviewedAt;
     }
@@ -145,9 +150,9 @@ public final class ActivityDtos {
         private String endAt;
         private CommonDtos.LocationInfo location;
         private CommonDtos.MediaFile coverImage;
-        private Double feeAmount;
-        private String reviewStatus;
-        private String runtimeStatus;
+        private BigDecimal feeAmount;
+        private ActivityReviewStatus reviewStatus;
+        private ActivityRuntimeStatus runtimeStatus;
         private Integer registeredCount;
         private Integer capacity;
         private String introduction;
@@ -173,11 +178,11 @@ public final class ActivityDtos {
         private String safetyNotice;
         private Integer capacity;
         private String registrationDeadline;
-        private Double feeAmount;
+        private BigDecimal feeAmount;
         private String feeDescription;
         private Integer minAge;
         private List<CommonDtos.MediaFile> images;
-        private String reviewStatus;
+        private ActivityReviewStatus reviewStatus;
         private String updatedAt;
         private String createdAt;
     }
@@ -186,7 +191,7 @@ public final class ActivityDtos {
     public static class ActivityDraftSummary {
         private String activityId;
         private String title;
-        private String reviewStatus;
+        private ActivityReviewStatus reviewStatus;
         private String updatedAt;
         private String createdAt;
     }
@@ -208,7 +213,7 @@ public final class ActivityDtos {
         private String activityId;
         private String title;
         private CommonDtos.GeoPoint point;
-        private String runtimeStatus;
+        private ActivityRuntimeStatus runtimeStatus;
         private String startAt;
     }
 
@@ -216,7 +221,7 @@ public final class ActivityDtos {
     public static class RegistrationResult {
         private String registrationId;
         private String activityId;
-        private String status;
+        private RegistrationStatus status;
         private Integer waitingRank;
         private String confirmationDeadline;
     }
@@ -227,7 +232,7 @@ public final class ActivityDtos {
         private String userId;
         private String nickname;
         private CommonDtos.MediaFile avatar;
-        private String registrationStatus;
+        private RegistrationStatus registrationStatus;
         private Integer waitingRank;
         private String registeredAt;
         private String checkedInAt;
@@ -236,7 +241,7 @@ public final class ActivityDtos {
     @Data
     public static class ActivityParticipationState {
         private Boolean canRegister;
-        private String status;
+        private RegistrationStatus status;
         private Integer waitingRank;
         private String confirmationDeadline;
         private Boolean canCancelRegistration;
@@ -256,7 +261,7 @@ public final class ActivityDtos {
         private String registrationId;
         private String userId;
         private String nickname;
-        private String registrationStatus;
+        private RegistrationStatus registrationStatus;
         private String checkedInAt;
     }
 
