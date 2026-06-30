@@ -56,6 +56,54 @@
       "style": {
         "navigationBarTitleText": "重置密码"
       }
+    },
+    {
+      "path": "pages/profile/edit",
+      "style": {
+        "navigationBarTitleText": "编辑资料"
+      }
+    },
+    {
+      "path": "pages/profile/my-activities",
+      "style": {
+        "navigationBarTitleText": "我创建的活动"
+      }
+    },
+    {
+      "path": "pages/profile/my-registrations",
+      "style": {
+        "navigationBarTitleText": "我的报名"
+      }
+    },
+    {
+      "path": "pages/profile/my-friends",
+      "style": {
+        "navigationBarTitleText": "我的好友"
+      }
+    },
+    {
+      "path": "pages/profile/friend-requests",
+      "style": {
+        "navigationBarTitleText": "好友申请"
+      }
+    },
+    {
+      "path": "pages/profile/my-teams",
+      "style": {
+        "navigationBarTitleText": "我的小队"
+      }
+    },
+    {
+      "path": "pages/profile/blacklist",
+      "style": {
+        "navigationBarTitleText": "黑名单"
+      }
+    },
+    {
+      "path": "pages/profile/settings",
+      "style": {
+        "navigationBarTitleText": "设置"
+      }
     }
   ],
   "tabBar": {
