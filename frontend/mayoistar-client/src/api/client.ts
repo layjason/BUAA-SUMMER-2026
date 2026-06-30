@@ -50,6 +50,23 @@ export function setTokenSaver(saver: TokenSaver): void {
   tokenSaver = saver
 }
 
+/**
+ * Mock 请求处理器
+ *
+ * 返回非 null 值时直接作为响应数据使用，不发起真实 HTTP 请求；
+ * 返回 null 时走正常请求流程。
+ */
+type MockHandler = (
+  method: string,
+  path: string,
+  body?: unknown,
+) => Promise<{ code: number; message: string; data: unknown }> | null | undefined
+let mockHandler: MockHandler | null = null
+
+export function setMockHandler(handler: MockHandler | null | undefined): void {
+  mockHandler = handler ?? null
+}
+
 /* ---- 从路径直接提取操作类型 ---- */
 
 /**
@@ -263,6 +280,10 @@ function rawRequest(
   url: string,
   body?: unknown,
 ): Promise<{ code: number; message: string; data: unknown }> {
+  if (mockHandler) {
+    const mockResult = mockHandler(method, url, body)
+    if (mockResult != null) return mockResult
+  }
   const ctx = {}
   setRetryContext(ctx, { method, url, body })
   return doRawRequest(ctx, true)
