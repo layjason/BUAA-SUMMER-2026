@@ -4163,27 +4163,34 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - code
-                  - message
-                  - data
-                properties:
-                  code:
-                    type: number
-                    enum:
-                      - 200
-                    description: 平台响应代码，成功响应固定为 200。
-                  message:
-                    type: string
-                    enum:
-                      - For Super Earth!
-                    description: 平台响应消息，成功响应固定为 For Super Earth!。
-                  data:
-                    allOf:
-                      - $ref: '#/components/schemas/MediaFile'
-                    description: 响应数据。
-                description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/MediaFile'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Identity.ImageFormatInvalid'
+                  - $ref: '#/components/schemas/Errors.Identity.ImageTooLarge'
       tags:
         - 身份与资料
       requestBody:
