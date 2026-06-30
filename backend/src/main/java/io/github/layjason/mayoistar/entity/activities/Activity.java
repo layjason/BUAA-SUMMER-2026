@@ -73,12 +73,10 @@ public class Activity {
     private String introduction;
 
     @Column(name = "start_at", nullable = false)
-    @Builder.Default
-    private Instant startAt = Instant.now();
+    private Instant startAt;
 
     @Column(name = "end_at", nullable = false)
-    @Builder.Default
-    private Instant endAt = Instant.now();
+    private Instant endAt;
 
     @Column(name = "point_lon")
     private Double pointLon;

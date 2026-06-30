@@ -59,12 +59,10 @@ public class BanRecord {
     private String reason;
 
     @Column(name = "banned_at", nullable = false)
-    @Builder.Default
-    private Instant bannedAt = Instant.now();
+    private Instant bannedAt;
 
     @Column(name = "banned_until", nullable = false)
-    @Builder.Default
-    private Instant bannedUntil = Instant.now();
+    private Instant bannedUntil;
 
     @Column(name = "unbanned_at")
     private Instant unbannedAt;

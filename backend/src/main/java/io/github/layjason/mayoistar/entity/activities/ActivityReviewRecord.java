@@ -65,6 +65,5 @@ public class ActivityReviewRecord {
     private Admin reviewer;
 
     @Column(name = "reviewed_at", nullable = false)
-    @Builder.Default
-    private Instant reviewedAt = Instant.now();
+    private Instant reviewedAt;
 }

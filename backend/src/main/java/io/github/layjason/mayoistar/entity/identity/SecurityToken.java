@@ -55,8 +55,7 @@ public class SecurityToken {
     private TokenType tokenType;
 
     @Column(name = "expires_at", nullable = false)
-    @Builder.Default
-    private Instant expiresAt = Instant.now();
+    private Instant expiresAt;
 
     @Column(name = "created_at", nullable = false)
     @Builder.Default
