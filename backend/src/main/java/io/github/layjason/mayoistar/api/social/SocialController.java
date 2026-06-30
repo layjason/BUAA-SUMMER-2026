@@ -6,6 +6,7 @@ import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import jakarta.validation.Valid;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,15 +18,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/social")
 public class SocialController {
 
     private final DefaultApiResponseFactory responseFactory;
-
-    public SocialController(DefaultApiResponseFactory responseFactory) {
-        this.responseFactory = responseFactory;
-    }
 
     @GetMapping("/blacklist")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.BlacklistItem>>> listBlacklist(

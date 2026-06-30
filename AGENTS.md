@@ -82,7 +82,7 @@
 
 - Lombok 与依赖注入强制规范：
   - 全面使用 Lombok（如 @Data, @Builder, @Slf4j 等）消除样板代码，禁止手动编写 Getter/Setter 等。
-  - 实体类限制：绝对禁止在 JPA 实体类（`@Entity`）上使用 `@Data` 注解。** 为了防止双向关联导致的无限递归（StackOverflow）和意外的懒加载，实体类请仅使用 `@Getter` 和 `@Setter`，并在特殊需要时手动重写 `equals` 和 `hashCode`。
+  - 实体类限制：绝对禁止在 JPA 实体类（`@Entity`）上使用 `@Data` 注解。** 为了防止双向关联导致的无限递归（StackOverflow）和意外的懒加载，实体类请仅使用 `@Getter` 和 `@Setter`，并在特殊需要时手动重写 `equals` 和 `hashCode`。同时注意 `@ToString` 也可能导致循环引用问题。
   - 对于实现代码，请不要使用 `@Autowired` 注入依赖，以免降低可测试性，对于测试代码，可以使用 `@Autowired` 简化实现。
   -   所有 Spring Bean使用构造器注入。在类级别使用 `@RequiredArgsConstructor`（若适用），并将所有依赖字段声明为 private final。若需要使用 `@Qualifier`、`@Value` 等参数级别注解，或者构造函数内部包含特殊的初始化/校验逻辑，则可以手动编写构造函数。
 
@@ -98,7 +98,8 @@
 
 - DTO 请创建普通类，并使用 Lombok `@Data` 修饰；
 - 请使用 `Jakarta Bean Validation API` 检查用户传入的参数是否符合要求；
-- 对于所有业务逻辑，统一使用 `@NonNullApi` 标记，对于可空的参数，再使用 `@Nullable` 标记，尽量不要允许传递空值，可以考虑使用 `Optional`。
+- 对于所有业务逻辑，统一使用 `@NonNullApi` 标记，对于可空的参数，再使用 `@Nullable` 标记，尽量不要允许传递空值，可以考虑使用 `Optional`；
+- 编写 Controller 时，请检查可能用到的实体的数据库表约束（例如，长度限制），若客户端传递的值超出限制，应当返回恰当的错误码。
 
 ### 代码检查
 
