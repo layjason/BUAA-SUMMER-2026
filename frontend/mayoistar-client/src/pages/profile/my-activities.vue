@@ -13,6 +13,8 @@
       </view>
     </view>
 
+    <view class="tab-bar-spacer" />
+
     <view v-if="loading" class="loading-text">{{ t('加载中') }}</view>
 
     <view v-else-if="errorMsg" class="error-text">{{ errorMsg }}</view>
@@ -167,10 +169,19 @@ function runtimeStatusText(status: string): string {
 }
 
 .tab-bar {
+  position: fixed;
+  top: var(--window-top, 44px);
+  left: 0;
+  right: 0;
+  z-index: 10;
   display: flex;
   background-color: #fff;
   padding: 0 32rpx;
   border-bottom: 1rpx solid #ebedf0;
+}
+
+.tab-bar-spacer {
+  height: 88rpx;
 }
 
 .tab {
