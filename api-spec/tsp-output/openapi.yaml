@@ -1727,6 +1727,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Admin.AdminLoginRequest'
+      security:
+        - {}
   /admin/auth/password:
     post:
       operationId: AdminOperations_changePassword
@@ -3937,6 +3939,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Identity.AccountActivationRequest'
+      security:
+        - {}
   /identity/auth/activation-email:
     post:
       operationId: IdentityOperations_resendActivationEmail
@@ -3985,6 +3989,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Identity.ResendActivationEmailRequest'
+      security:
+        - {}
   /identity/auth/login:
     post:
       operationId: IdentityOperations_login
@@ -4033,6 +4039,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Identity.EmailPasswordRequest'
+      security:
+        - {}
   /identity/auth/logout:
     post:
       operationId: IdentityOperations_logout
@@ -4119,6 +4127,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Identity.ResetPasswordRequest'
+      security:
+        - {}
   /identity/auth/password-reset-email:
     post:
       operationId: IdentityOperations_sendPasswordResetEmail
@@ -4165,6 +4175,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Identity.PasswordResetEmailRequest'
+      security:
+        - {}
   /identity/auth/refresh:
     post:
       operationId: IdentityOperations_refreshToken
@@ -4212,6 +4224,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Identity.RefreshTokenRequest'
+      security:
+        - {}
   /identity/auth/register/merchant:
     post:
       operationId: IdentityOperations_registerMerchant
@@ -4258,6 +4272,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Identity.MerchantRegisterRequest'
+      security:
+        - {}
   /identity/auth/register/personal:
     post:
       operationId: IdentityOperations_registerPersonal
@@ -4305,6 +4321,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Identity.PersonalRegisterRequest'
+      security:
+        - {}
   /identity/interest-tags:
     get:
       operationId: IdentityOperations_getInterestTags
@@ -4345,6 +4363,8 @@ paths:
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
       tags:
         - 身份与资料
+      security:
+        - {}
   /identity/me/merchant-profile:
     get:
       operationId: IdentityOperations_getMyMerchantProfile
@@ -4756,6 +4776,8 @@ paths:
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
       tags:
         - 身份与资料
+      security:
+        - {}
   /social/blacklist:
     get:
       operationId: SocialOperations_listBlacklist

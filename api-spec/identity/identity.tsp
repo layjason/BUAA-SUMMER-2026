@@ -291,6 +291,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/register/personal")
   @doc("注册个人用户，邮箱未注册且昵称唯一，账号进入未激活状态并触发激活邮件，密码只在服务端加盐哈希保存。")
   registerPersonal(@body body: PersonalRegisterRequest): APIResult<
@@ -301,6 +302,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/register/merchant")
   @doc("注册商家用户，邮箱未注册，账号进入未激活状态并触发激活邮件，商家资料和资质提交走独立接口。")
   registerMerchant(@body body: MerchantRegisterRequest): APIResult<
@@ -309,6 +311,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/login")
   @doc("邮箱密码登录，账号已激活且未封禁，返回 JWT 令牌，封禁账号不得登录。")
   login(@body body: EmailPasswordRequest): APIResult<
@@ -325,6 +328,7 @@ interface IdentityOperations {
   logout(): APIResult<EmptyData>;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/activate")
   @doc("激活账号，激活 token 有效且未使用，账号从 inactive 变更为 active，token 只能使用一次。")
   activateAccount(@body body: AccountActivationRequest): APIResult<
@@ -335,6 +339,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/activation-email")
   @doc("重新发送激活邮件，邮箱对应账号未激活，发送新的激活链接，不暴露邮件服务凭据。")
   resendActivationEmail(@body body: ResendActivationEmailRequest): APIResult<
@@ -346,6 +351,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/refresh")
   @doc("刷新访问令牌，刷新令牌有效，返回新的令牌对，不会绕过账号封禁校验。")
   refreshToken(@body body: RefreshTokenRequest): APIResult<
@@ -356,6 +362,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/password-reset-email")
   @doc("发送密码重置邮件，邮箱若属于个人用户或商户账号则发送一次性重置链接，响应不得向未认证调用方暴露账号是否存在。")
   sendPasswordResetEmail(@body body: PasswordResetEmailRequest): APIResult<
@@ -364,6 +371,7 @@ interface IdentityOperations {
   >;
 
   @post
+  @useAuth(NoAuth)
   @route("/auth/password-reset")
   @doc("通过邮件链接重置个人用户或商户密码，重置 token 有效且未使用，密码更新后旧登录凭据失效。")
   resetPassword(@body body: ResetPasswordRequest): APIResult<
@@ -374,11 +382,13 @@ interface IdentityOperations {
   >;
 
   @get
+  @useAuth(NoAuth)
   @route("/nicknames/availability")
   @doc("校验昵称是否可用，nickname 非空，返回唯一性校验结果，个人昵称和商家昵称共享唯一性约束。")
   checkNickname(@query nickname: string): APIResult<NicknameAvailability>;
 
   @get
+  @useAuth(NoAuth)
   @route("/interest-tags")
   @doc("获取系统预定义的所有兴趣标签列表，供用户选择。")
   getInterestTags(): APIResult<InterestTagItem[]>;
