@@ -337,7 +337,7 @@ export function put<P extends keyof paths>(
 }
 
 /**
- * PATCH 请求（uni-app 3.0 不完全支持 PATCH，使用 PUT 替代发送）
+ * PATCH 请求
  */
 export function patch<P extends keyof paths>(
   path: P,
