@@ -1,16 +1,20 @@
 # MayoiStar 身份接口 Yaak 测试说明
 
-- Version: 1 20260701 102350
-  - 新增 bash 脚本，支持非 Windows 环境下运行
+- Version: 2 20260701 104500
+  - 扩展为全量 Yaak 测试（覆盖 00-04 全部 32 个请求）
+  - 脚本自动提取登录/刷新响应中的 token 并写入环境变量
+  - 新增 DevDataInitializer 提供测试管理员（dev profile）
+  - 新增 test-avatar.png / test-license.png 用于上传接口测试
 
-本目录提供 MayoiStar 身份接口的 Yaak 自动化测试资产。
+本目录提供 MayoiStar 身份接口的 Yaak 全量自动化测试资产。
 
 ## 文件
 
-- `MayoiStar.Identity.postman_collection.json`：Yaak 可导入的 Postman v2.1 集合。
+- `MayoiStar.Identity.postman_collection.json`：Yaak 可导入的 Postman v2.1 集合（32 个请求）。
 - `MayoiStar.Identity.local.postman_environment.json`：本地环境变量模板，不包含真实凭据。
 - `start-backend-mailhog.ps1` / `start-backend-mailhog.sh`：使用 MailHog 邮件测试配置启动后端。
-- `run-mailhog-smoke.ps1` / `run-mailhog-smoke.sh`：使用 Yaak CLI 和 MailHog 自动获取邮件 token 的冒烟测试脚本。
+- `run-mailhog-smoke.ps1` / `run-mailhog-smoke.sh`：全量测试脚本，自动执行全部 32 个请求并在请求间提取 token。
+- `test-avatar.png` / `test-license.png`：文件上传接口测试用占位图片。
 
 ## 使用步骤
 
@@ -96,13 +100,24 @@
 - `GET /admin/users/{userId}/merchant-profile`：获取商家资料
 - `POST /admin/users/{userId}/merchant-review`：审核商家资质（占位）
 
+## 测试管理员
+
+脚本使用以下测试管理员凭据，由 `DevDataInitializer`（dev profile）在启动时自动创建：
+
+- 用户名：`testadminyaak`
+- 密码：`AdminPass123!`
+
 ## Token 与动态值
 
-激活和重置密码 token 来自邮件链接。使用 MailHog 时，后端会把邮件发送到本地测试收件箱，Web 页面为 `http://127.0.0.1:8025`，API 为 `http://127.0.0.1:8025/api/v2/messages`。`run-mailhog-smoke.ps1` 会从 MailHog API 读取邮件正文中的 `token` 参数，并写回 Yaak 环境变量。
+脚本自动处理以下流程：
 
-当前后端只保存 token 的 SHA-256 哈希，不能从数据库直接取原始 token 调用激活或重置接口。
+- **激活 token**：脚本通过 MailHog API 轮询邮件正文中的 `token` 参数，自动写入 `activationToken`
+- **登录 token**：脚本解析登录响应 JSON，提取 `data.tokens.accessToken` / `refreshToken` / `data.userId`
+- **刷新 token**：刷新后脚本自动更新 `personalAccessToken` 和 `personalRefreshToken`
+- **密码重置 token**：脚本从密码重置邮件中提取 reset token
+- **文件上传 mediaId**：上传头像/执照后自动提取 `data.mediaId`
 
-在 Yaak 中手动执行时，请在登录、刷新、上传等请求后把响应值写入环境变量：
+在 Yaak 中手动执行时，请自行把响应值写入环境变量（见下方手动变量映射）。
 
 - `data.tokens.accessToken` -> `personalAccessToken` 或 `merchantAccessToken`
 - `data.tokens.refreshToken` -> `personalRefreshToken` 或 `merchantRefreshToken`
@@ -114,3 +129,4 @@
 - 商家注册接口只接收邮箱、密码、昵称；资质上传在激活登录后通过 `/identity/media/license` 和 `/identity/me/merchant-qualification` 完成。
 - 商家审核接口目前返回占位数据。
 - 后端统一错误响应使用 HTTP 200，业务成败通过响应体 `code` 判断。
+- 测试管理员的创建需要重启后端以使 `DevDataInitializer`（dev profile）生效。
