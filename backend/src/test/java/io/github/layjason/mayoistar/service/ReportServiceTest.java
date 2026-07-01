@@ -124,6 +124,17 @@ class ReportServiceTest {
     class DecideReportTests {
 
         @Test
+        @DisplayName("举报不存在时抛出 REPORT_INVALID")
+        void decideReportNotFoundThrowsCorrectError() {
+            when(reportRepository.findById("rp-nonexistent")).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.decideReport("rp-nonexistent", ReportStatus.resolved, "处理"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(40007);
+        }
+
+        @Test
         @DisplayName("管理员首次处理用户举报为已解决时重算信誉分并记录流水")
         void decideReportResolved() {
             Report report = Report.builder()
