@@ -28,11 +28,12 @@
           :label="t('activityEdit.title')"
           :placeholder="t('activityEdit.titlePlaceholder')"
           :error="errors.title"
+          required
         />
 
         <!-- 活动标签 -->
         <view class="form-item">
-          <text class="label">{{ t('activityEdit.tags') }}</text>
+          <text class="label"> <text class="req">* </text>{{ t('activityEdit.tags') }} </text>
           <view v-if="availableTags.length" class="tags-row">
             <view
               v-for="tag in availableTags"
@@ -50,7 +51,7 @@
 
         <!-- 时间 -->
         <view class="form-item">
-          <text class="label">{{ t('activityEdit.startAt') }}</text>
+          <text class="label"><text class="req">* </text>{{ t('activityEdit.startAt') }}</text>
           <view class="datetime-row">
             <picker mode="date" :value="startAtDate" @change="onStartAtDateChange">
               <view class="picker-value">
@@ -71,7 +72,7 @@
         </view>
 
         <view class="form-item">
-          <text class="label">{{ t('activityEdit.endAt') }}</text>
+          <text class="label"><text class="req">* </text>{{ t('activityEdit.endAt') }}</text>
           <view class="datetime-row">
             <picker mode="date" :value="endAtDate" @change="onEndAtDateChange">
               <view class="picker-value">
@@ -92,7 +93,9 @@
         </view>
 
         <view class="form-item">
-          <text class="label">{{ t('activityEdit.registrationDeadline') }}</text>
+          <text class="label"
+            ><text class="req">* </text>{{ t('activityEdit.registrationDeadline') }}</text
+          >
           <view class="datetime-row">
             <picker mode="date" :value="deadlineDate" @change="onDeadlineDateChange">
               <view class="picker-value">
@@ -120,12 +123,14 @@
           :label="t('activityEdit.locationAddress')"
           :placeholder="t('activityEdit.locationAddressPlaceholder')"
           :error="errors.address"
+          required
         />
         <FormInput
           v-model="formCity"
           :label="t('activityEdit.locationCity')"
           :placeholder="t('activityEdit.locationCityPlaceholder')"
           :error="errors.city"
+          required
         />
         <FormInput
           v-model="formPlaceName"
@@ -140,6 +145,7 @@
           :placeholder="t('activityEdit.capacityPlaceholder')"
           type="number"
           :error="errors.capacity"
+          required
         />
 
         <!-- 费用 -->
@@ -165,7 +171,7 @@
 
         <!-- 活动简介 -->
         <view class="form-item">
-          <text class="label">{{ t('activityEdit.introduction') }}</text>
+          <text class="label"><text class="req">* </text>{{ t('activityEdit.introduction') }}</text>
           <textarea
             v-model="formIntroduction"
             class="textarea"
@@ -178,7 +184,7 @@
 
         <!-- 安全须知 -->
         <view class="form-item">
-          <text class="label">{{ t('activityEdit.safetyNotice') }}</text>
+          <text class="label"><text class="req">* </text>{{ t('activityEdit.safetyNotice') }}</text>
           <textarea
             v-model="formSafetyNotice"
             class="textarea"
@@ -663,6 +669,10 @@ onLoad((query) => {
   font-size: 28rpx;
   color: #323233;
   margin-bottom: 12rpx;
+}
+
+.req {
+  color: #ee0a24;
 }
 
 /* ---- 标签 ---- */

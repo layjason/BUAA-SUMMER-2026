@@ -1,6 +1,8 @@
 <template>
   <view class="form-input">
-    <text class="form-input__label">{{ label }}</text>
+    <text class="form-input__label">
+      <text v-if="required" class="form-input__required">* </text>{{ label }}
+    </text>
     <input
       :value="modelValue"
       :type="type"
@@ -29,6 +31,7 @@ defineProps<{
   placeholder: string
   type?: string
   error?: string
+  required?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -56,6 +59,10 @@ function onInput(e: { detail: { value: string } }) {
   font-size: 28rpx;
   color: #323233;
   margin-bottom: 12rpx;
+}
+
+.form-input__required {
+  color: #ee0a24;
 }
 
 .form-input__input {
