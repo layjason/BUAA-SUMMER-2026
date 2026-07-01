@@ -423,17 +423,34 @@ async function handleCheckIn(): Promise<void> {
 
 /**
  * 生成签到二维码
+ *
+ * 下载二维码图片到本地后提供「查看」和「保存到相册」两种操作。
  */
 async function handleGenerateQrCode(): Promise<void> {
   try {
+    uni.showLoading({ title: '生成中...' })
     const result = (await api.post('/activities/{activityId}/check-in-qrcode', {
       path: { activityId: activityId.value },
     })) as { qrCodeToken: string; expiresAt: string }
     const qrImageUrl =
       'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' +
       encodeURIComponent(result.qrCodeToken)
-    uni.previewImage({
-      urls: [qrImageUrl],
+
+    const dl = await uni.downloadFile({ url: qrImageUrl })
+    uni.hideLoading()
+
+    uni.showActionSheet({
+      itemList: ['查看二维码', '保存到相册'],
+      success: (action) => {
+        if (action.tapIndex === 0) {
+          uni.previewImage({ urls: [dl.tempFilePath] })
+        } else {
+          uni.saveImageToPhotosAlbum({
+            filePath: dl.tempFilePath,
+            success: () => uni.showToast({ title: '已保存到相册', icon: 'success' }),
+          })
+        }
+      },
     })
     uni.showToast({
       title: `${t('activityDetail.qrCodeExpires')}: ${formatDateTime(result.expiresAt)}`,
@@ -442,6 +459,7 @@ async function handleGenerateQrCode(): Promise<void> {
     })
     uni.setClipboardData({ data: result.qrCodeToken })
   } catch (error) {
+    uni.hideLoading()
     if (error instanceof BusinessError) {
       uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
     } else {
