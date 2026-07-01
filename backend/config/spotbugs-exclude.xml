@@ -39,6 +39,7 @@
     <Match>
         <Class name="io.github.layjason.mayoistar.service.ChatService" />
         <Bug pattern="CRLF_INJECTION_LOGS" />
+    </Match>
     <Match>
         <Class name="io.github.layjason.mayoistar.service.MailService" />
         <Bug pattern="EI_EXPOSE_REP2" />
