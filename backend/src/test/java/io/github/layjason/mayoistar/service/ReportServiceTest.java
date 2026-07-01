@@ -131,7 +131,7 @@ class ReportServiceTest {
             assertThatThrownBy(() -> service.decideReport("rp-nonexistent", ReportStatus.resolved, "处理"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
-                    .isEqualTo(40007);
+                    .isEqualTo(60007);
         }
 
         @Test

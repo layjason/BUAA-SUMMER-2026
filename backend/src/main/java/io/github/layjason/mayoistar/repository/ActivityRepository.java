@@ -1,14 +1,18 @@
 package io.github.layjason.mayoistar.repository;
 
 import io.github.layjason.mayoistar.entity.activities.Activity;
+
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import java.util.Collection;
+import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -87,4 +91,14 @@ public interface ActivityRepository extends JpaRepository<Activity, String>, Jpa
             + "LEFT JOIN TeamMember tm ON t.teamId = tm.teamId AND tm.userId = :userId "
             + "WHERE t.creatorId = :userId OR t.leaderId = :userId OR tm.userId = :userId")
     List<String> findTeamIdsByUserIdInvolvement(@Param("userId") String userId);
+
+    /**
+     * 按活动 ID 加悲观写锁读取活动，用于报名、取消报名和候补递补等容量敏感流程。
+     *
+     * @param activityId 活动 ID
+     * @return 活动
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Activity a where a.activityId = :activityId")
+    Optional<Activity> findByIdForUpdate(@Param("activityId") String activityId);
 }
