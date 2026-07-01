@@ -81,7 +81,7 @@
  * 后置条件：选择后跳转编辑页
  */
 import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
@@ -92,6 +92,8 @@ const { t } = useI18n()
 
 const loadingTemplates = ref(true)
 const loadingActivities = ref(true)
+const actioning = ref(false)
+let redirectTimer: ReturnType<typeof setTimeout> | null = null
 
 interface ActivityTemplate {
   templateId: string
@@ -143,6 +145,8 @@ async function loadMyActivities(): Promise<void> {
 }
 
 async function selectTemplate(tpl: ActivityTemplate): Promise<void> {
+  if (actioning.value) return
+  actioning.value = true
   try {
     uni.showLoading({ title: t('activityTemplates.creating') })
     const draft = (await api.post('/activities/templates/{templateId}/drafts', {
@@ -157,10 +161,14 @@ async function selectTemplate(tpl: ActivityTemplate): Promise<void> {
     } else {
       uni.showToast({ title: '创建草稿失败', icon: 'none' })
     }
+  } finally {
+    actioning.value = false
   }
 }
 
 async function selectClone(item: MyActivity): Promise<void> {
+  if (actioning.value) return
+  actioning.value = true
   try {
     uni.showLoading({ title: t('activityClone.cloning') })
     const result = (await api.post('/activities/{activityId}/clone', {
@@ -168,7 +176,7 @@ async function selectClone(item: MyActivity): Promise<void> {
     })) as { activityId: string }
     uni.hideLoading()
     uni.showToast({ title: t('activityClone.success'), icon: 'success' })
-    setTimeout(() => {
+    redirectTimer = setTimeout(() => {
       uni.redirectTo({ url: '/pages/activity/edit?activityId=' + result.activityId })
     }, 800)
   } catch (error) {
@@ -178,6 +186,7 @@ async function selectClone(item: MyActivity): Promise<void> {
     } else {
       uni.showToast({ title: '克隆失败', icon: 'none' })
     }
+    actioning.value = false
   }
 }
 
@@ -188,6 +197,13 @@ function skipTemplate(): void {
 onLoad(() => {
   loadTemplates()
   loadMyActivities()
+})
+
+onUnload(() => {
+  if (redirectTimer !== null) {
+    clearTimeout(redirectTimer)
+    redirectTimer = null
+  }
 })
 </script>
 
