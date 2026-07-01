@@ -178,6 +178,56 @@ assert_code() {
   fi
 }
 
+# 前置条件：response 是合法 JSON，filter 能定位单个标量字段；后置条件：字段字符串值等于 expected；不变量：不修改 Yaak 环境。
+assert_jq_equals() {
+  local response="$1"
+  local filter="$2"
+  local expected="$3"
+  local actual
+  actual=$(echo "$response" | jq -r "($filter) as \$value | if \$value == null then \"\" else \$value end")
+  if [[ "$actual" != "$expected" ]]; then
+    echo "响应内容不符合预期: filter=$filter expected=$expected actual=$actual" >&2
+    echo "$response" | jq . >&2
+    exit 1
+  fi
+}
+
+# 前置条件：response 是合法 JSON，filter 能定位待检查字段；后置条件：字段存在且渲染后的字符串非空；不变量：不修改 Yaak 环境。
+assert_jq_non_empty() {
+  local response="$1"
+  local filter="$2"
+  local actual
+  actual=$(echo "$response" | jq -r "($filter) as \$value | if \$value == null then \"\" else \$value end")
+  if [[ -z "$actual" ]]; then
+    echo "响应内容不能为空: filter=$filter" >&2
+    echo "$response" | jq . >&2
+    exit 1
+  fi
+}
+
+# 前置条件：response 是合法 JSON，filter 是返回布尔语义的 jq 表达式；后置条件：表达式为真；不变量：不修改 Yaak 环境。
+assert_jq_true() {
+  local response="$1"
+  local filter="$2"
+  if ! echo "$response" | jq -e "$filter" >/dev/null; then
+    echo "响应内容条件不成立: filter=$filter" >&2
+    echo "$response" | jq . >&2
+    exit 1
+  fi
+}
+
+# 前置条件：response 使用 PageResult 响应结构；后置条件：分页字段与请求分页参数一致且计数字段为数字；不变量：不检查历史数据总量。
+assert_page_result() {
+  local response="$1"
+  local expected_page="$2"
+  local expected_page_size="$3"
+  assert_jq_true "$response" '.data.items | type == "array"'
+  assert_jq_equals "$response" ".data.page" "$expected_page"
+  assert_jq_equals "$response" ".data.pageSize" "$expected_page_size"
+  assert_jq_true "$response" '.data.total | type == "number"'
+  assert_jq_true "$response" '.data.totalPages | type == "number"'
+}
+
 workspace_id=$(create_workspace)
 environment_id=$(create_environment "$workspace_id")
 
@@ -213,6 +263,12 @@ echo "Yaak environment: $environment_id"
 begin_test "登录 test_user"
 response=$(send_json "$login_user" "$environment_id")
 assert_code "$response" "200"
+assert_jq_equals "$response" '.data.userId' "$TEST_USER_ID"
+assert_jq_equals "$response" '.data.kind' "personal"
+assert_jq_equals "$response" '.data.accountStatus' "active"
+assert_jq_non_empty "$response" '.data.tokens.accessToken'
+assert_jq_non_empty "$response" '.data.tokens.refreshToken'
+assert_jq_non_empty "$response" '.data.tokens.expiresAt'
 set_env_var "$environment_id" "userAccessToken" "$(echo "$response" | jq -r '.data.tokens.accessToken')"
 set_env_var "$environment_id" "testUserId" "$(echo "$response" | jq -r '.data.userId')"
 pass_test
@@ -220,6 +276,12 @@ pass_test
 begin_test "登录 test_peer"
 response=$(send_json "$login_peer" "$environment_id")
 assert_code "$response" "200"
+assert_jq_equals "$response" '.data.userId' "$TEST_PEER_ID"
+assert_jq_equals "$response" '.data.kind' "personal"
+assert_jq_equals "$response" '.data.accountStatus' "active"
+assert_jq_non_empty "$response" '.data.tokens.accessToken'
+assert_jq_non_empty "$response" '.data.tokens.refreshToken'
+assert_jq_non_empty "$response" '.data.tokens.expiresAt'
 set_env_var "$environment_id" "peerAccessToken" "$(echo "$response" | jq -r '.data.tokens.accessToken')"
 set_env_var "$environment_id" "testPeerId" "$(echo "$response" | jq -r '.data.userId')"
 pass_test
@@ -227,6 +289,10 @@ pass_test
 begin_test "登录 admin"
 response=$(send_json "$login_admin" "$environment_id")
 assert_code "$response" "200"
+assert_jq_equals "$response" '.data.userId' "$ADMIN_USER_ID"
+assert_jq_non_empty "$response" '.data.tokens.accessToken'
+assert_jq_non_empty "$response" '.data.tokens.refreshToken'
+assert_jq_non_empty "$response" '.data.tokens.expiresAt'
 set_env_var "$environment_id" "adminAccessToken" "$(echo "$response" | jq -r '.data.tokens.accessToken')"
 set_env_var "$environment_id" "adminUserId" "$(echo "$response" | jq -r '.data.userId')"
 pass_test
@@ -234,32 +300,55 @@ pass_test
 begin_test "查看个人主页"
 response=$(send_json "$get_profile" "$environment_id")
 assert_code "$response" "200"
+assert_jq_equals "$response" '.data.userId' "$TEST_PEER_ID"
+assert_jq_equals "$response" '.data.nickname' "test_peer"
+assert_jq_equals "$response" '.data.kind' "personal"
+assert_jq_true "$response" '.data.reputationScore | type == "number"'
 pass_test
 
 begin_test "发送好友申请"
 response=$(send_json "$create_friend" "$environment_id")
 assert_code "$response" "200"
+assert_jq_non_empty "$response" '.data.requestId'
+assert_jq_equals "$response" '.data.requesterId' "$TEST_USER_ID"
+assert_jq_equals "$response" '.data.targetUserId' "$TEST_PEER_ID"
+assert_jq_equals "$response" '.data.source' "profile"
+assert_jq_equals "$response" '.data.message' "Yaak CLI smoke"
+assert_jq_equals "$response" '.data.status' "pending"
+friend_request_id=$(echo "$response" | jq -r '.data.requestId')
 set_env_var "$environment_id" "friendRequestId" "$(echo "$response" | jq -r '.data.requestId')"
 pass_test
 
 begin_test "同意好友申请"
 response=$(send_json "$accept_friend" "$environment_id")
 assert_code "$response" "200"
+assert_jq_equals "$response" '.data.requestId' "$friend_request_id"
+assert_jq_equals "$response" '.data.requesterId' "$TEST_USER_ID"
+assert_jq_equals "$response" '.data.targetUserId' "$TEST_PEER_ID"
+assert_jq_equals "$response" '.data.status' "accepted"
 pass_test
 
 begin_test "好友列表"
 response=$(send_json "$list_friends" "$environment_id")
 assert_code "$response" "200"
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" ".data.items | any(.userId == \"$TEST_PEER_ID\" and .nickname == \"test_peer\")"
 pass_test
 
 begin_test "更新好友备注"
 response=$(send_json "$update_remark" "$environment_id")
 assert_code "$response" "200"
+assert_jq_equals "$response" '.data.userId' "$TEST_PEER_ID"
+assert_jq_equals "$response" '.data.nickname' "test_peer"
+assert_jq_equals "$response" '.data.remark' "QA 好友"
+assert_jq_true "$response" '.data.groupTags | index("测试") != null and index("两人社群") != null'
 pass_test
 
 begin_test "会话列表"
 response=$(send_json "$list_conversations" "$environment_id")
 assert_code "$response" "200"
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" '.data.items | any(.kind == "friend" and (.conversationId // "") != "" and (.unreadCount | type == "number"))'
 conversation_id=$(echo "$response" | jq -r '.data.items[0].conversationId // empty')
 if [[ -z "$conversation_id" ]]; then
   echo "未找到好友会话，无法继续聊天测试。" >&2
@@ -272,43 +361,92 @@ pass_test
 begin_test "发送文字消息"
 response=$(send_json "$send_text" "$environment_id")
 assert_code "$response" "200"
+assert_jq_non_empty "$response" '.data.messageId'
+assert_jq_equals "$response" '.data.conversationId' "$conversation_id"
+assert_jq_equals "$response" '.data.senderId' "$TEST_USER_ID"
+assert_jq_equals "$response" '.data.kind' "text"
+assert_jq_equals "$response" '.data.text' "Hello from Yaak CLI"
+assert_jq_equals "$response" '.data.readStatus' "read"
+assert_jq_equals "$response" '.data.recalled' "false"
 set_env_var "$environment_id" "messageId" "$(echo "$response" | jq -r '.data.messageId')"
 pass_test
 
 begin_test "发送表情文本消息"
 response=$(send_json "$send_emoji" "$environment_id")
 assert_code "$response" "200"
+assert_jq_non_empty "$response" '.data.messageId'
+assert_jq_equals "$response" '.data.conversationId' "$conversation_id"
+assert_jq_equals "$response" '.data.senderId' "$TEST_USER_ID"
+assert_jq_equals "$response" '.data.kind' "text"
+assert_jq_equals "$response" '.data.text' "😀⭐"
+assert_jq_equals "$response" '.data.recalled' "false"
 pass_test
 
 begin_test "标记已读"
 response=$(send_json "$mark_read" "$environment_id")
 assert_code "$response" "200"
+message_id=$(echo "$response" | jq -r '.data[0].messageId // empty')
+assert_jq_true "$response" ".data | any(.messageId == \"$message_id\" and .readStatus == \"read\")"
 pass_test
 
 begin_test "转发消息"
 response=$(send_json "$forward_message" "$environment_id")
 assert_code "$response" "200"
+assert_jq_true "$response" '.data | type == "array" and length == 1'
+assert_jq_non_empty "$response" '.data[0].messageId'
+assert_jq_true "$response" ".data[0].messageId != \"$message_id\""
+assert_jq_equals "$response" '.data[0].conversationId' "$conversation_id"
+assert_jq_equals "$response" '.data[0].senderId' "$TEST_USER_ID"
+assert_jq_equals "$response" '.data[0].kind' "text"
+assert_jq_equals "$response" '.data[0].text' "Hello from Yaak CLI"
+assert_jq_equals "$response" '.data[0].recalled' "false"
 pass_test
 
 begin_test "撤回消息"
 response=$(send_json "$recall_message" "$environment_id")
 assert_code "$response" "200"
+assert_jq_equals "$response" '.data.messageId' "$message_id"
+assert_jq_equals "$response" '.data.conversationId' "$conversation_id"
+assert_jq_equals "$response" '.data.senderId' "$TEST_USER_ID"
+assert_jq_equals "$response" '.data.recalled' "true"
+assert_jq_true "$response" '.data.text == null'
 pass_test
 
 begin_test "举报用户"
 response=$(send_json "$create_report" "$environment_id")
 assert_code "$response" "200"
+assert_jq_non_empty "$response" '.data.reportId'
+assert_jq_equals "$response" '.data.reporterUserId' "$TEST_USER_ID"
+assert_jq_equals "$response" '.data.targetType' "user"
+assert_jq_equals "$response" '.data.targetId' "$TEST_PEER_ID"
+assert_jq_equals "$response" '.data.reason' "Yaak CLI smoke report"
+assert_jq_equals "$response" '.data.status' "pending"
+report_id=$(echo "$response" | jq -r '.data.reportId')
 set_env_var "$environment_id" "reportId" "$(echo "$response" | jq -r '.data.reportId')"
 pass_test
 
 begin_test "后台查询举报"
 response=$(send_json "$admin_list_reports" "$environment_id")
 assert_code "$response" "200"
+if ! echo "$response" | jq -e ".data.items | any(.reportId == \"$report_id\")" >/dev/null; then
+  echo "后台举报列表未包含本次举报。" >&2
+  echo "$response" | jq . >&2
+  exit 1
+fi
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" ".data.items | any(.reportId == \"$report_id\" and .targetType == \"user\" and .targetId == \"$TEST_PEER_ID\")"
 pass_test
 
 begin_test "后台处理举报"
 response=$(send_json "$admin_decide_report" "$environment_id")
 assert_code "$response" "200"
+assert_jq_equals "$response" '.data.reportId' "$report_id"
+assert_jq_equals "$response" '.data.reporterUserId' "$TEST_USER_ID"
+assert_jq_equals "$response" '.data.targetType' "user"
+assert_jq_equals "$response" '.data.targetId' "$TEST_PEER_ID"
+assert_jq_equals "$response" '.data.status' "resolved"
+assert_jq_equals "$response" '.data.handlingNote' "Yaak CLI smoke resolved"
+assert_jq_non_empty "$response" '.data.handledAt'
 pass_test
 
 echo "Yaak CLI smoke completed."
