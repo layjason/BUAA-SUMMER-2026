@@ -1,11 +1,14 @@
 package io.github.layjason.mayoistar.service;
 
+import static io.github.layjason.mayoistar.exception.ErrorCodes.ANNOUNCEMENT_NOT_VISIBLE;
+import static io.github.layjason.mayoistar.exception.ErrorCodes.ANNOUNCEMENT_PERMISSION_DENIED;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.CONVERSATION_MEMBER_REQUIRED;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.FORWARD_TARGET_UNAVAILABLE;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MEDIA_REFERENCE_INVALID;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_NOT_VISIBLE;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_RECALL_EXPIRED;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_SENDER_REQUIRED;
+import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_MEMBER_REQUIRED;
 
 import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
@@ -15,12 +18,18 @@ import io.github.layjason.mayoistar.entity.chat.Conversation;
 import io.github.layjason.mayoistar.entity.chat.MessageKind;
 import io.github.layjason.mayoistar.entity.chat.MessageRead;
 import io.github.layjason.mayoistar.entity.chat.MessageReadStatus;
+import io.github.layjason.mayoistar.entity.chat.TeamAnnouncement;
+import io.github.layjason.mayoistar.entity.chat.TeamAnnouncementRead;
+import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ChatMessageRepository;
 import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
 import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MessageReadRepository;
+import io.github.layjason.mayoistar.repository.TeamAnnouncementReadRepository;
+import io.github.layjason.mayoistar.repository.TeamAnnouncementRepository;
+import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -56,6 +65,9 @@ public class ChatService {
     private final MessageReadRepository messageReadRepository;
     private final MediaFileRepository mediaFileRepository;
     private final NotificationService notificationService;
+    private final TeamAnnouncementRepository teamAnnouncementRepository;
+    private final TeamAnnouncementReadRepository teamAnnouncementReadRepository;
+    private final TeamMemberRepository teamMemberRepository;
 
     // ========================================
     // Send Message
@@ -401,6 +413,108 @@ public class ChatService {
     }
 
     // ========================================
+    // Team Announcements
+    // ========================================
+
+    /**
+     * 发布群公告。
+     *
+     * <p>前置条件：{@code publisherId} 是 {@code teamId} 小队的队长或管理员。
+     *
+     * <p>后置条件：公告已持久化，所有小队成员的已读记录已创建（发布者标记为已读）。
+     *
+     * @param teamId      小队 ID
+     * @param publisherId 发布者 ID
+     * @param content      公告内容
+     * @return 已创建的公告
+     * @throws BusinessException 非小队成员或非管理角色时抛出
+     */
+    public ChatDtos.TeamAnnouncement publishAnnouncement(String teamId, String publisherId, String content) {
+        var member = teamMemberRepository
+                .findByTeamIdAndUserId(teamId, publisherId)
+                .orElseThrow(() -> {
+                    log.warn("非小队成员尝试发布公告: teamId={}, userId={}", teamId, publisherId);
+                    return new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+                });
+
+        if (member.getRole() != TeamMemberRole.leader && member.getRole() != TeamMemberRole.admin) {
+            log.warn("非管理角色尝试发布公告: teamId={}, userId={}, role={}", teamId, publisherId, member.getRole());
+            throw new BusinessException(ANNOUNCEMENT_PERMISSION_DENIED, "Announcement operation is not allowed");
+        }
+
+        Instant now = Instant.now();
+        TeamAnnouncement announcement = TeamAnnouncement.builder()
+                .announcementId(UUID.randomUUID().toString())
+                .teamId(teamId)
+                .publisherId(publisherId)
+                .content(content)
+                .publishedAt(now)
+                .build();
+        teamAnnouncementRepository.save(announcement);
+
+        var teamMembers = teamMemberRepository.findAllByTeamId(teamId);
+        for (var tm : teamMembers) {
+            TeamAnnouncementRead read = TeamAnnouncementRead.builder()
+                    .readId(UUID.randomUUID().toString())
+                    .announcementId(announcement.getAnnouncementId())
+                    .userId(tm.getUserId())
+                    .readAt(tm.getUserId().equals(publisherId) ? now : null)
+                    .build();
+            teamAnnouncementReadRepository.save(read);
+        }
+
+        log.info(
+                "群公告发布成功: announcementId={}, teamId={}, publisherId={}",
+                announcement.getAnnouncementId(),
+                teamId,
+                publisherId);
+
+        return toTeamAnnouncementDto(announcement, true);
+    }
+
+    /**
+     * 标记群公告已读。
+     *
+     * <p>前置条件：{@code userId} 是 {@code teamId} 小队的成员，{@code announcementId} 对小队可见。
+     *
+     * <p>后置条件：当前用户的已读记录 readAt 已更新。
+     *
+     * @param teamId         小队 ID
+     * @param announcementId 公告 ID
+     * @param userId         当前用户 ID
+     * @return 更新后的公告
+     * @throws BusinessException 非成员或公告不可见时抛出
+     */
+    public ChatDtos.TeamAnnouncement markAnnouncementRead(String teamId, String announcementId, String userId) {
+        if (!teamMemberRepository.findByTeamIdAndUserId(teamId, userId).isPresent()) {
+            log.warn("非小队成员尝试标记公告已读: teamId={}, userId={}", teamId, userId);
+            throw new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        }
+
+        TeamAnnouncement announcement = teamAnnouncementRepository
+                .findById(announcementId)
+                .orElseThrow(() -> {
+                    log.warn("公告不可见: announcementId={}", announcementId);
+                    return new BusinessException(
+                            ANNOUNCEMENT_NOT_VISIBLE, "Announcement " + announcementId + " is not visible");
+                });
+
+        if (!announcement.getTeamId().equals(teamId)) {
+            throw new BusinessException(ANNOUNCEMENT_NOT_VISIBLE, "Announcement " + announcementId + " is not visible");
+        }
+
+        var read = teamAnnouncementReadRepository.findByAnnouncementIdAndUserId(announcementId, userId);
+        if (read.isPresent() && read.get().getReadAt() == null) {
+            read.get().setReadAt(Instant.now());
+            teamAnnouncementReadRepository.save(read.get());
+            log.info("公告已读标记完成: announcementId={}, userId={}", announcementId, userId);
+        }
+
+        boolean readByCurrentUser = read.map(r -> r.getReadAt() != null).orElse(false);
+        return toTeamAnnouncementDto(announcement, readByCurrentUser);
+    }
+
+    // ========================================
     // Private Helpers
     // ========================================
 
@@ -519,6 +633,28 @@ public class ChatService {
         dto.setUsage(entity.getUsage());
         dto.setUrl(entity.getUrl());
         dto.setUploadedAt(entity.getUploadedAt().toString());
+        return dto;
+    }
+
+    /**
+     * 将 TeamAnnouncement 实体转换为 DTO。
+     *
+     * <p>前置条件：{@code entity} 已持久化。
+     *
+     * <p>后置条件：返回包含公告所有字段及当前用户已读状态的 DTO。
+     *
+     * @param entity           公告实体
+     * @param readByCurrentUser 当前用户是否已读
+     * @return 公告 DTO
+     */
+    private ChatDtos.TeamAnnouncement toTeamAnnouncementDto(TeamAnnouncement entity, boolean readByCurrentUser) {
+        ChatDtos.TeamAnnouncement dto = new ChatDtos.TeamAnnouncement();
+        dto.setAnnouncementId(entity.getAnnouncementId());
+        dto.setTeamId(entity.getTeamId());
+        dto.setContent(entity.getContent());
+        dto.setPublisherId(entity.getPublisherId());
+        dto.setPublishedAt(entity.getPublishedAt().toString());
+        dto.setReadByCurrentUser(readByCurrentUser);
         return dto;
     }
 }

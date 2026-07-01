@@ -117,12 +117,33 @@ public final class ChatDtos {
         private String sentAt;
     }
 
+    /**
+     * 聊天实时事件负载标记接口，具体类型由 ChatRealtimeEvent.kind 区分。
+     */
+    public interface ChatRealtimeEventPayload {}
+
+    @Data
+    public static class MessageCreatedPayload implements ChatRealtimeEventPayload {
+        private ChatMessage message;
+        private Integer conversationUnreadCount;
+    }
+
+    @Data
+    public static class MessageRecalledPayload implements ChatRealtimeEventPayload {
+        private ChatMessage message;
+    }
+
+    @Data
+    public static class MessageForwardedPayload implements ChatRealtimeEventPayload {
+        private ChatMessage message;
+        private Integer conversationUnreadCount;
+    }
+
     @Data
     public static class ChatRealtimeEvent {
         private String kind;
         private String conversationId;
-        private ChatMessage message;
-        private Integer conversationUnreadCount;
+        private ChatRealtimeEventPayload payload;
         private String occurredAt;
     }
 

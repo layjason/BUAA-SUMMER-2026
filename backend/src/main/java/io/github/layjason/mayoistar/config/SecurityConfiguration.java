@@ -44,6 +44,10 @@ public class SecurityConfiguration {
         "/identity/me/merchant-profile", "/identity/me/merchant-qualification", "/identity/media/license",
     };
 
+    private static final String[] WEBSOCKET_ENDPOINTS = {
+        "/chat/ws/**",
+    };
+
     /**
      * 创建安全过滤链。
      *
@@ -67,6 +71,8 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(PUBLIC_ENDPOINTS)
+                        .permitAll()
+                        .requestMatchers(WEBSOCKET_ENDPOINTS)
                         .permitAll()
                         .requestMatchers("/admin/**")
                         .hasRole("admin")

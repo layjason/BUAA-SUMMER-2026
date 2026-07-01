@@ -63,7 +63,9 @@ class FriendRequestServiceIntegrationTest extends AbstractIntegrationTest {
     void acceptFriendRequestCreatesConversation() {
         friendRequestService.decideFriendRequest(anon.getUserId(), requestId, true);
 
-        var conversations = conversationRepository.findAll();
+        var conversations = conversationRepository.findAll().stream()
+                .filter(conversation -> conversation.getKind() == ConversationKind.friend)
+                .toList();
         assertThat(conversations).as("接受好友申请后应创建会话").hasSize(1);
 
         var conversation = conversations.getFirst();
@@ -83,7 +85,9 @@ class FriendRequestServiceIntegrationTest extends AbstractIntegrationTest {
     void rejectFriendRequestDoesNotCreateConversation() {
         friendRequestService.decideFriendRequest(anon.getUserId(), requestId, false);
 
-        var conversations = conversationRepository.findAll();
+        var conversations = conversationRepository.findAll().stream()
+                .filter(conversation -> conversation.getKind() == ConversationKind.friend)
+                .toList();
         assertThat(conversations).as("拒绝好友申请不应创建会话").isEmpty();
     }
 

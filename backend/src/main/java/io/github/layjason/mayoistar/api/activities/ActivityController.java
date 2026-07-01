@@ -10,8 +10,12 @@ import io.github.layjason.mayoistar.service.ActivityRegistrationService;
 import io.github.layjason.mayoistar.service.ActivityRegistrationStateService;
 import io.github.layjason.mayoistar.service.ActivitySearchService;
 import io.github.layjason.mayoistar.service.MediaFileUploadService;
+import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
+import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
+import io.github.layjason.mayoistar.service.activities.RequestActorResolver;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -35,30 +39,52 @@ public class ActivityController {
     private final ActivitySearchService activitySearchService;
     private final SecurityUtils securityUtils;
     private final MediaFileUploadService mediaFileUploadService;
+
+    private final RequestActorResolver requestActorResolver;
+    private final ActivityDraftService activityDraftService;
+    private final ActivityQueryService activityQueryService;
+
     private final ActivityRegistrationService activityRegistrationService;
     private final ActivityRegistrationStateService activityRegistrationStateService;
 
     @PostMapping("/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> saveDraft(
             @Valid @RequestBody ActivityDtos.ActivityDraftUpsertRequest request) {
-        return responseFactory.activityDraftDetail();
+        Optional<String> userId = requestActorResolver.resolveCurrentUserId();
+        if (userId.isEmpty()) {
+            return responseFactory.activityDraftDetail();
+        }
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.saveDraft(userId.get(), request)));
     }
 
     @GetMapping("/drafts")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivityDraftSummary>>> listDrafts(
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+        Optional<String> userId = requestActorResolver.resolveCurrentUserId();
+        if (userId.isEmpty()) {
+            return responseFactory.emptyPage();
+        }
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.listDrafts(userId.get(), page, pageSize)));
     }
 
     @GetMapping("/drafts/{activityId}")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> getDraft(@PathVariable String activityId) {
-        return responseFactory.activityDraftDetail();
+        Optional<String> userId = requestActorResolver.resolveCurrentUserId();
+        if (userId.isEmpty()) {
+            return responseFactory.activityDraftDetail();
+        }
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.getDraft(userId.get(), activityId)));
     }
 
     @PatchMapping("/drafts/{activityId}")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> updateDraft(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.ActivityDraftUpsertRequest request) {
-        return responseFactory.activityDraftDetail();
+        Optional<String> userId = requestActorResolver.resolveCurrentUserId();
+        if (userId.isEmpty()) {
+            return responseFactory.activityDraftDetail();
+        }
+        return ResponseEntity.ok(
+                ApiResponse.success(activityDraftService.updateDraft(userId.get(), activityId, request)));
     }
 
     @GetMapping("/feed")
@@ -121,7 +147,12 @@ public class ActivityController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+        Optional<String> userId = requestActorResolver.resolveCurrentUserId();
+        if (userId.isEmpty()) {
+            return responseFactory.emptyPage();
+        }
+        return ResponseEntity.ok(
+                ApiResponse.success(activityQueryService.listMyActivities(userId.get(), status, page, pageSize)));
     }
 
     @GetMapping("/search")
@@ -169,7 +200,8 @@ public class ActivityController {
 
     @GetMapping("/{activityId}")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> getActivity(@PathVariable String activityId) {
-        return responseFactory.activityDetail();
+        Optional<String> userId = requestActorResolver.resolveCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(activityQueryService.getActivity(userId, activityId)));
     }
 
     @PostMapping("/{activityId}/check-in-qrcode")
@@ -243,7 +275,11 @@ public class ActivityController {
 
     @PostMapping("/{activityId}/submit")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> submitActivity(@PathVariable String activityId) {
-        return responseFactory.activityDetail();
+        Optional<String> userId = requestActorResolver.resolveCurrentUserId();
+        if (userId.isEmpty()) {
+            return responseFactory.activityDetail();
+        }
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.submitActivity(userId.get(), activityId)));
     }
 
     @PostMapping("/{activityId}/summaries")
