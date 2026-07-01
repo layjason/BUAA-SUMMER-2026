@@ -437,7 +437,7 @@ describe('认证流程集成测试', () => {
     const merchantEmail = 'shop@example.com'
     const merchantPassword = 'shop-password'
     await apiModule.api.post('/identity/auth/register/merchant', {
-      body: { email: merchantEmail, password: merchantPassword },
+      body: { email: merchantEmail, password: merchantPassword, nickname: '测试商家' },
     })
 
     // 重新 init，模拟新 store 实例
