@@ -6,6 +6,8 @@ import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.common.SecurityUtils;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.service.ActivityRegistrationService;
+import io.github.layjason.mayoistar.service.ActivityRegistrationStateService;
 import io.github.layjason.mayoistar.service.ActivitySearchService;
 import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import jakarta.validation.Valid;
@@ -33,6 +35,8 @@ public class ActivityController {
     private final ActivitySearchService activitySearchService;
     private final SecurityUtils securityUtils;
     private final MediaFileUploadService mediaFileUploadService;
+    private final ActivityRegistrationService activityRegistrationService;
+    private final ActivityRegistrationStateService activityRegistrationStateService;
 
     @PostMapping("/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> saveDraft(
@@ -213,19 +217,22 @@ public class ActivityController {
     @GetMapping("/{activityId}/participation-state")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityParticipationState>> getParticipationState(
             @PathVariable String activityId) {
-        return responseFactory.participationState();
+        return ResponseEntity.ok(ApiResponse.success(
+                activityRegistrationStateService.getParticipationState(activityId, securityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/{activityId}/registrations")
     public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> registerActivity(
-            @PathVariable String activityId, @Valid @RequestBody ActivityDtos.RegisterActivityRequest request) {
-        return responseFactory.registrationResult();
+            @PathVariable String activityId, @RequestBody ActivityDtos.RegisterActivityRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                activityRegistrationService.registerActivity(activityId, securityUtils.getCurrentUserId(), request)));
     }
 
     @PostMapping("/{activityId}/registrations/cancel")
     public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> cancelRegistration(
             @PathVariable String activityId) {
-        return responseFactory.registrationResult();
+        return ResponseEntity.ok(ApiResponse.success(
+                activityRegistrationService.cancelRegistration(activityId, securityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/{activityId}/reviews")
@@ -248,7 +255,8 @@ public class ActivityController {
     @PostMapping("/{activityId}/waiting-confirmations")
     public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> confirmWaitingSeat(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.WaitingConfirmationRequest request) {
-        return responseFactory.registrationResult();
+        return ResponseEntity.ok(ApiResponse.success(
+                activityRegistrationService.confirmWaitingSeat(activityId, securityUtils.getCurrentUserId(), request)));
     }
 
     private ActivitySearchService.SearchCriteria toSearchCriteria(

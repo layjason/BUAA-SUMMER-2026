@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.layjason.mayoistar.AbstractIntegrationTest;
 import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.api.validation.MessageContentValidator;
 import io.github.layjason.mayoistar.entity.chat.ChatMessage;
 import io.github.layjason.mayoistar.entity.chat.Conversation;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
@@ -130,13 +131,14 @@ class ChatServiceTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("发送文字消息 - 空文本抛 MESSAGE_CONTENT_INVALID")
+    @DisplayName("发送文字消息 - 空文本抛 MESSAGE_CONTENT_INVALID（Validator 层校验）")
     void sendMessage_emptyText() {
         ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
         request.setKind(MessageKind.text);
         request.setText("");
 
-        assertThatThrownBy(() -> chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request))
+        MessageContentValidator validator = new MessageContentValidator();
+        assertThatThrownBy(() -> validator.isValid(request, null))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("content is invalid");
     }
@@ -174,14 +176,27 @@ class ChatServiceTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("发送图片消息 - 空 mediaId 抛 MESSAGE_CONTENT_INVALID")
+    @DisplayName("发送图片消息 - 空 mediaId 抛 MESSAGE_CONTENT_INVALID（Validator 层校验）")
     void sendMessage_imageNoMediaId() {
         ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
         request.setKind(MessageKind.image);
 
-        assertThatThrownBy(() -> chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request))
+        MessageContentValidator validator = new MessageContentValidator();
+        assertThatThrownBy(() -> validator.isValid(request, null))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("content is invalid");
+    }
+
+    @Test
+    @DisplayName("发送图片消息 - 不存在的 mediaId 抛 MEDIA_REFERENCE_INVALID")
+    void sendMessage_imageNonExistentMediaId() {
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.image);
+        request.setImageMediaId(UUID.randomUUID());
+
+        assertThatThrownBy(() -> chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Media reference is invalid");
     }
 
     @Test
@@ -215,7 +230,7 @@ class ChatServiceTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("发送位置消息 - 缺坐标抛 MESSAGE_CONTENT_INVALID")
+    @DisplayName("发送位置消息 - 缺坐标抛 MESSAGE_CONTENT_INVALID（Validator 层校验）")
     void sendMessage_locationNoPoint() {
         CommonDtos.GeoPoint point = new CommonDtos.GeoPoint();
         point.setLatitude(39.9042);
@@ -227,18 +242,20 @@ class ChatServiceTest extends AbstractIntegrationTest {
         request.setKind(MessageKind.location);
         request.setLocation(location);
 
-        assertThatThrownBy(() -> chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request))
+        MessageContentValidator validator = new MessageContentValidator();
+        assertThatThrownBy(() -> validator.isValid(request, null))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("content is invalid");
     }
 
     @Test
-    @DisplayName("发送位置消息 - 无 location 抛 MESSAGE_CONTENT_INVALID")
+    @DisplayName("发送位置消息 - 无 location 抛 MESSAGE_CONTENT_INVALID（Validator 层校验）")
     void sendMessage_locationNull() {
         ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
         request.setKind(MessageKind.location);
 
-        assertThatThrownBy(() -> chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request))
+        MessageContentValidator validator = new MessageContentValidator();
+        assertThatThrownBy(() -> validator.isValid(request, null))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("content is invalid");
     }

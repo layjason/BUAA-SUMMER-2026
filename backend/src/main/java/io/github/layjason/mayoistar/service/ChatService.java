@@ -2,7 +2,7 @@ package io.github.layjason.mayoistar.service;
 
 import static io.github.layjason.mayoistar.exception.ErrorCodes.CONVERSATION_MEMBER_REQUIRED;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.FORWARD_TARGET_UNAVAILABLE;
-import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_CONTENT_INVALID;
+import static io.github.layjason.mayoistar.exception.ErrorCodes.MEDIA_REFERENCE_INVALID;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_NOT_VISIBLE;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_RECALL_EXPIRED;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_SENDER_REQUIRED;
@@ -19,6 +19,7 @@ import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ChatMessageRepository;
 import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
 import io.github.layjason.mayoistar.repository.ConversationRepository;
+import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import java.time.Duration;
 import java.time.Instant;
@@ -53,6 +54,7 @@ public class ChatService {
     private final ConversationMemberRepository conversationMemberRepository;
     private final ConversationRepository conversationRepository;
     private final MessageReadRepository messageReadRepository;
+    private final MediaFileRepository mediaFileRepository;
     private final NotificationService notificationService;
 
     // ========================================
@@ -430,32 +432,17 @@ public class ChatService {
     }
 
     /**
-     * 校验消息内容与类型匹配。
+     * 校验消息中引用的媒体等外部资源是否存在。
      *
-     * <p>前置条件：request.kind 为有效枚举值。
+     * <p>前置条件：request 已通过 Controller 层的 {@code @ValidMessageContent} 跨字段校验。
      *
-     * <p>后置条件：内容与类型匹配时通过，否则抛出异常。
+     * <p>后置条件：引用的资源均存在时通过，否则抛出异常。
+     *
+     * <p>不变量：消息内容格式校验由 Controller 层负责，本方法仅校验需要访问数据库的依赖。
      */
     private void validateMessageContent(ChatDtos.SendMessageRequest request) {
-        switch (request.getKind()) {
-            case text -> {
-                if (request.getText() == null || request.getText().isBlank()) {
-                    throw new BusinessException(MESSAGE_CONTENT_INVALID, "Message content is invalid for its kind");
-                }
-            }
-            case image -> {
-                if (request.getImageMediaId() == null) {
-                    throw new BusinessException(MESSAGE_CONTENT_INVALID, "Message content is invalid for its kind");
-                }
-            }
-            case location -> {
-                if (request.getLocation() == null
-                        || request.getLocation().getPoint() == null
-                        || request.getLocation().getPoint().getLongitude() == null
-                        || request.getLocation().getPoint().getLatitude() == null) {
-                    throw new BusinessException(MESSAGE_CONTENT_INVALID, "Message content is invalid for its kind");
-                }
-            }
+        if (request.getKind() == MessageKind.image && !mediaFileRepository.existsById(request.getImageMediaId())) {
+            throw new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
         }
     }
 

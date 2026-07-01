@@ -80,6 +80,7 @@ public class AdminService {
     private final TeamMemberRepository teamMemberRepository;
     private final TeamModerationRecordRepository teamModerationRecordRepository;
     private final ReportRepository reportRepository;
+    private final ReportService reportService;
 
     /**
      * @param userRepository                   用户数据访问
@@ -94,6 +95,7 @@ public class AdminService {
      * @param teamMemberRepository             小队成员数据访问
      * @param teamModerationRecordRepository   小队治理记录数据访问
      * @param reportRepository                 举报数据访问
+     * @param reportService                    举报服务
      */
     public AdminService(
             UserRepository userRepository,
@@ -107,7 +109,8 @@ public class AdminService {
             TeamRepository teamRepository,
             TeamMemberRepository teamMemberRepository,
             TeamModerationRecordRepository teamModerationRecordRepository,
-            ReportRepository reportRepository) {
+            ReportRepository reportRepository,
+            ReportService reportService) {
         this.userRepository = userRepository;
         this.merchantProfileRepository = merchantProfileRepository;
         this.qualificationRepository = qualificationRepository;
@@ -120,6 +123,7 @@ public class AdminService {
         this.teamMemberRepository = teamMemberRepository;
         this.teamModerationRecordRepository = teamModerationRecordRepository;
         this.reportRepository = reportRepository;
+        this.reportService = reportService;
     }
 
     // ======================== 商家管理 ========================
@@ -519,36 +523,10 @@ public class AdminService {
             Integer page,
             Integer pageSize) {
 
-        Pageable pageable = buildPageable(page, pageSize);
+        int p = (page == null || page < 1) ? DEFAULT_PAGE : page;
+        int ps = (pageSize == null || pageSize < 1) ? DEFAULT_PAGE_SIZE : Math.min(pageSize, MAX_PAGE_SIZE);
 
-        Specification<Report> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (status != null) {
-                predicates.add(cb.equal(root.get("status"), status));
-            }
-            if (reporterUserId != null && !reporterUserId.isBlank()) {
-                predicates.add(cb.equal(root.get("reporterUserId"), reporterUserId));
-            }
-            if (targetType != null) {
-                predicates.add(cb.equal(root.get("targetType"), targetType));
-            }
-            if (targetId != null && !targetId.isBlank()) {
-                predicates.add(cb.equal(root.get("targetId"), targetId));
-            }
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-
-        Page<Report> reportPage = reportRepository.findAll(spec, pageable);
-
-        List<SocialDtos.Report> items =
-                reportPage.getContent().stream().map(this::buildReportDto).collect(Collectors.toList());
-
-        return new PageResult<>(
-                items,
-                reportPage.getTotalElements(),
-                reportPage.getNumber() + 1,
-                reportPage.getSize(),
-                reportPage.getTotalPages());
+        return reportService.listReports(status, reporterUserId, targetType, targetId, p, ps);
     }
 
     /**
@@ -556,7 +534,7 @@ public class AdminService {
      *
      * <p>前置条件：reportId 对应有效举报。adminId 对应有效管理员。
      *
-     * <p>后置条件：Report.status 更新为指定状态，handlingNote 和 handledAt 设置。
+     * <p>后置条件：举报状态和处理备注已更新，若为用户举报则触发信誉分重算。
      *
      * @param reportId 举报 ID
      * @param adminId  操作管理员 ID
@@ -569,14 +547,7 @@ public class AdminService {
                 .findById(adminId)
                 .orElseThrow(() -> new BusinessException(60000, "Admin username or password is invalid"));
 
-        Report report = reportRepository
-                .findById(reportId)
-                .orElseThrow(() -> new BusinessException(60007, "Report " + reportId + " does not exist"));
-
-        report.setStatus(request.getStatus());
-        report.setHandlingNote(request.getHandlingNote());
-        report.setHandledAt(Instant.now());
-        reportRepository.save(report);
+        SocialDtos.Report result = reportService.decideReport(reportId, request.getStatus(), request.getHandlingNote());
 
         log.info(
                 "举报已处理: reportId={}, adminId={}, status={}",
@@ -584,7 +555,7 @@ public class AdminService {
                 sanitizeForLog(adminId),
                 request.getStatus());
 
-        return buildReportDto(report);
+        return result;
     }
 
     // ======================== 活动管理 ========================

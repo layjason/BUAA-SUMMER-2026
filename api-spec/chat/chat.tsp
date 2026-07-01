@@ -345,6 +345,7 @@ interface ChatOperations {
       | QujuApi.Errors.Chat.ConversationNotVisible
       | QujuApi.Errors.Chat.ConversationMemberRequired
       | QujuApi.Errors.Chat.MessageContentInvalid
+      | QujuApi.Errors.Chat.MediaReferenceInvalid
   >;
 
   @post

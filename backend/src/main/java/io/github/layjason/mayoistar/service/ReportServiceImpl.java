@@ -122,7 +122,7 @@ public class ReportServiceImpl implements ReportService {
     public SocialDtos.Report decideReport(String reportId, ReportStatus status, String handlingNote) {
         Report report = reportRepository
                 .findById(reportId)
-                .orElseThrow(() -> new BusinessException(ErrorCodes.REPORT_INVALID, "Report is invalid"));
+                .orElseThrow(() -> new BusinessException(ErrorCodes.REPORT_NOT_FOUND, "Report does not exist"));
         ReportStatus oldStatus = report.getStatus();
         boolean userReport = report.getTargetType() == ReportTargetType.user;
         int oldScore = userReport ? reputationService.getCurrentScore(report.getTargetId()) : 0;
