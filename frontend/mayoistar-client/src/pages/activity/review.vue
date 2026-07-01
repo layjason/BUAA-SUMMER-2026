@@ -135,7 +135,7 @@ function removeReviewImage(index: number): void {
 }
 
 async function handleSubmit(): Promise<void> {
-  if (submitting.value) return
+  if (submitting.value || rating.value === 0) return
   formError.value = ''
   submitting.value = true
 
