@@ -1,40 +1,42 @@
 <template>
   <view class="page">
-    <view class="form-container">
-      <text class="title">{{ t('activityReview.title') }}</text>
+    <scroll-view class="scroll-area" scroll-y>
+      <view class="form-container">
+        <text class="title">{{ t('activityReview.title') }}</text>
 
-      <view class="star-section">
-        <text class="label">{{ t('activityReview.rating') }}</text>
-        <view class="star-row">
-          <text
-            v-for="n in 5"
-            :key="n"
-            class="star"
-            :class="{ active: n <= rating }"
-            @click="rating = n"
-          >
-            {{ n <= rating ? '★' : '☆' }}
-          </text>
+        <view class="star-section">
+          <text class="label">{{ t('activityReview.rating') }}</text>
+          <view class="star-row">
+            <text
+              v-for="n in 5"
+              :key="n"
+              class="star"
+              :class="{ active: n <= rating }"
+              @click="rating = n"
+            >
+              {{ n <= rating ? '★' : '☆' }}
+            </text>
+          </view>
         </view>
+
+        <view class="form-item">
+          <text class="label">{{ t('activityReview.content') }}</text>
+          <textarea
+            v-model="content"
+            class="textarea"
+            :placeholder="t('activityReview.contentPlaceholder')"
+            :maxlength="2000"
+            auto-height
+          />
+        </view>
+
+        <FormError :message="formError" />
+
+        <button class="submit-btn" :loading="submitting" @click="handleSubmit">
+          {{ t('activityReview.submit') }}
+        </button>
       </view>
-
-      <view class="form-item">
-        <text class="label">{{ t('activityReview.content') }}</text>
-        <textarea
-          v-model="content"
-          class="textarea"
-          :placeholder="t('activityReview.contentPlaceholder')"
-          :maxlength="2000"
-          auto-height
-        />
-      </view>
-
-      <FormError :message="formError" />
-
-      <button class="submit-btn" :loading="submitting" @click="handleSubmit">
-        {{ t('activityReview.submit') }}
-      </button>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -100,7 +102,16 @@ onLoad((query) => {
 <style scoped>
 .page {
   background-color: #f7f8fa;
-  min-height: 100vh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .form-container {

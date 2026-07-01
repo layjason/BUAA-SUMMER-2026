@@ -231,8 +231,10 @@ function goLogin(): void {
   line-height: 1.6;
   margin-bottom: 32rpx;
 }
+</style>
 
-<style > page {
+<style>
+page {
   height: 100%;
   overflow: hidden;
 }

@@ -208,8 +208,10 @@ function goForgotPassword(): void {
   font-size: 28rpx;
   color: #1989fa;
 }
+</style>
 
-<style > page {
+<style>
+page {
   height: 100%;
   overflow: hidden;
 }

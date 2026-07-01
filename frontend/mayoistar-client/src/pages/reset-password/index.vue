@@ -102,8 +102,10 @@ function goLogin(): void {
   border-radius: 8rpx;
   border: none;
 }
+</style>
 
-<style > page {
+<style>
+page {
   height: 100%;
   overflow: hidden;
 }

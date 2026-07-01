@@ -240,8 +240,10 @@ function goRegister(): void {
   color: #07c160;
   margin-bottom: 16rpx;
 }
+</style>
 
-<style > page {
+<style>
+page {
   height: 100%;
   overflow: hidden;
 }
