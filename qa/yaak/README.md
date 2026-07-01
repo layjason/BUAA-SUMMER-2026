@@ -153,21 +153,22 @@
 1. 启动后端，并确认数据库已执行 V2 migration。
 2. 导入 `MayoiStar.SocialChat.postman_collection.json`。
 3. 导入 `MayoiStar.SocialChat.local.postman_environment.json` 到同一 workspace。
-4. **设置请求链**：Yaak 不支持 Postman 的 test 脚本，需用 `response()` 标签串联请求：
+4. **设置请求链**：运行以下脚本，自动配置 `response()` 标签（也可在 GUI 中按 `Ctrl+Space` 手动设置）：
 
-   - 按分组顺序执行到需要提取变量的请求后
-   - 在环境变量值中按 `Ctrl+Space` → 选 `response()` → 设前置请求名 + JSONPath：
-     - `userAccessToken` = `response("个人用户登录 test_user", "$.data.tokens.accessToken")`
-     - `testUserId` = `response("个人用户登录 test_user", "$.data.userId")`
-     - `peerAccessToken` = `response("个人用户登录 test_peer", "$.data.tokens.accessToken")`
-     - `testPeerId` = `response("个人用户登录 test_peer", "$.data.userId")`
-     - `adminAccessToken` = `response("管理员登录 admin", "$.data.tokens.accessToken")`
-     - `friendRequestId` = `response("发送好友申请 - 个人主页", "$.data.requestId")`
-     - `conversationId` = `response("会话列表", "$.data.items[0].conversationId")`
-     - `messageId` = `response("发送文字消息", "$.data.messageId")`
-     - `reportId` = `response("举报 test_peer", "$.data.reportId")`
+   ```bash
+   bash qa/yaak/setup-chaining.sh <WORKSPACE_ID>
+   ```
 
-5. 现在按分组顺序执行请求即可，变量会自动填充。
+   这会设置以下变量自动从前置请求提取：
+   - `userAccessToken`, `testUserId` ← 个人用户登录 test_user
+   - `peerAccessToken`, `testPeerId` ← 个人用户登录 test_peer
+   - `adminAccessToken`, `adminUserId` ← 管理员登录 admin
+   - `friendRequestId` ← 发送好友申请 - 个人主页
+   - `conversationId` ← 会话列表
+   - `messageId` ← 发送文字消息
+   - `reportId` ← 举报 test_peer
+
+5. 按分组顺序依次执行请求，变量自动填充。
 
 ### 使用 Yaak CLI
 
