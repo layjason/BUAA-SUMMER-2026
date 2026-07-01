@@ -53,4 +53,42 @@
         <Class name="io.github.layjason.mayoistar.service.MailService" />
         <Bug pattern="EI_EXPOSE_REP2" />
     </Match>
+    <!--
+        ActivitySearchService.parseInstant 在输入为空或解析失败时返回 null，
+        调用者已在 search/mapPoints 方法中处理 null 情况。
+        @NonNullApi 要求非空返回，但实际语义上 null 是有效的"无过滤条件"信号。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.ActivitySearchService" />
+        <Method name="parseInstant" />
+        <Bug pattern="NP_NONNULL_RETURN_VIOLATION" />
+    </Match>
+    <!--
+        SearchCriteria.activityTypes() 覆盖了 record 的 accessor，
+        record 构造器中 activityTypes 可以为 null（可选筛选条件），@NonNullApi 下产生警告。
+    -->
+    <Match>
+        <Class name="~io\.github\.layjason\.mayoistar\.service\.ActivitySearchService\$SearchCriteria" />
+        <Method name="activityTypes" />
+        <Bug pattern="NP_NONNULL_RETURN_VIOLATION" />
+    </Match>
+    <!--
+        JwtService.parseToken 在解析失败时抛出异常或在 catch 中返回 null，
+        返回 null 的实际路径不会被调用者看到（Exception 已先被抛出）。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.JwtService" />
+        <Method name="parseToken" />
+        <Bug pattern="NP_NONNULL_RETURN_VIOLATION" />
+    </Match>
+    <!--
+        ReportServiceImpl.listReports 的参数 status、reporterUserId、targetType、targetId
+        均为管理员端的可选筛选条件，可传递 null。buildAdminSpec 已在内部进行 null 检查。
+        这些参数不是必须非空，@NonNullApi 下产生误报。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.ReportServiceImpl" />
+        <Method name="listReports" />
+        <Bug pattern="NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE" />
+    </Match>
 </FindBugsFilter>
