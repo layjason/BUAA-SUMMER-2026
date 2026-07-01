@@ -6,6 +6,10 @@ spring:
     password:
 
 mayoistar:
+  test:
+    seed:
+      placeholder:
+        enabled: false
   jwt:
     secret: test-secret-key-that-is-at-least-256-bits-long-for-hs256
     access-token-expire: 3600

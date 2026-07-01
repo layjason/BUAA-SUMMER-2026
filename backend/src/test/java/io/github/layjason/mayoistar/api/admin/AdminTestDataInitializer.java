@@ -31,6 +31,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -45,6 +46,7 @@ import org.springframework.context.annotation.Profile;
  */
 @Configuration
 @Profile("test")
+@ConditionalOnProperty(prefix = "mayoistar.test.seed.placeholder", name = "enabled", havingValue = "true")
 public class AdminTestDataInitializer {
 
     /**

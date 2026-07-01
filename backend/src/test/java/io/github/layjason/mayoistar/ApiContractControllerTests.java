@@ -58,6 +58,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.AbstractMockMultipartHttpServletRequestBuilder;
@@ -74,6 +75,7 @@ import org.springframework.test.web.servlet.request.AbstractMockMultipartHttpSer
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@TestPropertySource(properties = "mayoistar.test.seed.placeholder.enabled=true")
 @WithMockUser(
         username = "test-user-id",
         authorities = {"ROLE_admin", "ROLE_personal", "ROLE_merchant"})
