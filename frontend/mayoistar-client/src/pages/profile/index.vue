@@ -318,16 +318,4 @@ async function handleLogout(): Promise<void> {
   height: 100%;
   overflow: hidden;
 }
-
-<style > page {
-  height: 100%;
-  overflow: hidden;
-}
-</style>
-
-<style>
-page {
-  height: 100%;
-  overflow: hidden;
-}
 </style>

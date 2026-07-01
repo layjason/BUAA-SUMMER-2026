@@ -515,44 +515,42 @@ function parseISO(iso: string): { date: string; time: string } | null {
 
 async function loadDraft(): Promise<void> {
   try {
-    const draft = (await api.get(`/activities/drafts/${activityId.value}`)) as Record<
-      string,
-      unknown
-    >
-    formTitle.value = (draft.title as string) ?? ''
-    formIntroduction.value = (draft.introduction as string) ?? ''
-    formSafetyNotice.value = (draft.safetyNotice as string) ?? ''
-    formAddress.value = ((draft.location as Record<string, string>)?.address as string) ?? ''
-    formCity.value = ((draft.location as Record<string, string>)?.city as string) ?? ''
-    formPlaceName.value = ((draft.location as Record<string, string>)?.placeName as string) ?? ''
+    const draft = await api.get('/activities/drafts/{activityId}', {
+      path: { activityId: activityId.value },
+    })
+
+    formTitle.value = draft.title ?? ''
+    formIntroduction.value = draft.introduction ?? ''
+    formSafetyNotice.value = draft.safetyNotice ?? ''
+    formAddress.value = draft.location?.address ?? ''
+    formCity.value = draft.location?.city ?? ''
+    formPlaceName.value = draft.location?.placeName ?? ''
     formCapacity.value = draft.capacity != null ? String(draft.capacity) : ''
     formFeeAmount.value = draft.feeAmount != null ? String(draft.feeAmount) : ''
-    formFeeDescription.value = (draft.feeDescription as string) ?? ''
+    formFeeDescription.value = draft.feeDescription ?? ''
     formMinAge.value = draft.minAge != null ? String(draft.minAge) : ''
 
-    const tags = draft.tags as string[]
-    if (tags?.length) selectedTags.value = new Set(tags)
+    if (draft.tags.length) selectedTags.value = new Set(draft.tags)
 
-    const startParsed = parseISO(draft.startAt as string)
+    const startParsed = parseISO(draft.startAt ?? '')
     if (startParsed) {
       startAtDate.value = startParsed.date
       startAtTime.value = startParsed.time
     }
-    const endParsed = parseISO(draft.endAt as string)
+    const endParsed = parseISO(draft.endAt ?? '')
     if (endParsed) {
       endAtDate.value = endParsed.date
       endAtTime.value = endParsed.time
     }
-    const deadlineParsed = parseISO(draft.registrationDeadline as string)
+    const deadlineParsed = parseISO(draft.registrationDeadline ?? '')
     if (deadlineParsed) {
       deadlineDate.value = deadlineParsed.date
       deadlineTime.value = deadlineParsed.time
     }
 
-    const imgs = draft.images as { url?: string; mediaId: string }[]
-    if (imgs?.length) {
-      imagePreviews.value = imgs.map((i) => i.url ?? '')
-      imageIds.value = imgs.map((i) => i.mediaId)
+    if (draft.images.length) {
+      imagePreviews.value = draft.images.map((i) => i.url ?? '')
+      imageIds.value = draft.images.map((i) => i.mediaId)
     }
   } catch (error) {
     if (error instanceof BusinessError) {
