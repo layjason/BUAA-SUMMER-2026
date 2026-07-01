@@ -1,11 +1,10 @@
 package io.github.layjason.mayoistar.repository;
 
 import io.github.layjason.mayoistar.entity.activities.Activity;
-
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
-import java.util.Collection;
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
