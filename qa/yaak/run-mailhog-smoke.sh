@@ -20,7 +20,6 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# 调用 yaak CLI 并返回输出行
 invoke_yaak_lines() {
     local output
     output="$(yaak "$@" 2>&1)" || {
@@ -32,7 +31,10 @@ invoke_yaak_lines() {
     echo "$output" | grep -v '^$' || true
 }
 
-# 根据名称从 yaak 列表中获取 ID
+invoke_yaak_string() {
+    invoke_yaak_lines "$@" | tr -d '\n'
+}
+
 get_yaak_id_by_name() {
     local lines="$1"
     local name="$2"
@@ -45,7 +47,6 @@ get_yaak_id_by_name() {
     echo "$line" | awk '{print $1}'
 }
 
-# 获取工作区 ID
 get_yaak_workspace_id() {
     local name="$1"
     local workspaces
@@ -53,7 +54,6 @@ get_yaak_workspace_id() {
     get_yaak_id_by_name "$workspaces" "$name"
 }
 
-# 获取第一个环境 ID
 get_yaak_environment_id() {
     local workspace_id="$1"
     local environments
@@ -67,7 +67,6 @@ get_yaak_environment_id() {
     echo "$line" | awk '{print $1}'
 }
 
-# 获取请求 ID
 get_yaak_request_id() {
     local workspace_id="$1"
     local name="$2"
@@ -76,15 +75,13 @@ get_yaak_request_id() {
     get_yaak_id_by_name "$requests" "$name"
 }
 
-# 设置 yaak 环境变量（合并模式）
 set_yaak_environment_variables() {
     local environment_id="$1"
     shift
 
     local env_json
-    env_json="$(invoke_yaak_lines environment show "$environment_id" | tr -d '\n')"
+    env_json="$(invoke_yaak_string environment show "$environment_id")"
 
-    # 构建待合并的变量 JSON 对象
     local new_vars="{}"
     local pair
     for pair in "$@"; do
@@ -93,12 +90,10 @@ set_yaak_environment_variables() {
         new_vars="$(echo "$new_vars" | jq --arg k "$key" --arg v "$value" '.[$k] = $v')"
     done
 
-    # 读取现有变量并合并
     local merged
     merged="$(echo "$env_json" | jq --argjson new "$new_vars" \
         '[.variables[] | {(.name): (.value // "")}] | add // {} | . * $new')"
 
-    # 转换为 yaak 环境变量数组格式
     local updated_variables
     updated_variables="$(echo "$merged" | jq 'to_entries | sort_by(.key) | map({name: .key, value: (.value | tostring), enabled: true})')"
 
@@ -109,18 +104,62 @@ set_yaak_environment_variables() {
     invoke_yaak_lines environment update "--json=$payload" >/dev/null
 }
 
-# 发送请求并返回解析后的 JSON 对象
+# 发送请求并显示请求/响应详情，返回解析后的响应 JSON
 send_yaak_request_json() {
     local name="$1"
     local request_id
     request_id="$(get_yaak_request_id "$WORKSPACE_ID" "$name")"
-    echo "Sending: $name"
-    local output
-    output="$(invoke_yaak_lines request send "$request_id" -e "$ENVIRONMENT_ID")"
-    echo "$output" | jq -c '.'
+
+    # 获取请求详情
+    local show_json
+    show_json="$(invoke_yaak_string request show "$request_id")"
+
+    local method url body_text body_type
+    method="$(echo "$show_json" | jq -r '.method')"
+    url="$(echo "$show_json" | jq -r '.url')"
+    body_text="$(echo "$show_json" | jq -r '.body.text // empty')"
+    body_type="$(echo "$show_json" | jq -r '.bodyType // empty')"
+
+    echo ""
+    printf '%0.s═' $(seq 1 60); echo
+    echo "  $name"
+    printf '%0.s─' $(seq 1 60); echo
+    echo "  $method $url"
+
+    # 请求头
+    echo "$show_json" | jq -r '.headers[]? | select(.enabled) | "  > \(.name): \(.value)"'
+
+    # 请求体
+    if [[ -n "$body_text" ]]; then
+        echo "  Body:"
+        echo "  $body_text"
+    elif [[ "$body_type" == "multipart/form-data" ]]; then
+        echo "  Body (form):"
+        echo "$show_json" | jq -r '.body.form[]? | select(.enabled) | "    \(.name) = \(if .file then "[file: \(.file)]" else .value end)"'
+    else
+        echo "  Body: (none)"
+    fi
+
+    # 发送请求（verbose 模式）
+    local raw_output
+    raw_output="$(invoke_yaak_string request send "$request_id" -e "$ENVIRONMENT_ID" -v)"
+
+    # 提取响应状态和正文
+    local status_line
+    status_line="$(echo "$raw_output" | grep '^< HTTP/' | head -1 | sed 's/^< HTTP\/[0-9.]* //')"
+
+    # 响应正文是 verbose 输出中不以 *, <, > 开头的最后一段
+    local resp_body
+    resp_body="$(echo "$raw_output" | grep -v '^[*<>]' | grep -v '^$' | tail -1)"
+
+    printf '%0.s─' $(seq 1 60); echo
+    echo "  ← $status_line"
+    echo "  $resp_body"
+
+    echo "$resp_body" | jq -c '.'
 }
 
-# 发送请求，不解析响应
+# 发送请求（不需要提取响应字段的错误场景）
 send_yaak_request() {
     local name="$1"
     send_yaak_request_json "$name" >/dev/null
@@ -158,6 +197,7 @@ get_mailhog_token() {
             local token
             token="$(echo "$body" | grep -oP 'token=\K[^\s"'"'"'&<>]+' | head -1)"
             if [[ -n "$token" ]]; then
+                echo "  [MailHog] 获取到 $token_purpose token"
                 echo "$token"
                 return
             fi
@@ -179,7 +219,6 @@ MERCHANT_NICKNAME="yaak-m-${STAMP}"
 WORKSPACE_ID="$(get_yaak_workspace_id "$WORKSPACE_NAME")"
 ENVIRONMENT_ID="$(get_yaak_environment_id "$WORKSPACE_ID")"
 
-# 初始化环境变量
 set_yaak_environment_variables "$ENVIRONMENT_ID" \
     "baseUrl=$BASE_URL" \
     "personalEmail=$PERSONAL_EMAIL" \
@@ -211,122 +250,118 @@ set_yaak_environment_variables "$ENVIRONMENT_ID" \
     "adminRefreshToken=" \
     "adminUserId="
 
-echo "========== 00 公共接口 =========="
+printf '\n%0.s#' $(seq 1 60); echo
+echo "#  00 公共接口"
+printf '%0.s#' $(seq 1 60); echo
+
 send_yaak_request "00.01 Get interest tags"
 send_yaak_request "00.02 Check nickname available"
 
-echo ""
-echo "========== 01 个人用户认证与资料 =========="
-send_yaak_request "01.01 Register personal"
+printf '\n%0.s#' $(seq 1 60); echo
+echo "#  01 个人用户认证与资料"
+printf '%0.s#' $(seq 1 60); echo
 
-# 激活前尝试登录，应失败
+send_yaak_request "01.01 Register personal"
 send_yaak_request "01.02 Login personal before activation should fail"
 
 ACTIVATION_TOKEN="$(get_mailhog_token "$PERSONAL_EMAIL" "personal activation")"
 set_yaak_environment_variables "$ENVIRONMENT_ID" "activationToken=$ACTIVATION_TOKEN"
 send_yaak_request "01.03 Activate personal account"
 
-# 登录并提取 token
 RESP="$(send_yaak_request_json "01.04 Login personal")"
 if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
     set_yaak_environment_variables "$ENVIRONMENT_ID" \
         "personalAccessToken=$(echo "$RESP" | jq -r '.data.tokens.accessToken')" \
         "personalRefreshToken=$(echo "$RESP" | jq -r '.data.tokens.refreshToken')" \
         "personalUserId=$(echo "$RESP" | jq -r '.data.userId')"
-    echo "  -> personalAccessToken saved"
+    echo "  [env] personalAccessToken 已保存"
 fi
 
-# 重复注册应失败
 send_yaak_request "01.05 Duplicate personal email should fail"
-
-# 无 Token 访问应失败
 send_yaak_request "01.06 Profile without token should fail"
-
 send_yaak_request "01.07 Get personal profile"
 send_yaak_request "01.08 Update personal profile"
 
-# 上传头像并提取 mediaId
 RESP="$(send_yaak_request_json "01.09 Upload avatar")"
 if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
     set_yaak_environment_variables "$ENVIRONMENT_ID" \
         "avatarMediaId=$(echo "$RESP" | jq -r '.data.mediaId')"
-    echo "  -> avatarMediaId saved"
+    echo "  [env] avatarMediaId 已保存"
     send_yaak_request "01.10 Attach avatar to profile"
 fi
 
-# 刷新 token 并更新
 RESP="$(send_yaak_request_json "01.11 Refresh personal token")"
 if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
     set_yaak_environment_variables "$ENVIRONMENT_ID" \
         "personalAccessToken=$(echo "$RESP" | jq -r '.data.accessToken')" \
         "personalRefreshToken=$(echo "$RESP" | jq -r '.data.refreshToken')"
-    echo "  -> tokens refreshed"
+    echo "  [env] tokens 已刷新"
 fi
 
 send_yaak_request "01.12 Change password with wrong old password"
 send_yaak_request "01.13 Logout personal"
-
-# 登出后刷新应失败
 send_yaak_request "01.14 Refresh after logout should fail"
 
-echo ""
-echo "========== 02 商家用户认证与资质 =========="
+printf '\n%0.s#' $(seq 1 60); echo
+echo "#  02 商家用户认证与资质"
+printf '%0.s#' $(seq 1 60); echo
+
 send_yaak_request "02.01 Register merchant"
 
 MERCHANT_ACTIVATION_TOKEN="$(get_mailhog_token "$MERCHANT_EMAIL" "merchant activation")"
 set_yaak_environment_variables "$ENVIRONMENT_ID" "merchantActivationToken=$MERCHANT_ACTIVATION_TOKEN"
 send_yaak_request "02.02 Activate merchant account"
 
-# 登录并提取商家 token
 RESP="$(send_yaak_request_json "02.03 Login merchant")"
 if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
     set_yaak_environment_variables "$ENVIRONMENT_ID" \
         "merchantAccessToken=$(echo "$RESP" | jq -r '.data.tokens.accessToken')" \
         "merchantRefreshToken=$(echo "$RESP" | jq -r '.data.tokens.refreshToken')" \
         "merchantUserId=$(echo "$RESP" | jq -r '.data.userId')"
-    echo "  -> merchantAccessToken saved"
+    echo "  [env] merchantAccessToken 已保存"
 fi
 
 send_yaak_request "02.04 Get merchant profile"
 send_yaak_request "02.05 Update merchant profile"
 
-# 上传执照并提取 mediaId
 RESP="$(send_yaak_request_json "02.06 Upload merchant license")"
 if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
     set_yaak_environment_variables "$ENVIRONMENT_ID" \
         "licenseMediaId=$(echo "$RESP" | jq -r '.data.mediaId')"
-    echo "  -> licenseMediaId saved"
+    echo "  [env] licenseMediaId 已保存"
     send_yaak_request "02.07 Submit merchant qualification"
     send_yaak_request "02.08 Get merchant profile after qualification"
 fi
 
-# 个人 token 访问商家资料应被拒
 send_yaak_request "02.09 Personal token cannot access merchant profile"
 
-echo ""
-echo "========== 03 密码重置与安全 =========="
+printf '\n%0.s#' $(seq 1 60); echo
+echo "#  03 密码重置与安全"
+printf '%0.s#' $(seq 1 60); echo
+
 send_yaak_request "03.01 Resend activation email"
 send_yaak_request "03.02 Send password reset email"
 
 RESET_TOKEN="$(get_mailhog_token "$PERSONAL_EMAIL" "password reset")"
 set_yaak_environment_variables "$ENVIRONMENT_ID" "resetToken=$RESET_TOKEN"
-echo "  -> resetToken saved"
-
 send_yaak_request "03.03 Reset password with token"
 send_yaak_request "03.04 Wrong password attempt"
 
-echo ""
-echo "========== 04 管理员操作 =========="
+printf '\n%0.s#' $(seq 1 60); echo
+echo "#  04 管理员操作"
+printf '%0.s#' $(seq 1 60); echo
+
 RESP="$(send_yaak_request_json "04.01 Admin login")"
 if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
     set_yaak_environment_variables "$ENVIRONMENT_ID" \
         "adminAccessToken=$(echo "$RESP" | jq -r '.data.tokens.accessToken')"
-    echo "  -> adminAccessToken saved"
+    echo "  [env] adminAccessToken 已保存"
     send_yaak_request "04.02 Admin get merchant profile placeholder"
     send_yaak_request "04.03 Admin review merchant placeholder"
 else
-    echo "  WARNING: Admin login failed (code=$(echo "$RESP" | jq -r '.code')). 请确认 DevDataInitializer 已创建管理员。"
+    echo "  ⚠ 管理员登录失败 (code=$(echo "$RESP" | jq -r '.code'))，请确认 V2 迁移已执行。"
 fi
 
-echo ""
-echo "========== 全量测试完成 =========="
+printf '\n%0.s#' $(seq 1 60); echo
+echo "#  全量测试完成"
+printf '%0.s#' $(seq 1 60); echo

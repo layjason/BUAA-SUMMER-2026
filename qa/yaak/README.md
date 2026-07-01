@@ -1,65 +1,55 @@
 # MayoiStar 身份接口 Yaak 测试说明
 
-- Version: 2 20260701 104500
-  - 扩展为全量 Yaak 测试（覆盖 00-04 全部 32 个请求）
-  - 脚本自动提取登录/刷新响应中的 token 并写入环境变量
-  - 新增 DevDataInitializer 提供测试管理员（dev profile）
-  - 新增 test-avatar.png / test-license.png 用于上传接口测试
+- Version: 3 20260701 111200
+  - 控制台输出完整请求/响应详情（方法、URL、请求头、请求体、响应状态、响应体）
+  - README 补充第二个 JSON（环境模板）的导入说明
+  - 修复测试管理员创建方式说明（V2 SQL 迁移）
 
 本目录提供 MayoiStar 身份接口的 Yaak 全量自动化测试资产。
 
 ## 文件
 
 - `MayoiStar.Identity.postman_collection.json`：Yaak 可导入的 Postman v2.1 集合（32 个请求）。
-- `MayoiStar.Identity.local.postman_environment.json`：本地环境变量模板，不包含真实凭据。
+- `MayoiStar.Identity.local.postman_environment.json`：本地环境变量模板，不包含真实凭据。可在 Yaak 中导入作为环境变量起点。
 - `start-backend-mailhog.ps1` / `start-backend-mailhog.sh`：使用 MailHog 邮件测试配置启动后端。
-- `run-mailhog-smoke.ps1` / `run-mailhog-smoke.sh`：全量测试脚本，自动执行全部 32 个请求并在请求间提取 token。
+- `run-mailhog-smoke.ps1` / `run-mailhog-smoke.sh`：全量测试脚本，自动执行全部 32 个请求，控制台输出完整请求/响应详情。
 - `test-avatar.png` / `test-license.png`：文件上传接口测试用占位图片。
 
-## 使用步骤
-
-### 通用步骤
+## 初次使用步骤
 
 1. 将 `backend/.env.mailhog.example` 复制为 `backend/.env`，按需修改数据库密码或端口。
-2. 在 `backend` 目录启动依赖：
+2. 启动 Docker 依赖：
 
    ```bash
    docker compose --env-file .env -f docker-compose-local.yaml up -d postgres mailhog
    ```
 
-3. 在 Yaak 中导入集合文件，或使用 Yaak CLI 导入：
+3. 在 Yaak 中导入两个 JSON 文件：
 
    ```bash
    yaak import qa/yaak/MayoiStar.Identity.postman_collection.json
+   yaak import qa/yaak/MayoiStar.Identity.local.postman_environment.json
    ```
 
-### Windows (PowerShell)
-
-4. 启动后端：
+4. 启动后端（PowerShell 或 Bash）：
 
    ```powershell
    .\qa\yaak\start-backend-mailhog.ps1
    ```
-
-5. 运行 MailHog 冒烟脚本：
-
-   ```powershell
-   .\qa\yaak\run-mailhog-smoke.ps1
-   ```
-
-### Linux / macOS (Bash)
-
-4. 启动后端：
-
    ```bash
    ./qa/yaak/start-backend-mailhog.sh
    ```
 
-5. 运行 MailHog 冒烟脚本：
+5. 运行全量测试：
 
+   ```powershell
+   .\qa\yaak\run-mailhog-smoke.ps1
+   ```
    ```bash
    ./qa/yaak/run-mailhog-smoke.sh
    ```
+
+> 首次启动后端时，Flyway V2 迁移会自动插入测试管理员。后续重复启动不再重复插入。若需重新创建管理员（比如数据库被重置），需要重启后端使其重新执行 V2 迁移（Flyway 会跳过已执行的迁移 — 但首次启动时若 V2 尚未执行则会执行）。
 
 ## 覆盖的接口测试
 
@@ -102,7 +92,7 @@
 
 ## 测试管理员
 
-脚本使用以下测试管理员凭据，由 `DevDataInitializer`（dev profile）在启动时自动创建：
+后端启动时，Flyway V2 迁移自动插入测试管理员：
 
 - 用户名：`testadminyaak`
 - 密码：`AdminPass123!`
@@ -129,4 +119,3 @@
 - 商家注册接口只接收邮箱、密码、昵称；资质上传在激活登录后通过 `/identity/media/license` 和 `/identity/me/merchant-qualification` 完成。
 - 商家审核接口目前返回占位数据。
 - 后端统一错误响应使用 HTTP 200，业务成败通过响应体 `code` 判断。
-- 测试管理员的创建需要重启后端以使 `DevDataInitializer`（dev profile）生效。
