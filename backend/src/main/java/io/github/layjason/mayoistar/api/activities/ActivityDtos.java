@@ -5,7 +5,16 @@ import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.common.ReviewStatus;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
 import lombok.Data;
@@ -18,36 +27,45 @@ public final class ActivityDtos {
 
     @Data
     public static class ActivityUpsertRequest {
-        @NotNull
+        @NotBlank
+        @Size(max = 200)
         private String title;
 
-        @NotNull
+        @NotEmpty
         private List<String> tags;
 
-        @NotNull
+        @NotBlank
         private String introduction;
 
-        @NotNull
+        @NotBlank
         private String startAt;
 
-        @NotNull
+        @NotBlank
         private String endAt;
 
         @NotNull
+        @Valid
         private CommonDtos.LocationInfo location;
 
-        @NotNull
+        @NotBlank
         private String safetyNotice;
 
-        @NotNull
+        @Positive
+        @Min(1)
         private Integer capacity;
 
-        @NotNull
+        @NotBlank
         private String registrationDeadline;
 
+        @PositiveOrZero
         private BigDecimal feeAmount;
+
+        @Size(max = 500)
         private String feeDescription;
+
+        @Min(0)
         private Integer minAge;
+
         private List<String> imageIds;
     }
 
@@ -58,7 +76,10 @@ public final class ActivityDtos {
         private String introduction;
         private String startAt;
         private String endAt;
+
+        @Valid
         private CommonDtos.LocationInfo location;
+
         private String safetyNotice;
         private Integer capacity;
         private String registrationDeadline;
@@ -72,7 +93,7 @@ public final class ActivityDtos {
     public static class RegisterActivityRequest {
         private String participantNote;
 
-        @NotNull
+        @AssertTrue
         private Boolean acceptedSafetyNotice;
     }
 
@@ -84,7 +105,7 @@ public final class ActivityDtos {
 
     @Data
     public static class CheckInRequest {
-        @NotNull
+        @NotBlank
         private String qrCodeToken;
 
         private CommonDtos.GeoPoint currentLocation;
@@ -92,22 +113,24 @@ public final class ActivityDtos {
 
     @Data
     public static class ActivitySummaryPostRequest {
-        @NotNull
+        @NotBlank
+        @Size(max = 200)
         private String title;
 
-        @NotNull
+        @NotBlank
         private String content;
 
-        @NotNull
+        @NotEmpty
         private List<String> imageIds;
 
-        @NotNull
+        @NotEmpty
         private List<CommonDtos.ImageTagConfirmation> confirmedImageTags;
     }
 
     @Data
     public static class ActivityReviewRequest {
-        @NotNull
+        @Min(1)
+        @Max(5)
         private Integer rating;
 
         private String content;

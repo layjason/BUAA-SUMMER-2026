@@ -20,4 +20,12 @@
         <Class name="io.github.layjason.mayoistar.service.JwtService" />
         <Bug pattern="CT_CONSTRUCTOR_THROW" />
     </Match>
+    <!--
+        TemplateEngine 是 Spring 容器管理的单例 Bean，通过构造器注入到 MailService 是标准模式。
+        存储引用不会造成内部表示暴露的实际风险，因为 TemplateEngine 本身设计为线程安全的共享对象。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.MailService" />
+        <Bug pattern="EI_EXPOSE_REP2" />
+    </Match>
 </FindBugsFilter>
