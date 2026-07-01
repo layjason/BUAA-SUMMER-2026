@@ -2,9 +2,12 @@ package io.github.layjason.mayoistar.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.MerchantProfile;
@@ -17,6 +20,8 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
 import io.github.layjason.mayoistar.repository.QualificationRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import java.io.File;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -26,9 +31,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 class MerchantProfileServiceTest {
@@ -49,10 +56,17 @@ class MerchantProfileServiceTest {
 
     private final String userId = UUID.randomUUID().toString();
 
+    @TempDir
+    private Path uploadRoot;
+
     @BeforeEach
     void setUp() {
         merchantProfileService = new MerchantProfileService(
-                userRepository, merchantProfileRepository, qualificationRepository, mediaFileRepository);
+                userRepository,
+                merchantProfileRepository,
+                qualificationRepository,
+                mediaFileRepository,
+                uploadRoot.toString());
     }
 
     @Nested
@@ -201,6 +215,30 @@ class MerchantProfileServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
                     .isEqualTo(10009);
+        }
+    }
+
+    @Nested
+    @DisplayName("营业执照上传")
+    class UploadLicense {
+
+        @Test
+        @DisplayName("使用绝对路径写入营业执照文件")
+        void shouldUploadLicenseWithAbsoluteTargetPath() throws Exception {
+            MultipartFile file = mock(MultipartFile.class);
+            when(file.getContentType()).thenReturn("image/png");
+            when(file.getSize()).thenReturn(70L);
+            when(file.getOriginalFilename()).thenReturn("license.png");
+
+            CommonDtos.MediaFile result = merchantProfileService.uploadLicense(userId, file);
+
+            ArgumentCaptor<File> fileCaptor = ArgumentCaptor.forClass(File.class);
+            verify(file).transferTo(fileCaptor.capture());
+            verify(mediaFileRepository).save(any());
+            assertThat(fileCaptor.getValue()).isAbsolute();
+            assertThat(fileCaptor.getValue().getParentFile()).isDirectory();
+            assertThat(result.getFileName()).isEqualTo("license.png");
+            assertThat(result.getContentType()).isEqualTo("image/png");
         }
     }
 
