@@ -113,9 +113,8 @@ class ApiContractControllerTests {
             "/chat/messages/{messageId}/recall",
             "/social/friend-requests");
 
-    private static final List<String> SKIP_VALIDATION_PATHS = List.of(
-            "/chat/teams/{teamId}/polls",
-            "/admin/users/{userId}/ban");
+    private static final List<String> SKIP_VALIDATION_PATHS =
+            List.of("/chat/teams/{teamId}/polls", "/admin/users/{userId}/ban");
 
     @Autowired
     private MockMvc mockMvc;
