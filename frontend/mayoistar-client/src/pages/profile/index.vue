@@ -50,7 +50,7 @@
  * 前置条件：无
  * 后置条件：登出后清除认证状态；未登录时自动跳转登录页
  */
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onShow } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/auth'
@@ -140,20 +140,33 @@ function goToPage(route: string): void {
   uni.navigateTo({ url: route })
 }
 
+const nickname = ref('')
+
+async function loadNickname(): Promise<void> {
+  if (!authStore.isLoggedIn) return
+  try {
+    const profile = await api.get('/identity/me/profile')
+    nickname.value = profile.nickname
+  } catch {
+    /* 加载失败使用 userId 兜底 */
+  }
+}
+
 /**
- * 头像首字符
+ * 头像首字符（优先昵称，其次 userId）
  */
 const initialChar = computed(() => {
-  if (!authStore.userId) return '?'
-  return authStore.userId.charAt(0).toUpperCase()
+  if (nickname.value) return nickname.value.charAt(0).toUpperCase()
+  if (authStore.userId) return authStore.userId.charAt(0).toUpperCase()
+  return '?'
 })
 
 /**
- * 卡片显示名称：已登录显示用户ID，未登录显示引导文案
+ * 卡片显示名称：已登录显示昵称，未登录显示引导文案
  */
 const displayName = computed(() => {
   if (authStore.isLoggedIn) {
-    return t('profile.userPrefix') + ' ' + authStore.userId
+    return nickname.value || t('profile.userPrefix') + ' ' + authStore.userId
   }
   return t('profile.tapToLogin')
 })
@@ -170,6 +183,7 @@ onShow(() => {
     autoRedirected = true
     uni.navigateTo({ url: '/pages/login/index' })
   }
+  if (authStore.isLoggedIn) loadNickname()
 })
 
 /**
