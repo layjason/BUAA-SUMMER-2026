@@ -21,6 +21,15 @@
         <Bug pattern="CT_CONSTRUCTOR_THROW" />
     </Match>
     <!--
+        AdminService 日志参数均为 UUID 标识符和枚举值，不含自由文本。
+        reason 类用户输入已通过 sanitizeForLog 过滤 CRLF 字符。
+        AdminAuthService 同。
+    -->
+    <Match>
+        <Class name="~io\.github\.layjason\.mayoistar\.service\.Admin.*Service" />
+        <Bug pattern="CRLF_INJECTION_LOGS" />
+    </Match>
+    <!--
         TemplateEngine 是 Spring 容器管理的单例 Bean，通过构造器注入到 MailService 是标准模式。
         存储引用不会造成内部表示暴露的实际风险，因为 TemplateEngine 本身设计为线程安全的共享对象。
     -->
