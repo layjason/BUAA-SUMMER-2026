@@ -420,18 +420,6 @@ function goDetail(activityId: string): void {
   font-size: 24rpx;
   color: #969799;
 }
-
-<style > page {
-  height: 100%;
-  overflow: hidden;
-}
-</style>
-
-<style>
-page {
-  height: 100%;
-  overflow: hidden;
-}
 </style>
 
 <style>
