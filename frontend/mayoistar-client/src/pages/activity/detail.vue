@@ -349,9 +349,26 @@ function handleAction(): void {
     return
   }
   if ((p.status === 'registered' || p.status === 'waiting') && p.canCancelRegistration) {
-    handleCancelRegistration()
+    showCancelConfirm()
     return
   }
+}
+
+/**
+ * 取消报名确认弹窗
+ */
+function showCancelConfirm(): void {
+  uni.showModal({
+    title: '取消报名',
+    content: '确定要取消报名吗？取消后可能需要重新排队',
+    confirmText: t('确定'),
+    cancelText: t('取消'),
+    success: (res) => {
+      if (res.confirm) {
+        handleCancelRegistration()
+      }
+    },
+  })
 }
 
 /**
