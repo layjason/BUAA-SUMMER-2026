@@ -4,7 +4,6 @@ import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 
 /**
  * No-Op 通知服务，记录日志但不实际发送通知。
@@ -13,7 +12,6 @@ import org.springframework.stereotype.Component;
  *
  * <p>后置条件：所有通知调用均被记录到日志，不抛出异常。
  */
-@Component
 @Slf4j
 public class NoOpNotificationService implements NotificationService {
 

@@ -125,6 +125,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/activities/registrations/mine': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 获取我报名的活动列表，调用方已登录，分页返回本人报名的活动及报名状态。 */
+    get: operations['ActivityOperations_listMyRegistrations'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/activities/search': {
     parameters: {
       query?: never;
@@ -2203,6 +2220,55 @@ export interface components {
       /** @description 是否已确认活动安全须知。 */
       acceptedSafetyNotice: boolean;
     };
+    /** @description 我报名的活动摘要，包含活动信息与当前用户的报名状态。 */
+    'Activities.RegisteredActivitySummary': {
+      /** @description 活动标识。 */
+      activityId: components['schemas']['EntityId'];
+      /** @description 活动名称。 */
+      title: string;
+      /** @description 活动标签。 */
+      tags: string[];
+      /** @description 活动开始时间。 */
+      startAt: components['schemas']['DateTimeString'];
+      /** @description 活动结束时间。 */
+      endAt: components['schemas']['DateTimeString'];
+      /** @description 活动地点。 */
+      location: components['schemas']['LocationInfo'];
+      /** @description 活动封面图片。 */
+      coverImage?: components['schemas']['MediaFile'];
+      /**
+       * Format: double
+       * @description 活动费用金额。
+       */
+      feeAmount?: number;
+      /** @description 活动审核状态。 */
+      reviewStatus: components['schemas']['Activities.ActivityReviewStatus'];
+      /** @description 活动进行状态。 */
+      runtimeStatus: components['schemas']['Activities.ActivityRuntimeStatus'];
+      /**
+       * Format: int32
+       * @description 已报名人数。
+       */
+      registeredCount: number;
+      /**
+       * Format: int32
+       * @description 活动人数上限。
+       */
+      capacity: number;
+      /** @description 报名记录标识。 */
+      registrationId: components['schemas']['EntityId'];
+      /** @description 当前用户在该活动中的报名状态。 */
+      registrationStatus: components['schemas']['Activities.RegistrationStatus'];
+      /** @description 报名或候补创建时间。 */
+      registeredAt: components['schemas']['DateTimeString'];
+      /**
+       * Format: int32
+       * @description 候补排位，非候补状态时为空。
+       */
+      waitingRank?: number;
+      /** @description 候补名额确认截止时间，仅候补待确认时返回。 */
+      confirmationDeadline?: components['schemas']['DateTimeString'];
+    };
     /** @description 活动报名结果。 */
     'Activities.RegistrationResult': {
       /** @description 报名记录标识。 */
@@ -2540,27 +2606,25 @@ export interface components {
       /** @description 消息发送时间。 */
       sentAt: components['schemas']['DateTimeString'];
     };
-    /** @description 聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话的新消息。 */
+    /** @description 聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话中的实时事件。 */
     'Chat.ChatRealtimeEvent': {
       /** @description 实时事件类型。 */
       kind: components['schemas']['Chat.ChatRealtimeEventKind'];
       /** @description 发生事件的会话标识。 */
       conversationId: components['schemas']['EntityId'];
-      /** @description 新创建的聊天消息。 */
-      message: components['schemas']['Chat.ChatMessage'];
-      /**
-       * Format: int32
-       * @description 当前用户在该会话中的最新未读消息数。
-       */
-      conversationUnreadCount: number;
+      /** @description 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload。 */
+      payload:
+        | components['schemas']['Chat.MessageCreatedPayload']
+        | components['schemas']['Chat.MessageRecalledPayload']
+        | components['schemas']['Chat.MessageForwardedPayload'];
       /** @description 事件发生时间。 */
       occurredAt: components['schemas']['DateTimeString'];
     };
     /**
-     * @description 聊天实时事件类型。
+     * @description 聊天实时事件类型。friendRequestCreated 事件通过 /queue/social-events 推送，不在此枚举内。
      * @enum {string}
      */
-    'Chat.ChatRealtimeEventKind': 'messageCreated';
+    'Chat.ChatRealtimeEventKind': 'messageCreated' | 'messageRecalled' | 'messageForwarded';
     /**
      * @description 会话类型。
      * @enum {string}
@@ -2606,6 +2670,26 @@ export interface components {
       /** @description 待标记为已读的消息标识列表。 */
       messageIds: components['schemas']['EntityId'][];
     };
+    /** @description 消息创建事件负载。 */
+    'Chat.MessageCreatedPayload': {
+      /** @description 新创建的聊天消息。 */
+      message: components['schemas']['Chat.ChatMessage'];
+      /**
+       * Format: int32
+       * @description 当前用户在该会话中的最新未读消息数。
+       */
+      conversationUnreadCount: number;
+    };
+    /** @description 消息转发事件负载。 */
+    'Chat.MessageForwardedPayload': {
+      /** @description 转发产生的新聊天消息。 */
+      message: components['schemas']['Chat.ChatMessage'];
+      /**
+       * Format: int32
+       * @description 当前用户在该会话中的最新未读消息数。
+       */
+      conversationUnreadCount: number;
+    };
     /**
      * @description 消息类型。
      * @enum {string}
@@ -2616,6 +2700,11 @@ export interface components {
      * @enum {string}
      */
     'Chat.MessageReadStatus': 'unread' | 'read';
+    /** @description 消息撤回事件负载。 */
+    'Chat.MessageRecalledPayload': {
+      /** @description 被撤回的聊天消息，其 recalled 字段为 true。 */
+      message: components['schemas']['Chat.ChatMessage'];
+    };
     /** @description 消息发送请求，调用方属于会话，创建消息并更新未读状态，不同消息类型只使用对应内容字段。 */
     'Chat.SendMessageRequest': {
       /** @description 待发送消息类型。 */
@@ -3360,6 +3449,21 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
+    /** @description 50018：消息引用的媒体文件不存在。 */
+    'Errors.Chat.MediaReferenceInvalid': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 50018;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'Referenced media does not exist';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
     /** @description 50006：消息内容与消息类型不匹配。 */
     'Errors.Chat.MessageContentInvalid': {
       /**
@@ -3552,6 +3656,21 @@ export interface components {
        * @enum {string}
        */
       message: 'Account is inactive';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
+    /** @description 10019：账号因多次登录失败被暂时锁定。message 中会提示剩余锁定时间。 */
+    'Errors.Identity.AccountLocked': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 10019;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'Account is temporarily locked due to multiple failed login attempts';
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
@@ -5274,6 +5393,67 @@ export interface operations {
             data: {
               /** @description 当前页数据。 */
               items: components['schemas']['Activities.ActivitySummary'][];
+              /**
+               * Format: int64
+               * @description 匹配总数。
+               */
+              total: number;
+              /**
+               * Format: int32
+               * @description 当前页码。
+               */
+              page: number;
+              /**
+               * Format: int32
+               * @description 每页数量。
+               */
+              pageSize: number;
+              /**
+               * Format: int32
+               * @description 匹配总页数。
+               */
+              totalPages: number;
+            };
+          };
+        };
+      };
+    };
+  };
+  ActivityOperations_listMyRegistrations: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /**
+             * @description 平台响应代码，成功响应固定为 200。
+             * @enum {number}
+             */
+            code: 200;
+            /**
+             * @description 平台响应消息，成功响应固定为 For Super Earth!。
+             * @enum {string}
+             */
+            message: 'For Super Earth!';
+            /** @description 响应数据。 */
+            data: {
+              /** @description 当前页数据。 */
+              items: components['schemas']['Activities.RegisteredActivitySummary'][];
               /**
                * Format: int64
                * @description 匹配总数。
@@ -7697,7 +7877,8 @@ export interface operations {
             | components['schemas']['InternalServerErrorResponse']
             | components['schemas']['Errors.Chat.ConversationNotVisible']
             | components['schemas']['Errors.Chat.ConversationMemberRequired']
-            | components['schemas']['Errors.Chat.MessageContentInvalid'];
+            | components['schemas']['Errors.Chat.MessageContentInvalid']
+            | components['schemas']['Errors.Chat.MediaReferenceInvalid'];
         };
       };
     };
@@ -9137,20 +9318,27 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            /**
-             * @description 平台响应代码，成功响应固定为 200。
-             * @enum {number}
-             */
-            code: 200;
-            /**
-             * @description 平台响应消息，成功响应固定为 For Super Earth!。
-             * @enum {string}
-             */
-            message: 'For Super Earth!';
-            /** @description 响应数据。 */
-            data: components['schemas']['MediaFile'];
-          };
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['MediaFile'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Identity.ImageFormatInvalid']
+            | components['schemas']['Errors.Identity.ImageTooLarge'];
         };
       };
     };
