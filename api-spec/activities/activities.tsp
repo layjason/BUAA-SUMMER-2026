@@ -712,7 +712,9 @@ interface ActivityOperations {
   @get
   @route("/registrations/mine")
   @doc("获取我报名的活动列表，调用方已登录，分页返回本人报名的活动及报名状态。")
-  listMyRegistrations(...PageQuery): APIResponse<PageResult<RegisteredActivitySummary>>;
+  listMyRegistrations(
+    ...PageQuery,
+  ): APIResponse<PageResult<RegisteredActivitySummary>>;
 
   @get
   @route("/{activityId}")
