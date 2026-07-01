@@ -257,7 +257,7 @@ function goDetail(activityId: string): void {
 }
 
 function goCreate(): void {
-  uni.navigateTo({ url: '/pages/activity/edit' })
+  uni.navigateTo({ url: '/pages/activity/templates' })
 }
 </script>
 
