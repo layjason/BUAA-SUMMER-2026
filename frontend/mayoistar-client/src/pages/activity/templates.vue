@@ -57,7 +57,7 @@
               </view>
               <view class="clone-status">
                 <text class="status-tag" :class="'status-' + item.runtimeStatus">{{
-                  runtimeStatusText(item.runtimeStatus)
+                  getStatusText(item.runtimeStatus)
                 }}</text>
               </view>
             </view>
@@ -86,6 +86,7 @@ import { useI18n } from 'vue-i18n'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
+import { runtimeStatusText as getRuntimeStatusText } from '@/utils/status'
 
 const { t } = useI18n()
 
@@ -115,17 +116,8 @@ interface MyActivity {
 
 const myActivities = ref<MyActivity[]>([])
 
-const runtimeStatusMap: Record<string, string> = {
-  notStarted: t('myActivities.statusNotStarted'),
-  registering: t('myActivities.statusRegistering'),
-  registrationClosed: t('myActivities.statusRegistrationClosed'),
-  ongoing: t('myActivities.statusOngoing'),
-  ended: t('myActivities.statusEnded'),
-  takenDown: t('myActivities.statusTakenDown'),
-}
-
-function runtimeStatusText(status: string): string {
-  return runtimeStatusMap[status] ?? status
+function getStatusText(status: string): string {
+  return getRuntimeStatusText(status, t)
 }
 
 async function loadTemplates(): Promise<void> {

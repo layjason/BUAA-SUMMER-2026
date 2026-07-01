@@ -85,6 +85,7 @@ import { useI18n } from 'vue-i18n'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
+import { runtimeStatusText as getRuntimeStatus } from '@/utils/status'
 
 const { t } = useI18n()
 
@@ -92,16 +93,6 @@ const activeTab = ref<'published' | 'drafts'>('published')
 const loading = ref(true)
 const refreshing = ref(false)
 const errorMsg = ref('')
-
-/** 运行时状态文本映射 */
-const runtimeStatusMap: Record<string, string> = {
-  notStarted: t('myActivities.statusNotStarted'),
-  registering: t('myActivities.statusRegistering'),
-  registrationClosed: t('myActivities.statusRegistrationClosed'),
-  ongoing: t('myActivities.statusOngoing'),
-  ended: t('myActivities.statusEnded'),
-  takenDown: t('myActivities.statusTakenDown'),
-}
 
 /** 审核状态文本映射 */
 const reviewStatusMap: Record<string, string> = {
@@ -232,7 +223,7 @@ function formatTags(tags: string[]): string {
  * @returns 中文文本
  */
 function runtimeStatusText(status: string): string {
-  return runtimeStatusMap[status] ?? status
+  return getRuntimeStatus(status, t)
 }
 
 /**

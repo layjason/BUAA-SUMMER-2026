@@ -57,7 +57,7 @@
               <view class="card-header-row">
                 <text class="card-title">{{ item.title }}</text>
                 <text class="status-tag" :class="'status-' + item.runtimeStatus">{{
-                  runtimeStatusText(item.runtimeStatus)
+                  getStatusText(item.runtimeStatus)
                 }}</text>
               </view>
 
@@ -115,6 +115,7 @@ import { useI18n } from 'vue-i18n'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
+import { runtimeStatusText } from '@/utils/status'
 
 const { t } = useI18n()
 
@@ -157,17 +158,8 @@ interface ActivityItem {
   runtimeStatus: string
 }
 
-const runtimeStatusMap: Record<string, string> = {
-  notStarted: t('myActivities.statusNotStarted'),
-  registering: t('myActivities.statusRegistering'),
-  registrationClosed: t('myActivities.statusRegistrationClosed'),
-  ongoing: t('myActivities.statusOngoing'),
-  ended: t('myActivities.statusEnded'),
-  takenDown: t('myActivities.statusTakenDown'),
-}
-
-function runtimeStatusText(status: string): string {
-  return runtimeStatusMap[status] ?? status
+function getStatusText(status: string): string {
+  return runtimeStatusText(status, t)
 }
 
 async function loadFeed(): Promise<void> {
