@@ -246,6 +246,18 @@ accept_friend=$(create_request "$workspace_id" "$social_folder" "同意好友申
 list_friends=$(create_request "$workspace_id" "$social_folder" "好友列表" "GET" "${BASE_URL}/social/friends?page=1&pageSize=20" "userAccessToken")
 update_remark=$(create_request "$workspace_id" "$social_folder" "更新好友备注" "PATCH" "${BASE_URL}/social/friends/${TEST_PEER_ID}" "userAccessToken" '{"remark":"QA 好友","groupTags":["测试","两人社群"]}')
 
+follow_user=$(create_request "$workspace_id" "$social_folder" "关注用户" "POST" "${BASE_URL}/social/follows/${TEST_PEER_ID}" "userAccessToken")
+unfollow_user=$(create_request "$workspace_id" "$social_folder" "取消关注" "DELETE" "${BASE_URL}/social/follows/${TEST_PEER_ID}" "userAccessToken")
+list_follows=$(create_request "$workspace_id" "$social_folder" "我的关注" "GET" "${BASE_URL}/social/follows?page=1&pageSize=20" "userAccessToken")
+list_followers=$(create_request "$workspace_id" "$social_folder" "我的粉丝" "GET" "${BASE_URL}/social/followers?page=1&pageSize=20" "peerAccessToken")
+list_sent_requests=$(create_request "$workspace_id" "$social_folder" "已发送好友申请" "GET" "${BASE_URL}/social/friend-requests/sent?page=1&pageSize=20" "userAccessToken")
+list_received_requests=$(create_request "$workspace_id" "$social_folder" "已收到好友申请" "GET" "${BASE_URL}/social/friend-requests/received?page=1&pageSize=20" "peerAccessToken")
+delete_friend=$(create_request "$workspace_id" "$social_folder" "删除好友" "DELETE" "${BASE_URL}/social/friends/${TEST_PEER_ID}" "userAccessToken")
+block_user=$(create_request "$workspace_id" "$social_folder" "拉黑用户" "POST" "${BASE_URL}/social/blacklist/${TEST_PEER_ID}" "userAccessToken")
+list_blacklist=$(create_request "$workspace_id" "$social_folder" "黑名单列表" "GET" "${BASE_URL}/social/blacklist?page=1&pageSize=20" "userAccessToken")
+unblock_user=$(create_request "$workspace_id" "$social_folder" "取消拉黑" "DELETE" "${BASE_URL}/social/blacklist/${TEST_PEER_ID}" "userAccessToken")
+list_my_reports=$(create_request "$workspace_id" "$social_folder" "我的举报" "GET" "${BASE_URL}/social/reports?page=1&pageSize=20" "userAccessToken")
+
 list_conversations=$(create_request "$workspace_id" "$chat_folder" "会话列表" "GET" "${BASE_URL}/chat/conversations?page=1&pageSize=20" "userAccessToken")
 send_text=$(create_request "$workspace_id" "$chat_folder" "发送文字消息" "POST" "${BASE_URL}"'/chat/conversations/${[ conversationId ]}/messages' "userAccessToken" '{"kind":"text","text":"Hello from Yaak CLI"}')
 send_emoji=$(create_request "$workspace_id" "$chat_folder" "发送表情文本消息" "POST" "${BASE_URL}"'/chat/conversations/${[ conversationId ]}/messages' "userAccessToken" '{"kind":"text","text":"😀⭐"}')
@@ -344,6 +356,55 @@ assert_jq_equals "$response" '.data.remark' "QA 好友"
 assert_jq_true "$response" '.data.groupTags | index("测试") != null and index("两人社群") != null'
 pass_test
 
+begin_test "关注用户"
+response=$(send_json "$follow_user" "$environment_id")
+assert_code "$response" "200"
+assert_jq_equals "$response" '.data.targetUserId' "$TEST_PEER_ID"
+assert_jq_equals "$response" '.data.following' "true"
+pass_test
+
+begin_test "关注后我的关注列表包含该用户"
+response=$(send_json "$list_follows" "$environment_id")
+assert_code "$response" "200"
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" ".data.items | any(.userId == \"$TEST_PEER_ID\" and .mutual == false)"
+pass_test
+
+begin_test "我的粉丝列表"
+response=$(send_json "$list_followers" "$environment_id")
+assert_code "$response" "200"
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" ".data.items | any(.userId == \"$TEST_USER_ID\")"
+pass_test
+
+begin_test "取消关注"
+response=$(send_json "$unfollow_user" "$environment_id")
+assert_code "$response" "200"
+assert_jq_equals "$response" '.data.targetUserId' "$TEST_PEER_ID"
+assert_jq_equals "$response" '.data.following' "false"
+pass_test
+
+begin_test "取消关注后关注列表不再包含该用户"
+response=$(send_json "$list_follows" "$environment_id")
+assert_code "$response" "200"
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" '.data.items | map(.userId) | index("'"$TEST_PEER_ID"'") == null'
+pass_test
+
+begin_test "已发送好友申请列表包含已通过申请"
+response=$(send_json "$list_sent_requests" "$environment_id")
+assert_code "$response" "200"
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" ".data.items | any(.requestId == \"$friend_request_id\" and .status == \"accepted\" and .targetUserId == \"$TEST_PEER_ID\")"
+pass_test
+
+begin_test "已收到好友申请列表包含已通过申请"
+response=$(send_json "$list_received_requests" "$environment_id")
+assert_code "$response" "200"
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" ".data.items | any(.requestId == \"$friend_request_id\" and .status == \"accepted\" and .requesterId == \"$TEST_USER_ID\")"
+pass_test
+
 begin_test "会话列表"
 response=$(send_json "$list_conversations" "$environment_id")
 assert_code "$response" "200"
@@ -425,14 +486,16 @@ report_id=$(echo "$response" | jq -r '.data.reportId')
 set_env_var "$environment_id" "reportId" "$(echo "$response" | jq -r '.data.reportId')"
 pass_test
 
+begin_test "我的举报列表包含刚创建的举报"
+response=$(send_json "$list_my_reports" "$environment_id")
+assert_code "$response" "200"
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" ".data.items | any(.reportId == \"$report_id\" and .status == \"pending\" and .targetId == \"$TEST_PEER_ID\")"
+pass_test
+
 begin_test "后台查询举报"
 response=$(send_json "$admin_list_reports" "$environment_id")
 assert_code "$response" "200"
-if ! echo "$response" | jq -e ".data.items | any(.reportId == \"$report_id\")" >/dev/null; then
-  echo "后台举报列表未包含本次举报。" >&2
-  echo "$response" | jq . >&2
-  exit 1
-fi
 assert_page_result "$response" "1" "20"
 assert_jq_true "$response" ".data.items | any(.reportId == \"$report_id\" and .targetType == \"user\" and .targetId == \"$TEST_PEER_ID\")"
 pass_test
@@ -447,6 +510,42 @@ assert_jq_equals "$response" '.data.targetId' "$TEST_PEER_ID"
 assert_jq_equals "$response" '.data.status' "resolved"
 assert_jq_equals "$response" '.data.handlingNote' "Yaak CLI smoke resolved"
 assert_jq_non_empty "$response" '.data.handledAt'
+pass_test
+
+begin_test "删除好友"
+response=$(send_json "$delete_friend" "$environment_id")
+assert_code "$response" "200"
+pass_test
+
+begin_test "删除好友后好友列表不再包含该用户"
+response=$(send_json "$list_friends" "$environment_id")
+assert_code "$response" "200"
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" '.data.items | map(.userId) | index("'"$TEST_PEER_ID"'") == null'
+pass_test
+
+begin_test "拉黑用户"
+response=$(send_json "$block_user" "$environment_id")
+assert_code "$response" "200"
+pass_test
+
+begin_test "拉黑后黑名单列表包含该用户"
+response=$(send_json "$list_blacklist" "$environment_id")
+assert_code "$response" "200"
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" ".data.items | any(.userId == \"$TEST_PEER_ID\")"
+pass_test
+
+begin_test "取消拉黑"
+response=$(send_json "$unblock_user" "$environment_id")
+assert_code "$response" "200"
+pass_test
+
+begin_test "取消拉黑后黑名单不再包含该用户"
+response=$(send_json "$list_blacklist" "$environment_id")
+assert_code "$response" "200"
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" '.data.items | map(.userId) | index("'"$TEST_PEER_ID"'") == null'
 pass_test
 
 echo "Yaak CLI smoke completed."
