@@ -126,6 +126,13 @@
           >
             {{ t('activityDetail.writeSummary') }}
           </button>
+          <button
+            v-if="isOrganizer && activity.runtimeStatus !== 'takenDown'"
+            class="action-btn-sm"
+            @click="handleClone"
+          >
+            {{ t('activityClone.clone') }}
+          </button>
         </view>
       </view>
     </template>
@@ -258,6 +265,32 @@ function goReview(): void {
 /** 跳转到总结页 */
 function goSummary(): void {
   uni.navigateTo({ url: `/pages/activity/summary?activityId=${activityId.value}` })
+}
+
+/**
+ * 克隆活动
+ *
+ * 将当前活动克隆为草稿，成功后跳转到编辑页。
+ */
+async function handleClone(): Promise<void> {
+  try {
+    uni.showLoading({ title: t('activityClone.cloning') })
+    const result = (await api.post('/activities/{activityId}/clone', {
+      path: { activityId: activityId.value },
+    })) as { activityId: string }
+    uni.hideLoading()
+    uni.showToast({ title: t('activityClone.cloneSuccess'), icon: 'success' })
+    setTimeout(() => {
+      uni.navigateTo({ url: `/pages/activity/edit?activityId=${result.activityId}` })
+    }, 1000)
+  } catch (error) {
+    uni.hideLoading()
+    if (error instanceof BusinessError) {
+      uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
+    } else {
+      uni.showToast({ title: '克隆失败', icon: 'none' })
+    }
+  }
 }
 
 const isFull = computed(() => {
