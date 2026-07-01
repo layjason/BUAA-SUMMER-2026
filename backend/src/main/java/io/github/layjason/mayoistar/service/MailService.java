@@ -5,6 +5,7 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -116,7 +117,7 @@ public class MailService {
 
             mailSender.send(message);
             log.info("邮件已发送: to={}, subject={}", to, subject);
-        } catch (MessagingException e) {
+        } catch (MessagingException | MailException e) {
             log.warn("邮件发送失败: to={}, subject={}, error={}", to, subject, e.getMessage());
         }
     }
