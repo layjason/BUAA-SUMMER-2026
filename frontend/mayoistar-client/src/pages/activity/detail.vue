@@ -318,6 +318,8 @@ const buttonText = computed(() => {
   }
   if (p.status === 'registered' && p.canCancelRegistration)
     return t('activityDetail.cancelRegistration')
+  if (p.status === 'waiting' && p.canCancelRegistration)
+    return t('activityDetail.cancelRegistration')
   if (p.status === 'waiting') {
     return t('activityDetail.waitingRank', { rank: p.waitingRank ?? '?' })
   }
@@ -332,6 +334,7 @@ const buttonDisabled = computed(() => {
   if (p.canConfirmWaitingSeat) return false
   if (p.canRegister) return false
   if (p.status === 'registered') return !p.canCancelRegistration
+  if (p.status === 'waiting') return !p.canCancelRegistration
   return true
 })
 
@@ -350,7 +353,7 @@ function handleAction(): void {
     showSafetyConfirm()
     return
   }
-  if (p.status === 'registered' && p.canCancelRegistration) {
+  if ((p.status === 'registered' || p.status === 'waiting') && p.canCancelRegistration) {
     handleCancelRegistration()
     return
   }
@@ -426,20 +429,18 @@ async function handleGenerateQrCode(): Promise<void> {
     const result = (await api.post('/activities/{activityId}/check-in-qrcode', {
       path: { activityId: activityId.value },
     })) as { qrCodeToken: string; expiresAt: string }
-    uni.showModal({
-      title: t('activityDetail.qrCodeTitle'),
-      content:
-        `${t('activityDetail.qrCodeToken')}: ${result.qrCodeToken}\n` +
-        `${t('activityDetail.qrCodeExpires')}: ${formatDateTime(result.expiresAt)}`,
-      showCancel: true,
-      cancelText: '关闭',
-      confirmText: '复制',
-      success: (res) => {
-        if (res.confirm) {
-          uni.setClipboardData({ data: result.qrCodeToken })
-        }
-      },
+    const qrImageUrl =
+      'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' +
+      encodeURIComponent(result.qrCodeToken)
+    uni.previewImage({
+      urls: [qrImageUrl],
     })
+    uni.showToast({
+      title: `${t('activityDetail.qrCodeExpires')}: ${formatDateTime(result.expiresAt)}`,
+      icon: 'none',
+      duration: 3000,
+    })
+    uni.setClipboardData({ data: result.qrCodeToken })
   } catch (error) {
     if (error instanceof BusinessError) {
       uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
