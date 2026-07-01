@@ -86,9 +86,8 @@ public class AdminAuthService {
      */
     @Transactional
     public void changePassword(String adminId, String oldPassword, String newPassword) {
-        Admin admin = adminRepository
-                .findById(adminId)
-                .orElseThrow(() -> new BusinessException(401, "Authentication is required"));
+        Admin admin =
+                adminRepository.findById(adminId).orElseThrow(() -> new BusinessException(401, "Admin not found"));
 
         if (!passwordEncoder.matches(oldPassword, admin.getPasswordHash())) {
             throw new BusinessException(60001, "Old password is invalid");
