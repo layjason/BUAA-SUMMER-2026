@@ -109,6 +109,56 @@ class AdminAuthServiceTest {
                     .extracting("code")
                     .isEqualTo(60000);
         }
+
+        @Test
+        @DisplayName("锁定管理员拒绝登录")
+        void shouldThrowOnLockedAdmin() {
+            AdminDtos.AdminLoginRequest request = new AdminDtos.AdminLoginRequest();
+            request.setUsername("admin");
+            request.setPassword("password123");
+
+            Admin admin = Admin.builder()
+                    .adminId(adminId)
+                    .username("admin")
+                    .passwordHash(passwordEncoder.encode("password123"))
+                    .lockedUntil(Instant.now().plusSeconds(600))
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            when(adminRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
+
+            assertThatThrownBy(() -> adminAuthService.login(request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(60000);
+        }
+
+        @Test
+        @DisplayName("登录成功重置失败计数和锁定状态")
+        void shouldResetLoginStateOnSuccess() {
+            AdminDtos.AdminLoginRequest request = new AdminDtos.AdminLoginRequest();
+            request.setUsername("admin");
+            request.setPassword("password123");
+
+            Admin admin = Admin.builder()
+                    .adminId(adminId)
+                    .username("admin")
+                    .passwordHash(passwordEncoder.encode("password123"))
+                    .loginAttempts(3)
+                    .lastFailedLoginAt(Instant.now().minusSeconds(60))
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            when(adminRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
+
+            adminAuthService.login(request);
+
+            assertThat(admin.getLoginAttempts()).isEqualTo(0);
+            assertThat(admin.getLastFailedLoginAt()).isNull();
+            assertThat(admin.getLockedUntil()).isNull();
+        }
     }
 
     @Nested

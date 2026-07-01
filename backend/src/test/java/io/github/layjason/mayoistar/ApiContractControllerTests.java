@@ -313,7 +313,13 @@ class ApiContractControllerTests {
             return value;
         }
         if ("array".equals(resolved.getType())) {
-            return List.of(schemaValue(openApi, resolved.getItems(), fieldName));
+            Object item = schemaValue(openApi, resolved.getItems(), fieldName);
+            int count = resolved.getMinItems() != null && resolved.getMinItems() > 1 ? resolved.getMinItems() : 1;
+            List<Object> list = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                list.add(item);
+            }
+            return list;
         }
         return scalarValue(resolved, fieldName);
     }
@@ -344,6 +350,9 @@ class ApiContractControllerTests {
         }
         if ("date".equals(format) || fieldName.toLowerCase().contains("birthday")) {
             return "2026-06-29";
+        }
+        if (fieldName.toLowerCase().contains("email")) {
+            return "placeholder@example.com";
         }
         return fieldName + "-placeholder";
     }

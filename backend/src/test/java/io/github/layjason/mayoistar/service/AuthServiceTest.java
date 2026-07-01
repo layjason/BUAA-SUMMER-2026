@@ -238,6 +238,96 @@ class AuthServiceTest {
                     .extracting("code")
                     .isEqualTo(10005);
         }
+
+        @Test
+        @DisplayName("锁定账号拒绝登录")
+        void shouldThrowOnLockedAccount() {
+            var request = new IdentityDtos.EmailPasswordRequest();
+            request.setEmail("test@example.com");
+            request.setPassword("password123");
+
+            User user = User.builder()
+                    .userId(UUID.randomUUID().toString())
+                    .email("test@example.com")
+                    .nickname("testuser")
+                    .passwordHash(passwordEncoder.encode("password123"))
+                    .kind(UserKind.personal)
+                    .accountStatus(AccountStatus.active)
+                    .lockedUntil(Instant.now().plusSeconds(600))
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> authService.login(request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> {
+                        BusinessException be = (BusinessException) ex;
+                        assertThat(be.getCode()).isEqualTo(10019);
+                        assertThat(be.getBusinessMessage()).contains("temporarily locked");
+                    });
+        }
+
+        @Test
+        @DisplayName("登录成功重置失败计数和锁定状态")
+        void shouldResetLoginStateOnSuccess() {
+            var request = new IdentityDtos.EmailPasswordRequest();
+            request.setEmail("test@example.com");
+            request.setPassword("password123");
+
+            User user = User.builder()
+                    .userId(UUID.randomUUID().toString())
+                    .email("test@example.com")
+                    .nickname("testuser")
+                    .passwordHash(passwordEncoder.encode("password123"))
+                    .kind(UserKind.personal)
+                    .accountStatus(AccountStatus.active)
+                    .loginAttempts(3)
+                    .lastFailedLoginAt(Instant.now().minusSeconds(60))
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
+
+            authService.login(request);
+
+            assertThat(user.getLoginAttempts()).isEqualTo(0);
+            assertThat(user.getLastFailedLoginAt()).isNull();
+            assertThat(user.getLockedUntil()).isNull();
+        }
+
+        @Test
+        @DisplayName("失败窗口过期后可重试")
+        void shouldResetWindowWhenExpired() {
+            var request = new IdentityDtos.EmailPasswordRequest();
+            request.setEmail("test@example.com");
+            request.setPassword("wrongpassword");
+
+            User user = User.builder()
+                    .userId(UUID.randomUUID().toString())
+                    .email("test@example.com")
+                    .nickname("testuser")
+                    .passwordHash(passwordEncoder.encode("password123"))
+                    .kind(UserKind.personal)
+                    .accountStatus(AccountStatus.active)
+                    .loginAttempts(3)
+                    .lastFailedLoginAt(Instant.now().minusSeconds(1000))
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> authService.login(request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(10003);
+
+            // 窗口过期后重置，再从 0 → 1
+            assertThat(user.getLoginAttempts()).isEqualTo(1);
+        }
     }
 
     @Nested

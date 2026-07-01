@@ -4,6 +4,7 @@ import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.service.ActivitySearchService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ActivityController {
 
     private final DefaultApiResponseFactory responseFactory;
+    private final ActivitySearchService activitySearchService;
 
     @PostMapping("/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> saveDraft(
@@ -74,7 +76,19 @@ public class ActivityController {
             @RequestParam(required = false) Integer distanceMeters,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.activityMapPoints();
+        return ResponseEntity.ok(ApiResponse.success(activitySearchService.mapPoints(toSearchCriteria(
+                keyword,
+                activityTypes,
+                city,
+                startAtFrom,
+                startAtTo,
+                minFee,
+                maxFee,
+                latitude,
+                longitude,
+                distanceMeters,
+                page,
+                pageSize))));
     }
 
     @PostMapping(value = "/media/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -111,7 +125,19 @@ public class ActivityController {
             @RequestParam(required = false) Integer distanceMeters,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+        return ResponseEntity.ok(ApiResponse.success(activitySearchService.search(toSearchCriteria(
+                keyword,
+                activityTypes,
+                city,
+                startAtFrom,
+                startAtTo,
+                minFee,
+                maxFee,
+                latitude,
+                longitude,
+                distanceMeters,
+                page,
+                pageSize))));
     }
 
     @GetMapping("/templates")
@@ -214,5 +240,33 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> confirmWaitingSeat(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.WaitingConfirmationRequest request) {
         return responseFactory.registrationResult();
+    }
+
+    private ActivitySearchService.SearchCriteria toSearchCriteria(
+            String keyword,
+            List<String> activityTypes,
+            String city,
+            String startAtFrom,
+            String startAtTo,
+            Double minFee,
+            Double maxFee,
+            Double latitude,
+            Double longitude,
+            Integer distanceMeters,
+            Integer page,
+            Integer pageSize) {
+        return new ActivitySearchService.SearchCriteria(
+                keyword,
+                activityTypes,
+                city,
+                startAtFrom,
+                startAtTo,
+                minFee,
+                maxFee,
+                latitude,
+                longitude,
+                distanceMeters,
+                page,
+                pageSize);
     }
 }
