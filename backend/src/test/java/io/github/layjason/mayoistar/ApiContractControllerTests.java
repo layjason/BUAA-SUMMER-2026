@@ -11,6 +11,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.layjason.mayoistar.api.admin.AdminTestDataInitializer;
+import io.github.layjason.mayoistar.entity.admin.Admin;
+import io.github.layjason.mayoistar.entity.identity.AccountStatus;
+import io.github.layjason.mayoistar.entity.identity.Gender;
+import io.github.layjason.mayoistar.entity.identity.PersonalProfile;
+import io.github.layjason.mayoistar.entity.identity.User;
+import io.github.layjason.mayoistar.entity.identity.UserKind;
+import io.github.layjason.mayoistar.repository.ActivityRepository;
+import io.github.layjason.mayoistar.repository.AdminRepository;
+import io.github.layjason.mayoistar.repository.ConversationRepository;
+import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
+import io.github.layjason.mayoistar.repository.QualificationRepository;
+import io.github.layjason.mayoistar.repository.ReportRepository;
+import io.github.layjason.mayoistar.repository.TeamMemberRepository;
+import io.github.layjason.mayoistar.repository.TeamRepository;
+import io.github.layjason.mayoistar.repository.UserRepository;
 import io.swagger.parser.OpenAPIParser;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -23,18 +40,22 @@ import io.swagger.v3.parser.core.models.ParseOptions;
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -78,6 +99,119 @@ class ApiContractControllerTests {
     private MockMvc mockMvc;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PersonalProfileRepository personalProfileRepository;
+
+    @Autowired
+    private AdminRepository adminRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private MerchantProfileRepository merchantProfileRepository;
+
+    @Autowired
+    private QualificationRepository qualificationRepository;
+
+    @Autowired
+    private ActivityRepository activityRepository;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
+    @Autowired
+    private TeamMemberRepository teamMemberRepository;
+
+    @Autowired
+    private ReportRepository reportRepository;
+
+    @Autowired
+    private ConversationRepository conversationRepository;
+
+    /**
+     * 确保测试数据存在，包括 @WithMockUser 所需的用户和管理员，
+     * 以及契约测试中所有路径参数占位值对应的实体。
+     *
+     * <p>前置条件：所有 Repository 已注入。
+     *
+     * <p>后置条件：test-user-id 用户和管理员、所有 placeholder 实体存在于数据库中。
+     *
+     * <p>不变量：若数据已存在则跳过，避免覆盖。
+     */
+    @BeforeEach
+    void ensureTestData() {
+        if (!userRepository.existsById("test-user-id")) {
+            Instant now = Instant.now();
+            User user = User.builder()
+                    .userId("test-user-id")
+                    .email("test@example.com")
+                    .nickname("testuser")
+                    .passwordHash("$2a$12$dummyhash")
+                    .kind(UserKind.personal)
+                    .accountStatus(AccountStatus.active)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
+            userRepository.save(user);
+
+            PersonalProfile profile = PersonalProfile.builder()
+                    .user(user)
+                    .gender(Gender.unspecified)
+                    .interestTags(List.of())
+                    .reputationScore(100)
+                    .updatedAt(now)
+                    .build();
+            personalProfileRepository.save(profile);
+        }
+        if (!adminRepository.existsById("test-user-id")) {
+            Instant now = Instant.now();
+            Admin admin = Admin.builder()
+                    .adminId("test-user-id")
+                    .username("username-placeholder")
+                    .passwordHash(passwordEncoder.encode("password-placeholder"))
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
+            adminRepository.save(admin);
+        }
+        AdminTestDataInitializer.createPlaceholderMerchantIfNeeded(
+                userRepository, merchantProfileRepository, qualificationRepository);
+        AdminTestDataInitializer.createPlaceholderActivityIfNeeded(activityRepository);
+        AdminTestDataInitializer.createPlaceholderConversationIfNeeded(conversationRepository);
+        AdminTestDataInitializer.createPlaceholderTeamIfNeeded(teamRepository, teamMemberRepository);
+        AdminTestDataInitializer.createPlaceholderReportIfNeeded(reportRepository);
+    }
+
+    /**
+     * 清理契约测试创建的 placeholder 数据，避免影响后续测试。
+     *
+     * <p>前置条件：placeholder 实体可能存在于数据库中。
+     *
+     * <p>后置条件：所有 placeholder 实体已按外键依赖顺序删除。
+     *
+     * <p>不变量：不删除非 placeholder 的实体。
+     */
+    @AfterEach
+    void cleanUpPlaceholderData() {
+        teamMemberRepository.deleteAll();
+        reportRepository.deleteAll();
+        teamRepository.deleteAll();
+        activityRepository.deleteAll();
+        qualificationRepository.deleteAll();
+        merchantProfileRepository.deleteAll();
+        conversationRepository.deleteAll();
+        if (userRepository.existsById(AdminTestDataInitializer.PLACEHOLDER)) {
+            userRepository.deleteById(AdminTestDataInitializer.PLACEHOLDER);
+        }
+        // 清理可能被测试执行创建的其他 placeholder 关联数据
+        merchantProfileRepository.deleteAll();
+        activityRepository.deleteAll();
+    }
 
     /**
      * 为 OpenAPI 中的每个 operation 生成一条契约测试。

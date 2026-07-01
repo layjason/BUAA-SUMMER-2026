@@ -50,7 +50,7 @@ public class AdminTestDataInitializer {
     /**
      * 合同测试中所有路径参数替换成的占位值。
      */
-    private static final String PLACEHOLDER = "placeholder";
+    public static final String PLACEHOLDER = "placeholder";
 
     @Bean
     public ApplicationRunner adminTestDataInitializerRunner(
@@ -71,7 +71,7 @@ public class AdminTestDataInitializer {
         };
     }
 
-    private void createPlaceholderConversationIfNeeded(ConversationRepository conversationRepository) {
+    public static void createPlaceholderConversationIfNeeded(ConversationRepository conversationRepository) {
         if (conversationRepository.existsById(PLACEHOLDER + "-chat")) {
             return;
         }
@@ -86,7 +86,7 @@ public class AdminTestDataInitializer {
         conversationRepository.save(conversation);
     }
 
-    private void createPlaceholderMerchantIfNeeded(
+    public static void createPlaceholderMerchantIfNeeded(
             UserRepository userRepository,
             MerchantProfileRepository merchantProfileRepository,
             QualificationRepository qualificationRepository) {
@@ -124,7 +124,7 @@ public class AdminTestDataInitializer {
         qualificationRepository.save(qualification);
     }
 
-    private void createPlaceholderActivityIfNeeded(ActivityRepository activityRepository) {
+    public static void createPlaceholderActivityIfNeeded(ActivityRepository activityRepository) {
         if (activityRepository.existsById(PLACEHOLDER)) {
             return;
         }
@@ -154,7 +154,7 @@ public class AdminTestDataInitializer {
         activityRepository.save(activity);
     }
 
-    private void createPlaceholderTeamIfNeeded(
+    public static void createPlaceholderTeamIfNeeded(
             TeamRepository teamRepository, TeamMemberRepository teamMemberRepository) {
         if (teamRepository.existsById(PLACEHOLDER)) {
             return;
@@ -187,7 +187,7 @@ public class AdminTestDataInitializer {
         teamMemberRepository.save(member);
     }
 
-    private void createPlaceholderReportIfNeeded(ReportRepository reportRepository) {
+    public static void createPlaceholderReportIfNeeded(ReportRepository reportRepository) {
         if (reportRepository.existsById(PLACEHOLDER)) {
             return;
         }
