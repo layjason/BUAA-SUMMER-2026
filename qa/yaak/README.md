@@ -21,6 +21,7 @@
 2. 启动 Docker 依赖：
 
    ```bash
+   docker compose --env-file .env -f docker-compose-local.yaml down -v
    docker compose --env-file .env -f docker-compose-local.yaml up -d postgres mailhog
    ```
 
@@ -36,6 +37,7 @@
    ```powershell
    .\qa\yaak\start-backend-mailhog.ps1
    ```
+
    ```bash
    ./qa/yaak/start-backend-mailhog.sh
    ```
@@ -45,6 +47,7 @@
    ```powershell
    .\qa\yaak\run-mailhog-smoke.ps1
    ```
+
    ```bash
    ./qa/yaak/run-mailhog-smoke.sh
    ```
@@ -54,10 +57,12 @@
 ## 覆盖的接口测试
 
 ### 00 公共接口
+
 - `GET /identity/interest-tags`：获取兴趣标签列表
 - `GET /identity/check-nickname`：检查昵称是否可用
 
 ### 01 个人用户
+
 - `POST /identity/auth/register`：个人用户注册
 - `POST /identity/auth/activate/{token}`：激活个人账户
 - `POST /identity/auth/login`：个人用户登录
@@ -70,6 +75,7 @@
 - 重复邮箱注册、激活前登录、无令牌访问等错误场景
 
 ### 02 商家用户
+
 - `POST /identity/auth/register`：商家用户注册
 - `POST /identity/auth/activate/{token}`：激活商家账户
 - `POST /identity/auth/login`：商家用户登录
@@ -80,12 +86,14 @@
 - 个人令牌访问商家资料的权限拒绝场景
 
 ### 03 密码与激活
+
 - `POST /identity/auth/reactivate`：重新发送激活邮件
 - `POST /identity/auth/forgot-password`：发送密码重置邮件
 - `POST /identity/auth/reset-password`：使用 token 重置密码
 - 错误密码登录尝试场景
 
 ### 04 管理员（占位）
+
 - `POST /admin/auth/login`：管理员登录
 - `GET /admin/users/{userId}/merchant-profile`：获取商家资料
 - `POST /admin/users/{userId}/merchant-review`：审核商家资质（占位）
