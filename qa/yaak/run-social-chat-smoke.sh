@@ -17,6 +17,30 @@ ADMIN_USER_ID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 
 mkdir -p "$YAAK_DATA_DIR"
 
+current_test=""
+
+# 前置条件：current_test 保存当前测试名称；后置条件：脚本异常退出时输出该测试不通过；不变量：成功测试必须通过 pass_test 清空 current_test。
+finish_current_test_on_exit() {
+  local exit_code=$?
+  if [[ "$exit_code" -ne 0 && -n "$current_test" ]]; then
+    echo "测试不通过: $current_test" >&2
+  fi
+}
+
+# 前置条件：传入非空测试名称；后置条件：记录并输出正在运行的测试；不变量：同一时刻仅记录一个运行中的测试。
+begin_test() {
+  current_test="$1"
+  echo "正在运行测试: $current_test"
+}
+
+# 前置条件：current_test 为已完成测试名称；后置条件：输出测试通过并清空当前测试；不变量：清空后不会被退出 trap 误报失败。
+pass_test() {
+  echo "测试通过: $current_test"
+  current_test=""
+}
+
+trap finish_current_test_on_exit EXIT
+
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "缺少命令: $1" >&2
@@ -186,38 +210,54 @@ admin_decide_report=$(create_request "$workspace_id" "$report_folder" "后台处
 echo "Yaak workspace: $workspace_id"
 echo "Yaak environment: $environment_id"
 
+begin_test "登录 test_user"
 response=$(send_json "$login_user" "$environment_id")
 assert_code "$response" "200"
 set_env_var "$environment_id" "userAccessToken" "$(echo "$response" | jq -r '.data.tokens.accessToken')"
 set_env_var "$environment_id" "testUserId" "$(echo "$response" | jq -r '.data.userId')"
+pass_test
 
+begin_test "登录 test_peer"
 response=$(send_json "$login_peer" "$environment_id")
 assert_code "$response" "200"
 set_env_var "$environment_id" "peerAccessToken" "$(echo "$response" | jq -r '.data.tokens.accessToken')"
 set_env_var "$environment_id" "testPeerId" "$(echo "$response" | jq -r '.data.userId')"
+pass_test
 
+begin_test "登录 admin"
 response=$(send_json "$login_admin" "$environment_id")
 assert_code "$response" "200"
 set_env_var "$environment_id" "adminAccessToken" "$(echo "$response" | jq -r '.data.tokens.accessToken')"
 set_env_var "$environment_id" "adminUserId" "$(echo "$response" | jq -r '.data.userId')"
+pass_test
 
-for request_id in "$get_profile"; do
-  response=$(send_json "$request_id" "$environment_id")
-  assert_code "$response" "200"
-done
+begin_test "查看个人主页"
+response=$(send_json "$get_profile" "$environment_id")
+assert_code "$response" "200"
+pass_test
 
+begin_test "发送好友申请"
 response=$(send_json "$create_friend" "$environment_id")
 assert_code "$response" "200"
 set_env_var "$environment_id" "friendRequestId" "$(echo "$response" | jq -r '.data.requestId')"
+pass_test
 
+begin_test "同意好友申请"
 response=$(send_json "$accept_friend" "$environment_id")
 assert_code "$response" "200"
+pass_test
 
-for request_id in "$list_friends" "$update_remark"; do
-  response=$(send_json "$request_id" "$environment_id")
-  assert_code "$response" "200"
-done
+begin_test "好友列表"
+response=$(send_json "$list_friends" "$environment_id")
+assert_code "$response" "200"
+pass_test
 
+begin_test "更新好友备注"
+response=$(send_json "$update_remark" "$environment_id")
+assert_code "$response" "200"
+pass_test
+
+begin_test "会话列表"
 response=$(send_json "$list_conversations" "$environment_id")
 assert_code "$response" "200"
 conversation_id=$(echo "$response" | jq -r '.data.items[0].conversationId // empty')
@@ -227,26 +267,48 @@ if [[ -z "$conversation_id" ]]; then
   exit 1
 fi
 set_env_var "$environment_id" "conversationId" "$conversation_id"
+pass_test
 
+begin_test "发送文字消息"
 response=$(send_json "$send_text" "$environment_id")
 assert_code "$response" "200"
 set_env_var "$environment_id" "messageId" "$(echo "$response" | jq -r '.data.messageId')"
+pass_test
 
+begin_test "发送表情文本消息"
 response=$(send_json "$send_emoji" "$environment_id")
 assert_code "$response" "200"
+pass_test
 
-for request_id in "$mark_read" "$forward_message" "$recall_message"; do
-  response=$(send_json "$request_id" "$environment_id")
-  assert_code "$response" "200"
-done
+begin_test "标记已读"
+response=$(send_json "$mark_read" "$environment_id")
+assert_code "$response" "200"
+pass_test
 
+begin_test "转发消息"
+response=$(send_json "$forward_message" "$environment_id")
+assert_code "$response" "200"
+pass_test
+
+begin_test "撤回消息"
+response=$(send_json "$recall_message" "$environment_id")
+assert_code "$response" "200"
+pass_test
+
+begin_test "举报用户"
 response=$(send_json "$create_report" "$environment_id")
 assert_code "$response" "200"
 set_env_var "$environment_id" "reportId" "$(echo "$response" | jq -r '.data.reportId')"
+pass_test
 
-for request_id in "$admin_list_reports" "$admin_decide_report"; do
-  response=$(send_json "$request_id" "$environment_id")
-  assert_code "$response" "200"
-done
+begin_test "后台查询举报"
+response=$(send_json "$admin_list_reports" "$environment_id")
+assert_code "$response" "200"
+pass_test
+
+begin_test "后台处理举报"
+response=$(send_json "$admin_decide_report" "$environment_id")
+assert_code "$response" "200"
+pass_test
 
 echo "Yaak CLI smoke completed."
