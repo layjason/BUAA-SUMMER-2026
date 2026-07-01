@@ -9948,6 +9948,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 10004：账号尚未激活。
+    Errors.Identity.AccountLocked:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 10019
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Account is temporarily locked due to multiple failed login attempts
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 10019：账号因多次登录失败被暂时锁定。message 中会提示剩余锁定时间。
     Errors.Identity.ActivationEmailRateLimited:
       type: object
       allOf:
