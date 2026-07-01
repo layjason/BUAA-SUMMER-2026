@@ -33,7 +33,7 @@
           <view class="title-row">
             <text class="title">{{ activity.title }}</text>
             <text class="status-tag" :class="'status-' + activity.runtimeStatus">{{
-              runtimeStatusText(activity.runtimeStatus)
+              getRuntimeStatusText(activity.runtimeStatus)
             }}</text>
           </view>
         </view>
@@ -98,6 +98,7 @@
           class="action-btn"
           :class="{ disabled: buttonDisabled }"
           :disabled="buttonDisabled"
+          :loading="actioning"
           @click="handleAction"
         >
           {{ buttonText }}
@@ -156,6 +157,7 @@ import { useI18n } from 'vue-i18n'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
 import { formatDateTime, formatTimeRange } from '@/utils/date'
+import { runtimeStatusText } from '@/utils/status'
 import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
@@ -163,6 +165,7 @@ const authStore = useAuthStore()
 
 const loading = ref(true)
 const errorMsg = ref('')
+const actioning = ref(false)
 const activityId = ref('')
 
 interface MediaFile {
@@ -225,17 +228,8 @@ interface ParticipationState {
 const activity = ref<ActivityDetail | null>(null)
 const participation = ref<ParticipationState | null>(null)
 
-const runtimeStatusMap: Record<string, string> = {
-  notStarted: t('myActivities.statusNotStarted'),
-  registering: t('myActivities.statusRegistering'),
-  registrationClosed: t('myActivities.statusRegistrationClosed'),
-  ongoing: t('myActivities.statusOngoing'),
-  ended: t('myActivities.statusEnded'),
-  takenDown: t('myActivities.statusTakenDown'),
-}
-
-function runtimeStatusText(status: string): string {
-  return runtimeStatusMap[status] ?? status
+function getRuntimeStatusText(status: string): string {
+  return runtimeStatusText(status, t)
 }
 
 const feeText = computed(() => {
@@ -328,6 +322,7 @@ const buttonText = computed(() => {
 })
 
 const buttonDisabled = computed(() => {
+  if (actioning.value) return true
   const p = participation.value
   if (!p) return true
   if (p.canCheckIn) return false
@@ -371,7 +366,12 @@ function showSafetyConfirm(): void {
     success: (res) => {
       if (res.confirm) {
         handleRegister()
+      } else {
+        actioning.value = false
       }
+    },
+    fail: () => {
+      actioning.value = false
     },
   })
 }
@@ -382,6 +382,7 @@ function showSafetyConfirm(): void {
  * 尝试调用设备摄像头扫码，失败时回退到手动输入签到码。
  */
 async function handleCheckIn(): Promise<void> {
+  actioning.value = true
   let qrCodeToken = ''
 
   try {
@@ -403,7 +404,10 @@ async function handleCheckIn(): Promise<void> {
     qrCodeToken = inputResult ?? ''
   }
 
-  if (!qrCodeToken) return
+  if (!qrCodeToken) {
+    actioning.value = false
+    return
+  }
 
   try {
     await api.post('/activities/{activityId}/check-ins', {
@@ -418,6 +422,8 @@ async function handleCheckIn(): Promise<void> {
     } else {
       uni.showToast({ title: '签到失败，请稍后重试', icon: 'none' })
     }
+  } finally {
+    actioning.value = false
   }
 }
 
@@ -500,6 +506,7 @@ async function handleViewCheckIns(): Promise<void> {
 }
 
 async function handleRegister(): Promise<void> {
+  actioning.value = true
   try {
     await api.post('/activities/{activityId}/registrations', {
       path: { activityId: activityId.value },
@@ -513,10 +520,13 @@ async function handleRegister(): Promise<void> {
     } else {
       uni.showToast({ title: '报名失败，请稍后重试', icon: 'none' })
     }
+  } finally {
+    actioning.value = false
   }
 }
 
 async function handleCancelRegistration(): Promise<void> {
+  actioning.value = true
   try {
     await api.post('/activities/{activityId}/registrations/cancel', {
       path: { activityId: activityId.value },
@@ -529,10 +539,13 @@ async function handleCancelRegistration(): Promise<void> {
     } else {
       uni.showToast({ title: '取消失败，请稍后重试', icon: 'none' })
     }
+  } finally {
+    actioning.value = false
   }
 }
 
 async function handleConfirmWaiting(): Promise<void> {
+  actioning.value = true
   try {
     await api.post('/activities/{activityId}/waiting-confirmations', {
       path: { activityId: activityId.value },
@@ -546,6 +559,8 @@ async function handleConfirmWaiting(): Promise<void> {
     } else {
       uni.showToast({ title: '确认失败，请稍后重试', icon: 'none' })
     }
+  } finally {
+    actioning.value = false
   }
 }
 
