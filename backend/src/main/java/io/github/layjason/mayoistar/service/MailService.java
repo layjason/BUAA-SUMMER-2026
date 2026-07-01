@@ -8,6 +8,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
@@ -15,7 +16,7 @@ import org.thymeleaf.context.Context;
 /**
  * 邮件服务。
  *
- * <p>类职责：发送激活邮件和密码重置邮件。凭据通过 Spring Boot 邮件自动配置从环境变量注入。邮件 HTML 通过 Thymeleaf 模板渲染。
+ * <p>类职责：异步发送激活邮件和密码重置邮件。凭据通过 Spring Boot 邮件自动配置从环境变量注入。邮件 HTML 通过 Thymeleaf 模板渲染。
  *
  * <p>不变量：不记录邮件内容，不暴露 SMTP 凭据。
  */
@@ -49,11 +50,12 @@ public class MailService {
      *
      * <p>前置条件：to 为有效的邮箱地址，activationToken 为由 {@link JwtService#generateRandomToken} 生成的随机令牌。
      *
-     * <p>后置条件：邮件已提交到 SMTP 服务器。若发送失败，记录日志但不抛异常。
+     * <p>后置条件：异步提交邮件到 SMTP 服务器。若发送失败，记录日志但不抛异常。
      *
      * @param to              收件邮箱
      * @param activationToken 激活令牌
      */
+    @Async("emailTaskExecutor")
     public void sendActivationEmail(String to, String activationToken) {
         String link = mailProperties.activationLinkBase() + "?token=" + activationToken;
 
@@ -73,11 +75,12 @@ public class MailService {
      *
      * <p>前置条件：to 为有效的邮箱地址，resetToken 为由 {@link JwtService#generateRandomToken} 生成的随机令牌。
      *
-     * <p>后置条件：邮件已提交到 SMTP 服务器。若发送失败，记录日志但不抛异常。
+     * <p>后置条件：异步提交邮件到 SMTP 服务器。若发送失败，记录日志但不抛异常。
      *
      * @param to         收件邮箱
      * @param resetToken 密码重置令牌
      */
+    @Async("emailTaskExecutor")
     public void sendPasswordResetEmail(String to, String resetToken) {
         String link = mailProperties.passwordResetLinkBase() + "?token=" + resetToken;
 
@@ -98,6 +101,7 @@ public class MailService {
      * <p>前置条件：to、subject、htmlBody 均非空。
      *
      * <p>后置条件：邮件已提交到 SMTP。若发送失败，以 WARN 级别记录但不影响调用方流程。
+     * 此方法在异步线程中执行。
      *
      * @param to       收件邮箱
      * @param subject  邮件主题
