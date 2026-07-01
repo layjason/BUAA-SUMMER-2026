@@ -4,6 +4,7 @@ import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.service.ActivitySearchService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ActivityController {
 
     private final DefaultApiResponseFactory responseFactory;
+    private final ActivitySearchService activitySearchService;
 
     @PostMapping("/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> saveDraft(
@@ -111,7 +113,20 @@ public class ActivityController {
             @RequestParam(required = false) Integer distanceMeters,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+        ActivitySearchService.SearchCriteria criteria = new ActivitySearchService.SearchCriteria(
+                keyword,
+                activityTypes,
+                city,
+                startAtFrom,
+                startAtTo,
+                minFee,
+                maxFee,
+                latitude,
+                longitude,
+                distanceMeters,
+                page,
+                pageSize);
+        return ResponseEntity.ok(ApiResponse.success(activitySearchService.search(criteria)));
     }
 
     @GetMapping("/templates")
