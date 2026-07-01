@@ -358,6 +358,7 @@ function handleAction(): void {
  * 取消报名确认弹窗
  */
 function showCancelConfirm(): void {
+  actioning.value = true
   uni.showModal({
     title: '取消报名',
     content: '确定要取消报名吗？取消后可能需要重新排队',
@@ -366,7 +367,12 @@ function showCancelConfirm(): void {
     success: (res) => {
       if (res.confirm) {
         handleCancelRegistration()
+      } else {
+        actioning.value = false
       }
+    },
+    fail: () => {
+      actioning.value = false
     },
   })
 }
@@ -375,6 +381,7 @@ function showCancelConfirm(): void {
  * 弹出安全须知确认弹窗，确认后再报名
  */
 function showSafetyConfirm(): void {
+  actioning.value = true
   uni.showModal({
     title: t('activityDetail.safetyNotice'),
     content: activity.value?.safetyNotice ?? '',
