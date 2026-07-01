@@ -25,6 +25,7 @@
 2. 启动 Docker 依赖：
 
    ```bash
+   docker compose --env-file .env -f docker-compose-local.yaml down -v
    docker compose --env-file .env -f docker-compose-local.yaml up -d postgres mailhog
    ```
 
