@@ -91,4 +91,37 @@
         <Method name="listReports" />
         <Bug pattern="NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE" />
     </Match>
+    <!--
+        ChatService 通过 Lombok @RequiredArgsConstructor 生成构造器注入 private final 字段，
+        SpotBugs 无法通过字节码追踪 Lombok 生成的构造器对字段的赋值与后续使用，产生 UUF_UNUSED_FIELD 误报。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.ChatService" />
+        <Bug pattern="UUF_UNUSED_FIELD" />
+    </Match>
+    <!--
+        ChatService、ChatController 中 Lombok @RequiredArgsConstructor 通过构造器注入 private final 字段，
+        SpotBugs 无法追踪 Lombok 生成的构造器对字段的写入，产生 UWF_UNWRITTEN_FIELD、CT_CONSTRUCTOR_THROW 误报。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.ChatService" />
+        <Bug pattern="CT_CONSTRUCTOR_THROW" />
+    </Match>
+    <Match>
+        <Class name="io.github.layjason.mayoistar.api.chat.ChatController" />
+        <Bug pattern="UWF_UNWRITTEN_FIELD" />
+    </Match>
+    <Match>
+        <Class name="io.github.layjason.mayoistar.api.chat.ChatController" />
+        <Bug pattern="CT_CONSTRUCTOR_THROW" />
+    </Match>
+    <!--
+        JwtChannelInterceptor 中 claims 的 null 检查因 JwtService.parseToken 的 NP_NONNULL_RETURN_VIOLATION
+        排除规则导致 SpotBugs 误判 parseToken 始终返回 non-null，产生 RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE 误报。
+        实际 parseToken 可返回 null（JWT 解析失败时）。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.config.JwtChannelInterceptor" />
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE" />
+    </Match>
 </FindBugsFilter>

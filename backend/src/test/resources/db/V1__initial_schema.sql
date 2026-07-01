@@ -773,6 +773,24 @@ COMMENT ON COLUMN team_announcements.publisher_id IS '发布者用户 ID';
 COMMENT ON COLUMN team_announcements.content IS '公告内容';
 COMMENT ON COLUMN team_announcements.published_at IS '发布时间，UTC 时区';
 
+CREATE TABLE team_announcement_reads (
+    read_id          VARCHAR(36) NOT NULL,
+    announcement_id  VARCHAR(36) NOT NULL,
+    user_id          VARCHAR(36) NOT NULL,
+    read_at          TIMESTAMP WITH TIME ZONE,
+    CONSTRAINT pk_team_announcement_reads PRIMARY KEY (read_id)
+);
+
+CREATE UNIQUE INDEX uq_team_announcement_reads_user
+    ON team_announcement_reads (announcement_id, user_id);
+
+COMMENT ON TABLE team_announcement_reads IS '群公告已读状态，记录用户对公告的阅读情况。';
+
+COMMENT ON COLUMN team_announcement_reads.read_id IS '已读记录唯一标识，UUID 格式';
+COMMENT ON COLUMN team_announcement_reads.announcement_id IS '关联公告 ID';
+COMMENT ON COLUMN team_announcement_reads.user_id IS '用户 ID';
+COMMENT ON COLUMN team_announcement_reads.read_at IS '首次阅读时间，null 表示尚未阅读';
+
 CREATE TABLE team_polls (
     poll_id    VARCHAR(36)  NOT NULL,
     team_id    VARCHAR(36)  NOT NULL,
@@ -966,6 +984,9 @@ ALTER TABLE chat_messages ADD CONSTRAINT fk_chat_messages_image FOREIGN KEY (ima
 
 ALTER TABLE team_announcements ADD CONSTRAINT fk_announcements_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE;
 ALTER TABLE team_announcements ADD CONSTRAINT fk_announcements_pub FOREIGN KEY (publisher_id) REFERENCES users(user_id) ON DELETE RESTRICT;
+
+ALTER TABLE team_announcement_reads ADD CONSTRAINT fk_announcement_reads_announcement FOREIGN KEY (announcement_id) REFERENCES team_announcements(announcement_id) ON DELETE CASCADE;
+ALTER TABLE team_announcement_reads ADD CONSTRAINT fk_announcement_reads_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
 
 ALTER TABLE team_polls ADD CONSTRAINT fk_team_polls_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE;
 

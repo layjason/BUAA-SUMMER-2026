@@ -95,4 +95,13 @@ public final class ErrorCodes {
 
     /** 转发目标会话不可用 */
     public static final int FORWARD_TARGET_UNAVAILABLE = 50010;
+
+    /** 调用方无权发布群公告 */
+    public static final int ANNOUNCEMENT_PERMISSION_DENIED = 50011;
+
+    /** 群公告不存在或调用方不可见 */
+    public static final int ANNOUNCEMENT_NOT_VISIBLE = 50017;
+
+    /** 调用方不是小队成员 */
+    public static final int TEAM_MEMBER_REQUIRED = 50002;
 }

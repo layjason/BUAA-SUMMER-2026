@@ -23,9 +23,11 @@ enum MessageReadStatus {
   read,
 }
 
-@doc("聊天实时事件类型。")
+@doc("聊天实时事件类型。friendRequestCreated 事件通过 /queue/social-events 推送，不在此枚举内。")
 enum ChatRealtimeEventKind {
   messageCreated,
+  messageRecalled,
+  messageForwarded,
 }
 
 @doc("会话摘要。")
@@ -112,7 +114,31 @@ model ChatMessage {
   sentAt: DateTimeString;
 }
 
-@doc("聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话的新消息。")
+@doc("消息创建事件负载。")
+model MessageCreatedPayload {
+  @doc("新创建的聊天消息。")
+  message: ChatMessage;
+
+  @doc("当前用户在该会话中的最新未读消息数。")
+  conversationUnreadCount: int32;
+}
+
+@doc("消息撤回事件负载。")
+model MessageRecalledPayload {
+  @doc("被撤回的聊天消息，其 recalled 字段为 true。")
+  message: ChatMessage;
+}
+
+@doc("消息转发事件负载。")
+model MessageForwardedPayload {
+  @doc("转发产生的新聊天消息。")
+  message: ChatMessage;
+
+  @doc("当前用户在该会话中的最新未读消息数。")
+  conversationUnreadCount: int32;
+}
+
+@doc("聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话中的实时事件。")
 model ChatRealtimeEvent {
   @doc("实时事件类型。")
   kind: ChatRealtimeEventKind;
@@ -120,11 +146,8 @@ model ChatRealtimeEvent {
   @doc("发生事件的会话标识。")
   conversationId: EntityId;
 
-  @doc("新创建的聊天消息。")
-  message: ChatMessage;
-
-  @doc("当前用户在该会话中的最新未读消息数。")
-  conversationUnreadCount: int32;
+  @doc("事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload。")
+  payload: MessageCreatedPayload | MessageRecalledPayload | MessageForwardedPayload;
 
   @doc("事件发生时间。")
   occurredAt: DateTimeString;

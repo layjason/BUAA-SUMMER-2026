@@ -111,13 +111,17 @@ public class ChatController {
     @PostMapping("/teams/{teamId}/announcements")
     public ResponseEntity<ApiResponse<ChatDtos.TeamAnnouncement>> publishAnnouncement(
             @PathVariable String teamId, @Valid @RequestBody ChatDtos.TeamAnnouncementRequest request) {
-        return responseFactory.teamAnnouncement();
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.publishAnnouncement(teamId, userId, request.getContent());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/teams/{teamId}/announcements/{announcementId}/read")
     public ResponseEntity<ApiResponse<ChatDtos.TeamAnnouncement>> markAnnouncementRead(
             @PathVariable String teamId, @PathVariable String announcementId) {
-        return responseFactory.teamAnnouncement();
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.markAnnouncementRead(teamId, announcementId, userId);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping(value = "/teams/{teamId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
