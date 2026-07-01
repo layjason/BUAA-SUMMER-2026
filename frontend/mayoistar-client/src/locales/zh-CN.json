@@ -310,16 +310,24 @@
   },
 
   "activityClone": {
-    "clone": "克隆活动",
+    "clone": "克隆",
+    "title": "克隆活动",
+    "description": "以下活动将被克隆为草稿，可继续编辑",
+    "confirm": "确认克隆",
+    "success": "克隆成功",
     "cloneSuccess": "已克隆为草稿，可继续编辑",
     "cloning": "克隆中..."
   },
 
   "activityTemplates": {
-    "title": "从模板创建",
-    "subtitle": "选择一个模板快速开始",
+    "title": "创建活动",
+    "subtitle": "从模板快速开始或从已有活动克隆",
+    "fromTemplate": "从模板创建",
+    "fromClone": "从已有活动克隆",
+    "skip": "跳过，直接创建",
     "apply": "使用此模板",
-    "useTemplate": "使用模板"
+    "useTemplate": "使用模板",
+    "creating": "创建中..."
   },
 
   "checkInExport": {
