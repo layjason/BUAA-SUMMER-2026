@@ -11,9 +11,13 @@ import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.entity.social.Blacklist;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
+import io.github.layjason.mayoistar.repository.ChatMessageRepository;
+import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
+import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.FollowRepository;
 import io.github.layjason.mayoistar.repository.FriendRequestRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
+import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
@@ -59,6 +63,18 @@ class BlacklistServiceTest {
     @Mock
     private FollowRepository followRepository;
 
+    @Mock
+    private ConversationMemberRepository conversationMemberRepository;
+
+    @Mock
+    private ConversationRepository conversationRepository;
+
+    @Mock
+    private ChatMessageRepository chatMessageRepository;
+
+    @Mock
+    private MessageReadRepository messageReadRepository;
+
     private BlacklistService blacklistService;
 
     @BeforeEach
@@ -69,7 +85,11 @@ class BlacklistServiceTest {
                 friendshipRepository,
                 personalProfileRepository,
                 friendRequestRepository,
-                followRepository);
+                followRepository,
+                conversationMemberRepository,
+                conversationRepository,
+                chatMessageRepository,
+                messageReadRepository);
     }
 
     @Nested
