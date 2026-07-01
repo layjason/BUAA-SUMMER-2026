@@ -1,4 +1,4 @@
-package io.github.layjason.mayoistar.repository;
+package io.github.layjason.mayoistar.repository.activities;
 
 import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
@@ -15,6 +15,8 @@ public interface ActivityRegistrationRepository extends JpaRepository<ActivityRe
     Optional<ActivityRegistration> findByActivityIdAndUserId(String activityId, String userId);
 
     long countByActivityIdAndStatusIn(String activityId, Collection<RegistrationStatus> statuses);
+
+    List<ActivityRegistration> findByActivityIdAndStatusIn(String activityId, Collection<RegistrationStatus> statuses);
 
     Optional<ActivityRegistration> findFirstByActivityIdAndStatusOrderByWaitingRankAscRegisteredAtAsc(
             String activityId, RegistrationStatus status);
