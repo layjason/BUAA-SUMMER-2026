@@ -163,6 +163,26 @@ model ActivitySummary {
   capacity: int32;
 }
 
+@doc("我报名的活动摘要，包含活动信息与当前用户的报名状态。")
+model RegisteredActivitySummary {
+  ...ActivitySummary;
+
+  @doc("报名记录标识。")
+  registrationId: EntityId;
+
+  @doc("当前用户在该活动中的报名状态。")
+  registrationStatus: RegistrationStatus;
+
+  @doc("报名或候补创建时间。")
+  registeredAt: DateTimeString;
+
+  @doc("候补排位，非候补状态时为空。")
+  waitingRank?: int32;
+
+  @doc("候补名额确认截止时间，仅候补待确认时返回。")
+  confirmationDeadline?: DateTimeString;
+}
+
 @doc("当前登录用户相对于指定活动的参与和可操作状态。")
 model ActivityParticipationState {
   @doc("当前用户是否可以发起报名。")
@@ -688,6 +708,13 @@ interface ActivityOperations {
   @route("/mine")
   @doc("获取我创建的活动列表，调用方已登录，分页返回本人创建的活动及审核状态，用于我的活动页查看提交处理结果。")
   listMyActivities(...PageQuery): APIResponse<PageResult<ActivitySummary>>;
+
+  @get
+  @route("/registrations/mine")
+  @doc("获取我报名的活动列表，调用方已登录，分页返回本人报名的活动及报名状态。")
+  listMyRegistrations(
+    ...PageQuery,
+  ): APIResponse<PageResult<RegisteredActivitySummary>>;
 
   @get
   @route("/{activityId}")

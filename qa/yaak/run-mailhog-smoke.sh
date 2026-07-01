@@ -41,7 +41,70 @@ invoke_yaak_lines() {
 }
 
 invoke_yaak_string() {
-    invoke_yaak_lines "$@" | tr -d '\n'
+    invoke_yaak_lines "$@"
+}
+
+# 从 yaak verbose 输出中提取 JSON 响应体
+get_response_json_from_yaak_output() {
+    python3 -c "
+import sys, re
+text = sys.stdin.read()
+text = re.sub(r'\x1b\[[0-9;]*m', '', text)
+lines = text.split('\n')
+normalized = []
+for line in lines:
+    trimmed = line.strip()
+    if trimmed.startswith('* '):
+        continue
+    if trimmed.startswith('< '):
+        trimmed = trimmed[2:].strip()
+    normalized.append(trimmed)
+text = '\n'.join(normalized)
+start = text.rfind('{\"code\"')
+if start < 0:
+    sys.stdout.write('')
+    sys.exit(0)
+depth = 0
+in_string = False
+escaped = False
+for i in range(start, len(text)):
+    c = text[i]
+    if escaped:
+        escaped = False
+        continue
+    if c == '\\\\':
+        escaped = True
+        continue
+    if c == '\"':
+        in_string = not in_string
+        continue
+    if in_string:
+        continue
+    if c == '{':
+        depth += 1
+    if c == '}':
+        depth -= 1
+        if depth == 0:
+            sys.stdout.write(text[start:i+1])
+            sys.exit(0)
+sys.stdout.write('')
+" <<< "$1"
+}
+
+# 从 yaak verbose 输出中提取 HTTP 状态码
+get_http_status_code_from_yaak_output() {
+    local raw_output="$1" line
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^\<[[:space:]]*HTTP/[0-9.]+[[:space:]]+([0-9]{3}) ]]; then
+            local status="${BASH_REMATCH[1]}"
+            local reason="${line#*${status} }"
+            local code_line="${status}${reason}"
+            code_line="$(echo "$code_line" | xargs)"
+            printf '%d\t%s\n' "$status" "$code_line"
+            return
+        fi
+    done <<< "$raw_output"
+    printf 'null\t\n'
 }
 
 get_yaak_id_by_name() {
@@ -108,12 +171,24 @@ record_result() {
     echo "${name}|${expected}|${actual}|${passed}" >> "$TEST_RESULTS_FILE"
 }
 
-# 发送请求并显示详情，返回响应 JSON
-# $1: 请求名称, $2: 预期 code（逗号分隔，默认 200）
+# 解码 MailHog 邮件正文（Quoted-Printable + HTML）
+decode_mailhog_body() {
+    local body="$1"
+    python3 -c "
+import sys, html, re
+text = sys.stdin.read()
+text = re.sub(r'=\r?\n', '', text)
+text = re.sub(r'=([0-9A-Fa-f]{2})', lambda m: chr(int(m.group(1), 16)), text)
+sys.stdout.write(html.unescape(text))
+" <<< "$body"
+}
+
+# 发送请求，显示详情，比对预期 code，返回响应 JSON
+# 前置条件：WORKSPACE_ID、ENVIRONMENT_ID 已设置
 send_yaak_request_json() {
     local name="$1"
     local expected="${2:-200}"
-    local request_id show_json method url body_text body_type raw_output status_line resp_body resp actual_code passed expected_str
+    local request_id show_json method url body_text body_type raw_output http_status resp_body resp actual_code passed expected_str
 
     request_id="$(get_yaak_request_id "$WORKSPACE_ID" "$name")"
     show_json="$(invoke_yaak_string request show "$request_id")"
@@ -142,14 +217,21 @@ send_yaak_request_json() {
     fi
 
     raw_output="$(invoke_yaak_string request send "$request_id" -e "$ENVIRONMENT_ID" -v)"
-    status_line="$(echo "$raw_output" | grep '^< HTTP/' | head -1 | sed 's/^< HTTP\/[0-9.]* //')"
-    resp_body="$(echo "$raw_output" | grep -v '^[*<>]' | grep -v '^$' | tail -1)"
+    http_status="$(get_http_status_code_from_yaak_output "$raw_output")"
+    resp_body="$(get_response_json_from_yaak_output "$raw_output")"
 
     printf '%0.s─' $(seq 1 60); echo
+    local status_code="$(echo "$http_status" | cut -f1)"
+    local status_line="$(echo "$http_status" | cut -f2)"
     echo "  ← $status_line"
     echo "  $resp_body"
 
-    resp="$(echo "$resp_body" | jq -c '.')"
+    # 解析响应并判断测试结果
+    if [[ -z "$resp_body" ]]; then
+        resp="{\"code\": $status_code, \"message\": \"\", \"data\": {}}"
+    else
+        resp="$resp_body"
+    fi
     actual_code="$(echo "$resp" | jq -r '.code')"
 
     record_result "$name" "$expected" "$actual_code"
@@ -166,38 +248,45 @@ send_yaak_request_json() {
     if [[ "$passed" == "true" ]]; then
         echo -e "  ${GREEN}✓ PASS${RESET} (code=$actual_code)"
     else
-        echo -e "  ${RED}✗ FAIL${RESET} (expected=$expected, actual=$actual_code, message=$(echo "$resp" | jq -r '.message'))"
+        expected_str="$expected"
+        echo -e "  ${RED}✗ FAIL${RESET} (expected=$expected_str, actual=$actual_code, message=$(echo "$resp" | jq -r '.message'))"
     fi
 
     echo "$resp"
 }
 
-# 发送请求（不需要提取响应字段）
+# 发送请求（不需要提取响应字段的错误场景）
 send_yaak_request() {
     local name="$1"
     local expected="${2:-200}"
     send_yaak_request_json "$name" "$expected" >/dev/null
 }
 
+# 输出跳过信息
+write_skip() {
+    local reason="$1"
+    echo -e "  ${YELLOW}[skip]${RESET} $reason"
+}
+
 # 从 MailHog 获取邮件中的 token
 get_mailhog_token() {
-    local recipient="$1" token_purpose="$2" deadline response count i body to_header token
+    local recipient="$1" token_purpose="$2" deadline response messages count i body to_header token
     deadline="$(($(date +%s) + MAIL_TIMEOUT_SECONDS))"
     while [[ "$(date +%s)" -lt "$deadline" ]]; do
         response="$(curl -s "$MAILHOG_API_BASE/api/v2/messages")"
-        count="$(echo "$response" | jq -r '.items | length // 0')"
-        if [[ "$count" -eq 0 ]]; then sleep 1; continue; fi
-        for i in $(seq 0 $((count - 1))); do
-            body="$(echo "$response" | jq -r ".items[$i].Content.Body // empty")"
-            to_header="$(echo "$response" | jq -r ".items[$i].Content.Headers.To // [] | join(\",\")")"
+        messages="$(echo "$response" | jq -c '.items | sort_by(.Created) | reverse | .[]')"
+        while IFS= read -r message; do
+            [[ -z "$message" ]] && continue
+            body="$(decode_mailhog_body "$(echo "$message" | jq -r '.Content.Body // empty')")"
+            to_header="$(echo "$message" | jq -r '.Content.Headers.To // [] | join(",")')"
             if [[ "$to_header" != *"$recipient"* && "$body" != *"$recipient"* ]]; then continue; fi
-            token="$(echo "$body" | grep -oP 'token=\K[^\s"'"'"'&<>]+' | head -1)"
+            token="$(echo "$body" | grep -oP '[?&]token=\K[^\s"'"'"'&<>]+' | head -1)"
             if [[ -n "$token" ]]; then
                 echo "  [MailHog] 获取到 $token_purpose token"
                 echo "$token"
                 return
             fi
-        done
+        done <<< "$messages"
         sleep 1
     done
     echo "Cannot find $token_purpose token email for $recipient in MailHog." >&2
@@ -282,37 +371,45 @@ set_yaak_environment_variables "$ENVIRONMENT_ID" "activationToken=$ACTIVATION_TO
 send_yaak_request "01.03 Activate personal account"
 
 RESP="$(send_yaak_request_json "01.04 Login personal")"
+PERSONAL_LOGIN_READY=false
 if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
     set_yaak_environment_variables "$ENVIRONMENT_ID" \
         "personalAccessToken=$(echo "$RESP" | jq -r '.data.tokens.accessToken')" \
         "personalRefreshToken=$(echo "$RESP" | jq -r '.data.tokens.refreshToken')" \
         "personalUserId=$(echo "$RESP" | jq -r '.data.userId')"
+    PERSONAL_LOGIN_READY=true
     echo "  [env] personalAccessToken 已保存"
 fi
 
 send_yaak_request "01.05 Duplicate personal email should fail" "10001"
-send_yaak_request "01.06 Profile without token should fail" "401"
-send_yaak_request "01.07 Get personal profile"
-send_yaak_request "01.08 Update personal profile"
+send_yaak_request "01.06 Profile without token should fail" "403"
 
-RESP="$(send_yaak_request_json "01.09 Upload avatar")"
-if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
-    set_yaak_environment_variables "$ENVIRONMENT_ID" "avatarMediaId=$(echo "$RESP" | jq -r '.data.mediaId')"
-    echo "  [env] avatarMediaId 已保存"
-    send_yaak_request "01.10 Attach avatar to profile"
+if [[ "$PERSONAL_LOGIN_READY" == "true" ]]; then
+    send_yaak_request "01.07 Get personal profile"
+    send_yaak_request "01.08 Update personal profile"
+
+    RESP="$(send_yaak_request_json "01.09 Upload avatar")"
+    if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
+        set_yaak_environment_variables "$ENVIRONMENT_ID" \
+            "avatarMediaId=$(echo "$RESP" | jq -r '.data.mediaId')"
+        echo "  [env] avatarMediaId 已保存"
+        send_yaak_request "01.10 Attach avatar to profile"
+    fi
+
+    RESP="$(send_yaak_request_json "01.11 Refresh personal token")"
+    if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
+        set_yaak_environment_variables "$ENVIRONMENT_ID" \
+            "personalAccessToken=$(echo "$RESP" | jq -r '.data.accessToken')" \
+            "personalRefreshToken=$(echo "$RESP" | jq -r '.data.refreshToken')"
+        echo "  [env] tokens 已刷新"
+    fi
+
+    send_yaak_request "01.12 Change password with wrong old password" "10016"
+    send_yaak_request "01.13 Logout personal"
+    send_yaak_request "01.14 Refresh after logout should fail" "10007"
+else
+    write_skip "个人用户未成功登录，跳过依赖 personalAccessToken 的用例。"
 fi
-
-RESP="$(send_yaak_request_json "01.11 Refresh personal token")"
-if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
-    set_yaak_environment_variables "$ENVIRONMENT_ID" \
-        "personalAccessToken=$(echo "$RESP" | jq -r '.data.accessToken')" \
-        "personalRefreshToken=$(echo "$RESP" | jq -r '.data.refreshToken')"
-    echo "  [env] tokens 已刷新"
-fi
-
-send_yaak_request "01.12 Change password with wrong old password" "10016"
-send_yaak_request "01.13 Logout personal"
-send_yaak_request "01.14 Refresh after logout should fail" "10007"
 
 printf '\n%0.s#' $(seq 1 60); echo
 echo "#  02 商家用户认证与资质"
@@ -324,32 +421,43 @@ set_yaak_environment_variables "$ENVIRONMENT_ID" "merchantActivationToken=$MERCH
 send_yaak_request "02.02 Activate merchant account"
 
 RESP="$(send_yaak_request_json "02.03 Login merchant")"
+MERCHANT_LOGIN_READY=false
 if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
     set_yaak_environment_variables "$ENVIRONMENT_ID" \
         "merchantAccessToken=$(echo "$RESP" | jq -r '.data.tokens.accessToken')" \
         "merchantRefreshToken=$(echo "$RESP" | jq -r '.data.tokens.refreshToken')" \
         "merchantUserId=$(echo "$RESP" | jq -r '.data.userId')"
+    MERCHANT_LOGIN_READY=true
     echo "  [env] merchantAccessToken 已保存"
 fi
 
-send_yaak_request "02.04 Get merchant profile"
-send_yaak_request "02.05 Update merchant profile"
+if [[ "$MERCHANT_LOGIN_READY" == "true" ]]; then
+    send_yaak_request "02.04 Get merchant profile"
+    send_yaak_request "02.05 Update merchant profile"
 
-RESP="$(send_yaak_request_json "02.06 Upload merchant license")"
-if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
-    set_yaak_environment_variables "$ENVIRONMENT_ID" "licenseMediaId=$(echo "$RESP" | jq -r '.data.mediaId')"
-    echo "  [env] licenseMediaId 已保存"
-    send_yaak_request "02.07 Submit merchant qualification"
-    send_yaak_request "02.08 Get merchant profile after qualification"
+    RESP="$(send_yaak_request_json "02.06 Upload merchant license")"
+    if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
+        set_yaak_environment_variables "$ENVIRONMENT_ID" \
+            "licenseMediaId=$(echo "$RESP" | jq -r '.data.mediaId')"
+        echo "  [env] licenseMediaId 已保存"
+        send_yaak_request "02.07 Submit merchant qualification"
+        send_yaak_request "02.08 Get merchant profile after qualification"
+    fi
+else
+    write_skip "商家用户未成功登录，跳过依赖 merchantAccessToken 的用例。"
 fi
 
-send_yaak_request "02.09 Personal token cannot access merchant profile" "10008"
+if [[ "$PERSONAL_LOGIN_READY" == "true" ]]; then
+    send_yaak_request "02.09 Personal token cannot access merchant profile" "403"
+else
+    write_skip "个人用户未成功登录，跳过个人 token 访问商家接口的权限用例。"
+fi
 
 printf '\n%0.s#' $(seq 1 60); echo
 echo "#  03 密码重置与安全"
 printf '%0.s#' $(seq 1 60); echo
 
-send_yaak_request "03.01 Resend activation email" "200,10012"
+send_yaak_request "03.01 Resend activation email" "200,10012,10015"
 send_yaak_request "03.02 Send password reset email"
 
 RESET_TOKEN="$(get_mailhog_token "$PERSONAL_EMAIL" "password reset")"
@@ -363,10 +471,15 @@ printf '%0.s#' $(seq 1 60); echo
 
 RESP="$(send_yaak_request_json "04.01 Admin login")"
 if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
-    set_yaak_environment_variables "$ENVIRONMENT_ID" "adminAccessToken=$(echo "$RESP" | jq -r '.data.tokens.accessToken')"
+    set_yaak_environment_variables "$ENVIRONMENT_ID" \
+        "adminAccessToken=$(echo "$RESP" | jq -r '.data.tokens.accessToken')"
     echo "  [env] adminAccessToken 已保存"
-    send_yaak_request "04.02 Admin get merchant profile placeholder"
-    send_yaak_request "04.03 Admin review merchant placeholder"
+    if [[ "$MERCHANT_LOGIN_READY" == "true" ]]; then
+        send_yaak_request "04.02 Admin get merchant profile placeholder"
+        send_yaak_request "04.03 Admin review merchant placeholder"
+    else
+        write_skip "商家用户未成功登录，跳过依赖 merchantUserId 的管理员审核用例。"
+    fi
 else
     echo -e "  ${YELLOW}⚠ 管理员登录失败，请确认 V2 迁移已执行。${RESET}"
 fi

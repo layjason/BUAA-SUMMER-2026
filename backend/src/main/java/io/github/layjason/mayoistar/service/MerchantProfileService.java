@@ -14,12 +14,15 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
 import io.github.layjason.mayoistar.repository.QualificationRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -39,22 +42,26 @@ public class MerchantProfileService {
     private final MerchantProfileRepository merchantProfileRepository;
     private final QualificationRepository qualificationRepository;
     private final MediaFileRepository mediaFileRepository;
+    private final Path uploadRoot;
 
     /**
      * @param userRepository             用户数据访问
      * @param merchantProfileRepository  商家资料数据访问
      * @param qualificationRepository    资质审核数据访问
      * @param mediaFileRepository        媒体文件数据访问
+     * @param uploadRoot                 本地上传根目录
      */
     public MerchantProfileService(
             UserRepository userRepository,
             MerchantProfileRepository merchantProfileRepository,
             QualificationRepository qualificationRepository,
-            MediaFileRepository mediaFileRepository) {
+            MediaFileRepository mediaFileRepository,
+            @Value("${mayoistar.upload.root:uploads}") String uploadRoot) {
         this.userRepository = userRepository;
         this.merchantProfileRepository = merchantProfileRepository;
         this.qualificationRepository = qualificationRepository;
         this.mediaFileRepository = mediaFileRepository;
+        this.uploadRoot = Path.of(uploadRoot).toAbsolutePath().normalize();
     }
 
     /**
@@ -214,8 +221,8 @@ public class MerchantProfileService {
         String storagePath = "licenses/" + userId + "/" + mediaId + "_" + originalFilename;
 
         try {
-            java.nio.file.Path dir = java.nio.file.Path.of("uploads/licenses/" + userId);
-            java.nio.file.Files.createDirectories(dir);
+            Path dir = uploadRoot.resolve("licenses").resolve(userId).normalize();
+            Files.createDirectories(dir);
             file.transferTo(dir.resolve(mediaId + "_" + originalFilename).toFile());
         } catch (Exception e) {
             log.error("许可证文件写入失败: userId={}", userId, e);
