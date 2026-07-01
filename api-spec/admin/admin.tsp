@@ -246,6 +246,7 @@ model AdminTeamDetail {
 @tag("后台管理")
 interface AdminOperations {
   @post
+  @useAuth(NoAuth)
   @route("/auth/login")
   @doc("管理员登录，账号由系统预置且未禁用，返回后台 JWT，不提供管理员注册。")
   login(@body body: AdminLoginRequest): APIResult<
