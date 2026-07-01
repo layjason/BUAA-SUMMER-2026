@@ -289,5 +289,23 @@
     "failed": "总结发布失败",
     "titleRequired": "请输入总结标题",
     "contentRequired": "请输入总结正文"
+  },
+
+  "home": {
+    "tabRecommended": "推荐",
+    "tabLatest": "最新",
+    "tabNearby": "附近",
+    "loading": "加载中...",
+    "noMore": "已加载全部",
+    "loadMore": "加载更多",
+    "error": "加载失败，请稍后重试",
+    "empty": "暂无活动",
+    "free": "免费",
+    "feeAmount": "¥{amount}",
+    "registered": "{count}/{total}人",
+    "full": "已满",
+    "feeSuffix": "",
+    "retry": "重试",
+    "refreshSuccess": "刷新成功"
   }
 }

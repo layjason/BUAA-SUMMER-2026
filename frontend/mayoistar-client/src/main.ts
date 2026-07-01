@@ -38,8 +38,9 @@ export function createApp() {
 
     const responses = devConfig.mockData
     setMockHandler((method, path) => {
-      const cleanPath = path.split('?')[0]
-      const mock = responses[`${method} ${cleanPath}`]
+      const fullKey = `${method} ${path}`
+      const cleanKey = `${method} ${path.split('?')[0]}`
+      const mock = responses[fullKey] ?? responses[cleanKey]
       if (!mock) return null
       return Promise.resolve(mock as { code: number; message: string; data: unknown })
     })

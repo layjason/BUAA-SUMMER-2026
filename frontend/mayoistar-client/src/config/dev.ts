@@ -24,10 +24,10 @@ export type MockResponse = {
 
 export const devConfig = {
   /** 一键总开关 */
-  enabled: false,
+  enabled: true,
 
   /** 数据模式：拦截 HTTP 请求返回预定义 mock 数据，并自动注入登录态 */
-  mockApi: false,
+  mockApi: true,
 
   /** 数据模式下自动登录使用的模拟用户类型 */
   mockUserKind: 'personal' as 'personal' | 'merchant',
