@@ -147,7 +147,10 @@ model ChatRealtimeEvent {
   conversationId: EntityId;
 
   @doc("事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload。")
-  payload: MessageCreatedPayload | MessageRecalledPayload | MessageForwardedPayload;
+  payload:
+    | MessageCreatedPayload
+    | MessageRecalledPayload
+    | MessageForwardedPayload;
 
   @doc("事件发生时间。")
   occurredAt: DateTimeString;
@@ -368,6 +371,7 @@ interface ChatOperations {
       | QujuApi.Errors.Chat.ConversationNotVisible
       | QujuApi.Errors.Chat.ConversationMemberRequired
       | QujuApi.Errors.Chat.MessageContentInvalid
+      | QujuApi.Errors.Chat.MediaReferenceInvalid
   >;
 
   @post

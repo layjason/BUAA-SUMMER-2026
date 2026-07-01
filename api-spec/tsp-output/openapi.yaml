@@ -3140,6 +3140,7 @@ paths:
                   - $ref: '#/components/schemas/Errors.Chat.ConversationNotVisible'
                   - $ref: '#/components/schemas/Errors.Chat.ConversationMemberRequired'
                   - $ref: '#/components/schemas/Errors.Chat.MessageContentInvalid'
+                  - $ref: '#/components/schemas/Errors.Chat.MediaReferenceInvalid'
       tags:
         - 即时通讯
       requestBody:
@@ -9811,6 +9812,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 50000：上传媒体用途不符合聊天接口要求。
+    Errors.Chat.MediaReferenceInvalid:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 50018
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Referenced media does not exist
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 50018：消息引用的媒体文件不存在。
     Errors.Chat.MessageContentInvalid:
       type: object
       allOf:

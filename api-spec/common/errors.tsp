@@ -380,6 +380,10 @@ namespace QujuApi.Errors.Chat {
       50017,
       "Announcement {announcementId} is not visible"
     > {}
+
+  @doc("50018：消息引用的媒体文件不存在。")
+  model MediaReferenceInvalid
+    extends APIErrorResponse<50018, "Referenced media does not exist"> {}
 }
 
 namespace QujuApi.Errors.Admin {

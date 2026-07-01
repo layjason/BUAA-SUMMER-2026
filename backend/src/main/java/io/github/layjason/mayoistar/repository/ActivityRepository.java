@@ -1,11 +1,17 @@
 package io.github.layjason.mayoistar.repository;
 
 import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
+import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -32,6 +38,26 @@ public interface ActivityRepository extends JpaRepository<Activity, String>, Jpa
      * @return 分页结果
      */
     Page<Activity> findByOrganizerId(String organizerId, Pageable pageable);
+
+    Page<Activity> findByOrganizerIdAndReviewStatusOrderByUpdatedAtDesc(
+            String organizerId, ActivityReviewStatus reviewStatus, Pageable pageable);
+
+    Page<Activity> findByOrganizerIdAndReviewStatusInOrderByUpdatedAtDesc(
+            String organizerId, Collection<ActivityReviewStatus> reviewStatuses, Pageable pageable);
+
+    Page<Activity> findByOrganizerIdOrderByUpdatedAtDesc(String organizerId, Pageable pageable);
+
+    /**
+     * 查询地图上可展示的活动：不是草稿、未被下架、有坐标信息。
+     */
+    List<Activity> findByReviewStatusNotAndRuntimeStatusNotAndPointLatIsNotNullAndPointLonIsNotNull(
+            ActivityReviewStatus excludedReviewStatus, ActivityRuntimeStatus excludedRuntimeStatus);
+
+    /**
+     * 查询需要自动流转运行时状态的活动：已审核通过，且不在排除的运行状态中。
+     */
+    List<Activity> findByReviewStatusAndRuntimeStatusNotIn(
+            ActivityReviewStatus reviewStatus, Collection<ActivityRuntimeStatus> excludedRuntimeStatuses);
 
     /**
      * 查询指定小队下的活动。
@@ -64,4 +90,14 @@ public interface ActivityRepository extends JpaRepository<Activity, String>, Jpa
             + "LEFT JOIN TeamMember tm ON t.teamId = tm.teamId AND tm.userId = :userId "
             + "WHERE t.creatorId = :userId OR t.leaderId = :userId OR tm.userId = :userId")
     List<String> findTeamIdsByUserIdInvolvement(@Param("userId") String userId);
+
+    /**
+     * 按活动 ID 加悲观写锁读取活动，用于报名、取消报名和候补递补等容量敏感流程。
+     *
+     * @param activityId 活动 ID
+     * @return 活动
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Activity a where a.activityId = :activityId")
+    Optional<Activity> findByIdForUpdate(@Param("activityId") String activityId);
 }
