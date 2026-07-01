@@ -153,13 +153,7 @@
 1. 启动后端，并确认数据库已执行 V2 migration。
 2. 在 Yaak 导入 `MayoiStar.SocialChat.postman_collection.json`。
 3. 导入 `MayoiStar.SocialChat.local.postman_environment.json`。
-4. 先执行 00 登录分组，将登录响应中的字段写入环境变量：
-   - `data.tokens.accessToken` -> `userAccessToken`、`peerAccessToken`、`adminAccessToken`
-   - `data.userId` -> `testUserId`、`testPeerId`、`adminUserId`
-5. 执行好友申请后，将 `data.requestId` 写入 `friendRequestId`。
-6. 执行会话列表后，将 `data.items[0].conversationId` 写入 `conversationId`。
-7. 执行发送消息后，将 `data.messageId` 写入 `messageId`。
-8. 执行举报用户后，将 `data.reportId` 写入 `reportId`。
+4. 按分组顺序依次执行请求，关键变量（Token、ID 等）会通过请求后脚本自动写入环境，无需手动复制。
 
 ### 使用 Yaak CLI
 
