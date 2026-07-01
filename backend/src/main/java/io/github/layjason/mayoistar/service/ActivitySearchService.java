@@ -187,5 +187,14 @@ public class ActivitySearchService {
             Double longitude,
             Integer distanceMeters,
             Integer page,
-            Integer pageSize) {}
+            Integer pageSize) {
+        public SearchCriteria {
+            activityTypes = activityTypes == null ? null : List.copyOf(activityTypes);
+        }
+
+        @Override
+        public List<String> activityTypes() {
+            return activityTypes == null ? null : List.copyOf(activityTypes);
+        }
+    }
 }
