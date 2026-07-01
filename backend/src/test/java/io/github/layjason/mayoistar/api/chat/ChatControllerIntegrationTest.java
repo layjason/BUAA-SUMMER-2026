@@ -2,6 +2,7 @@ package io.github.layjason.mayoistar.api.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.layjason.mayoistar.AbstractIntegrationTest;
 import io.github.layjason.mayoistar.entity.chat.Conversation;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.chat.ConversationMember;
@@ -21,11 +22,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -33,10 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>类职责：验证 ChatController 端点已连接到 ChatService 返回真实数据，而非占位 mock。
  */
-@SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class ChatControllerIntegrationTest {
+class ChatControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private ChatController chatController;

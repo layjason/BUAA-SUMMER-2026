@@ -2,6 +2,7 @@ package io.github.layjason.mayoistar.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.layjason.mayoistar.AbstractIntegrationTest;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
@@ -17,8 +18,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -26,10 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>类职责：验证删除好友时的级联清理行为。
  */
-@SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class FriendshipServiceIntegrationTest {
+class FriendshipServiceIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private FriendshipService friendshipService;

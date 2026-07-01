@@ -5,6 +5,11 @@ spring:
       default: dev
   config:
     import: optional:file:.env[.properties]
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
   jackson:
     default-property-inclusion: non_null
   mail:
@@ -15,6 +20,10 @@ spring:
     properties:
       mail.smtp.auth: ${MAYOISTAR_MAIL_SMTP_AUTH:true}
       mail.smtp.starttls.enable: ${MAYOISTAR_MAIL_SMTP_STARTTLS_ENABLE:true}
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
 
 mayoistar:
   jwt:
@@ -25,3 +34,10 @@ mayoistar:
     activation-link-base: ${MAYOISTAR_ACTIVATION_BASE_URL:http://localhost:5173/activate}
     password-reset-link-base: ${MAYOISTAR_PASSWORD_RESET_BASE_URL:http://localhost:5173/reset-password}
     sender: ${MAYOISTAR_MAIL_SENDER:admin@example.com}
+  storage:
+    s3:
+      endpoint: ${MAYOISTAR_S3_ENDPOINT:http://localhost:9000}
+      region: ${MAYOISTAR_S3_REGION:us-east-1}
+      access-key: ${MAYOISTAR_S3_ACCESS_KEY:rustfsadmin}
+      secret-key: ${MAYOISTAR_S3_SECRET_KEY:rustfsadmin}
+      bucket: ${MAYOISTAR_S3_BUCKET:mayoistar-media}

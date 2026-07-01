@@ -14,15 +14,11 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
 import io.github.layjason.mayoistar.repository.QualificationRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -42,26 +38,26 @@ public class MerchantProfileService {
     private final MerchantProfileRepository merchantProfileRepository;
     private final QualificationRepository qualificationRepository;
     private final MediaFileRepository mediaFileRepository;
-    private final Path uploadRoot;
+    private final MediaFileUploadService mediaFileUploadService;
 
     /**
      * @param userRepository             用户数据访问
      * @param merchantProfileRepository  商家资料数据访问
      * @param qualificationRepository    资质审核数据访问
      * @param mediaFileRepository        媒体文件数据访问
-     * @param uploadRoot                 本地上传根目录
+     * @param mediaFileUploadService     媒体文件上传服务
      */
     public MerchantProfileService(
             UserRepository userRepository,
             MerchantProfileRepository merchantProfileRepository,
             QualificationRepository qualificationRepository,
             MediaFileRepository mediaFileRepository,
-            @Value("${mayoistar.upload.root:uploads}") String uploadRoot) {
+            MediaFileUploadService mediaFileUploadService) {
         this.userRepository = userRepository;
         this.merchantProfileRepository = merchantProfileRepository;
         this.qualificationRepository = qualificationRepository;
         this.mediaFileRepository = mediaFileRepository;
-        this.uploadRoot = Path.of(uploadRoot).toAbsolutePath().normalize();
+        this.mediaFileUploadService = mediaFileUploadService;
     }
 
     /**
@@ -197,7 +193,7 @@ public class MerchantProfileService {
      *
      * <p>前置条件：file 为有效的图片文件（JPG/PNG），大小不超过 10 MB。
      *
-     * <p>后置条件：文件存储到本地文件系统，元数据存入 media_files 表，usage 为 merchantLicense。
+     * <p>后置条件：文件存储到 RustFS 对象存储，元数据存入 media_files 表，usage 为 merchantLicense。
      *
      * @param userId 上传者用户 ID
      * @param file   上传的文件
@@ -205,54 +201,7 @@ public class MerchantProfileService {
      */
     @Transactional
     public CommonDtos.MediaFile uploadLicense(String userId, MultipartFile file) {
-        String contentType = file.getContentType();
-        if (contentType == null || (!contentType.equals("image/jpeg") && !contentType.equals("image/png"))) {
-            throw new BusinessException(10013, "Image must be a JPG or PNG file");
-        }
-
-        long maxSize = 10 * 1024 * 1024L; // 10 MB for license
-        if (file.getSize() > maxSize) {
-            throw new BusinessException(10014, "Image file is too large");
-        }
-
-        UUID mediaId = UUID.randomUUID();
-        String originalFilename =
-                Optional.ofNullable(file.getOriginalFilename()).orElse("license.png");
-        String storagePath = "licenses/" + userId + "/" + mediaId.toString() + "_" + originalFilename;
-
-        try {
-            Path dir = uploadRoot.resolve("licenses").resolve(userId).normalize();
-            Files.createDirectories(dir);
-            file.transferTo(
-                    dir.resolve(mediaId.toString() + "_" + originalFilename).toFile());
-        } catch (Exception e) {
-            log.error("许可证文件写入失败: userId={}", userId, e);
-            throw new RuntimeException("文件上传失败", e);
-        }
-
-        Instant now = Instant.now();
-        MediaFile mediaFile = MediaFile.builder()
-                .mediaId(mediaId)
-                .fileName(originalFilename)
-                .contentType(contentType)
-                .sizeBytes(file.getSize())
-                .usage(MediaUsage.merchantLicense)
-                .storagePath(storagePath)
-                .uploadedBy(userId)
-                .uploadedAt(now)
-                .build();
-        mediaFileRepository.save(mediaFile);
-
-        log.info("许可证上传成功: mediaId={}, userId={}", mediaId.toString(), userId);
-
-        CommonDtos.MediaFile result = new CommonDtos.MediaFile();
-        result.setMediaId(mediaId);
-        result.setFileName(originalFilename);
-        result.setContentType(contentType);
-        result.setSizeBytes(file.getSize());
-        result.setUsage(MediaUsage.merchantLicense);
-        result.setUploadedAt(now.toString());
-        return result;
+        return mediaFileUploadService.upload(userId, file, MediaUsage.merchantLicense);
     }
 
     /**

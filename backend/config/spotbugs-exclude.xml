@@ -39,6 +39,7 @@
         <Or>
             <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+ServiceImpl" />
             <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+Service" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.storage\.\w+Service" />
         </Or>
     </Match>
     <!--
@@ -47,6 +48,15 @@
     -->
     <Match>
         <Class name="io.github.layjason.mayoistar.service.ChatService" />
+        <Bug pattern="CRLF_INJECTION_LOGS" />
+    </Match>
+    <!--
+        MediaFileUploadService 中日志参数 mediaId、usage 为 UUID/枚举；
+        key 与 storagePath 在写日志前已通过 sanitizeForLog 替换 CRLF 字符。
+        SpotBugs 无法识别该清理函数，故排除此误报。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.MediaFileUploadService" />
         <Bug pattern="CRLF_INJECTION_LOGS" />
     </Match>
     <Match>

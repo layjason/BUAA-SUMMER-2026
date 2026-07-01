@@ -2,13 +2,13 @@ package io.github.layjason.mayoistar.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.MerchantProfile;
 import io.github.layjason.mayoistar.entity.identity.Qualification;
@@ -20,8 +20,6 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
 import io.github.layjason.mayoistar.repository.QualificationRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
-import java.io.File;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -31,7 +29,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -52,12 +49,12 @@ class MerchantProfileServiceTest {
     @Mock
     private MediaFileRepository mediaFileRepository;
 
+    @Mock
+    private MediaFileUploadService mediaFileUploadService;
+
     private MerchantProfileService merchantProfileService;
 
     private final String userId = UUID.randomUUID().toString();
-
-    @TempDir
-    private Path uploadRoot;
 
     @BeforeEach
     void setUp() {
@@ -66,7 +63,7 @@ class MerchantProfileServiceTest {
                 merchantProfileRepository,
                 qualificationRepository,
                 mediaFileRepository,
-                uploadRoot.toString());
+                mediaFileUploadService);
     }
 
     @Nested
@@ -223,22 +220,22 @@ class MerchantProfileServiceTest {
     class UploadLicense {
 
         @Test
-        @DisplayName("使用绝对路径写入营业执照文件")
-        void shouldUploadLicenseWithAbsoluteTargetPath() throws Exception {
+        @DisplayName("委托 MediaFileUploadService 上传营业执照")
+        void shouldDelegateToMediaFileUploadService() {
             MultipartFile file = mock(MultipartFile.class);
-            when(file.getContentType()).thenReturn("image/png");
-            when(file.getSize()).thenReturn(70L);
-            when(file.getOriginalFilename()).thenReturn("license.png");
+            CommonDtos.MediaFile expected = new CommonDtos.MediaFile();
+            expected.setMediaId(UUID.randomUUID());
+            expected.setFileName("license.png");
+            expected.setContentType("image/png");
+            expected.setUsage(MediaUsage.merchantLicense);
+
+            when(mediaFileUploadService.upload(userId, file, MediaUsage.merchantLicense))
+                    .thenReturn(expected);
 
             CommonDtos.MediaFile result = merchantProfileService.uploadLicense(userId, file);
 
-            ArgumentCaptor<File> fileCaptor = ArgumentCaptor.forClass(File.class);
-            verify(file).transferTo(fileCaptor.capture());
-            verify(mediaFileRepository).save(any());
-            assertThat(fileCaptor.getValue()).isAbsolute();
-            assertThat(fileCaptor.getValue().getParentFile()).isDirectory();
             assertThat(result.getFileName()).isEqualTo("license.png");
-            assertThat(result.getContentType()).isEqualTo("image/png");
+            verify(mediaFileUploadService).upload(userId, file, MediaUsage.merchantLicense);
         }
     }
 

@@ -1,10 +1,13 @@
 package io.github.layjason.mayoistar.api.activities;
 
 import io.github.layjason.mayoistar.api.common.ApiResponse;
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.common.SecurityUtils;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.service.ActivitySearchService;
+import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +31,8 @@ public class ActivityController {
 
     private final DefaultApiResponseFactory responseFactory;
     private final ActivitySearchService activitySearchService;
+    private final SecurityUtils securityUtils;
+    private final MediaFileUploadService mediaFileUploadService;
 
     @PostMapping("/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> saveDraft(
@@ -92,15 +97,19 @@ public class ActivityController {
     }
 
     @PostMapping(value = "/media/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
-            uploadActivityImage(@RequestPart(value = "file") MultipartFile file) {
-        return responseFactory.mediaFile(MediaUsage.activityImage);
+    public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> uploadActivityImage(
+            @RequestPart(value = "file") MultipartFile file) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = mediaFileUploadService.upload(userId, file, MediaUsage.activityImage);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping(value = "/media/review-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
-            uploadActivityReviewImage(@RequestPart(value = "file") MultipartFile file) {
-        return responseFactory.mediaFile(MediaUsage.activityReviewImage);
+    public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> uploadActivityReviewImage(
+            @RequestPart(value = "file") MultipartFile file) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = mediaFileUploadService.upload(userId, file, MediaUsage.activityReviewImage);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/mine")

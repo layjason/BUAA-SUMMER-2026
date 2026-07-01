@@ -2,6 +2,7 @@ package io.github.layjason.mayoistar.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.layjason.mayoistar.AbstractIntegrationTest;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
@@ -12,17 +13,10 @@ import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * ReputationRecordRepository 数据层测试。
- */
-@SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class ReputationRecordRepositoryTest {
+class ReputationRecordRepositoryTest extends AbstractIntegrationTest {
 
     @Autowired
     private ReputationRecordRepository reputationRecordRepository;
