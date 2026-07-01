@@ -4,6 +4,7 @@ import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
 import io.github.layjason.mayoistar.entity.social.ReportTargetType;
+import org.springframework.lang.Nullable;
 
 /**
  * 举报服务接口。
@@ -40,7 +41,8 @@ public interface ReportService {
      * @param pageSize       每页条数
      * @return 分页举报结果
      */
-    PageResult<SocialDtos.Report> listMyReports(String reporterUserId, ReportStatus status, int page, int pageSize);
+    PageResult<SocialDtos.Report> listMyReports(
+            String reporterUserId, @Nullable ReportStatus status, int page, int pageSize);
 
     /**
      * 管理员查询举报列表，支持多条件筛选。
@@ -58,10 +60,10 @@ public interface ReportService {
      * @return 分页举报结果
      */
     PageResult<SocialDtos.Report> listReports(
-            ReportStatus status,
-            String reporterUserId,
-            ReportTargetType targetType,
-            String targetId,
+            @Nullable ReportStatus status,
+            @Nullable String reporterUserId,
+            @Nullable ReportTargetType targetType,
+            @Nullable String targetId,
             int page,
             int pageSize);
 
@@ -77,5 +79,5 @@ public interface ReportService {
      * @param handlingNote  处理备注
      * @return 更新后的举报 DTO
      */
-    SocialDtos.Report decideReport(String reportId, ReportStatus status, String handlingNote);
+    SocialDtos.Report decideReport(String reportId, ReportStatus status, @Nullable String handlingNote);
 }

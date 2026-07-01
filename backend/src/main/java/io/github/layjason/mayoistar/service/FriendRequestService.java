@@ -4,6 +4,7 @@ import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.entity.social.FriendRequestSource;
 import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
+import org.springframework.lang.Nullable;
 
 /**
  * 好友申请服务接口。
@@ -22,11 +23,11 @@ public interface FriendRequestService {
      * @param requesterId 发起者用户 ID
      * @param targetUserId 目标用户 ID
      * @param source       申请来源
-     * @param message      申请附言（可选）
+     * @param message      申请附言（可为 null）
      * @return 创建的好友申请 DTO
      */
     SocialDtos.FriendRequest createFriendRequest(
-            String requesterId, String targetUserId, FriendRequestSource source, String message);
+            String requesterId, String targetUserId, FriendRequestSource source, @Nullable String message);
 
     /**
      * 处理好友申请（接受或拒绝）。
@@ -56,7 +57,7 @@ public interface FriendRequestService {
      * @return 分页申请结果
      */
     PageResult<SocialDtos.FriendRequest> listReceivedRequests(
-            String userId, FriendRequestStatus status, int page, int pageSize);
+            String userId, @Nullable FriendRequestStatus status, int page, int pageSize);
 
     /**
      * 查询已发送的好友申请。
@@ -66,11 +67,11 @@ public interface FriendRequestService {
      * <p>后置条件：返回分页申请列表，按创建时间倒序。
      *
      * @param userId  当前用户 ID
-     * @param status  状态筛选（可选）
+     * @param status  状态筛选（可为 null）
      * @param page    页码
      * @param pageSize 每页条数
      * @return 分页申请结果
      */
     PageResult<SocialDtos.FriendRequest> listSentRequests(
-            String userId, FriendRequestStatus status, int page, int pageSize);
+            String userId, @Nullable FriendRequestStatus status, int page, int pageSize);
 }

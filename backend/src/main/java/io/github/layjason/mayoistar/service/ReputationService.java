@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.service;
 
 import io.github.layjason.mayoistar.entity.social.ReputationChangeSource;
+import org.springframework.lang.Nullable;
 
 /**
  * 信誉积分服务接口。
@@ -71,5 +72,5 @@ public interface ReputationService {
      * @param reason      变更原因
      */
     void recordScoreChange(
-            String userId, int scoreChange, ReputationChangeSource source, String referenceId, String reason);
+            String userId, int scoreChange, ReputationChangeSource source, @Nullable String referenceId, String reason);
 }

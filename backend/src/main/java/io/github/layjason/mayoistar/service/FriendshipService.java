@@ -3,6 +3,7 @@ package io.github.layjason.mayoistar.service;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import java.util.List;
+import org.springframework.lang.Nullable;
 
 /**
  * 好友管理服务接口。
@@ -21,10 +22,10 @@ public interface FriendshipService {
      * @param userId   当前用户 ID
      * @param page     页码
      * @param pageSize 每页条数
-     * @param keyword  昵称搜索关键词（null 或空表示不筛选）
+     * @param keyword  昵称搜索关键词（可为 null）
      * @return 好友分页结果
      */
-    PageResult<SocialDtos.FriendItem> listFriends(String userId, int page, int pageSize, String keyword);
+    PageResult<SocialDtos.FriendItem> listFriends(String userId, int page, int pageSize, @Nullable String keyword);
 
     /**
      * 更新好友的备注和分组标签。
@@ -35,11 +36,12 @@ public interface FriendshipService {
      *
      * @param userId       当前用户 ID
      * @param friendUserId 好友用户 ID
-     * @param remark       新备注（null 表示不修改）
-     * @param groupTags    新分组标签（null 表示不修改）
+     * @param remark       新备注（可为 null，表示不修改）
+     * @param groupTags    新分组标签（可为 null，表示不修改）
      * @return 更新后的 FriendItem
      */
-    SocialDtos.FriendItem updateFriendRemark(String userId, String friendUserId, String remark, List<String> groupTags);
+    SocialDtos.FriendItem updateFriendRemark(
+            String userId, String friendUserId, @Nullable String remark, @Nullable List<String> groupTags);
 
     /**
      * 删除好友，双方的好友关系同时解除。
