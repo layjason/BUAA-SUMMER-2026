@@ -17,7 +17,6 @@ import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
-import io.github.layjason.mayoistar.service.activities.RequestActorResolver;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -26,14 +25,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser("test-user-id")
 class ActivityQueryControllerTests {
 
     @Autowired
@@ -76,7 +74,9 @@ class ActivityQueryControllerTests {
         saveUser("user-a");
         Activity activity = saveApprovedActivity("user-a", "公开活动");
 
-        mockMvc.perform(get("/activities/{activityId}", activity.getActivityId()))
+        mockMvc.perform(get("/activities/{activityId}", activity.getActivityId())
+                        .with(SecurityMockMvcRequestPostProcessors.user("viewer")
+                                .roles("personal")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.activityId").value(activity.getActivityId()))
                 .andExpect(jsonPath("$.data.title").value("公开活动"))
@@ -89,7 +89,9 @@ class ActivityQueryControllerTests {
         saveUser("user-a");
         Activity activity = saveDraftActivity("user-a", "私密草稿");
 
-        mockMvc.perform(get("/activities/{activityId}", activity.getActivityId()))
+        mockMvc.perform(get("/activities/{activityId}", activity.getActivityId())
+                        .with(SecurityMockMvcRequestPostProcessors.user("viewer")
+                                .roles("personal")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(20002))
                 .andExpect(jsonPath("$.message").value("Activity {activityId} is not visible"));
@@ -101,7 +103,8 @@ class ActivityQueryControllerTests {
         Activity activity = saveDraftActivity("user-a", "我的草稿");
 
         mockMvc.perform(get("/activities/{activityId}", activity.getActivityId())
-                        .header(RequestActorResolver.USER_ID_HEADER, "user-a"))
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.activityId").value(activity.getActivityId()))
                 .andExpect(jsonPath("$.data.reviewStatus").value("draft"));
@@ -114,7 +117,8 @@ class ActivityQueryControllerTests {
         Activity activity = saveDraftActivity("user-a", "草稿");
 
         mockMvc.perform(get("/activities/{activityId}", activity.getActivityId())
-                        .header(RequestActorResolver.USER_ID_HEADER, "user-b"))
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-b")
+                                .roles("personal")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(20002));
     }
@@ -126,17 +130,17 @@ class ActivityQueryControllerTests {
         saveApprovedActivity("user-a", "A的活动");
         saveApprovedActivity("user-b", "B的活动");
 
-        mockMvc.perform(get("/activities/mine").header(RequestActorResolver.USER_ID_HEADER, "user-a"))
+        mockMvc.perform(get("/activities/mine")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].title").value("A的活动"));
     }
 
     @Test
-    void listMyActivitiesShouldFallbackWhenHeaderMissing() throws Exception {
-        mockMvc.perform(get("/activities/mine"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.items").isArray());
+    void listMyActivitiesShouldReturnForbiddenWhenNotAuthenticated() throws Exception {
+        mockMvc.perform(get("/activities/mine")).andExpect(status().isForbidden());
     }
 
     @Test
@@ -146,7 +150,8 @@ class ActivityQueryControllerTests {
         saveDraftActivity("user-a", "草稿");
 
         mockMvc.perform(get("/activities/mine")
-                        .header(RequestActorResolver.USER_ID_HEADER, "user-a")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal"))
                         .param("status", "draft"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
@@ -158,7 +163,9 @@ class ActivityQueryControllerTests {
         saveUser("user-a");
         Activity activity = saveApprovedActivity("user-a", "状态测试");
 
-        mockMvc.perform(get("/activities/{activityId}", activity.getActivityId()))
+        mockMvc.perform(get("/activities/{activityId}", activity.getActivityId())
+                        .with(SecurityMockMvcRequestPostProcessors.user("viewer")
+                                .roles("personal")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reviewStatus").value("approved"))
                 .andExpect(jsonPath("$.data.runtimeStatus").value("notStarted"));

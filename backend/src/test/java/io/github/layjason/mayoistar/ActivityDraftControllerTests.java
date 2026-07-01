@@ -18,7 +18,6 @@ import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
-import io.github.layjason.mayoistar.service.activities.RequestActorResolver;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -27,14 +26,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser("test-user-id")
 class ActivityDraftControllerTests {
 
     @Autowired
@@ -78,7 +76,8 @@ class ActivityDraftControllerTests {
         saveMediaFile("image-a", "user-a");
 
         mockMvc.perform(post("/activities/drafts")
-                        .header(RequestActorResolver.USER_ID_HEADER, "user-a")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createDraftRequestJson(List.of("image-a"), "桌游局")))
                 .andExpect(status().isOk())
@@ -92,17 +91,21 @@ class ActivityDraftControllerTests {
         saveUser("user-a");
         saveUser("user-b");
         mockMvc.perform(post("/activities/drafts")
-                        .header(RequestActorResolver.USER_ID_HEADER, "user-a")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createDraftRequestJson(List.of(), "桌游局")))
                 .andExpect(status().isOk());
         mockMvc.perform(post("/activities/drafts")
-                        .header(RequestActorResolver.USER_ID_HEADER, "user-b")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-b")
+                                .roles("personal"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createDraftRequestJson(List.of(), "羽毛球局")))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/activities/drafts").header(RequestActorResolver.USER_ID_HEADER, "user-a"))
+        mockMvc.perform(get("/activities/drafts")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1));
     }
@@ -111,7 +114,8 @@ class ActivityDraftControllerTests {
     void updateDraftShouldRefreshTitle() throws Exception {
         saveUser("user-a");
         String responseBody = mockMvc.perform(post("/activities/drafts")
-                        .header(RequestActorResolver.USER_ID_HEADER, "user-a")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createDraftRequestJson(List.of(), "桌游局")))
                 .andExpect(status().isOk())
@@ -121,7 +125,8 @@ class ActivityDraftControllerTests {
         String activityId = extractActivityId(responseBody);
 
         mockMvc.perform(patch("/activities/drafts/{activityId}", activityId)
-                        .header(RequestActorResolver.USER_ID_HEADER, "user-a")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createDraftRequestJson(List.of(), "更新后的活动标题")))
                 .andExpect(status().isOk())
@@ -129,19 +134,19 @@ class ActivityDraftControllerTests {
     }
 
     @Test
-    void saveDraftShouldFallbackToContractPlaceholderWhenHeaderMissing() throws Exception {
+    void saveDraftShouldReturnForbiddenWhenNotAuthenticated() throws Exception {
         mockMvc.perform(post("/activities/drafts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createDraftRequestJson(List.of(), "桌游局")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.activityId").value("activity-placeholder"));
+                .andExpect(status().isForbidden());
     }
 
     @Test
     void submitActivityShouldReturnDetailWhenSuccessful() throws Exception {
         saveUser("user-a");
         String responseBody = mockMvc.perform(post("/activities/drafts")
-                        .header(RequestActorResolver.USER_ID_HEADER, "user-a")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createDraftRequestJson(List.of(), "提交测试活动")))
                 .andExpect(status().isOk())
@@ -151,7 +156,8 @@ class ActivityDraftControllerTests {
         String activityId = extractActivityId(responseBody);
 
         mockMvc.perform(post("/activities/{activityId}/submit", activityId)
-                        .header(RequestActorResolver.USER_ID_HEADER, "user-a"))
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.activityId").value(activityId))
                 .andExpect(jsonPath("$.data.reviewStatus").value("pending"))
@@ -164,7 +170,8 @@ class ActivityDraftControllerTests {
         saveUser("user-a");
         saveUser("user-b");
         String responseBody = mockMvc.perform(post("/activities/drafts")
-                        .header(RequestActorResolver.USER_ID_HEADER, "user-a")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createDraftRequestJson(List.of(), "桌游局")))
                 .andExpect(status().isOk())
@@ -174,16 +181,15 @@ class ActivityDraftControllerTests {
         String activityId = extractActivityId(responseBody);
 
         mockMvc.perform(post("/activities/{activityId}/submit", activityId)
-                        .header(RequestActorResolver.USER_ID_HEADER, "user-b"))
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-b")
+                                .roles("personal")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(20003));
     }
 
     @Test
-    void submitActivityShouldFallbackWhenHeaderMissing() throws Exception {
-        mockMvc.perform(post("/activities/{activityId}/submit", "any-id"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.activityId").value("activity-placeholder"));
+    void submitActivityShouldReturnForbiddenWhenNotAuthenticated() throws Exception {
+        mockMvc.perform(post("/activities/{activityId}/submit", "any-id")).andExpect(status().isForbidden());
     }
 
     private User saveUser(String userId) {
