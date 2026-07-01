@@ -632,3 +632,17 @@ async function handleSave(): Promise<void> {
   overflow: hidden;
 }
 </style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
+}
+</style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
+}
+</style>

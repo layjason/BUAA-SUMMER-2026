@@ -100,3 +100,10 @@ function goLogin(): void {
   overflow: hidden;
 }
 </style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
+}
+</style>

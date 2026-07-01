@@ -7,11 +7,13 @@
 </template>
 
 <script setup lang="ts"></script>
-
 <style scoped>
 .page {
   background-color: #f7f8fa;
-  padding: 32rpx 32rpx 48rpx;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .scroll-area {
@@ -19,21 +21,17 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+
 .placeholder {
-  display: block;
   text-align: center;
   font-size: 28rpx;
   color: #969799;
-  margin-top: 80rpx;
+  padding-top: 200rpx;
 }
+</style>
 
-.scroll-area {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-<style > page {
+<style>
+page {
   height: 100%;
   overflow: hidden;
 }
