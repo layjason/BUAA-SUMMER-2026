@@ -2,6 +2,7 @@ package io.github.layjason.mayoistar.service;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
+import io.github.layjason.mayoistar.common.SocialUtils;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.MerchantProfile;
@@ -250,6 +251,7 @@ public class MerchantProfileService {
         result.setContentType(contentType);
         result.setSizeBytes(file.getSize());
         result.setUsage(MediaUsage.merchantLicense);
+        result.setUrl("/common/media/" + mediaId);
         result.setUploadedAt(now.toString());
         return result;
     }
@@ -293,14 +295,7 @@ public class MerchantProfileService {
         // 头像
         if (profile.getAvatarMediaId() != null) {
             mediaFileRepository.findById(profile.getAvatarMediaId()).ifPresent(avatar -> {
-                CommonDtos.MediaFile avatarDto = new CommonDtos.MediaFile();
-                avatarDto.setMediaId(avatar.getMediaId());
-                avatarDto.setFileName(avatar.getFileName());
-                avatarDto.setContentType(avatar.getContentType());
-                avatarDto.setSizeBytes(avatar.getSizeBytes());
-                avatarDto.setUsage(avatar.getUsage());
-                avatarDto.setUploadedAt(avatar.getUploadedAt().toString());
-                dto.setAvatar(avatarDto);
+                dto.setAvatar(SocialUtils.toMediaFileDto(avatar));
             });
         }
 
@@ -327,7 +322,8 @@ public class MerchantProfileService {
                     mediaFileRepository
                             .findById(licenseId)
                             .ifPresentOrElse(
-                                    mf -> urls.add(mf.getUrl() != null ? mf.getUrl() : ""), () -> urls.add(""));
+                                    mf -> urls.add(mf.getUrl() != null ? mf.getUrl() : "/common/media/" + licenseId),
+                                    () -> urls.add(""));
                 }
                 detail.setLicenseImageUrls(urls);
             }

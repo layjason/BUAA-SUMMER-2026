@@ -10,7 +10,32 @@ tags:
   - name: 好友社群
   - name: 即时通讯
   - name: 后台管理
+  - name: 通用
 paths:
+  /common/media/{mediaId}:
+    get:
+      operationId: CommonOperations_getMediaFile
+      description: 根据媒体文件标识获取文件内容，返回原始二进制流，Content-Type 根据原始上传类型设置。
+      parameters:
+        - name: mediaId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: 文件内容
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: 未认证
+        '404':
+          description: 媒体文件不存在
+      tags:
+        - 通用
   /activities/drafts:
     post:
       operationId: ActivityOperations_saveDraft

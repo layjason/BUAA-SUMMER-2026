@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 class SocialUtilsTest {
 
     @Test
-    @DisplayName("toMediaFileDto 应正确转换所有字段")
+    @DisplayName("toMediaFileDto 应正确转换所有字段，已有 url 时保持不变")
     void toMediaFileDtoMapsAllFields() {
         Instant now = Instant.now();
         MediaFile entity = MediaFile.builder()
@@ -39,5 +39,23 @@ class SocialUtilsTest {
         assertThat(dto.getUsage()).isEqualTo(MediaUsage.avatar);
         assertThat(dto.getUrl()).isEqualTo("https://cdn.example.com/avatar.png");
         assertThat(dto.getUploadedAt()).isEqualTo(now.toString());
+    }
+
+    @Test
+    @DisplayName("url 为空时根据 mediaId 自动生成相对路径")
+    void shouldGenerateUrlFromMediaIdWhenUrlIsNull() {
+        MediaFile entity = MediaFile.builder()
+                .mediaId("media-2")
+                .fileName("photo.jpg")
+                .contentType("image/jpeg")
+                .sizeBytes(512L)
+                .usage(MediaUsage.activityImage)
+                .url(null)
+                .uploadedAt(Instant.now())
+                .build();
+
+        CommonDtos.MediaFile dto = SocialUtils.toMediaFileDto(entity);
+
+        assertThat(dto.getUrl()).isEqualTo("/common/media/media-2");
     }
 }
