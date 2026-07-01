@@ -5,6 +5,7 @@ import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.service.ActivityRegistrationService;
 import io.github.layjason.mayoistar.service.ActivityRegistrationStateService;
 import io.github.layjason.mayoistar.service.ActivitySearchService;
 import jakarta.validation.Valid;
@@ -33,6 +34,7 @@ public class ActivityController {
 
     private final DefaultApiResponseFactory responseFactory;
     private final ActivitySearchService activitySearchService;
+    private final ActivityRegistrationService activityRegistrationService;
     private final ActivityRegistrationStateService activityRegistrationStateService;
 
     @PostMapping("/drafts")
@@ -216,14 +218,16 @@ public class ActivityController {
 
     @PostMapping("/{activityId}/registrations")
     public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> registerActivity(
-            @PathVariable String activityId, @Valid @RequestBody ActivityDtos.RegisterActivityRequest request) {
-        return responseFactory.registrationResult();
+            @PathVariable String activityId, @RequestBody ActivityDtos.RegisterActivityRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                activityRegistrationService.registerActivity(activityId, getCurrentUserId(), request)));
     }
 
     @PostMapping("/{activityId}/registrations/cancel")
     public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> cancelRegistration(
             @PathVariable String activityId) {
-        return responseFactory.registrationResult();
+        return ResponseEntity.ok(
+                ApiResponse.success(activityRegistrationService.cancelRegistration(activityId, getCurrentUserId())));
     }
 
     @PostMapping("/{activityId}/reviews")
@@ -246,7 +250,8 @@ public class ActivityController {
     @PostMapping("/{activityId}/waiting-confirmations")
     public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> confirmWaitingSeat(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.WaitingConfirmationRequest request) {
-        return responseFactory.registrationResult();
+        return ResponseEntity.ok(ApiResponse.success(
+                activityRegistrationService.confirmWaitingSeat(activityId, getCurrentUserId(), request)));
     }
 
     private ActivitySearchService.SearchCriteria toSearchCriteria(
