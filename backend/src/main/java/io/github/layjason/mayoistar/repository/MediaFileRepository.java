@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.repository;
 
 import io.github.layjason.mayoistar.entity.common.MediaFile;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -8,4 +9,4 @@ import org.springframework.data.jpa.repository.JpaRepository;
  *
  * <p>类职责：提供 MediaFile 实体的 CRUD。
  */
-public interface MediaFileRepository extends JpaRepository<MediaFile, String> {}
+public interface MediaFileRepository extends JpaRepository<MediaFile, UUID> {}

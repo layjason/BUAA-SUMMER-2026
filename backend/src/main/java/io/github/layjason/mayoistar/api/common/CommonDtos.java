@@ -8,6 +8,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
 
 /**
@@ -49,7 +50,7 @@ public final class CommonDtos {
 
     @Data
     public static class MediaFile {
-        private String mediaId;
+        private UUID mediaId;
         private String fileName;
         private String contentType;
         private Long sizeBytes;
@@ -64,7 +65,7 @@ public final class CommonDtos {
 
     @Data
     public static class ImageTagConfirmation {
-        private String mediaId;
+        private UUID mediaId;
         private List<String> tags;
     }
 }

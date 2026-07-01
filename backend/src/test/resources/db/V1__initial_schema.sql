@@ -9,7 +9,7 @@
 -- --------------------------------------------------------------------------
 
 CREATE TABLE media_files (
-    media_id        VARCHAR(36)  NOT NULL,
+    media_id        UUID  NOT NULL,
     file_name       VARCHAR(255) NOT NULL,
     content_type    VARCHAR(127) NOT NULL,
     size_bytes      BIGINT       NOT NULL,
@@ -84,7 +84,7 @@ COMMENT ON COLUMN users.locked_until IS '账号锁定截止时间，null 表示�
 
 CREATE TABLE personal_profiles (
     user_id             VARCHAR(36)  NOT NULL,
-    avatar_media_id     VARCHAR(36),
+    avatar_media_id     UUID,
     gender              VARCHAR(20),
     birthday            VARCHAR(10),
     signature           TEXT,
@@ -108,7 +108,7 @@ COMMENT ON COLUMN personal_profiles.updated_at IS '最后更新时间，UTC 时�
 CREATE TABLE merchant_profiles (
     user_id                     VARCHAR(36)  NOT NULL,
     merchant_name               VARCHAR(100),
-    avatar_media_id             VARCHAR(36),
+    avatar_media_id             UUID,
     interested_activity_fields  JSONB,
     updated_at                  TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT pk_merchant_profiles PRIMARY KEY (user_id)
@@ -257,7 +257,7 @@ COMMENT ON COLUMN activities.updated_at IS '最后更新时间，UTC 时区';
 CREATE TABLE activity_images (
     image_id    VARCHAR(36) NOT NULL,
     activity_id VARCHAR(36) NOT NULL,
-    media_id    VARCHAR(36) NOT NULL,
+    media_id    UUID NOT NULL,
     sort_order  INTEGER     NOT NULL DEFAULT 0,
     CONSTRAINT pk_activity_images PRIMARY KEY (image_id)
 );
@@ -300,7 +300,7 @@ CREATE TABLE activity_templates (
     default_introduction         TEXT,
     default_safety_notice        TEXT,
     default_capacity             INTEGER      NOT NULL,
-    default_cover_image_media_id VARCHAR(36),
+    default_cover_image_media_id UUID,
     CONSTRAINT pk_activity_templates PRIMARY KEY (template_id)
 );
 
@@ -372,7 +372,7 @@ COMMENT ON COLUMN activity_summary_posts.created_at IS '发布时间，UTC 时�
 CREATE TABLE activity_summary_images (
     image_id   VARCHAR(36) NOT NULL,
     summary_id VARCHAR(36) NOT NULL,
-    media_id   VARCHAR(36) NOT NULL,
+    media_id   UUID NOT NULL,
     tags       JSONB,
     CONSTRAINT pk_activity_summary_images PRIMARY KEY (image_id)
 );
@@ -544,7 +544,7 @@ CREATE TABLE teams (
     join_mode        VARCHAR(30)  NOT NULL,
     capacity         INTEGER      NOT NULL,
     description      TEXT,
-    avatar_media_id  VARCHAR(36),
+    avatar_media_id  UUID,
     status           VARCHAR(20)  NOT NULL,
     creator_id        VARCHAR(36)  NOT NULL,
     leader_id        VARCHAR(36)  NOT NULL,
@@ -676,7 +676,7 @@ CREATE TABLE conversations (
     conversation_id  VARCHAR(36)  NOT NULL,
     kind             VARCHAR(20)  NOT NULL,
     title            VARCHAR(100),
-    avatar_media_id  VARCHAR(36),
+    avatar_media_id  UUID,
     created_at       TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at       TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT pk_conversations PRIMARY KEY (conversation_id)
@@ -719,7 +719,7 @@ CREATE TABLE chat_messages (
     sender_id           VARCHAR(36)  NOT NULL,
     kind                VARCHAR(20)  NOT NULL,
     text                TEXT,
-    image_media_id      VARCHAR(36),
+    image_media_id      UUID,
     location_lon        DOUBLE PRECISION,
     location_lat        DOUBLE PRECISION,
     location_city       VARCHAR(100),

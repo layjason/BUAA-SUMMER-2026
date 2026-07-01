@@ -156,7 +156,7 @@ class MerchantProfileServiceTest {
         @DisplayName("成功提交资质")
         void shouldSubmitQualification() {
             User user = buildMerchantUser();
-            String licenseId = UUID.randomUUID().toString();
+            UUID licenseId = UUID.randomUUID();
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(mediaFileRepository.findById(licenseId))
@@ -191,7 +191,7 @@ class MerchantProfileServiceTest {
         @DisplayName("资质已提交时抛出 10009")
         void shouldThrowOnAlreadySubmitted() {
             User user = buildMerchantUser();
-            String licenseId = UUID.randomUUID().toString();
+            UUID licenseId = UUID.randomUUID();
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(mediaFileRepository.findById(licenseId))

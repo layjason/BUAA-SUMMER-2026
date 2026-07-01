@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -56,8 +57,8 @@ public class ActivityTemplate {
     @Column(name = "default_capacity", nullable = false)
     private Integer defaultCapacity;
 
-    @Column(name = "default_cover_image_media_id", length = 36)
-    private String defaultCoverImageMediaId;
+    @Column(name = "default_cover_image_media_id", columnDefinition = "UUID")
+    private UUID defaultCoverImageMediaId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "default_cover_image_media_id", insertable = false, updatable = false)

@@ -147,7 +147,7 @@ class ChatServiceTest {
     @Test
     @DisplayName("发送图片消息 - 成功创建消息并初始化已读状态")
     void sendMessage_image() {
-        String mediaId = UUID.randomUUID().toString();
+        UUID mediaId = UUID.randomUUID();
         MediaFile mediaFile = MediaFile.builder()
                 .mediaId(mediaId)
                 .fileName("test.png")

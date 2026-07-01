@@ -153,7 +153,7 @@ public class MerchantProfileService {
         }
 
         // 所有 license media 必须存在且用途正确
-        for (String mediaId : request.getLicenseMediaIds()) {
+        for (UUID mediaId : request.getLicenseMediaIds()) {
             MediaFile media = mediaFileRepository
                     .findById(mediaId)
                     .orElseThrow(() -> new BusinessException(10010, "Media file is unavailable"));
@@ -215,15 +215,16 @@ public class MerchantProfileService {
             throw new BusinessException(10014, "Image file is too large");
         }
 
-        String mediaId = UUID.randomUUID().toString();
+        UUID mediaId = UUID.randomUUID();
         String originalFilename =
                 Optional.ofNullable(file.getOriginalFilename()).orElse("license.png");
-        String storagePath = "licenses/" + userId + "/" + mediaId + "_" + originalFilename;
+        String storagePath = "licenses/" + userId + "/" + mediaId.toString() + "_" + originalFilename;
 
         try {
             Path dir = uploadRoot.resolve("licenses").resolve(userId).normalize();
             Files.createDirectories(dir);
-            file.transferTo(dir.resolve(mediaId + "_" + originalFilename).toFile());
+            file.transferTo(
+                    dir.resolve(mediaId.toString() + "_" + originalFilename).toFile());
         } catch (Exception e) {
             log.error("许可证文件写入失败: userId={}", userId, e);
             throw new RuntimeException("文件上传失败", e);
@@ -242,7 +243,7 @@ public class MerchantProfileService {
                 .build();
         mediaFileRepository.save(mediaFile);
 
-        log.info("许可证上传成功: mediaId={}, userId={}", mediaId, userId);
+        log.info("许可证上传成功: mediaId={}, userId={}", mediaId.toString(), userId);
 
         CommonDtos.MediaFile result = new CommonDtos.MediaFile();
         result.setMediaId(mediaId);
@@ -323,7 +324,7 @@ public class MerchantProfileService {
             if (qualification.getLicenseMediaIds() != null
                     && !qualification.getLicenseMediaIds().isEmpty()) {
                 List<String> urls = new ArrayList<>();
-                for (String licenseId : qualification.getLicenseMediaIds()) {
+                for (UUID licenseId : qualification.getLicenseMediaIds()) {
                     mediaFileRepository
                             .findById(licenseId)
                             .ifPresentOrElse(

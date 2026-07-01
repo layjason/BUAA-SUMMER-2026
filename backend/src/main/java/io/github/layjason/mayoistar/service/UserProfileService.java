@@ -212,15 +212,16 @@ public class UserProfileService {
             throw new BusinessException(10014, "Image file is too large");
         }
 
-        String mediaId = UUID.randomUUID().toString();
+        UUID mediaId = UUID.randomUUID();
         String originalFilename =
                 Optional.ofNullable(file.getOriginalFilename()).orElse("avatar.png");
-        String storagePath = "avatars/" + userId + "/" + mediaId + "_" + originalFilename;
+        String storagePath = "avatars/" + userId + "/" + mediaId.toString() + "_" + originalFilename;
 
         try {
             Path dir = uploadRoot.resolve("avatars").resolve(userId).normalize();
             Files.createDirectories(dir);
-            file.transferTo(dir.resolve(mediaId + "_" + originalFilename).toFile());
+            file.transferTo(
+                    dir.resolve(mediaId.toString() + "_" + originalFilename).toFile());
         } catch (Exception e) {
             log.error("头像文件写入失败: userId={}", userId, e);
             throw new RuntimeException("文件上传失败", e);
@@ -239,7 +240,7 @@ public class UserProfileService {
                 .build();
         mediaFileRepository.save(mediaFile);
 
-        log.info("头像上传成功: mediaId={}, userId={}", mediaId, userId);
+        log.info("头像上传成功: mediaId={}, userId={}", mediaId.toString(), userId);
 
         CommonDtos.MediaFile result = new CommonDtos.MediaFile();
         result.setMediaId(mediaId);

@@ -699,7 +699,7 @@ class AdminServiceTest {
                 .qualificationId(UUID.randomUUID().toString())
                 .userId(userId)
                 .status(QualificationStatus.pending)
-                .licenseMediaIds(List.of(UUID.randomUUID().toString()))
+                .licenseMediaIds(List.of(UUID.randomUUID()))
                 .submittedAt(Instant.now())
                 .createdAt(Instant.now())
                 .build();
