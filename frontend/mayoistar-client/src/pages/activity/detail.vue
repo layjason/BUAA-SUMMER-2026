@@ -114,7 +114,7 @@
           >
             {{ t('activityDetail.generateQrCode') }}
           </button>
-          <button v-if="isOrganizer" class="action-btn-sm" @click="handleViewCheckIns">
+          <button v-if="isOrganizer" class="action-btn-sm" @click="goCheckIns">
             {{ t('activityDetail.checkInManagement') }}
           </button>
           <button v-if="canReview" class="action-btn-sm" @click="goReview">
@@ -498,28 +498,10 @@ function goParticipants(): void {
 }
 
 /**
- * 查看签到管理列表
+ * 跳转到签到管理页
  */
-async function handleViewCheckIns(): Promise<void> {
-  try {
-    const result = (await api.get('/activities/{activityId}/check-ins', {
-      path: { activityId: activityId.value },
-    })) as { items: { nickname: string; registrationStatus: string }[] }
-    const list = result.items
-      .map((p) => `${p.nickname}（${p.registrationStatus === 'checkedIn' ? '已签到' : '未签到'}）`)
-      .join('\n')
-    uni.showModal({
-      title: t('activityDetail.checkInManagement'),
-      content: list || '暂无签到记录',
-      showCancel: false,
-    })
-  } catch {
-    uni.showModal({
-      title: t('activityDetail.checkInManagement'),
-      content: '加载失败',
-      showCancel: false,
-    })
-  }
+function goCheckIns(): void {
+  uni.navigateTo({ url: `/pages/activity/check-ins?activityId=${activityId.value}` })
 }
 
 async function handleRegister(): Promise<void> {

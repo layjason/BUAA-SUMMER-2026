@@ -158,6 +158,13 @@
       }
     },
     {
+      "path": "pages/activity/check-ins",
+      "style": {
+        "navigationBarTitleText": "签到管理",
+        "disableScroll": true
+      }
+    },
+    {
       "path": "pages/activity/templates",
       "style": {
         "navigationBarTitleText": "选择模板",
