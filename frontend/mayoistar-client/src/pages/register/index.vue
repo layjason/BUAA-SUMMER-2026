@@ -376,6 +376,7 @@ function goLogin(): void {
 }
 
 .register-container {
+  padding-bottom: 48rpx;
   padding: 80rpx 48rpx 0;
 }
 

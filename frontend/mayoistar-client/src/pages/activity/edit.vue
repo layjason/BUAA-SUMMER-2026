@@ -190,18 +190,18 @@
         </view>
 
         <FormError :message="formError" />
-
-        <!-- 操作按钮 -->
-        <view class="action-row">
-          <button class="btn btn-draft" :loading="savingDraft" @click="handleSaveDraft">
-            {{ t('activityEdit.saveDraft') }}
-          </button>
-          <button class="btn btn-submit" :loading="submitting" @click="handleSubmit">
-            {{ t('activityEdit.submitReview') }}
-          </button>
-        </view>
       </view>
     </scroll-view>
+    <view class="action-bar">
+      <view class="action-row">
+        <button class="btn btn-draft" :loading="savingDraft" @click="handleSaveDraft">
+          {{ t('activityEdit.saveDraft') }}
+        </button>
+        <button class="btn btn-submit" :loading="submitting" @click="handleSubmit">
+          {{ t('activityEdit.submitReview') }}
+        </button>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -739,11 +739,17 @@ onLoad((query) => {
 }
 
 /* ---- 操作按钮 ---- */
+.action-bar {
+  padding: 16rpx 32rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background-color: #fff;
+  border-top: 2rpx solid #ebedf0;
+  flex-shrink: 0;
+}
+
 .action-row {
   display: flex;
   gap: 24rpx;
-  margin-top: 48rpx;
-  padding-bottom: 48rpx;
 }
 
 .btn {

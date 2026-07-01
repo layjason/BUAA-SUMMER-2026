@@ -194,6 +194,7 @@ function goForgotPassword(): void {
 }
 
 .login-container {
+  padding-bottom: 48rpx;
   padding: 120rpx 48rpx 0;
 }
 
