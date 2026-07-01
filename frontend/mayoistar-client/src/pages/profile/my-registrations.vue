@@ -32,9 +32,8 @@
             <text class="meta">{{ formatDate(item.activityStartAt) }}</text>
           </view>
         </view>
-      </view>
-      <view class="bottom-safe" />
-    </scroll-view>
+      </view></scroll-view
+    >
   </view>
 </template>
 
@@ -221,10 +220,6 @@ function goDetail(activityId: string): void {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-}
-
-.bottom-safe {
-  height: 48rpx;
 }
 </style>
 

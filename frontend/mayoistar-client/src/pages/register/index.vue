@@ -1,79 +1,81 @@
 <template>
   <view class="page">
-    <view class="register-container">
-      <PageHeader :title="t('register.title')" :subtitle="t('register.subtitle')" />
+    <scroll-view class="scroll-area" scroll-y>
+      <view class="register-container">
+        <PageHeader :title="t('register.title')" :subtitle="t('register.subtitle')" />
 
-      <view class="type-tabs">
-        <view
-          class="type-tab"
-          :class="{ active: registerType === 'personal' }"
-          @click="switchType('personal')"
-        >
-          <text>{{ t('register.personal') }}</text>
-        </view>
-        <view
-          class="type-tab"
-          :class="{ active: registerType === 'merchant' }"
-          @click="switchType('merchant')"
-        >
-          <text>{{ t('register.merchant') }}</text>
-        </view>
-      </view>
-
-      <view class="form">
-        <FormInput
-          v-model="email"
-          :label="t('register.email')"
-          :placeholder="t('register.emailPlaceholder')"
-          :error="emailError"
-        />
-
-        <view v-if="registerType === 'personal'" class="form-item">
-          <text class="label">{{ t('register.nickname') }}</text>
-          <view class="input-wrapper">
-            <input
-              v-model="nickname"
-              class="input"
-              type="text"
-              :placeholder="t('register.nicknamePlaceholder')"
-              placeholder-class="input-placeholder"
-              @input="onNicknameInput"
-            />
-            <text v-if="nicknameChecking" class="nickname-checking hint">{{
-              t('register.nicknameChecking')
-            }}</text>
-            <text v-else-if="nicknameChecked && nicknameAvailable" class="nickname-ok hint">{{
-              t('register.nicknameAvailable')
-            }}</text>
+        <view class="type-tabs">
+          <view
+            class="type-tab"
+            :class="{ active: registerType === 'personal' }"
+            @click="switchType('personal')"
+          >
+            <text>{{ t('register.personal') }}</text>
           </view>
-          <text v-if="nicknameError" class="field-error">{{ nicknameError }}</text>
+          <view
+            class="type-tab"
+            :class="{ active: registerType === 'merchant' }"
+            @click="switchType('merchant')"
+          >
+            <text>{{ t('register.merchant') }}</text>
+          </view>
         </view>
 
-        <FormInput
-          v-model="password"
-          :label="t('register.password')"
-          :placeholder="t('register.passwordPlaceholder')"
-          type="password"
-          :error="passwordError"
-        />
+        <view class="form">
+          <FormInput
+            v-model="email"
+            :label="t('register.email')"
+            :placeholder="t('register.emailPlaceholder')"
+            :error="emailError"
+          />
 
-        <FormInput
-          v-model="confirmPassword"
-          :label="t('register.confirmPassword')"
-          :placeholder="t('register.confirmPasswordPlaceholder')"
-          type="password"
-          :error="confirmPasswordError"
-        />
+          <view v-if="registerType === 'personal'" class="form-item">
+            <text class="label">{{ t('register.nickname') }}</text>
+            <view class="input-wrapper">
+              <input
+                v-model="nickname"
+                class="input"
+                type="text"
+                :placeholder="t('register.nicknamePlaceholder')"
+                placeholder-class="input-placeholder"
+                @input="onNicknameInput"
+              />
+              <text v-if="nicknameChecking" class="nickname-checking hint">{{
+                t('register.nicknameChecking')
+              }}</text>
+              <text v-else-if="nicknameChecked && nicknameAvailable" class="nickname-ok hint">{{
+                t('register.nicknameAvailable')
+              }}</text>
+            </view>
+            <text v-if="nicknameError" class="field-error">{{ nicknameError }}</text>
+          </view>
 
-        <FormError :message="formError" />
+          <FormInput
+            v-model="password"
+            :label="t('register.password')"
+            :placeholder="t('register.passwordPlaceholder')"
+            type="password"
+            :error="passwordError"
+          />
 
-        <SubmitButton :text="t('register.button')" :loading="loading" @click="handleRegister" />
+          <FormInput
+            v-model="confirmPassword"
+            :label="t('register.confirmPassword')"
+            :placeholder="t('register.confirmPasswordPlaceholder')"
+            type="password"
+            :error="confirmPasswordError"
+          />
 
-        <view class="footer-links">
-          <text class="link" @click="goLogin">{{ t('register.toLogin') }}</text>
+          <FormError :message="formError" />
+
+          <SubmitButton :text="t('register.button')" :loading="loading" @click="handleRegister" />
+
+          <view class="footer-links">
+            <text class="link" @click="goLogin">{{ t('register.toLogin') }}</text>
+          </view>
         </view>
       </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -359,6 +361,12 @@ function goLogin(): void {
 </script>
 
 <style scoped>
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .page {
   height: 100%;
   display: flex;
@@ -460,13 +468,6 @@ function goLogin(): void {
 }
 
 <style > page {
-  height: 100%;
-  overflow: hidden;
-}
-</style>
-
-<style>
-page {
   height: 100%;
   overflow: hidden;
 }

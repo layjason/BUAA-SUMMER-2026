@@ -1,17 +1,19 @@
 <template>
   <view class="page">
-    <view class="container">
-      <view class="header">
-        <text class="title">{{ t('resetPassword.title') }}</text>
-      </view>
+    <scroll-view class="scroll-area" scroll-y>
+      <view class="container">
+        <view class="header">
+          <text class="title">{{ t('resetPassword.title') }}</text>
+        </view>
 
-      <view class="success-box">
-        <text class="success-icon">✅</text>
-        <text class="success-text">{{ t('resetPassword.success') }}</text>
-        <text class="success-hint">{{ t('resetPassword.successHint') }}</text>
-        <button class="action-btn" @click="goLogin">{{ t('resetPassword.goLogin') }}</button>
+        <view class="success-box">
+          <text class="success-icon">✅</text>
+          <text class="success-text">{{ t('resetPassword.success') }}</text>
+          <text class="success-hint">{{ t('resetPassword.successHint') }}</text>
+          <button class="action-btn" @click="goLogin">{{ t('resetPassword.goLogin') }}</button>
+        </view>
       </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -32,6 +34,12 @@ function goLogin(): void {
 </script>
 
 <style scoped>
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .page {
   height: 100%;
   display: flex;
@@ -96,13 +104,6 @@ function goLogin(): void {
 }
 
 <style > page {
-  height: 100%;
-  overflow: hidden;
-}
-</style>
-
-<style>
-page {
   height: 100%;
   overflow: hidden;
 }

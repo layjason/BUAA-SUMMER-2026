@@ -1,53 +1,55 @@
 <template>
   <view class="page">
-    <view class="activate-container">
-      <PageHeader :title="t('activate.title')" />
+    <scroll-view class="scroll-area" scroll-y>
+      <view class="activate-container">
+        <PageHeader :title="t('activate.title')" />
 
-      <!-- 正在激活 -->
-      <view v-if="state === 'activating'" class="status-box">
-        <text class="status-icon">⏳</text>
-        <text class="status-text">{{ t('activate.activating') }}</text>
+        <!-- 正在激活 -->
+        <view v-if="state === 'activating'" class="status-box">
+          <text class="status-icon">⏳</text>
+          <text class="status-text">{{ t('activate.activating') }}</text>
+        </view>
+
+        <!-- 激活成功 / 已激活 -->
+        <view v-else-if="state === 'success'" class="status-box success">
+          <text class="status-icon">✅</text>
+          <text class="status-text">{{ t('activate.success') }}</text>
+          <SubmitButton :text="t('activate.goLogin')" @click="goLogin" />
+        </view>
+
+        <!-- 已发送激活邮件（正常注册流程） -->
+        <view v-else-if="state === 'sent'" class="status-box info">
+          <text class="status-icon">📧</text>
+          <text class="status-text">{{ t('activate.emailSent') }}</text>
+          <text class="status-email">{{ pendingEmail }}</text>
+          <text class="status-hint">{{ t('activate.emailSentHint') }}</text>
+        </view>
+
+        <!-- 自动激活失败（有 token 有邮箱） -->
+        <view v-else-if="state === 'error'" class="status-box error">
+          <text class="status-text">{{ errorText || t('activate.failed') }}</text>
+        </view>
+
+        <!-- 无 token 且无邮箱（兜底） -->
+        <view v-else class="status-box error">
+          <text class="status-text">{{ t('activate.noToken') }}</text>
+        </view>
+
+        <!-- 操作按钮：有邮箱时显示 resend + 重新注册 -->
+        <view v-if="pendingEmail && (state === 'sent' || state === 'error')" class="action-section">
+          <CooldownButton
+            :text="t('activate.resendButton')"
+            :cooldown-text="t('activate.resendCooldown')"
+            :cooldown="cooldown"
+            :loading="sending"
+            @click="handleResend"
+          />
+          <text v-if="resendSent" class="resend-ok">{{ t('activate.resendSent') }}</text>
+
+          <SubmitButton :text="t('activate.emailWrong')" secondary @click="goRegister" />
+        </view>
       </view>
-
-      <!-- 激活成功 / 已激活 -->
-      <view v-else-if="state === 'success'" class="status-box success">
-        <text class="status-icon">✅</text>
-        <text class="status-text">{{ t('activate.success') }}</text>
-        <SubmitButton :text="t('activate.goLogin')" @click="goLogin" />
-      </view>
-
-      <!-- 已发送激活邮件（正常注册流程） -->
-      <view v-else-if="state === 'sent'" class="status-box info">
-        <text class="status-icon">📧</text>
-        <text class="status-text">{{ t('activate.emailSent') }}</text>
-        <text class="status-email">{{ pendingEmail }}</text>
-        <text class="status-hint">{{ t('activate.emailSentHint') }}</text>
-      </view>
-
-      <!-- 自动激活失败（有 token 有邮箱） -->
-      <view v-else-if="state === 'error'" class="status-box error">
-        <text class="status-text">{{ errorText || t('activate.failed') }}</text>
-      </view>
-
-      <!-- 无 token 且无邮箱（兜底） -->
-      <view v-else class="status-box error">
-        <text class="status-text">{{ t('activate.noToken') }}</text>
-      </view>
-
-      <!-- 操作按钮：有邮箱时显示 resend + 重新注册 -->
-      <view v-if="pendingEmail && (state === 'sent' || state === 'error')" class="action-section">
-        <CooldownButton
-          :text="t('activate.resendButton')"
-          :cooldown-text="t('activate.resendCooldown')"
-          :cooldown="cooldown"
-          :loading="sending"
-          @click="handleResend"
-        />
-        <text v-if="resendSent" class="resend-ok">{{ t('activate.resendSent') }}</text>
-
-        <SubmitButton :text="t('activate.emailWrong')" secondary @click="goRegister" />
-      </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -171,6 +173,12 @@ function goRegister(): void {
 </script>
 
 <style scoped>
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .page {
   height: 100%;
   display: flex;
@@ -234,13 +242,6 @@ function goRegister(): void {
 }
 
 <style > page {
-  height: 100%;
-  overflow: hidden;
-}
-</style>
-
-<style>
-page {
   height: 100%;
   overflow: hidden;
 }

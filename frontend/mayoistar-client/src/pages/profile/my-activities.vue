@@ -60,9 +60,8 @@
             <text class="meta">{{ formatDate(item.updatedAt) }}</text>
           </view>
         </view>
-      </view>
-      <view class="bottom-safe" />
-    </scroll-view>
+      </view></scroll-view
+    >
   </view>
 </template>
 
@@ -392,10 +391,6 @@ function goDetail(activityId: string): void {
 .meta {
   font-size: 24rpx;
   color: #969799;
-}
-
-.bottom-safe {
-  height: 48rpx;
 }
 
 <style > page {

@@ -1,45 +1,47 @@
 <template>
   <view class="page">
-    <view class="container">
-      <PageHeader :title="t('forgotPassword.title')" :subtitle="t('forgotPassword.subtitle')" />
+    <scroll-view class="scroll-area" scroll-y>
+      <view class="container">
+        <PageHeader :title="t('forgotPassword.title')" :subtitle="t('forgotPassword.subtitle')" />
 
-      <view v-if="sent" class="success-box">
-        <text class="success-icon">📧</text>
-        <text class="success-text">{{ t('forgotPassword.emailSent') }}</text>
-        <text class="success-email">{{ email.trim() }}</text>
-        <text class="success-hint">{{ t('forgotPassword.emailSentHint') }}</text>
-        <CooldownButton
-          :text="t('forgotPassword.resendButton')"
-          :cooldown-text="t('forgotPassword.resendCooldown')"
-          :cooldown="cooldown"
-          :loading="loading"
-          @click="handleResend"
-        />
-        <text v-if="resendSent" class="resend-ok">{{ t('forgotPassword.resendSent') }}</text>
-        <SubmitButton :text="t('forgotPassword.backToLogin')" secondary @click="goLogin" />
-      </view>
+        <view v-if="sent" class="success-box">
+          <text class="success-icon">📧</text>
+          <text class="success-text">{{ t('forgotPassword.emailSent') }}</text>
+          <text class="success-email">{{ email.trim() }}</text>
+          <text class="success-hint">{{ t('forgotPassword.emailSentHint') }}</text>
+          <CooldownButton
+            :text="t('forgotPassword.resendButton')"
+            :cooldown-text="t('forgotPassword.resendCooldown')"
+            :cooldown="cooldown"
+            :loading="loading"
+            @click="handleResend"
+          />
+          <text v-if="resendSent" class="resend-ok">{{ t('forgotPassword.resendSent') }}</text>
+          <SubmitButton :text="t('forgotPassword.backToLogin')" secondary @click="goLogin" />
+        </view>
 
-      <view v-else class="form">
-        <FormInput
-          v-model="email"
-          :label="t('forgotPassword.email')"
-          :placeholder="t('forgotPassword.emailPlaceholder')"
-          :error="emailError"
-        />
+        <view v-else class="form">
+          <FormInput
+            v-model="email"
+            :label="t('forgotPassword.email')"
+            :placeholder="t('forgotPassword.emailPlaceholder')"
+            :error="emailError"
+          />
 
-        <FormError :message="formError" />
+          <FormError :message="formError" />
 
-        <SubmitButton
-          :text="t('forgotPassword.sendButton')"
-          :loading="loading"
-          @click="handleSend"
-        />
+          <SubmitButton
+            :text="t('forgotPassword.sendButton')"
+            :loading="loading"
+            @click="handleSend"
+          />
 
-        <view class="footer-links">
-          <text class="link" @click="goLogin">{{ t('forgotPassword.backToLogin') }}</text>
+          <view class="footer-links">
+            <text class="link" @click="goLogin">{{ t('forgotPassword.backToLogin') }}</text>
+          </view>
         </view>
       </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -155,6 +157,12 @@ function goLogin(): void {
 </script>
 
 <style scoped>
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .page {
   height: 100%;
   display: flex;
@@ -225,13 +233,6 @@ function goLogin(): void {
 }
 
 <style > page {
-  height: 100%;
-  overflow: hidden;
-}
-</style>
-
-<style>
-page {
   height: 100%;
   overflow: hidden;
 }

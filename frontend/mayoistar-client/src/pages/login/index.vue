@@ -1,33 +1,35 @@
 <template>
   <view class="page">
-    <view class="login-container">
-      <PageHeader :title="t('login.title')" :subtitle="t('login.subtitle')" />
+    <scroll-view class="scroll-area" scroll-y>
+      <view class="login-container">
+        <PageHeader :title="t('login.title')" :subtitle="t('login.subtitle')" />
 
-      <view class="form">
-        <FormInput
-          v-model="email"
-          :label="t('login.email')"
-          :placeholder="t('login.emailPlaceholder')"
-          :error="emailError"
-        />
-        <FormInput
-          v-model="password"
-          :label="t('login.password')"
-          :placeholder="t('login.passwordPlaceholder')"
-          type="password"
-          :error="passwordError"
-        />
+        <view class="form">
+          <FormInput
+            v-model="email"
+            :label="t('login.email')"
+            :placeholder="t('login.emailPlaceholder')"
+            :error="emailError"
+          />
+          <FormInput
+            v-model="password"
+            :label="t('login.password')"
+            :placeholder="t('login.passwordPlaceholder')"
+            type="password"
+            :error="passwordError"
+          />
 
-        <FormError :message="formError" />
+          <FormError :message="formError" />
 
-        <SubmitButton :text="t('login.button')" :loading="loading" @click="handleLogin" />
+          <SubmitButton :text="t('login.button')" :loading="loading" @click="handleLogin" />
 
-        <view class="footer-links">
-          <text class="link" @click="goForgotPassword">{{ t('login.forgotPassword') }}</text>
-          <text class="link" @click="goRegister">{{ t('login.toRegister') }}</text>
+          <view class="footer-links">
+            <text class="link" @click="goForgotPassword">{{ t('login.forgotPassword') }}</text>
+            <text class="link" @click="goRegister">{{ t('login.toRegister') }}</text>
+          </view>
         </view>
       </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -177,6 +179,12 @@ function goForgotPassword(): void {
 </script>
 
 <style scoped>
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .page {
   height: 100%;
   display: flex;
@@ -202,13 +210,6 @@ function goForgotPassword(): void {
 }
 
 <style > page {
-  height: 100%;
-  overflow: hidden;
-}
-</style>
-
-<style>
-page {
   height: 100%;
   overflow: hidden;
 }
