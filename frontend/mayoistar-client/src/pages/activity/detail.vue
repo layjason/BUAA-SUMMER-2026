@@ -457,7 +457,6 @@ async function handleGenerateQrCode(): Promise<void> {
       icon: 'none',
       duration: 3000,
     })
-    uni.setClipboardData({ data: result.qrCodeToken })
   } catch (error) {
     uni.hideLoading()
     if (error instanceof BusinessError) {
