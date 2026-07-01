@@ -1,4 +1,4 @@
-package io.github.layjason.mayoistar.repository.activities;
+package io.github.layjason.mayoistar.repository;
 
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;

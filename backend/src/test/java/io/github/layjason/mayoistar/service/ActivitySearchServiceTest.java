@@ -8,7 +8,7 @@ import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
-import io.github.layjason.mayoistar.repository.activities.ActivityRepository;
+import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
