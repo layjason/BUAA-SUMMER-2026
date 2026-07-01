@@ -10,6 +10,7 @@ import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_SENDER_R
 import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.common.SocialUtils;
 import io.github.layjason.mayoistar.entity.chat.ChatMessage;
 import io.github.layjason.mayoistar.entity.chat.Conversation;
 import io.github.layjason.mayoistar.entity.chat.MessageKind;
@@ -525,14 +526,6 @@ public class ChatService {
     }
 
     private CommonDtos.MediaFile toMediaFileDto(io.github.layjason.mayoistar.entity.common.MediaFile entity) {
-        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
-        dto.setMediaId(entity.getMediaId());
-        dto.setFileName(entity.getFileName());
-        dto.setContentType(entity.getContentType());
-        dto.setSizeBytes(entity.getSizeBytes());
-        dto.setUsage(entity.getUsage());
-        dto.setUrl(entity.getUrl());
-        dto.setUploadedAt(entity.getUploadedAt().toString());
-        return dto;
+        return SocialUtils.toMediaFileDto(entity);
     }
 }

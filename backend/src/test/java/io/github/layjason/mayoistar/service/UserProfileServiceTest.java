@@ -220,6 +220,7 @@ class UserProfileServiceTest {
             assertThat(fileCaptor.getValue().getParentFile()).isDirectory();
             assertThat(result.getFileName()).isEqualTo("avatar.png");
             assertThat(result.getContentType()).isEqualTo("image/png");
+            assertThat(result.getUrl()).startsWith("/common/media/");
         }
     }
 

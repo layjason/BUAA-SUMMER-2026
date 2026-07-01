@@ -247,6 +247,7 @@ public class UserProfileService {
         result.setContentType(contentType);
         result.setSizeBytes(file.getSize());
         result.setUsage(MediaUsage.avatar);
+        result.setUrl("/common/media/" + mediaId);
         result.setUploadedAt(now.toString());
         return result;
     }

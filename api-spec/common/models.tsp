@@ -184,6 +184,18 @@ model MediaUploadRequest {
   file: HttpPart<bytes>;
 }
 
+@route("/common")
+@tag("通用")
+interface CommonOperations {
+  @get
+  @route("/media/{mediaId}")
+  @doc("根据媒体文件标识获取文件内容，返回原始二进制流，Content-Type 根据原始上传类型设置。")
+  getMediaFile(@path @doc("媒体文件标识") mediaId: EntityId): {
+    @body body: bytes;
+    @header contentType: string;
+  };
+}
+
 @doc("审核状态。")
 enum ReviewStatus {
   @doc("等待审核。")
