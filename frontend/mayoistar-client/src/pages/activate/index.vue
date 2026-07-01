@@ -188,8 +188,7 @@ function goRegister(): void {
 }
 
 .activate-container {
-  padding-bottom: 48rpx;
-  padding: 160rpx 48rpx 0;
+  padding: 160rpx 48rpx 48rpx;
 }
 
 .status-box {
