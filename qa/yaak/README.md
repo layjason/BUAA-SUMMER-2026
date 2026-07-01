@@ -1,39 +1,60 @@
 # MayoiStar 身份接口 Yaak 测试说明
 
+- Version: 1 20260701 102350
+  - 新增 bash 脚本，支持非 Windows 环境下运行
+
 本目录提供 MayoiStar 身份接口的 Yaak 自动化测试资产。
 
 ## 文件
 
 - `MayoiStar.Identity.postman_collection.json`：Yaak 可导入的 Postman v2.1 集合。
 - `MayoiStar.Identity.local.postman_environment.json`：本地环境变量模板，不包含真实凭据。
-- `start-backend-mailhog.ps1`：使用 MailHog 邮件测试配置启动后端。
-- `run-mailhog-smoke.ps1`：使用 Yaak CLI 和 MailHog 自动获取邮件 token 的冒烟测试脚本。
+- `start-backend-mailhog.ps1` / `start-backend-mailhog.sh`：使用 MailHog 邮件测试配置启动后端。
+- `run-mailhog-smoke.ps1` / `run-mailhog-smoke.sh`：使用 Yaak CLI 和 MailHog 自动获取邮件 token 的冒烟测试脚本。
 
 ## 使用步骤
+
+### 通用步骤
 
 1. 将 `backend/.env.mailhog.example` 复制为 `backend/.env`，按需修改数据库密码或端口。
 2. 在 `backend` 目录启动依赖：
 
-   ```powershell
+   ```bash
    docker compose --env-file .env -f docker-compose-local.yaml up -d postgres mailhog
    ```
 
-3. 启动后端：
+3. 在 Yaak 中导入集合文件，或使用 Yaak CLI 导入：
+
+   ```bash
+   yaak import qa/yaak/MayoiStar.Identity.postman_collection.json
+   ```
+
+### Windows (PowerShell)
+
+4. 启动后端：
 
    ```powershell
    .\qa\yaak\start-backend-mailhog.ps1
-   ```
-
-4. 在 Yaak 中导入集合文件，或使用 Yaak CLI 导入：
-
-   ```powershell
-   yaak import qa\yaak\MayoiStar.Identity.postman_collection.json
    ```
 
 5. 运行 MailHog 冒烟脚本：
 
    ```powershell
    .\qa\yaak\run-mailhog-smoke.ps1
+   ```
+
+### Linux / macOS (Bash)
+
+4. 启动后端：
+
+   ```bash
+   ./qa/yaak/start-backend-mailhog.sh
+   ```
+
+5. 运行 MailHog 冒烟脚本：
+
+   ```bash
+   ./qa/yaak/run-mailhog-smoke.sh
    ```
 
 ## 覆盖的接口测试
