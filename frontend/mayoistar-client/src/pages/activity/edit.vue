@@ -302,7 +302,7 @@ function onDeadlineTimeChange(e: { detail: { value: string } }): void {
 
 function toISO(date: string, time: string): string | null {
   if (!date || !time) return null
-  return `${date}T${time}:00`
+  return `${date}T${time}:00+08:00`
 }
 
 // ================= 图片上传 =================
