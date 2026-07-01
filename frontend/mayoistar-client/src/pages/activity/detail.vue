@@ -133,6 +133,16 @@
           >
             {{ t('activityClone.clone') }}
           </button>
+          <button
+            v-if="
+              isOrganizer &&
+              (activity.runtimeStatus === 'registering' || activity.runtimeStatus === 'ongoing')
+            "
+            class="action-btn-sm"
+            @click="handleExportCheckIns"
+          >
+            {{ t('checkInExport.export') }}
+          </button>
         </view>
       </view>
     </template>
@@ -289,6 +299,32 @@ async function handleClone(): Promise<void> {
       uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
     } else {
       uni.showToast({ title: '克隆失败', icon: 'none' })
+    }
+  }
+}
+
+/**
+ * 导出签到数据
+ *
+ * 下载签到数据文件并打开。
+ */
+async function handleExportCheckIns(): Promise<void> {
+  try {
+    uni.showLoading({ title: t('checkInExport.exporting') })
+    const result = (await api.get('/activities/{activityId}/check-ins/export', {
+      path: { activityId: activityId.value },
+    })) as { url: string }
+
+    const downloadResult = await uni.downloadFile({ url: result.url })
+    uni.hideLoading()
+    await uni.openDocument({ filePath: downloadResult.tempFilePath })
+    uni.showToast({ title: t('checkInExport.exportSuccess'), icon: 'success' })
+  } catch (error) {
+    uni.hideLoading()
+    if (error instanceof BusinessError) {
+      uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
+    } else {
+      uni.showToast({ title: t('checkInExport.exportFailed'), icon: 'none' })
     }
   }
 }
