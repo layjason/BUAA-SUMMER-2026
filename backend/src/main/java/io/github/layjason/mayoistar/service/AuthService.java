@@ -193,8 +193,16 @@ public class AuthService {
                 .orElseThrow(() -> new BusinessException(10003, "Email or password is invalid"));
 
         if (isLocked(user)) {
-            log.warn("锁定账号尝试登录: userId={}", user.getUserId());
-            throw new BusinessException(10003, "Email or password is invalid");
+            long remainingSeconds =
+                    user.getLockedUntil().getEpochSecond() - Instant.now().getEpochSecond();
+            long minutes = remainingSeconds / 60;
+            long remainingSec = remainingSeconds % 60;
+            log.warn("锁定账号尝试登录: userId={}, remainingMinutes={}", user.getUserId(), minutes);
+            throw new BusinessException(
+                    10019,
+                    String.format(
+                            "Account is temporarily locked. Please try again in %d minute(s) %d second(s).",
+                            minutes, remainingSec));
         }
 
         resetLoginWindowIfExpired(user);

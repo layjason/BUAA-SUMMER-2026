@@ -262,8 +262,11 @@ class AuthServiceTest {
 
             assertThatThrownBy(() -> authService.login(request))
                     .isInstanceOf(BusinessException.class)
-                    .extracting("code")
-                    .isEqualTo(10003);
+                    .satisfies(ex -> {
+                        BusinessException be = (BusinessException) ex;
+                        assertThat(be.getCode()).isEqualTo(10019);
+                        assertThat(be.getBusinessMessage()).contains("temporarily locked");
+                    });
         }
 
         @Test
