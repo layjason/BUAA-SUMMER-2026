@@ -3,14 +3,19 @@ package io.github.layjason.mayoistar.service;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.common.SocialUtils;
+import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.social.Blacklist;
 import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
+import io.github.layjason.mayoistar.repository.ChatMessageRepository;
+import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
+import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.FollowRepository;
 import io.github.layjason.mayoistar.repository.FriendRequestRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
+import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
@@ -26,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>类职责：实现拉黑、取消拉黑、查询黑名单列表的业务逻辑。
  *
- * <p>不变量：拉黑操作前校验目标用户存在性、非自引用、无重复关系。
+ * <p>不变量：拉黑操作前校验目标用户存在性、非自引用、无重复关系；拉黑时清理好友相关的聊天会话。
  */
 @Slf4j
 @Service
@@ -38,6 +43,10 @@ public class BlacklistServiceImpl implements BlacklistService {
     private final PersonalProfileRepository personalProfileRepository;
     private final FriendRequestRepository friendRequestRepository;
     private final FollowRepository followRepository;
+    private final ConversationMemberRepository conversationMemberRepository;
+    private final ConversationRepository conversationRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final MessageReadRepository messageReadRepository;
 
     public BlacklistServiceImpl(
             BlacklistRepository blacklistRepository,
@@ -45,21 +54,29 @@ public class BlacklistServiceImpl implements BlacklistService {
             FriendshipRepository friendshipRepository,
             PersonalProfileRepository personalProfileRepository,
             FriendRequestRepository friendRequestRepository,
-            FollowRepository followRepository) {
+            FollowRepository followRepository,
+            ConversationMemberRepository conversationMemberRepository,
+            ConversationRepository conversationRepository,
+            ChatMessageRepository chatMessageRepository,
+            MessageReadRepository messageReadRepository) {
         this.blacklistRepository = blacklistRepository;
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
         this.personalProfileRepository = personalProfileRepository;
         this.friendRequestRepository = friendRequestRepository;
         this.followRepository = followRepository;
+        this.conversationMemberRepository = conversationMemberRepository;
+        this.conversationRepository = conversationRepository;
+        this.chatMessageRepository = chatMessageRepository;
+        this.messageReadRepository = messageReadRepository;
     }
 
     /**
-     * 将目标用户加入黑名单，同时删除双向好友关系。
+     * 将目标用户加入黑名单，同时删除双向好友关系和关注关系，并清理好友聊天会话。
      *
      * <p>前置条件：targetUserId 对应有效用户，且不是当前用户，且尚未在黑名单中。
      *
-     * <p>后置条件：黑名单记录已持久化；若存在好友关系则双向删除。
+     * <p>后置条件：黑名单记录已持久化；好友关系、关注关系已双向删除；好友聊天会话及其中消息已清理。
      *
      * @param currentUserId 当前用户 ID
      * @param targetUserId  目标用户 ID
@@ -106,6 +123,21 @@ public class BlacklistServiceImpl implements BlacklistService {
 
         friendshipRepository.deleteByUserIdAndFriendUserId(currentUserId, targetUserId);
         friendshipRepository.deleteByUserIdAndFriendUserId(targetUserId, currentUserId);
+
+        List<String> commonConversationIds =
+                conversationMemberRepository.findCommonConversationIds(currentUserId, targetUserId);
+
+        for (String conversationId : commonConversationIds) {
+            conversationRepository.findById(conversationId).ifPresent(conversation -> {
+                if (conversation.getKind() == ConversationKind.friend) {
+                    messageReadRepository.deleteByConversationId(conversationId);
+                    chatMessageRepository.deleteByConversationId(conversationId);
+                    conversationMemberRepository.deleteByConversationId(conversationId);
+                    conversationRepository.delete(conversation);
+                    log.info("拉黑后好友会话已清理: conversationId={}", conversationId);
+                }
+            });
+        }
 
         followRepository.deleteByFollowerIdAndFollowedId(currentUserId, targetUserId);
         followRepository.deleteByFollowerIdAndFollowedId(targetUserId, currentUserId);
