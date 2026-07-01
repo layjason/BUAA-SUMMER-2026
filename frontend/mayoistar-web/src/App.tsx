@@ -7,6 +7,7 @@ import { ToastContainer, ToastItem } from './components/Toast';
 
 // Pages
 import { Login } from './pages/Login';
+import { ActivationLanding } from './pages/ActivationLanding';
 import { Workbench } from './pages/Workbench';
 import { Activities } from './pages/Activities';
 import { Users } from './pages/Users';
@@ -14,6 +15,8 @@ import { Merchants } from './pages/Merchants';
 import { Teams } from './pages/Teams';
 import { Reports } from './pages/Reports';
 import { SettingsPassword } from './pages/SettingsPassword';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!getAccessToken());
@@ -70,6 +73,19 @@ export default function App() {
         return <Workbench onNavigate={setCurrentRoute} />;
     }
   };
+
+  // 激活落地页：绕过管理员认证门禁，允许未登录用户直接访问
+  if (window.location.pathname === '/activate') {
+    return <ActivationLanding />;
+  }
+
+  // 忘记密码与重置密码页：无需认证即可访问
+  if (window.location.pathname === '/forgot-password') {
+    return <ForgotPassword />;
+  }
+  if (window.location.pathname === '/reset-password') {
+    return <ResetPassword />;
+  }
 
   if (!isAuthenticated) {
     return (
