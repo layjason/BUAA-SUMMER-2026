@@ -34,21 +34,7 @@
                 "login"
               ]
             }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const d = yaak.response.json().data;",
-                  "yaak.environment.set(\"userAccessToken\", d.tokens.accessToken);",
-                  "yaak.environment.set(\"testUserId\", d.userId);",
-                  "console.log(\"已设置 userAccessToken, testUserId\");"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
+          }
         },
         {
           "name": "个人用户登录 test_peer",
@@ -75,21 +61,7 @@
                 "login"
               ]
             }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const d = yaak.response.json().data;",
-                  "yaak.environment.set(\"peerAccessToken\", d.tokens.accessToken);",
-                  "yaak.environment.set(\"testPeerId\", d.userId);",
-                  "console.log(\"已设置 peerAccessToken, testPeerId\");"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
+          }
         },
         {
           "name": "管理员登录 admin",
@@ -116,21 +88,7 @@
                 "login"
               ]
             }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const d = yaak.response.json().data;",
-                  "yaak.environment.set(\"adminAccessToken\", d.tokens.accessToken);",
-                  "yaak.environment.set(\"adminUserId\", d.userId);",
-                  "console.log(\"已设置 adminAccessToken, adminUserId\");"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
+          }
         }
       ]
     },
@@ -188,19 +146,7 @@
                 "friend-requests"
               ]
             }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const d = yaak.response.json().data;",
-                  "if (d.requestId) { yaak.environment.set(\"friendRequestId\", d.requestId); }"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
+          }
         },
         {
           "name": "发送好友申请 - 活动参与者列表",
@@ -742,19 +688,7 @@
                 "reports"
               ]
             }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const d = yaak.response.json().data;",
-                  "if (d.reportId) { yaak.environment.set(\"reportId\", d.reportId); }"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
+          }
         },
         {
           "name": "我的举报列表",
@@ -929,19 +863,7 @@
                 }
               ]
             }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const d = yaak.response.json().data;",
-                  "if (d.items && d.items.length > 0) { yaak.environment.set(\"conversationId\", d.items[0].conversationId); }"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
+          }
         },
         {
           "name": "发送文字消息",
@@ -973,19 +895,7 @@
                 "messages"
               ]
             }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const d = yaak.response.json().data;",
-                  "if (d.messageId) { yaak.environment.set(\"messageId\", d.messageId); }"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
+          }
         },
         {
           "name": "发送表情文本消息",
