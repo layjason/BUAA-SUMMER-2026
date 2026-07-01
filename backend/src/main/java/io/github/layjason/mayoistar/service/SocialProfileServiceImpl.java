@@ -1,8 +1,7 @@
 package io.github.layjason.mayoistar.service;
 
-import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
-import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.common.SocialUtils;
 import io.github.layjason.mayoistar.entity.identity.PersonalProfile;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.exception.BusinessException;
@@ -71,20 +70,8 @@ public class SocialProfileServiceImpl implements SocialProfileService {
         dto.setReputationScore(profile.getReputationScore() != null ? profile.getReputationScore() : 100);
         dto.setKind(user.getKind());
         if (profile.getAvatar() != null) {
-            dto.setAvatar(toMediaFileDto(profile.getAvatar()));
+            dto.setAvatar(SocialUtils.toMediaFileDto(profile.getAvatar()));
         }
-        return dto;
-    }
-
-    private CommonDtos.MediaFile toMediaFileDto(MediaFile mediaFile) {
-        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
-        dto.setMediaId(mediaFile.getMediaId());
-        dto.setFileName(mediaFile.getFileName());
-        dto.setContentType(mediaFile.getContentType());
-        dto.setSizeBytes(mediaFile.getSizeBytes());
-        dto.setUsage(mediaFile.getUsage());
-        dto.setUrl(mediaFile.getUrl());
-        dto.setUploadedAt(mediaFile.getUploadedAt().toString());
         return dto;
     }
 }

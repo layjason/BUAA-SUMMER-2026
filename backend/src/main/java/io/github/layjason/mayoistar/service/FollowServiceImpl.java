@@ -1,9 +1,8 @@
 package io.github.layjason.mayoistar.service;
 
-import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
-import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.common.SocialUtils;
 import io.github.layjason.mayoistar.entity.social.Follow;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.entity.social.FriendshipSource;
@@ -232,7 +231,7 @@ public class FollowServiceImpl implements FollowService {
             item.setNickname(user.getNickname());
             personalProfileRepository.findByUserId(user.getUserId()).ifPresent(profile -> {
                 if (profile.getAvatar() != null) {
-                    item.setAvatar(toMediaFileDto(profile.getAvatar()));
+                    item.setAvatar(SocialUtils.toMediaFileDto(profile.getAvatar()));
                 }
             });
         });
@@ -241,17 +240,5 @@ public class FollowServiceImpl implements FollowService {
             item.setNickname("unknown");
         }
         return item;
-    }
-
-    private CommonDtos.MediaFile toMediaFileDto(MediaFile entity) {
-        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
-        dto.setMediaId(entity.getMediaId());
-        dto.setFileName(entity.getFileName());
-        dto.setContentType(entity.getContentType());
-        dto.setSizeBytes(entity.getSizeBytes());
-        dto.setUsage(entity.getUsage());
-        dto.setUrl(entity.getUrl());
-        dto.setUploadedAt(entity.getUploadedAt().toString());
-        return dto;
     }
 }
