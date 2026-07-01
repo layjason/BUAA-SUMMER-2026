@@ -1,0 +1,1181 @@
+{
+  "info": {
+    "_postman_id": "c590a8b5-f191-4a55-83bc-46ad85c1e2fa",
+    "name": "MayoiStar Social Chat",
+    "description": "好友社群（2人）与一对一聊天 API 测试集合。导入 Yaak 后配合 MayoiStar.SocialChat.local.postman_environment.json 使用。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 登录与会话变量",
+      "item": [
+        {
+          "name": "个人用户登录 test_user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{testUserEmail}}\",\"password\":\"{{testUserPassword}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/identity/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "个人用户登录 test_peer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{testPeerEmail}}\",\"password\":\"{{testPeerPassword}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/identity/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "管理员登录 admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{adminUsername}}\",\"password\":\"{{adminPassword}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 个人主页与好友申请",
+      "item": [
+        {
+          "name": "查看 test_peer 个人主页",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/profiles/{{testPeerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "profiles",
+                "{{testPeerId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "发送好友申请 - 个人主页",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetUserId\":\"{{testPeerId}}\",\"source\":\"profile\",\"message\":\"来自个人主页的 QA 好友申请\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/friend-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "friend-requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "发送好友申请 - 活动参与者列表",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetUserId\":\"{{testPeerId}}\",\"source\":\"activityParticipants\",\"message\":\"来自活动参与者列表\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/friend-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "friend-requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "发送好友申请 - 个人二维码",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetUserId\":\"{{testPeerId}}\",\"source\":\"qrCode\",\"message\":\"来自个人二维码\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/friend-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "friend-requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "查看已发送好友申请",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/friend-requests/sent?status=pending&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "friend-requests",
+                "sent"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "查看收到好友申请",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/friend-requests/received?status=pending&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "friend-requests",
+                "received"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "同意好友申请",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"accepted\":true}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/friend-requests/{{friendRequestId}}/decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "friend-requests",
+                "{{friendRequestId}}",
+                "decision"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 自己添加自己",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetUserId\":\"{{testUserId}}\",\"source\":\"profile\",\"message\":\"self\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/friend-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "friend-requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 已是好友后重复申请",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetUserId\":\"{{testPeerId}}\",\"source\":\"profile\",\"message\":\"duplicate\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/friend-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "friend-requests"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 好友管理、黑名单、关注",
+      "item": [
+        {
+          "name": "好友列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/friends?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "friends"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "好友列表 - 昵称搜索",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/friends?keyword=test_peer&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "friends"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "test_peer"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "更新好友备注与分组",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"remark\":\"QA 好友\",\"groupTags\":[\"测试\",\"两人社群\"]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/friends/{{testPeerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "friends",
+                "{{testPeerId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "关注 test_peer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/follows/{{testPeerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "follows",
+                "{{testPeerId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "test_peer 关注 test_user 触发互关",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/follows/{{testUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "follows",
+                "{{testUserId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "取消关注 test_peer",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/follows/{{testPeerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "follows",
+                "{{testPeerId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "拉黑 test_peer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/blacklist/{{testPeerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "blacklist",
+                "{{testPeerId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "黑名单列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/blacklist?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "blacklist"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 黑名单关系下申请好友",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetUserId\":\"{{testUserId}}\",\"source\":\"profile\",\"message\":\"blocked\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/friend-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "friend-requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "移出黑名单",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/blacklist/{{testPeerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "blacklist",
+                "{{testPeerId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 举报与后台处理",
+      "item": [
+        {
+          "name": "举报 test_peer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetType\":\"user\",\"targetId\":\"{{testPeerId}}\",\"reason\":\"QA 举报：疑似骚扰消息\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "reports"
+              ]
+            }
+          }
+        },
+        {
+          "name": "我的举报列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/reports?status=pending&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "后台查询举报",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/reports?targetType=user&targetId={{testPeerId}}&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "targetType",
+                  "value": "user"
+                },
+                {
+                  "key": "targetId",
+                  "value": "{{testPeerId}}"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "后台处理举报为 resolved",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"resolved\",\"handlingNote\":\"QA 核实：扣减信誉积分\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/reports/{{reportId}}/decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "reports",
+                "{{reportId}}",
+                "decision"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 举报自己",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetType\":\"user\",\"targetId\":\"{{testUserId}}\",\"reason\":\"self report\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "reports"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 一对一聊天",
+      "item": [
+        {
+          "name": "会话列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/conversations?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "conversations"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "发送文字消息",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"kind\":\"text\",\"text\":\"你好，MayoiStar QA\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/conversations/{{conversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "conversations",
+                "{{conversationId}}",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "发送表情文本消息",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"kind\":\"text\",\"text\":\"😀⭐\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/conversations/{{conversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "conversations",
+                "{{conversationId}}",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "上传聊天图片",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "qa/yaak/fixtures/chat-image.txt"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/media/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "media",
+                "images"
+              ]
+            }
+          }
+        },
+        {
+          "name": "发送图片消息",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"kind\":\"image\",\"imageMediaId\":\"{{chatImageMediaId}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/conversations/{{conversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "conversations",
+                "{{conversationId}}",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "消息列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/conversations/{{conversationId}}/messages?pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "conversations",
+                "{{conversationId}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "标记消息已读",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"messageIds\":[\"{{messageId}}\"]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/messages/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "messages",
+                "read"
+              ]
+            }
+          }
+        },
+        {
+          "name": "转发消息到同一好友会话",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetConversationIds\":[\"{{conversationId}}\"]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/messages/{{messageId}}/forward",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "messages",
+                "{{messageId}}",
+                "forward"
+              ]
+            }
+          }
+        },
+        {
+          "name": "撤回消息",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/messages/{{messageId}}/recall",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "messages",
+                "{{messageId}}",
+                "recall"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 非成员会话发送",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"kind\":\"text\",\"text\":\"bad conversation\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/conversations/00000000-0000-0000-0000-000000000000/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "conversations",
+                "00000000-0000-0000-0000-000000000000",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 空文本消息",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"kind\":\"text\",\"text\":\"\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/conversations/{{conversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "conversations",
+                "{{conversationId}}",
+                "messages"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
