@@ -306,7 +306,8 @@
     "full": "已满",
     "feeSuffix": "",
     "retry": "重试",
-    "refreshSuccess": "刷新成功"
+    "refreshSuccess": "刷新成功",
+    "nearbyDev": "附近活动开发中，敬请期待"
   },
 
   "activityClone": {

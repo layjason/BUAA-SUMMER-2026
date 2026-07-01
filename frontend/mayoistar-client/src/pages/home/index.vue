@@ -22,6 +22,11 @@
     >
       <view v-if="loading && items.length === 0" class="loading-text">{{ t('home.loading') }}</view>
 
+      <view v-else-if="activeTab === 'nearby'" class="dev-placeholder">
+        <text class="dev-icon">📍</text>
+        <text class="dev-text">{{ t('home.nearbyDev') }}</text>
+      </view>
+
       <view v-else-if="errorMsg && items.length === 0" class="error-box">
         <text class="error-text">{{ errorMsg }}</text>
         <view class="retry-btn" @click="loadFeed">{{ t('home.retry') }}</view>
@@ -245,11 +250,11 @@ function switchTab(tab: FeedTab): void {
   if (activeTab.value === tab) return
   activeTab.value = tab
   items.value = []
-  loadFeed()
+  if (tab !== 'nearby') loadFeed()
 }
 
 onShow(() => {
-  if (items.value.length === 0) loadFeed()
+  if (items.value.length === 0 && activeTab.value !== 'nearby') loadFeed()
 })
 
 function goDetail(activityId: string): void {
@@ -305,6 +310,24 @@ function goCreate(): void {
   font-size: 28rpx;
   color: #969799;
   padding-top: 120rpx;
+}
+
+.dev-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 160rpx;
+}
+
+.dev-icon {
+  font-size: 72rpx;
+  margin-bottom: 16rpx;
+}
+
+.dev-text {
+  font-size: 28rpx;
+  color: #969799;
 }
 
 .error-box {
