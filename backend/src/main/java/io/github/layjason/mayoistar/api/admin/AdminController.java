@@ -17,6 +17,7 @@ import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.service.AdminAuthService;
 import io.github.layjason.mayoistar.service.AdminService;
+import io.github.layjason.mayoistar.service.ReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +42,7 @@ public class AdminController {
 
     private final AdminAuthService adminAuthService;
     private final AdminService adminService;
+    private final ReportService reportService;
 
     @PostMapping("/auth/login")
     @PreAuthorize("permitAll()")

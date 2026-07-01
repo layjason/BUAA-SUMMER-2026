@@ -3,6 +3,8 @@ package io.github.layjason.mayoistar.repository;
 import io.github.layjason.mayoistar.entity.social.Report;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
 import io.github.layjason.mayoistar.entity.social.ReportTargetType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -11,28 +13,18 @@ import org.springframework.data.repository.query.Param;
 /**
  * 举报记录数据访问层。
  *
- * <p>类职责：提供 Report 实体的 CRUD 及举报统计查询，用于信誉分评定。
+ * <p>类职责：提供 Report 实体的 CRUD 及按举报者/状态/目标的多条件查询，
+ * 通过 JpaSpecificationExecutor 支持管理员端复杂筛选。
  */
 public interface ReportRepository extends JpaRepository<Report, String>, JpaSpecificationExecutor<Report> {
 
-    /**
-     * 统计针对指定用户的举报总数（只计算已处理的举报）。
-     *
-     * @param targetType 被举报对象类型，应为 user
-     * @param targetId   被举报用户 ID
-     * @param status     举报处理状态
-     * @return 举报数量
-     */
+    Page<Report> findByReporterUserIdOrderByCreatedAtDesc(String reporterUserId, Pageable pageable);
+
+    Page<Report> findByReporterUserIdAndStatusOrderByCreatedAtDesc(
+            String reporterUserId, ReportStatus status, Pageable pageable);
+
     long countByTargetTypeAndTargetIdAndStatus(ReportTargetType targetType, String targetId, ReportStatus status);
 
-    /**
-     * 统计举报过指定用户的唯一举报人数（只计算已处理的举报）。
-     *
-     * @param targetType 被举报对象类型，应为 user
-     * @param targetId   被举报用户 ID
-     * @param status     举报处理状态
-     * @return 唯一举报人数量
-     */
     @Query("SELECT COUNT(DISTINCT r.reporterUserId) FROM Report r "
             + "WHERE r.targetType = :targetType AND r.targetId = :targetId AND r.status = :status")
     long countDistinctReporterByTargetTypeAndTargetIdAndStatus(

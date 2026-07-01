@@ -3,7 +3,9 @@ package io.github.layjason.mayoistar.api.chat;
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.common.SecurityUtils;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.service.ChatService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -26,25 +28,34 @@ import org.springframework.web.multipart.MultipartFile;
 public class ChatController {
 
     private final DefaultApiResponseFactory responseFactory;
+    private final ChatService chatService;
+    private final SecurityUtils securityUtils;
 
     @GetMapping("/conversations")
     public ResponseEntity<ApiResponse<PageResult<ChatDtos.ConversationSummary>>> listConversations(
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.listConversations(userId, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/conversations/{conversationId}/messages")
     public ResponseEntity<ApiResponse<PageResult<ChatDtos.ChatMessage>>> listMessages(
             @PathVariable String conversationId,
             @RequestParam(required = false) String cursor,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.listMessages(conversationId, userId, 1, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/conversations/{conversationId}/messages")
     public ResponseEntity<ApiResponse<ChatDtos.ChatMessage>> sendMessage(
             @PathVariable String conversationId, @Valid @RequestBody ChatDtos.SendMessageRequest request) {
-        return responseFactory.chatMessage();
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.sendMessage(conversationId, userId, request);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping(value = "/media/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -56,18 +67,24 @@ public class ChatController {
     @PostMapping("/messages/read")
     public ResponseEntity<ApiResponse<List<ChatDtos.ChatMessage>>> markMessagesRead(
             @Valid @RequestBody ChatDtos.MarkMessagesReadRequest request) {
-        return responseFactory.chatMessages();
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.markMessagesRead(userId, request.getMessageIds());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/messages/{messageId}/forward")
     public ResponseEntity<ApiResponse<List<ChatDtos.ChatMessage>>> forwardMessage(
             @PathVariable String messageId, @Valid @RequestBody ChatDtos.ForwardMessageRequest request) {
-        return responseFactory.chatMessages();
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.forwardMessage(messageId, userId, request.getTargetConversationIds());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/messages/{messageId}/recall")
     public ResponseEntity<ApiResponse<ChatDtos.ChatMessage>> recallMessage(@PathVariable String messageId) {
-        return responseFactory.chatMessage();
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.recallMessage(messageId, userId);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping(value = "/teams/{teamId}/album-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
