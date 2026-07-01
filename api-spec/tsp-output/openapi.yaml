@@ -3140,6 +3140,7 @@ paths:
                   - $ref: '#/components/schemas/Errors.Chat.ConversationNotVisible'
                   - $ref: '#/components/schemas/Errors.Chat.ConversationMemberRequired'
                   - $ref: '#/components/schemas/Errors.Chat.MessageContentInvalid'
+                  - $ref: '#/components/schemas/Errors.Chat.MediaReferenceInvalid'
       tags:
         - 即时通讯
       requestBody:
@@ -8378,8 +8379,7 @@ components:
       required:
         - kind
         - conversationId
-        - message
-        - conversationUnreadCount
+        - payload
         - occurredAt
       properties:
         kind:
@@ -8390,24 +8390,24 @@ components:
           allOf:
             - $ref: '#/components/schemas/EntityId'
           description: 发生事件的会话标识。
-        message:
-          allOf:
-            - $ref: '#/components/schemas/Chat.ChatMessage'
-          description: 新创建的聊天消息。
-        conversationUnreadCount:
-          type: integer
-          format: int32
-          description: 当前用户在该会话中的最新未读消息数。
+        payload:
+          anyOf:
+            - $ref: '#/components/schemas/Chat.MessageCreatedPayload'
+            - $ref: '#/components/schemas/Chat.MessageRecalledPayload'
+            - $ref: '#/components/schemas/Chat.MessageForwardedPayload'
+          description: 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload。
         occurredAt:
           allOf:
             - $ref: '#/components/schemas/DateTimeString'
           description: 事件发生时间。
-      description: 聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话的新消息。
+      description: 聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话中的实时事件。
     Chat.ChatRealtimeEventKind:
       type: string
       enum:
         - messageCreated
-      description: 聊天实时事件类型。
+        - messageRecalled
+        - messageForwarded
+      description: 聊天实时事件类型。friendRequestCreated 事件通过 /queue/social-events 推送，不在此枚举内。
     Chat.ConversationKind:
       type: string
       enum:
@@ -8494,6 +8494,36 @@ components:
             $ref: '#/components/schemas/EntityId'
           description: 待标记为已读的消息标识列表。
       description: 批量标记消息已读请求，调用方为消息接收方，所有消息均需对调用方可见。
+    Chat.MessageCreatedPayload:
+      type: object
+      required:
+        - message
+        - conversationUnreadCount
+      properties:
+        message:
+          allOf:
+            - $ref: '#/components/schemas/Chat.ChatMessage'
+          description: 新创建的聊天消息。
+        conversationUnreadCount:
+          type: integer
+          format: int32
+          description: 当前用户在该会话中的最新未读消息数。
+      description: 消息创建事件负载。
+    Chat.MessageForwardedPayload:
+      type: object
+      required:
+        - message
+        - conversationUnreadCount
+      properties:
+        message:
+          allOf:
+            - $ref: '#/components/schemas/Chat.ChatMessage'
+          description: 转发产生的新聊天消息。
+        conversationUnreadCount:
+          type: integer
+          format: int32
+          description: 当前用户在该会话中的最新未读消息数。
+      description: 消息转发事件负载。
     Chat.MessageKind:
       type: string
       enum:
@@ -8507,6 +8537,16 @@ components:
         - unread
         - read
       description: 消息读取状态。
+    Chat.MessageRecalledPayload:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          allOf:
+            - $ref: '#/components/schemas/Chat.ChatMessage'
+          description: 被撤回的聊天消息，其 recalled 字段为 true。
+      description: 消息撤回事件负载。
     Chat.SendMessageRequest:
       type: object
       required:
@@ -9772,6 +9812,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 50000：上传媒体用途不符合聊天接口要求。
+    Errors.Chat.MediaReferenceInvalid:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 50018
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Referenced media does not exist
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 50018：消息引用的媒体文件不存在。
     Errors.Chat.MessageContentInvalid:
       type: object
       allOf:
@@ -10097,6 +10162,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 10004：账号尚未激活。
+    Errors.Identity.AccountLocked:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 10019
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Account is temporarily locked due to multiple failed login attempts
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 10019：账号因多次登录失败被暂时锁定。message 中会提示剩余锁定时间。
     Errors.Identity.ActivationEmailRateLimited:
       type: object
       allOf:

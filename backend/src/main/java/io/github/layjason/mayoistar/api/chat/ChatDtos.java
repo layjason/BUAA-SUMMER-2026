@@ -1,9 +1,13 @@
 package io.github.layjason.mayoistar.api.chat;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.api.validation.ValidMessageContent;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.chat.MessageKind;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import lombok.Data;
 
@@ -20,6 +24,7 @@ public final class ChatDtos {
 
     /* ========== 请求 DTO ========== */
 
+    @ValidMessageContent
     @Data
     public static class SendMessageRequest {
         @NotNull
@@ -34,40 +39,42 @@ public final class ChatDtos {
 
     @Data
     public static class ForwardMessageRequest {
-        @NotNull
+        @NotEmpty
         private List<String> targetConversationIds;
     }
 
     @Data
     public static class MarkMessagesReadRequest {
-        @NotNull
+        @NotEmpty
         private List<String> messageIds;
     }
 
     @Data
     public static class TeamAnnouncementRequest {
-        @NotNull
+        @NotBlank
         private String content;
     }
 
     @Data
     public static class DeleteTeamFilesRequest {
-        @NotNull
+        @NotEmpty
         private List<String> mediaIds;
     }
 
     @Data
     public static class DeleteTeamAlbumImagesRequest {
-        @NotNull
+        @NotEmpty
         private List<String> mediaIds;
     }
 
     @Data
     public static class TeamPollCreateRequest {
-        @NotNull
+        @NotBlank
+        @Size(max = 200)
         private String title;
 
-        @NotNull
+        @NotEmpty
+        @Size(min = 2)
         private List<String> options;
 
         private String deadline;
@@ -75,7 +82,8 @@ public final class ChatDtos {
 
     @Data
     public static class VotePollRequest {
-        @NotNull
+        @NotBlank
+        @Size(max = 36)
         private String optionId;
     }
 
@@ -108,12 +116,33 @@ public final class ChatDtos {
         private String sentAt;
     }
 
+    /**
+     * 聊天实时事件负载标记接口，具体类型由 ChatRealtimeEvent.kind 区分。
+     */
+    public interface ChatRealtimeEventPayload {}
+
+    @Data
+    public static class MessageCreatedPayload implements ChatRealtimeEventPayload {
+        private ChatMessage message;
+        private Integer conversationUnreadCount;
+    }
+
+    @Data
+    public static class MessageRecalledPayload implements ChatRealtimeEventPayload {
+        private ChatMessage message;
+    }
+
+    @Data
+    public static class MessageForwardedPayload implements ChatRealtimeEventPayload {
+        private ChatMessage message;
+        private Integer conversationUnreadCount;
+    }
+
     @Data
     public static class ChatRealtimeEvent {
         private String kind;
         private String conversationId;
-        private ChatMessage message;
-        private Integer conversationUnreadCount;
+        private ChatRealtimeEventPayload payload;
         private String occurredAt;
     }
 

@@ -302,11 +302,14 @@ public class DefaultApiResponseFactory {
         message.setRecalled(false);
         message.setSentAt(NOW);
 
+        ChatDtos.MessageCreatedPayload payload = new ChatDtos.MessageCreatedPayload();
+        payload.setMessage(message);
+        payload.setConversationUnreadCount(0);
+
         ChatDtos.ChatRealtimeEvent dto = new ChatDtos.ChatRealtimeEvent();
         dto.setKind("messageCreated");
         dto.setConversationId("conversation-placeholder");
-        dto.setMessage(message);
-        dto.setConversationUnreadCount(0);
+        dto.setPayload(payload);
         dto.setOccurredAt(NOW);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
@@ -333,6 +336,7 @@ public class DefaultApiResponseFactory {
         dto.setTeamId("team-placeholder");
         dto.setTitle("默认投票");
         dto.setOptions(List.of(option));
+        dto.setDeadline(NOW);
         dto.setCreatedAt(NOW);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }

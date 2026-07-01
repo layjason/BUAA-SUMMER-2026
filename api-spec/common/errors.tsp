@@ -85,6 +85,13 @@ namespace QujuApi.Errors.Identity {
       10018,
       "Password reset email rate limit has been exceeded"
     > {}
+
+  @doc("10019：账号因多次登录失败被暂时锁定。message 中会提示剩余锁定时间。")
+  model AccountLocked
+    extends APIErrorResponse<
+      10019,
+      "Account is temporarily locked due to multiple failed login attempts"
+    > {}
 }
 
 namespace QujuApi.Errors.Activities {
@@ -373,6 +380,10 @@ namespace QujuApi.Errors.Chat {
       50017,
       "Announcement {announcementId} is not visible"
     > {}
+
+  @doc("50018：消息引用的媒体文件不存在。")
+  model MediaReferenceInvalid
+    extends APIErrorResponse<50018, "Referenced media does not exist"> {}
 }
 
 namespace QujuApi.Errors.Admin {
