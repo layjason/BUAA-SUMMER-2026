@@ -2,35 +2,6 @@
   <view class="page">
     <scroll-view class="scroll-area" scroll-y>
       <view class="edit-container">
-        <!-- 模板选择（仅创建模式） -->
-        <view v-if="!isEdit && templates.length > 0 && !templateCollapsed" class="section">
-          <text class="section-title">{{ t('activityTemplates.title') }}</text>
-          <text class="section-subtitle">{{ t('activityTemplates.subtitle') }}</text>
-          <scroll-view class="template-scroll" scroll-x>
-            <view
-              v-for="tpl in templates"
-              :key="tpl.templateId"
-              class="template-card"
-              hover-class="card-hover"
-              @click="applyTemplate(tpl)"
-            >
-              <image
-                v-if="tpl.defaultCoverImage?.url"
-                class="template-cover"
-                :src="tpl.defaultCoverImage.url"
-                mode="aspectFill"
-              />
-              <view v-else class="template-cover template-cover-placeholder">
-                <text class="template-placeholder-icon">📋</text>
-              </view>
-              <text class="template-name">{{ tpl.name }}</text>
-              <text class="template-tags">{{ tpl.defaultTags.join(' · ') }}</text>
-            </view>
-          </scroll-view>
-          <view class="template-collapse" @click="templateCollapsed = true">
-            <text class="collapse-text">{{ t('activityTemplates.useTemplate') }} ✓</text>
-          </view>
-        </view>
         <!-- 活动图片 -->
         <view class="section">
           <text class="section-title">{{ t('activityEdit.images') }}</text>
@@ -282,45 +253,6 @@ const savingDraft = ref(false)
 const submitting = ref(false)
 const formError = ref('')
 const errors = ref<Record<string, string>>({})
-
-interface ActivityTemplate {
-  templateId: string
-  name: string
-  activityType: string
-  defaultTags: string[]
-  defaultIntroduction: string
-  defaultSafetyNotice: string
-  defaultCapacity: number
-  defaultCoverImage: { url: string; mediaId: string } | null
-}
-
-const templates = ref<ActivityTemplate[]>([])
-const templateCollapsed = ref(false)
-
-/**
- * 加载活动模板
- */
-async function loadTemplates(): Promise<void> {
-  try {
-    const result = await api.get('/activities/templates')
-    templates.value = (result.items ?? []) as ActivityTemplate[]
-  } catch {
-    /* 模板加载失败不影响编辑 */
-  }
-}
-
-/**
- * 应用模板填充表单
- */
-function applyTemplate(tpl: ActivityTemplate): void {
-  formTitle.value = ''
-  selectedTags.value = new Set(tpl.defaultTags)
-  formIntroduction.value = tpl.defaultIntroduction
-  formSafetyNotice.value = tpl.defaultSafetyNotice
-  formCapacity.value = String(tpl.defaultCapacity)
-  templateCollapsed.value = true
-  uni.showToast({ title: `${t('activityTemplates.apply')}: ${tpl.name}`, icon: 'success' })
-}
 
 /**
  * 加载系统可用标签
@@ -628,7 +560,6 @@ async function loadDraft(): Promise<void> {
 onLoad((query) => {
   activityId.value = (query?.activityId as string) ?? ''
   loadTags()
-  if (!isEdit.value) loadTemplates()
   if (isEdit.value) loadDraft()
 })
 </script>
@@ -662,78 +593,6 @@ onLoad((query) => {
   color: #323233;
   margin-bottom: 12rpx;
   font-weight: 600;
-}
-
-.section-subtitle {
-  display: block;
-  font-size: 24rpx;
-  color: #969799;
-  margin-bottom: 16rpx;
-}
-
-/* ---- 模板卡片 ---- */
-.template-scroll {
-  display: flex;
-  overflow-x: auto;
-  white-space: nowrap;
-  padding-bottom: 16rpx;
-}
-
-.card-hover {
-  opacity: 0.85;
-}
-
-.template-card {
-  display: inline-flex;
-  flex-direction: column;
-  width: 240rpx;
-  background-color: #fff;
-  border-radius: 12rpx;
-  overflow: hidden;
-  margin-right: 16rpx;
-  flex-shrink: 0;
-  border: 2rpx solid #ebedf0;
-}
-
-.template-cover {
-  width: 240rpx;
-  height: 140rpx;
-}
-
-.template-cover-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f2f3f5;
-}
-
-.template-placeholder-icon {
-  font-size: 40rpx;
-}
-
-.template-name {
-  display: block;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: #323233;
-  padding: 12rpx 12rpx 4rpx;
-}
-
-.template-tags {
-  display: block;
-  font-size: 22rpx;
-  color: #969799;
-  padding: 0 12rpx 12rpx;
-}
-
-.template-collapse {
-  text-align: right;
-  padding: 8rpx 0;
-}
-
-.collapse-text {
-  font-size: 24rpx;
-  color: #1989fa;
 }
 
 /* ---- 图片 ---- */
