@@ -32,7 +32,46 @@ public final class ErrorCodes {
     public static final int DUPLICATE_FRIEND_REQUEST = 40006;
 
     /** 举报目标或举报内容不合法 */
-    public static final int USER_REPORT_INVALID = 40007;
+    public static final int REPORT_INVALID = 40007;
+
+    /** 小队名称已被占用 */
+    public static final int TEAM_NAME_UNAVAILABLE = 40008;
+
+    /** 小队不存在、已解散或调用方不可见 */
+    public static final int TEAM_NOT_VISIBLE = 40009;
+
+    /** 小队人数已满 */
+    public static final int TEAM_FULL = 40010;
+
+    /** 小队已解散或已停用 */
+    public static final int TEAM_UNAVAILABLE = 40011;
+
+    /** 用户已经是小队成员 */
+    public static final int TEAM_MEMBER_ALREADY_EXISTS = 40012;
+
+    /** 重复入队申请 */
+    public static final int DUPLICATE_TEAM_JOIN_REQUEST = 40013;
+
+    /** 入队申请状态不允许当前操作 */
+    public static final int TEAM_JOIN_REQUEST_STATE_INVALID = 40014;
+
+    /** 调用方不是小队成员 */
+    public static final int TEAM_MEMBER_NOT_FOUND = 40015;
+
+    /** 队长不能直接退出小队 */
+    public static final int TEAM_LEADER_CANNOT_LEAVE = 40016;
+
+    /** 小队角色变更不合法 */
+    public static final int TEAM_ROLE_CHANGE_INVALID = 40017;
+
+    /** 小队活动不存在或不属于该小队 */
+    public static final int TEAM_ACTIVITY_NOT_VISIBLE = 40018;
+
+    /** 黑名单关系不存在 */
+    public static final int BLACKLIST_RELATION_NOT_FOUND = 40019;
+
+    /** 调用方缺少小队管理权限 */
+    public static final int TEAM_PERMISSION_DENIED = 40020;
 
     /* ========== 聊天 ========== */
 
