@@ -1,6 +1,8 @@
 spring:
   application:
     name: mayoistar
+  profiles:
+      default: dev
   config:
     import: optional:file:.env[.properties]
   jackson:
