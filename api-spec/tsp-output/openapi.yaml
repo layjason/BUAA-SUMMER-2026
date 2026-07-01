@@ -518,6 +518,69 @@ paths:
                 description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
       tags:
         - 活动
+  /activities/registrations/mine:
+    get:
+      operationId: ActivityOperations_listMyRegistrations
+      description: 获取我报名的活动列表，调用方已登录，分页返回本人报名的活动及报名状态。
+      parameters:
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - message
+                  - data
+                properties:
+                  code:
+                    type: number
+                    enum:
+                      - 200
+                    description: 平台响应代码，成功响应固定为 200。
+                  message:
+                    type: string
+                    enum:
+                      - For Super Earth!
+                    description: 平台响应消息，成功响应固定为 For Super Earth!。
+                  data:
+                    type: object
+                    required:
+                      - items
+                      - total
+                      - page
+                      - pageSize
+                      - totalPages
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Activities.RegisteredActivitySummary'
+                        description: 当前页数据。
+                      total:
+                        type: integer
+                        format: int64
+                        description: 匹配总数。
+                      page:
+                        type: integer
+                        format: int32
+                        description: 当前页码。
+                      pageSize:
+                        type: integer
+                        format: int32
+                        description: 每页数量。
+                      totalPages:
+                        type: integer
+                        format: int32
+                        description: 匹配总页数。
+                    description: 响应数据。
+                description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+      tags:
+        - 活动
   /activities/search:
     get:
       operationId: ActivityOperations_searchActivities
@@ -7613,6 +7676,92 @@ components:
           type: boolean
           description: 是否已确认活动安全须知。
       description: 活动报名请求，活动存在且用户满足信誉、年龄等校验，生成正式报名或候补记录，满员时不得直接占用名额。
+    Activities.RegisteredActivitySummary:
+      type: object
+      required:
+        - activityId
+        - title
+        - tags
+        - startAt
+        - endAt
+        - location
+        - reviewStatus
+        - runtimeStatus
+        - registeredCount
+        - capacity
+        - registrationId
+        - registrationStatus
+        - registeredAt
+      properties:
+        activityId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 活动标识。
+        title:
+          type: string
+          description: 活动名称。
+        tags:
+          type: array
+          items:
+            type: string
+          description: 活动标签。
+        startAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 活动开始时间。
+        endAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 活动结束时间。
+        location:
+          allOf:
+            - $ref: '#/components/schemas/LocationInfo'
+          description: 活动地点。
+        coverImage:
+          allOf:
+            - $ref: '#/components/schemas/MediaFile'
+          description: 活动封面图片。
+        feeAmount:
+          type: number
+          format: double
+          description: 活动费用金额。
+        reviewStatus:
+          allOf:
+            - $ref: '#/components/schemas/Activities.ActivityReviewStatus'
+          description: 活动审核状态。
+        runtimeStatus:
+          allOf:
+            - $ref: '#/components/schemas/Activities.ActivityRuntimeStatus'
+          description: 活动进行状态。
+        registeredCount:
+          type: integer
+          format: int32
+          description: 已报名人数。
+        capacity:
+          type: integer
+          format: int32
+          description: 活动人数上限。
+        registrationId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 报名记录标识。
+        registrationStatus:
+          allOf:
+            - $ref: '#/components/schemas/Activities.RegistrationStatus'
+          description: 当前用户在该活动中的报名状态。
+        registeredAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 报名或候补创建时间。
+        waitingRank:
+          type: integer
+          format: int32
+          description: 候补排位，非候补状态时为空。
+        confirmationDeadline:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 候补名额确认截止时间，仅候补待确认时返回。
+      description: 我报名的活动摘要，包含活动信息与当前用户的报名状态。
     Activities.RegistrationResult:
       type: object
       required:

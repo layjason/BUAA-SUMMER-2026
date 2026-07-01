@@ -12,11 +12,14 @@ import io.github.layjason.mayoistar.repository.InterestTagRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,6 +40,7 @@ public class UserProfileService {
     private final InterestTagRepository interestTagRepository;
     private final MediaFileRepository mediaFileRepository;
     private final ReputationService reputationService;
+    private final Path uploadRoot;
 
     /**
      * @param userRepository              用户数据访问
@@ -44,18 +48,21 @@ public class UserProfileService {
      * @param interestTagRepository       兴趣标签数据访问
      * @param mediaFileRepository         媒体文件数据访问
      * @param reputationService           信誉分服务
+     * @param uploadRoot                  本地上传根目录
      */
     public UserProfileService(
             UserRepository userRepository,
             PersonalProfileRepository personalProfileRepository,
             InterestTagRepository interestTagRepository,
             MediaFileRepository mediaFileRepository,
-            ReputationService reputationService) {
+            ReputationService reputationService,
+            @Value("${mayoistar.upload.root:uploads}") String uploadRoot) {
         this.userRepository = userRepository;
         this.personalProfileRepository = personalProfileRepository;
         this.interestTagRepository = interestTagRepository;
         this.mediaFileRepository = mediaFileRepository;
         this.reputationService = reputationService;
+        this.uploadRoot = Path.of(uploadRoot).toAbsolutePath().normalize();
     }
 
     /**
@@ -211,8 +218,8 @@ public class UserProfileService {
         String storagePath = "avatars/" + userId + "/" + mediaId + "_" + originalFilename;
 
         try {
-            java.nio.file.Path dir = java.nio.file.Path.of("uploads/avatars/" + userId);
-            java.nio.file.Files.createDirectories(dir);
+            Path dir = uploadRoot.resolve("avatars").resolve(userId).normalize();
+            Files.createDirectories(dir);
             file.transferTo(dir.resolve(mediaId + "_" + originalFilename).toFile());
         } catch (Exception e) {
             log.error("头像文件写入失败: userId={}", userId, e);

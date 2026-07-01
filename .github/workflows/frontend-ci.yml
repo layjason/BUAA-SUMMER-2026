@@ -35,8 +35,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install editorconfig-checker
+        run: |
+          curl -sSL https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.6.1/ec-linux-amd64.tar.gz \
+            | sudo tar -xz --strip-components=1 -C /usr/local/bin bin/ec-linux-amd64
+          sudo mv /usr/local/bin/ec-linux-amd64 /usr/local/bin/ec
+
       - name: Check EditorConfig
-        run: pnpm dlx editorconfig-checker@6.1.1
+        run: ec
 
       - name: Check formatting
         run: pnpm exec prettier . --check

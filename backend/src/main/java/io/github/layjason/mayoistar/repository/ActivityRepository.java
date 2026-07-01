@@ -2,7 +2,10 @@ package io.github.layjason.mayoistar.repository;
 
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
@@ -11,9 +14,66 @@ import org.springframework.data.repository.query.Param;
 
 /**
  * 活动数据访问层。
+ *
+ * <p>类职责：提供 Activity 实体的 CRUD、按组织者查询及复杂筛选分页查询。
  */
 public interface ActivityRepository extends JpaRepository<Activity, String>, JpaSpecificationExecutor<Activity> {
 
+    /**
+     * 统计指定用户发布的活动数量。
+     *
+     * @param organizerId 组织者用户 ID
+     * @return 活动数量
+     */
+    long countByOrganizerId(String organizerId);
+
+    /**
+     * 按组织者分页查询活动。
+     *
+     * @param organizerId 组织者用户 ID
+     * @param pageable    分页参数
+     * @return 分页结果
+     */
+    Page<Activity> findByOrganizerId(String organizerId, Pageable pageable);
+
+    /**
+     * 查询指定小队下的活动。
+     *
+     * @param teamId   小队 ID
+     * @param pageable 分页参数
+     * @return 分页结果
+     */
+    Page<Activity> findByTeamId(String teamId, Pageable pageable);
+
+    /**
+     * 查询用户创建或参与（包括小队）的活动。
+     *
+     * @param userId   用户 ID
+     * @param pageable 分页参数
+     * @return 分页结果
+     */
+    @Query("SELECT DISTINCT a FROM Activity a "
+            + "LEFT JOIN TeamMember tm ON a.teamId = tm.teamId AND tm.userId = :userId "
+            + "WHERE a.organizerId = :userId OR tm.userId = :userId")
+    Page<Activity> findByUserIdOrTeamMember(@Param("userId") String userId, Pageable pageable);
+
+    /**
+     * 查询用户涉及的小队 ID 列表（创建者、队长或成员身份）。
+     *
+     * @param userId 用户 ID
+     * @return 小队 ID 列表
+     */
+    @Query("SELECT DISTINCT t.teamId FROM Team t "
+            + "LEFT JOIN TeamMember tm ON t.teamId = tm.teamId AND tm.userId = :userId "
+            + "WHERE t.creatorId = :userId OR t.leaderId = :userId OR tm.userId = :userId")
+    List<String> findTeamIdsByUserIdInvolvement(@Param("userId") String userId);
+
+    /**
+     * 按活动 ID 加悲观写锁读取活动，用于报名、取消报名和候补递补等容量敏感流程。
+     *
+     * @param activityId 活动 ID
+     * @return 活动
+     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Activity a where a.activityId = :activityId")
     Optional<Activity> findByIdForUpdate(@Param("activityId") String activityId);
