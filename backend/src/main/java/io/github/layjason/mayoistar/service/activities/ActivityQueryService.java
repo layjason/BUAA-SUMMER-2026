@@ -117,12 +117,19 @@ public class ActivityQueryService {
 
         log.debug(
                 "已查询我的活动列表，userId={}, status={}, page={}, pageSize={}, total={}",
-                userId,
-                status,
+                sanitizeForLog(userId),
+                sanitizeForLog(status),
                 resolvedPage,
                 resolvedPageSize,
                 activityPage.getTotalElements());
         return activityDtoMapper.toActivitySummaryPage(activityPage, this::loadCoverImage);
+    }
+
+    private String sanitizeForLog(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replace("\r", "\\r").replace("\n", "\\n");
     }
 
     /**
@@ -357,7 +364,7 @@ public class ActivityQueryService {
         try {
             return Instant.parse(value);
         } catch (DateTimeParseException e) {
-            log.debug("地图查询：忽略无效的时间参数 {}", value.replace("\n", "\\n").replace("\r", "\\r"));
+            log.debug("地图查询：忽略无效的时间参数 {}", sanitizeForLog(value));
             return null;
         }
     }
