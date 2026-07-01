@@ -50,8 +50,13 @@
 
         <FormError :message="formError" />
 
-        <button class="submit-btn" :loading="submitting" @click="handleSubmit">
-          {{ t('activityReview.submit') }}
+        <button
+          class="submit-btn"
+          :loading="submitting"
+          :disabled="rating === 0"
+          @click="handleSubmit"
+        >
+          {{ rating === 0 ? '请先打分' : t('activityReview.submit') }}
         </button>
       </view>
     </scroll-view>
@@ -130,7 +135,7 @@ function removeReviewImage(index: number): void {
 }
 
 async function handleSubmit(): Promise<void> {
-  if (submitting.value || rating.value === 0) return
+  if (submitting.value) return
   formError.value = ''
   submitting.value = true
 
