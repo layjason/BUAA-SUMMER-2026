@@ -5,7 +5,6 @@ import io.github.layjason.mayoistar.api.identity.IdentityDtos;
 import io.github.layjason.mayoistar.entity.admin.Admin;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.AdminRepository;
-import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -26,10 +25,6 @@ public class AdminAuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    private static final int MAX_LOGIN_ATTEMPTS = 5;
-    private static final long LOGIN_LOCK_DURATION_SECONDS = 900;
-    private static final long LOGIN_ATTEMPT_WINDOW_SECONDS = 900;
-
     /**
      * @param adminRepository 管理员数据访问
      * @param passwordEncoder 密码编码器
@@ -44,32 +39,22 @@ public class AdminAuthService {
     /**
      * 管理员用户名密码登录。
      *
-     * <p>前置条件：username 存在且密码匹配，未被锁定。
+     * <p>前置条件：username 存在且密码匹配。
      *
-     * <p>后置条件：返回 AdminLoginResponse（含 adminId、tokenPair）。登录成功时重置失败计数与锁定状态；密码错误时递增失败计数。
+     * <p>后置条件：返回 AdminLoginResponse（含 adminId、tokenPair）。
      *
      * @param request 登录请求
      * @return 登录结果
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public AdminDtos.AdminLoginResponse login(AdminDtos.AdminLoginRequest request) {
         Admin admin = adminRepository
                 .findByUsername(request.getUsername())
                 .orElseThrow(() -> new BusinessException(60000, "Admin username or password is invalid"));
 
-        if (isAdminLocked(admin)) {
-            log.warn("锁定管理员尝试登录: adminId={}", admin.getAdminId());
-            throw new BusinessException(60000, "Admin username or password is invalid");
-        }
-
-        resetAdminLoginWindowIfExpired(admin);
-
         if (!passwordEncoder.matches(request.getPassword(), admin.getPasswordHash())) {
-            recordAdminLoginFailure(admin);
             throw new BusinessException(60000, "Admin username or password is invalid");
         }
-
-        resetAdminLoginState(admin);
 
         String accessToken = jwtService.generateAdminAccessToken(admin.getAdminId());
         String refreshToken = jwtService.generateAdminRefreshToken(admin.getAdminId());
@@ -88,38 +73,6 @@ public class AdminAuthService {
         return result;
     }
 
-    private boolean isAdminLocked(Admin admin) {
-        return admin.getLockedUntil() != null && admin.getLockedUntil().isAfter(Instant.now());
-    }
-
-    private void resetAdminLoginWindowIfExpired(Admin admin) {
-        if (admin.getLastFailedLoginAt() != null
-                && admin.getLastFailedLoginAt()
-                        .plusSeconds(LOGIN_ATTEMPT_WINDOW_SECONDS)
-                        .isBefore(Instant.now())) {
-            admin.setLoginAttempts(0);
-        }
-    }
-
-    private void recordAdminLoginFailure(Admin admin) {
-        admin.setLoginAttempts(admin.getLoginAttempts() + 1);
-        admin.setLastFailedLoginAt(Instant.now());
-        if (admin.getLoginAttempts() >= MAX_LOGIN_ATTEMPTS) {
-            admin.setLockedUntil(Instant.now().plusSeconds(LOGIN_LOCK_DURATION_SECONDS));
-            log.warn("管理员账号已被锁定: adminId={}", admin.getAdminId());
-        }
-        admin.setUpdatedAt(Instant.now());
-        adminRepository.save(admin);
-    }
-
-    private void resetAdminLoginState(Admin admin) {
-        admin.setLoginAttempts(0);
-        admin.setLastFailedLoginAt(null);
-        admin.setLockedUntil(null);
-        admin.setUpdatedAt(Instant.now());
-        adminRepository.save(admin);
-    }
-
     /**
      * 管理员修改密码。
      *
@@ -133,8 +86,9 @@ public class AdminAuthService {
      */
     @Transactional
     public void changePassword(String adminId, String oldPassword, String newPassword) {
-        Admin admin =
-                adminRepository.findById(adminId).orElseThrow(() -> new BusinessException(401, "Admin not found"));
+        Admin admin = adminRepository
+                .findById(adminId)
+                .orElseThrow(() -> new BusinessException(401, "Authentication is required"));
 
         if (!passwordEncoder.matches(oldPassword, admin.getPasswordHash())) {
             throw new BusinessException(60001, "Old password is invalid");

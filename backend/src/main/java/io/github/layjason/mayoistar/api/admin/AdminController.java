@@ -18,7 +18,6 @@ import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.service.AdminAuthService;
 import io.github.layjason.mayoistar.service.AdminService;
-import io.github.layjason.mayoistar.service.activities.AdminActivityService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -44,7 +43,6 @@ public class AdminController {
     private final DefaultApiResponseFactory responseFactory;
     private final AdminAuthService adminAuthService;
     private final AdminService adminService;
-    private final AdminActivityService adminActivityService;
 
     @GetMapping("/activities")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> listActivities(
@@ -54,32 +52,29 @@ public class AdminController {
             @RequestParam(required = false) String organizerId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return ResponseEntity.ok(ApiResponse.success(adminActivityService.listActivities(
-                keyword, reviewStatus, runtimeStatus, organizerId, page, pageSize)));
+        return responseFactory.emptyPage();
     }
 
     @GetMapping("/activities/{activityId}")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> getActivity(@PathVariable String activityId) {
-        return ResponseEntity.ok(ApiResponse.success(adminActivityService.getActivityDetail(activityId)));
+        return responseFactory.activityDetail();
     }
 
     @PostMapping("/activities/{activityId}/restore")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> restoreActivity(@PathVariable String activityId) {
-        return ResponseEntity.ok(ApiResponse.success(adminActivityService.restoreActivity(activityId)));
+        return responseFactory.activityDetail();
     }
 
     @PostMapping("/activities/{activityId}/review")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> reviewActivity(
             @PathVariable String activityId, @Valid @RequestBody AdminDtos.ReviewDecisionRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(
-                adminActivityService.reviewActivity(activityId, request.getResult(), request.getReason())));
+        return responseFactory.activityDetail();
     }
 
     @PostMapping("/activities/{activityId}/take-down")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> takeDownActivity(
             @PathVariable String activityId, @Valid @RequestBody AdminDtos.ActivityModerationRequest request) {
-        return ResponseEntity.ok(
-                ApiResponse.success(adminActivityService.takeDownActivity(activityId, request.getReason())));
+        return responseFactory.activityDetail();
     }
 
     @PostMapping("/auth/login")
