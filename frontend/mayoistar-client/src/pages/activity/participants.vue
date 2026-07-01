@@ -81,19 +81,19 @@ function registrationStatusText(status: string): string {
 /**
  * 加载参与者列表
  *
- * @param reset 是否重置为第一页
+ * @param page 目标页码
+ * @param reset 是否重置列表
  */
-async function loadData(reset = true): Promise<void> {
+async function loadData(page: number, reset = false): Promise<void> {
   if (reset) {
-    currentPage.value = 1
     noMore.value = false
+    loading.value = true
   }
-  if (reset) loading.value = true
 
   try {
     const result = (await api.get('/activities/{activityId}/participants', {
       path: { activityId: activityId.value },
-      query: { page: currentPage.value, pageSize: PAGE_SIZE },
+      query: { page, pageSize: PAGE_SIZE },
     })) as { items: ParticipantItem[]; page: number; totalPages: number }
 
     if (reset) {
@@ -121,7 +121,7 @@ async function loadData(reset = true): Promise<void> {
 async function onRefresh(): Promise<void> {
   refreshing.value = true
   errorMsg.value = ''
-  await loadData(true)
+  await loadData(1, true)
   refreshing.value = false
 }
 
@@ -131,8 +131,7 @@ async function onRefresh(): Promise<void> {
 async function onLoadMore(): Promise<void> {
   if (loadingMore.value || noMore.value || loading.value) return
   loadingMore.value = true
-  currentPage.value++
-  await loadData(false)
+  await loadData(currentPage.value + 1)
   loadingMore.value = false
 }
 
@@ -143,7 +142,7 @@ onLoad((query) => {
     loading.value = false
     return
   }
-  loadData()
+  loadData(1, true)
 })
 </script>
 
