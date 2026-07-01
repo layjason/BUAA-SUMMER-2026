@@ -269,6 +269,18 @@ create_report=$(create_request "$workspace_id" "$report_folder" "举报用户" "
 admin_list_reports=$(create_request "$workspace_id" "$report_folder" "后台查询举报" "GET" "${BASE_URL}/admin/reports?targetType=user&targetId=${TEST_PEER_ID}&page=1&pageSize=20" "adminAccessToken")
 admin_decide_report=$(create_request "$workspace_id" "$report_folder" "后台处理举报" "POST" "${BASE_URL}"'/admin/reports/${[ reportId ]}/decision' "adminAccessToken" '{"status":"resolved","handlingNote":"Yaak CLI smoke resolved"}')
 
+edge_folder=$(create_folder "$workspace_id" "04 边界用例")
+
+follow_self=$(create_request "$workspace_id" "$edge_folder" "关注自己" "POST" "${BASE_URL}/social/follows/${TEST_USER_ID}" "userAccessToken")
+block_self=$(create_request "$workspace_id" "$edge_folder" "拉黑自己" "POST" "${BASE_URL}/social/blacklist/${TEST_USER_ID}" "userAccessToken")
+friend_request_self=$(create_request "$workspace_id" "$edge_folder" "给自己发好友申请" "POST" "${BASE_URL}/social/friend-requests" "userAccessToken" '{"targetUserId":"${[ testUserId ]}","source":"profile","message":"self"}')
+report_self_req=$(create_request "$workspace_id" "$edge_folder" "举报自己" "POST" "${BASE_URL}/social/reports" "userAccessToken" '{"targetType":"user","targetId":"${[ testUserId ]}","reason":"self report"}')
+report_nonexistent_req=$(create_request "$workspace_id" "$edge_folder" "举报不存在用户" "POST" "${BASE_URL}/social/reports" "userAccessToken" '{"targetType":"user","targetId":"00000000-0000-0000-0000-000000000000","reason":"nonexistent"}')
+profile_nonexistent_req=$(create_request "$workspace_id" "$edge_folder" "查看不存在用户资料" "GET" "${BASE_URL}/social/profiles/00000000-0000-0000-0000-000000000000" "userAccessToken")
+reject_friend_req=$(create_request "$workspace_id" "$edge_folder" "拒绝好友申请" "POST" "${BASE_URL}"'/social/friend-requests/${[ friendRequestId ]}/decision' "peerAccessToken" '{"accepted":false}')
+search_friends_req=$(create_request "$workspace_id" "$edge_folder" "搜索好友" "GET" "${BASE_URL}/social/friends?keyword=peer&page=1&pageSize=20" "userAccessToken")
+friends_page5_req=$(create_request "$workspace_id" "$edge_folder" "好友列表pageSize5" "GET" "${BASE_URL}/social/friends?page=1&pageSize=5" "userAccessToken")
+
 echo "Yaak workspace: $workspace_id"
 echo "Yaak environment: $environment_id"
 
@@ -548,4 +560,125 @@ assert_page_result "$response" "1" "20"
 assert_jq_true "$response" '.data.items | map(.userId) | index("'"$TEST_PEER_ID"'") == null'
 pass_test
 
-echo "Yaak CLI smoke completed."
+begin_test "关注自己应返回40000"
+response=$(send_json "$follow_self" "$environment_id")
+assert_code "$response" "40000"
+pass_test
+
+begin_test "给自己发好友申请应返回40000"
+response=$(send_json "$friend_request_self" "$environment_id")
+assert_code "$response" "40000"
+pass_test
+
+begin_test "拉黑自己应返回40001"
+response=$(send_json "$block_self" "$environment_id")
+assert_code "$response" "40001"
+pass_test
+
+begin_test "举报自己应返回40007"
+response=$(send_json "$report_self_req" "$environment_id")
+assert_code "$response" "40007"
+pass_test
+
+begin_test "举报不存在用户应返回40007"
+response=$(send_json "$report_nonexistent_req" "$environment_id")
+assert_code "$response" "40007"
+pass_test
+
+begin_test "查看不存在用户资料应返回40000"
+response=$(send_json "$profile_nonexistent_req" "$environment_id")
+assert_code "$response" "40000"
+pass_test
+
+begin_test "关注用户(准备边界测试)"
+response=$(send_json "$follow_user" "$environment_id")
+assert_code "$response" "200"
+pass_test
+
+begin_test "重复关注应返回40002"
+response=$(send_json "$follow_user" "$environment_id")
+assert_code "$response" "40002"
+pass_test
+
+begin_test "取消关注(清理)"
+response=$(send_json "$unfollow_user" "$environment_id")
+assert_code "$response" "200"
+pass_test
+
+begin_test "取消未关注的用户应返回40003"
+response=$(send_json "$unfollow_user" "$environment_id")
+assert_code "$response" "40003"
+pass_test
+
+begin_test "发送好友申请(准备拒绝测试)"
+response=$(send_json "$create_friend" "$environment_id")
+assert_code "$response" "200"
+friend_request_id2=$(echo "$response" | jq -r '.data.requestId')
+set_env_var "$environment_id" "friendRequestId" "$friend_request_id2"
+pass_test
+
+begin_test "重复发送好友申请应返回40006"
+response=$(send_json "$create_friend" "$environment_id")
+assert_code "$response" "40006"
+pass_test
+
+begin_test "拒绝好友申请"
+response=$(send_json "$reject_friend_req" "$environment_id")
+assert_code "$response" "200"
+assert_jq_equals "$response" '.data.requestId' "$friend_request_id2"
+assert_jq_equals "$response" '.data.status' "rejected"
+pass_test
+
+begin_test "重新发送好友申请(拒绝后应允许)"
+response=$(send_json "$create_friend" "$environment_id")
+assert_code "$response" "200"
+friend_request_id3=$(echo "$response" | jq -r '.data.requestId')
+set_env_var "$environment_id" "friendRequestId" "$friend_request_id3"
+assert_jq_equals "$response" '.data.status' "pending"
+pass_test
+
+begin_test "同意重新发送的好友申请"
+response=$(send_json "$accept_friend" "$environment_id")
+assert_code "$response" "200"
+assert_jq_equals "$response" '.data.status' "accepted"
+pass_test
+
+begin_test "已是好友时发送好友申请应返回40004"
+response=$(send_json "$create_friend" "$environment_id")
+assert_code "$response" "40004"
+pass_test
+
+begin_test "按昵称搜索好友"
+response=$(send_json "$search_friends_req" "$environment_id")
+assert_code "$response" "200"
+assert_page_result "$response" "1" "20"
+assert_jq_true "$response" ".data.items | any(.userId == \"$TEST_PEER_ID\" and .nickname == \"test_peer\")"
+pass_test
+
+begin_test "好友列表pageSize=5分页验证"
+response=$(send_json "$friends_page5_req" "$environment_id")
+assert_code "$response" "200"
+assert_page_result "$response" "1" "5"
+pass_test
+
+begin_test "拉黑用户(准备黑名单边界测试)"
+response=$(send_json "$block_user" "$environment_id")
+assert_code "$response" "200"
+pass_test
+
+begin_test "重复拉黑应返回40001"
+response=$(send_json "$block_user" "$environment_id")
+assert_code "$response" "40001"
+pass_test
+
+begin_test "取消拉黑(清理)"
+response=$(send_json "$unblock_user" "$environment_id")
+assert_code "$response" "200"
+pass_test
+
+begin_test "取消未拉黑的用户应返回40019"
+response=$(send_json "$unblock_user" "$environment_id")
+assert_code "$response" "40019"
+pass_test
+
+echo "Yaak CLI tests completed."

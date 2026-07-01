@@ -137,7 +137,7 @@
 
 - `MayoiStar.SocialChat.postman_collection.json`：可导入 Yaak 的 Postman v2.1 集合。
 - `MayoiStar.SocialChat.local.postman_environment.json`：本地 QA 环境变量，包含 V2 migration 中种子账号的明文测试密码。
-- `run-social-chat-smoke.sh`：使用 Yaak CLI 创建临时 workspace，并执行主链路冒烟测试。
+- `run-social-chat-tests.sh`：使用 Yaak CLI 创建临时 workspace，执行好友社群与聊天的完整集成测试（正向流程 + 边界用例）。
 - `fixtures/chat-image.txt`：聊天图片上传请求的占位文件。
 
 ### 种子账号
@@ -166,7 +166,7 @@
 后端默认地址为 `http://127.0.0.1:8080`：
 
 ```bash
-bash qa/yaak/run-social-chat-smoke.sh
+bash qa/yaak/run-social-chat-tests.sh
 ```
 
 如需指定后端地址或 Yaak 数据目录：
@@ -174,19 +174,14 @@ bash qa/yaak/run-social-chat-smoke.sh
 ```bash
 BASE_URL=http://127.0.0.1:8080 \
 YAAK_DATA_DIR=/tmp/mayoistar-social-chat-yaak \
-bash qa/yaak/run-social-chat-smoke.sh
+bash qa/yaak/run-social-chat-tests.sh
 ```
 
 脚本会创建新的 Yaak workspace，并依次调试：
 
-- 登录 `test_user`、`test_peer`、`admin`
-- 查看个人主页
-- 发送并同意好友申请
-- 查询好友列表、更新备注和分组
-- 查询好友会话
-- 发送文字与 Emoji 文本消息
-- 标记已读、转发、撤回消息
-- 举报用户，并由管理员查询和处理举报
+**正向流程**：登录、个人主页、好友申请与同意、好友列表与备注、关注/取消关注、关注/粉丝列表、好友申请列表（发送/收到）、聊天会话与消息（文字/Emoji/已读/转发/撤回）、举报与后台处理、删除好友、拉黑/取消拉黑。
+
+**边界用例**：自我操作（关注/拉黑/申请/举报）、不存在用户（资料/举报）、重复操作（关注/申请/拉黑/取消关注/取消拉黑）、拒绝好友申请、已是好友时申请、按昵称搜索好友、分页验证。
 
 ### 注意事项
 
