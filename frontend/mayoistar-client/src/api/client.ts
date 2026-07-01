@@ -276,7 +276,7 @@ function doRawRequest(
 }
 
 function rawRequest(
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   url: string,
   body?: unknown,
 ): Promise<{ code: number; message: string; data: unknown }> {
@@ -343,7 +343,7 @@ export function patch<P extends keyof paths>(
   path: P,
   options?: { path?: OpPath<PatchOpType<P>>; body?: OpBody<PatchOpType<P>> },
 ): Promise<OpData<PatchOpType<P>>> {
-  return extractData(rawRequest('PUT', resolvePath(path as string, options?.path), options?.body))
+  return extractData(rawRequest('PATCH', resolvePath(path as string, options?.path), options?.body))
 }
 
 /**
