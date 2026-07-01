@@ -7,6 +7,7 @@ import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.social.Blacklist;
 import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
 import io.github.layjason.mayoistar.repository.FollowRepository;
 import io.github.layjason.mayoistar.repository.FriendRequestRepository;
@@ -68,13 +69,15 @@ public class BlacklistServiceImpl implements BlacklistService {
     @Transactional
     public void blockUser(String currentUserId, String targetUserId) {
         if (currentUserId.equals(targetUserId)) {
-            throw new BusinessException(40001, "Blacklist relation blocks this operation");
+            throw new BusinessException(
+                    ErrorCodes.BLACKLIST_RELATION_EXISTS, "Blacklist relation blocks this operation");
         }
         if (!userRepository.existsById(targetUserId)) {
-            throw new BusinessException(40000, "User " + targetUserId + " is not visible");
+            throw new BusinessException(ErrorCodes.USER_NOT_VISIBLE, "User " + targetUserId + " is not visible");
         }
         if (blacklistRepository.existsByBlockerIdAndBlockedUserId(currentUserId, targetUserId)) {
-            throw new BusinessException(40001, "Blacklist relation blocks this operation");
+            throw new BusinessException(
+                    ErrorCodes.BLACKLIST_RELATION_EXISTS, "Blacklist relation blocks this operation");
         }
 
         Blacklist record = Blacklist.builder()
@@ -125,7 +128,7 @@ public class BlacklistServiceImpl implements BlacklistService {
     @Transactional
     public void unblockUser(String currentUserId, String targetUserId) {
         if (!blacklistRepository.existsByBlockerIdAndBlockedUserId(currentUserId, targetUserId)) {
-            throw new BusinessException(40019, "Blacklist relation does not exist");
+            throw new BusinessException(ErrorCodes.BLACKLIST_RELATION_NOT_FOUND, "Blacklist relation does not exist");
         }
 
         blacklistRepository.deleteByBlockerIdAndBlockedUserId(currentUserId, targetUserId);

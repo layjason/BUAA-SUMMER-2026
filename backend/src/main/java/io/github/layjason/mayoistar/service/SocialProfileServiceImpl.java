@@ -6,6 +6,7 @@ import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.identity.PersonalProfile;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
@@ -46,9 +47,11 @@ public class SocialProfileServiceImpl implements SocialProfileService {
     public IdentityDtos.PublicUserProfile getUserProfile(String currentUserId, String targetUserId) {
         User targetUser = userRepository
                 .findById(targetUserId)
-                .orElseThrow(() -> new BusinessException(40000, "User " + targetUserId + " is not visible"));
+                .orElseThrow(() ->
+                        new BusinessException(ErrorCodes.USER_NOT_VISIBLE, "User " + targetUserId + " is not visible"));
         if (blacklistRepository.existsByBlockerIdAndBlockedUserId(targetUserId, currentUserId)) {
-            throw new BusinessException(40001, "Blacklist relation blocks this operation");
+            throw new BusinessException(
+                    ErrorCodes.BLACKLIST_RELATION_EXISTS, "Blacklist relation blocks this operation");
         }
 
         PersonalProfile profile = personalProfileRepository

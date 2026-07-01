@@ -7,6 +7,7 @@ import io.github.layjason.mayoistar.entity.social.ReportStatus;
 import io.github.layjason.mayoistar.entity.social.ReportTargetType;
 import io.github.layjason.mayoistar.entity.social.ReputationChangeSource;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.ReportRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import jakarta.persistence.criteria.Predicate;
@@ -55,10 +56,10 @@ public class ReportServiceImpl implements ReportService {
             String reporterUserId, ReportTargetType targetType, String targetId, String reason) {
         if (targetType == ReportTargetType.user) {
             if (reporterUserId.equals(targetId)) {
-                throw new BusinessException(40007, "Report is invalid");
+                throw new BusinessException(ErrorCodes.REPORT_INVALID, "Report is invalid");
             }
             if (!userRepository.existsById(targetId)) {
-                throw new BusinessException(40007, "Report is invalid");
+                throw new BusinessException(ErrorCodes.REPORT_INVALID, "Report is invalid");
             }
         }
 
@@ -121,7 +122,7 @@ public class ReportServiceImpl implements ReportService {
     public SocialDtos.Report decideReport(String reportId, ReportStatus status, String handlingNote) {
         Report report = reportRepository
                 .findById(reportId)
-                .orElseThrow(() -> new BusinessException(40005, "Report is invalid"));
+                .orElseThrow(() -> new BusinessException(ErrorCodes.REPORT_INVALID, "Report is invalid"));
         ReportStatus oldStatus = report.getStatus();
         boolean userReport = report.getTargetType() == ReportTargetType.user;
         int oldScore = userReport ? reputationService.getCurrentScore(report.getTargetId()) : 0;

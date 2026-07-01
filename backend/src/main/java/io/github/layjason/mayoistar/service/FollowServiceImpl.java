@@ -8,6 +8,7 @@ import io.github.layjason.mayoistar.entity.social.Follow;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.entity.social.FriendshipSource;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
 import io.github.layjason.mayoistar.repository.FollowRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
@@ -64,7 +65,7 @@ public class FollowServiceImpl implements FollowService {
     public SocialDtos.FollowRelation followUser(String followerId, String followedId) {
         validateFollowTarget(followerId, followedId);
         if (followRepository.existsByFollowerIdAndFollowedId(followerId, followedId)) {
-            throw new BusinessException(40002, "Follow relation already exists");
+            throw new BusinessException(ErrorCodes.FOLLOW_ALREADY_EXISTS, "Follow relation already exists");
         }
 
         Follow follow = Follow.builder()
@@ -97,10 +98,10 @@ public class FollowServiceImpl implements FollowService {
     @Transactional
     public SocialDtos.FollowRelation unfollowUser(String followerId, String followedId) {
         if (!userRepository.existsById(followedId)) {
-            throw new BusinessException(40000, "User " + followedId + " is not visible");
+            throw new BusinessException(ErrorCodes.USER_NOT_VISIBLE, "User " + followedId + " is not visible");
         }
         if (!followRepository.existsByFollowerIdAndFollowedId(followerId, followedId)) {
-            throw new BusinessException(40003, "Follow relation does not exist");
+            throw new BusinessException(ErrorCodes.FOLLOW_NOT_FOUND, "Follow relation does not exist");
         }
 
         followRepository.deleteByFollowerIdAndFollowedId(followerId, followedId);
@@ -156,14 +157,15 @@ public class FollowServiceImpl implements FollowService {
      */
     private void validateFollowTarget(String followerId, String followedId) {
         if (followerId.equals(followedId)) {
-            throw new BusinessException(40000, "User " + followedId + " is not visible");
+            throw new BusinessException(ErrorCodes.USER_NOT_VISIBLE, "User " + followedId + " is not visible");
         }
         if (!userRepository.existsById(followedId)) {
-            throw new BusinessException(40000, "User " + followedId + " is not visible");
+            throw new BusinessException(ErrorCodes.USER_NOT_VISIBLE, "User " + followedId + " is not visible");
         }
         if (blacklistRepository.existsByBlockerIdAndBlockedUserId(followerId, followedId)
                 || blacklistRepository.existsByBlockerIdAndBlockedUserId(followedId, followerId)) {
-            throw new BusinessException(40001, "Blacklist relation blocks this operation");
+            throw new BusinessException(
+                    ErrorCodes.BLACKLIST_RELATION_EXISTS, "Blacklist relation blocks this operation");
         }
     }
 

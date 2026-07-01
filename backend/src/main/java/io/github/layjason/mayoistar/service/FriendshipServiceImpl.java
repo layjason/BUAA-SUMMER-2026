@@ -7,6 +7,7 @@ import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.ChatMessageRepository;
 import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
 import io.github.layjason.mayoistar.repository.ConversationRepository;
@@ -96,7 +97,8 @@ public class FriendshipServiceImpl implements FriendshipService {
             String userId, String friendUserId, String remark, List<String> groupTags) {
         Friendship friendship = friendshipRepository
                 .findByUserIdAndFriendUserId(userId, friendUserId)
-                .orElseThrow(() -> new BusinessException(40004, "Friendship state does not allow this operation"));
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCodes.FRIENDSHIP_STATE_INVALID, "Friendship state does not allow this operation"));
 
         if (remark != null) {
             friendship.setRemark(remark);

@@ -11,6 +11,7 @@ import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.entity.social.FriendshipSource;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
 import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
 import io.github.layjason.mayoistar.repository.ConversationRepository;
@@ -80,25 +81,27 @@ public class FriendRequestServiceImpl implements FriendRequestService {
     public SocialDtos.FriendRequest createFriendRequest(
             String requesterId, String targetUserId, FriendRequestSource source, String message) {
         if (requesterId.equals(targetUserId)) {
-            throw new BusinessException(40000, "Cannot send friend request to yourself");
+            throw new BusinessException(ErrorCodes.USER_NOT_VISIBLE, "Cannot send friend request to yourself");
         }
         if (!userRepository.existsById(targetUserId)) {
-            throw new BusinessException(40000, "User " + targetUserId + " is not visible");
+            throw new BusinessException(ErrorCodes.USER_NOT_VISIBLE, "User " + targetUserId + " is not visible");
         }
         if (blacklistRepository.existsByBlockerIdAndBlockedUserId(requesterId, targetUserId)
                 || blacklistRepository.existsByBlockerIdAndBlockedUserId(targetUserId, requesterId)) {
-            throw new BusinessException(40001, "Blacklist relation blocks this operation");
+            throw new BusinessException(
+                    ErrorCodes.BLACKLIST_RELATION_EXISTS, "Blacklist relation blocks this operation");
         }
         if (friendshipRepository.existsByUserIdAndFriendUserId(requesterId, targetUserId)) {
-            throw new BusinessException(40004, "Friendship state does not allow this operation");
+            throw new BusinessException(
+                    ErrorCodes.FRIENDSHIP_STATE_INVALID, "Friendship state does not allow this operation");
         }
         if (friendRequestRepository.existsByRequesterIdAndTargetUserIdAndStatus(
                 requesterId, targetUserId, FriendRequestStatus.pending)) {
-            throw new BusinessException(40006, "Friend request already exists");
+            throw new BusinessException(ErrorCodes.DUPLICATE_FRIEND_REQUEST, "Friend request already exists");
         }
         if (friendRequestRepository.existsByRequesterIdAndTargetUserIdAndStatus(
                 targetUserId, requesterId, FriendRequestStatus.pending)) {
-            throw new BusinessException(40006, "Friend request already exists");
+            throw new BusinessException(ErrorCodes.DUPLICATE_FRIEND_REQUEST, "Friend request already exists");
         }
 
         FriendRequest request = FriendRequest.builder()
@@ -135,12 +138,15 @@ public class FriendRequestServiceImpl implements FriendRequestService {
     public SocialDtos.FriendRequest decideFriendRequest(String currentUserId, String requestId, boolean accepted) {
         FriendRequest request = friendRequestRepository
                 .findById(requestId)
-                .orElseThrow(() -> new BusinessException(40005, "Friend request state does not allow this operation"));
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCodes.FRIEND_REQUEST_STATE_INVALID, "Friend request state does not allow this operation"));
         if (request.getStatus() != FriendRequestStatus.pending) {
-            throw new BusinessException(40005, "Friend request state does not allow this operation");
+            throw new BusinessException(
+                    ErrorCodes.FRIEND_REQUEST_STATE_INVALID, "Friend request state does not allow this operation");
         }
         if (!request.getTargetUserId().equals(currentUserId)) {
-            throw new BusinessException(40005, "Friend request state does not allow this operation");
+            throw new BusinessException(
+                    ErrorCodes.FRIEND_REQUEST_STATE_INVALID, "Friend request state does not allow this operation");
         }
 
         if (accepted) {
