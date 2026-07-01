@@ -34,6 +34,9 @@ public final class ErrorCodes {
     /** 举报目标或举报内容不合法 */
     public static final int REPORT_INVALID = 40007;
 
+    /** 举报不存在 */
+    public static final int REPORT_NOT_FOUND = 60007;
+
     /** 小队名称已被占用 */
     public static final int TEAM_NAME_UNAVAILABLE = 40008;
 
