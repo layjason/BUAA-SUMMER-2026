@@ -46,6 +46,17 @@ public class ActivitySearchService {
         return new PageResult<>(items, result.getTotalElements(), page, pageSize, result.getTotalPages());
     }
 
+    @Transactional(readOnly = true)
+    public List<ActivityDtos.ActivityMapPoint> mapPoints(SearchCriteria criteria) {
+        return search(criteria).getItems().stream()
+                .filter(summary -> summary.getLocation() != null)
+                .filter(summary -> summary.getLocation().getPoint() != null)
+                .filter(summary -> summary.getLocation().getPoint().getLongitude() != null)
+                .filter(summary -> summary.getLocation().getPoint().getLatitude() != null)
+                .map(this::toMapPoint)
+                .toList();
+    }
+
     private Specification<Activity> toSpecification(SearchCriteria criteria) {
         return (root, query, builder) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -158,6 +169,16 @@ public class ActivitySearchService {
         location.setAddress(activity.getAddress());
         location.setPlaceName(activity.getPlaceName());
         return location;
+    }
+
+    private ActivityDtos.ActivityMapPoint toMapPoint(ActivityDtos.ActivitySummary summary) {
+        ActivityDtos.ActivityMapPoint dto = new ActivityDtos.ActivityMapPoint();
+        dto.setActivityId(summary.getActivityId());
+        dto.setTitle(summary.getTitle());
+        dto.setPoint(summary.getLocation().getPoint());
+        dto.setRuntimeStatus(summary.getRuntimeStatus());
+        dto.setStartAt(summary.getStartAt());
+        return dto;
     }
 
     private String formatInstant(Instant value) {

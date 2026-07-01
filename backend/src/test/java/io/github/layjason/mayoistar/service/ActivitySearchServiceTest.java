@@ -180,6 +180,52 @@ class ActivitySearchServiceTest {
         assertThat(result.getItems()).extracting("title").containsExactly("近处活动");
     }
 
+    @Test
+    @DisplayName("地图点位复用搜索结果并排除无坐标活动")
+    void shouldListMapPointsFromSearchResult() {
+        activityRepository.save(activity(
+                "北京桌游点位",
+                List.of("桌游"),
+                "轻松破冰",
+                "北京",
+                BigDecimal.ZERO,
+                ActivityReviewStatus.approved,
+                ActivityRuntimeStatus.registering,
+                Instant.parse("2026-08-01T10:00:00Z"),
+                116.397,
+                39.907));
+        activityRepository.save(activity(
+                "无坐标活动",
+                List.of("桌游"),
+                "轻松破冰",
+                "北京",
+                BigDecimal.ZERO,
+                ActivityReviewStatus.approved,
+                ActivityRuntimeStatus.registering,
+                Instant.parse("2026-08-02T10:00:00Z"),
+                null,
+                null));
+        activityRepository.save(activity(
+                "上海桌游点位",
+                List.of("桌游"),
+                "轻松破冰",
+                "上海",
+                BigDecimal.ZERO,
+                ActivityReviewStatus.approved,
+                ActivityRuntimeStatus.registering,
+                Instant.parse("2026-08-03T10:00:00Z"),
+                121.473,
+                31.230));
+
+        var result = activitySearchService.mapPoints(new ActivitySearchService.SearchCriteria(
+                "桌游", List.of("桌游"), "北京", null, null, null, null, null, null, null, 1, 20));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getTitle()).isEqualTo("北京桌游点位");
+        assertThat(result.getFirst().getPoint().getLongitude()).isEqualTo(116.397);
+        assertThat(result.getFirst().getPoint().getLatitude()).isEqualTo(39.907);
+    }
+
     private Activity activity(
             String title,
             List<String> tags,
