@@ -1,0 +1,830 @@
+{
+  "info": {
+    "_postman_id": "5f6bf645-789f-44a1-8f40-57d73319d6b7",
+    "name": "MayoiStar Identity and Merchant Qualification",
+    "description": "Yaak 可导入的 MayoiStar 身份、JWT、资料、商家资质接口测试集合。集合中脚本用于表达断言与变量提取意图；Yaak 中请使用环境变量或请求链保存动态值。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 Public",
+      "item": [
+        {
+          "name": "00.01 Get interest tags",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/identity/interest-tags"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('business success', () => { const body = pm.response.json(); pm.expect(pm.response.code).to.eql(200); pm.expect(body.code).to.eql(200); pm.expect(body.message).to.eql('For Super Earth!'); pm.expect(body.data).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00.02 Check nickname available",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/identity/nicknames/availability?nickname={{personalNickname}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "nicknames",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "nickname",
+                  "value": "{{personalNickname}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('nickname response shape', () => { const body = pm.response.json(); pm.expect(body.code).to.eql(200); pm.expect(body.data.nickname).to.eql(pm.environment.get('personalNickname')); pm.expect(body.data.available).to.be.a('boolean'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 Personal auth and profile",
+      "item": [
+        {
+          "name": "01.01 Register personal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{personalEmail}}\",\n  \"password\": \"{{personalPassword}}\",\n  \"nickname\": \"{{personalNickname}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/register/personal"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('registered or duplicate is observable', () => { const body = pm.response.json(); pm.expect(pm.response.code).to.eql(200); pm.expect([200, 10001, 10002]).to.include(body.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.02 Login personal before activation should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{personalEmail}}\",\n  \"password\": \"{{personalPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('inactive personal cannot login', () => { const body = pm.response.json(); pm.expect(pm.response.code).to.eql(200); pm.expect([10004, 200]).to.include(body.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.03 Activate personal account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{activationToken}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/activate"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('activation result is explicit', () => { const body = pm.response.json(); pm.expect(pm.response.code).to.eql(200); pm.expect([200, 10006, 10012]).to.include(body.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.04 Login personal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{personalEmail}}\",\n  \"password\": \"{{personalPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('personal login success', () => { pm.expect(pm.response.code).to.eql(200); pm.expect(body.code).to.eql(200); pm.expect(body.data.kind).to.eql('personal'); pm.expect(body.data.accountStatus).to.eql('active'); });",
+                  "if (body.code === 200) { pm.environment.set('personalUserId', body.data.userId); pm.environment.set('personalAccessToken', body.data.tokens.accessToken); pm.environment.set('personalRefreshToken', body.data.tokens.refreshToken); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.05 Duplicate personal email should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{personalEmail}}\",\n  \"password\": \"{{personalPassword}}\",\n  \"nickname\": \"duplicate-email-{{personalNickname}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/register/personal"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('duplicate email rejected', () => { const body = pm.response.json(); pm.expect(pm.response.code).to.eql(200); pm.expect(body.code).to.eql(10001); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.06 Profile without token should fail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/identity/me/profile"
+          }
+        },
+        {
+          "name": "01.07 Get personal profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalAccessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/identity/me/profile"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('profile exposes safe public fields', () => { const body = pm.response.json(); pm.expect(body.code).to.eql(200); pm.expect(body.data.kind).to.eql('personal'); pm.expect(body.data).to.have.property('reputationScore'); pm.expect(body.data).to.not.have.property('passwordHash'); pm.expect(body.data).to.not.have.property('tokenHash'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.08 Update personal profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nickname\": \"{{personalNewNickname}}\",\n  \"gender\": \"unspecified\",\n  \"birthday\": \"2000-01-01\",\n  \"signature\": \"Yaak identity smoke test\",\n  \"interestTags\": []\n}"
+            },
+            "url": "{{baseUrl}}/identity/me/profile"
+          }
+        },
+        {
+          "name": "01.09 Upload avatar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{avatarFile}}"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/identity/media/avatar"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('avatar upload success', () => { pm.expect(body.code).to.eql(200); pm.expect(body.data.usage).to.eql('avatar'); });",
+                  "if (body.code === 200) { pm.environment.set('avatarMediaId', body.data.mediaId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.10 Attach avatar to profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"avatarMediaId\": \"{{avatarMediaId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/me/profile"
+          }
+        },
+        {
+          "name": "01.11 Refresh personal token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{personalRefreshToken}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/refresh"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('personal refresh success', () => { pm.expect(body.code).to.eql(200); pm.expect(body.data.accessToken).to.be.a('string'); });",
+                  "if (body.code === 200) { pm.environment.set('personalAccessToken', body.data.accessToken); pm.environment.set('personalRefreshToken', body.data.refreshToken); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.12 Change password with wrong old password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"wrong-password\",\n  \"newPassword\": \"{{personalNewPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/me/password"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('wrong old password rejected', () => { const body = pm.response.json(); pm.expect(body.code).to.eql(10016); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.13 Logout personal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalAccessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/identity/auth/logout"
+          }
+        },
+        {
+          "name": "01.14 Refresh after logout should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{personalRefreshToken}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/refresh"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('revoked refresh rejected', () => { const body = pm.response.json(); pm.expect(body.code).to.eql(10007); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Merchant qualification",
+      "item": [
+        {
+          "name": "02.01 Register merchant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{merchantEmail}}\",\n  \"password\": \"{{merchantPassword}}\",\n  \"nickname\": \"{{merchantNickname}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/register/merchant"
+          }
+        },
+        {
+          "name": "02.02 Activate merchant account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{merchantActivationToken}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/activate"
+          }
+        },
+        {
+          "name": "02.03 Login merchant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{merchantEmail}}\",\n  \"password\": \"{{merchantPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('merchant login success', () => { pm.expect(body.code).to.eql(200); pm.expect(body.data.kind).to.eql('merchant'); pm.expect(body.data.accountStatus).to.eql('active'); });",
+                  "if (body.code === 200) { pm.environment.set('merchantUserId', body.data.userId); pm.environment.set('merchantAccessToken', body.data.tokens.accessToken); pm.environment.set('merchantRefreshToken', body.data.tokens.refreshToken); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02.04 Get merchant profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/identity/me/merchant-profile"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('merchant profile shape', () => { const body = pm.response.json(); pm.expect(body.code).to.eql(200); pm.expect(body.data.kind).to.be.undefined; pm.expect(body.data).to.have.property('qualificationStatus'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02.05 Update merchant profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantName\": \"{{merchantName}}\",\n  \"nickname\": \"{{merchantNewNickname}}\",\n  \"interestedActivityFields\": [\"户外\", \"桌游\"]\n}"
+            },
+            "url": "{{baseUrl}}/identity/me/merchant-profile"
+          }
+        },
+        {
+          "name": "02.06 Upload merchant license",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{licenseFile}}"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/identity/media/license"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('license upload success', () => { pm.expect(body.code).to.eql(200); pm.expect(body.data.usage).to.eql('merchantLicense'); });",
+                  "if (body.code === 200) { pm.environment.set('licenseMediaId', body.data.mediaId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02.07 Submit merchant qualification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licenseMediaIds\": [\"{{licenseMediaId}}\"]\n}"
+            },
+            "url": "{{baseUrl}}/identity/me/merchant-qualification"
+          }
+        },
+        {
+          "name": "02.08 Get merchant profile after qualification",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/identity/me/merchant-profile"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('qualification pending after submit', () => { const body = pm.response.json(); pm.expect(body.code).to.eql(200); pm.expect(body.data.qualificationStatus).to.eql('pending'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02.09 Personal token cannot access merchant profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalAccessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/identity/me/merchant-profile"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('personal token rejected by merchant route', () => { const body = pm.response.json(); pm.expect([10008, 403]).to.include(body.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Password reset and security",
+      "item": [
+        {
+          "name": "03.01 Resend activation email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{personalEmail}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/activation-email"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('resend activation is explicit', () => { const body = pm.response.json(); pm.expect([200, 10011, 10012, 10015]).to.include(body.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03.02 Send password reset email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{personalEmail}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/password-reset-email"
+          }
+        },
+        {
+          "name": "03.03 Reset password with token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"{{personalNewPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/password-reset"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('reset result is explicit', () => { const body = pm.response.json(); pm.expect([200, 10017]).to.include(body.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03.04 Wrong password attempt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{personalEmail}}\",\n  \"password\": \"definitely-wrong\"\n}"
+            },
+            "url": "{{baseUrl}}/identity/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('wrong password rejected', () => { const body = pm.response.json(); pm.expect(body.code).to.eql(10003); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Admin assisted checks",
+      "item": [
+        {
+          "name": "04.01 Admin login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/admin/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('admin login result is explicit', () => { pm.expect(pm.response.code).to.eql(200); pm.expect([200, 60000]).to.include(body.code); });",
+                  "if (body.code === 200) { pm.environment.set('adminAccessToken', body.data.tokens.accessToken); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.02 Admin get merchant profile placeholder",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/admin/merchants/{{merchantUserId}}"
+          }
+        },
+        {
+          "name": "04.03 Admin review merchant placeholder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approved\": true,\n  \"reason\": \"Yaak 接口测试审核通过\"\n}"
+            },
+            "url": "{{baseUrl}}/admin/merchants/{{merchantUserId}}/review"
+          },
+          "description": "当前分支该接口返回占位数据，不能证明真实审核状态已变更。"
+        }
+      ]
+    }
+  ]
+}

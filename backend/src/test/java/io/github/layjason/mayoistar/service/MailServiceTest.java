@@ -1,7 +1,9 @@
 package io.github.layjason.mayoistar.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -17,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
@@ -70,5 +73,13 @@ class MailServiceTest {
 
         verify(templateEngine).process(eq("mail/password-reset-email"), any(Context.class));
         verify(mailSender).send(any(MimeMessage.class));
+    }
+
+    @Test
+    @DisplayName("SMTP 发送失败时不影响注册或重置流程")
+    void shouldNotThrowWhenSmtpSendFails() {
+        doThrow(new MailSendException("smtp unavailable")).when(mailSender).send(any(MimeMessage.class));
+
+        assertDoesNotThrow(() -> mailService.sendActivationEmail(TO, TOKEN));
     }
 }
