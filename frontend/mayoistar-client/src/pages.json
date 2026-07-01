@@ -156,6 +156,13 @@
         "navigationBarTitleText": "参与者列表",
         "disableScroll": true
       }
+    },
+    {
+      "path": "pages/activity/templates",
+      "style": {
+        "navigationBarTitleText": "选择模板",
+        "disableScroll": true
+      }
     }
   ],
   "tabBar": {
