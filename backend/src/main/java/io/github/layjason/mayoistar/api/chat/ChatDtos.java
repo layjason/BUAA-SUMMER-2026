@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.api.chat;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.api.validation.ValidMessageContent;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.chat.MessageKind;
 import jakarta.validation.constraints.NotBlank;
@@ -23,6 +24,7 @@ public final class ChatDtos {
 
     /* ========== 请求 DTO ========== */
 
+    @ValidMessageContent
     @Data
     public static class SendMessageRequest {
         @NotNull

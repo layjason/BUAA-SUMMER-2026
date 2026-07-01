@@ -98,4 +98,7 @@ public final class ErrorCodes {
 
     /** 转发目标会话不可用 */
     public static final int FORWARD_TARGET_UNAVAILABLE = 50010;
+
+    /** 消息引用的媒体文件不存在 */
+    public static final int MEDIA_REFERENCE_INVALID = 50018;
 }
