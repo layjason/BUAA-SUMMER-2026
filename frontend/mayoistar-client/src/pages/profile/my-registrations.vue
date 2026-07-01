@@ -1,6 +1,12 @@
 <template>
   <view class="page">
-    <scroll-view class="scroll-area" scroll-y>
+    <scroll-view
+      class="scroll-area"
+      scroll-y
+      refresher-enabled
+      :refresher-triggered="refreshing"
+      @refresherrefresh="onRefresh"
+    >
       <view v-if="loading" class="loading-text">{{ t('加载中') }}</view>
 
       <view v-else-if="errorMsg" class="error-text">{{ errorMsg }}</view>
@@ -55,6 +61,7 @@ import { formatDate } from '@/utils/date'
 const { t } = useI18n()
 
 const loading = ref(true)
+const refreshing = ref(false)
 const errorMsg = ref('')
 
 const statusMap: Record<string, string> = {
@@ -77,9 +84,9 @@ interface RegistrationItem {
 const registrations = ref<RegistrationItem[]>([])
 
 /**
- * 每次进入页面时加载报名列表
+ * 加载报名列表
  */
-onShow(async () => {
+async function loadRegistrations(): Promise<void> {
   loading.value = true
   errorMsg.value = ''
   try {
@@ -94,6 +101,29 @@ onShow(async () => {
   } finally {
     loading.value = false
   }
+}
+
+/**
+ * 下拉刷新
+ */
+async function onRefresh(): Promise<void> {
+  refreshing.value = true
+  errorMsg.value = ''
+  try {
+    const result = await api.get('/activities/my-registrations')
+    registrations.value = result.items as RegistrationItem[]
+  } catch {
+    // 刷新失败静默处理
+  } finally {
+    refreshing.value = false
+  }
+}
+
+/**
+ * 每次进入页面时加载报名列表
+ */
+onShow(() => {
+  loadRegistrations()
 })
 
 /**

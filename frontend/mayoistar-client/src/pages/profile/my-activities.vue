@@ -13,7 +13,13 @@
       </view>
     </view>
 
-    <scroll-view class="scroll-area" scroll-y>
+    <scroll-view
+      class="scroll-area"
+      scroll-y
+      refresher-enabled
+      :refresher-triggered="refreshing"
+      @refresherrefresh="onRefresh"
+    >
       <view v-if="loading" class="loading-text">{{ t('加载中') }}</view>
 
       <view v-else-if="errorMsg" class="error-text">{{ errorMsg }}</view>
@@ -84,6 +90,7 @@ const { t } = useI18n()
 
 const activeTab = ref<'published' | 'drafts'>('published')
 const loading = ref(true)
+const refreshing = ref(false)
 const errorMsg = ref('')
 
 /** 运行时状态文本映射 */
@@ -181,6 +188,27 @@ async function loadCurrentTab(): Promise<void> {
 function switchTab(tab: 'published' | 'drafts'): void {
   activeTab.value = tab
   loadCurrentTab()
+}
+
+/**
+ * 下拉刷新
+ */
+async function onRefresh(): Promise<void> {
+  refreshing.value = true
+  errorMsg.value = ''
+  try {
+    if (activeTab.value === 'published') {
+      const result = await api.get('/activities/mine')
+      activities.value = result.items as ActivityItem[]
+    } else {
+      const result = await api.get('/activities/drafts')
+      drafts.value = result.items as DraftItem[]
+    }
+  } catch {
+    // 刷新失败静默处理
+  } finally {
+    refreshing.value = false
+  }
 }
 
 onShow(() => {
