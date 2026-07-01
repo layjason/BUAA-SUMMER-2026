@@ -307,5 +307,30 @@
     "feeSuffix": "",
     "retry": "重试",
     "refreshSuccess": "刷新成功"
+  },
+
+  "activityClone": {
+    "clone": "克隆活动",
+    "cloneSuccess": "已克隆为草稿，可继续编辑",
+    "cloning": "克隆中..."
+  },
+
+  "activityTemplates": {
+    "title": "从模板创建",
+    "subtitle": "选择一个模板快速开始",
+    "apply": "使用此模板",
+    "useTemplate": "使用模板"
+  },
+
+  "checkInExport": {
+    "export": "导出签到数据",
+    "exporting": "导出中...",
+    "exportSuccess": "签到数据已导出",
+    "exportFailed": "导出失败"
+  },
+
+  "reviewImages": {
+    "addImage": "添加图片",
+    "uploading": "上传中..."
   }
 }

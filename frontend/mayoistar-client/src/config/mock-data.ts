@@ -2639,4 +2639,225 @@ export const mockData: Record<string, MockResponse> = {
       totalPages: 2,
     },
   },
+
+  /* ===================== 活动克隆 ===================== */
+
+  'POST /activities/2001/clone': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: '3101',
+      title: '周末羽毛球友谊赛（副本）',
+      tags: ['运动健身'],
+      introduction: '周末一起来打羽毛球吧！无论你是初学者还是老手，都欢迎参加。',
+      safetyNotice: '运动前请充分热身，避免受伤。',
+      startAt: null,
+      endAt: null,
+      location: {
+        address: '海淀区体育馆羽毛球馆',
+        city: '北京',
+        placeName: '海淀体育馆',
+        point: { longitude: 116.347, latitude: 39.972 },
+      },
+      coverImage: null,
+      images: [],
+      feeAmount: 30.0,
+      feeDescription: null,
+      capacity: 16,
+      registrationDeadline: null,
+      minAge: null,
+      reviewStatus: 'draft',
+      updatedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  'POST /activities/2005/clone': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: '3102',
+      title: '胡同骑行探索（副本）',
+      tags: ['户外徒步', '运动健身'],
+      introduction: '一起骑行探索北京胡同文化！从南锣鼓巷出发，途经北锣鼓巷、什刹海、烟袋斜街。',
+      safetyNotice: '请佩戴头盔等护具。遵守交通规则，注意避让行人。',
+      startAt: null,
+      endAt: null,
+      location: {
+        address: '东城区南锣鼓巷地铁站 E 口',
+        city: '北京',
+        placeName: '南锣鼓巷地铁站',
+        point: { longitude: 116.403, latitude: 39.937 },
+      },
+      coverImage: null,
+      images: [],
+      feeAmount: 20.0,
+      feeDescription: null,
+      capacity: 10,
+      registrationDeadline: null,
+      minAge: null,
+      reviewStatus: 'draft',
+      updatedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  /* ===================== 活动模板 ===================== */
+
+  'GET /activities/templates': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      items: [
+        {
+          templateId: 'tpl-01',
+          name: '运动健身',
+          activityType: 'sports',
+          defaultTags: ['运动健身'],
+          defaultIntroduction:
+            '一起来运动吧！无论你是初学者还是老手，都欢迎参加。\n\n活动流程：\n1. 集合签到\n2. 热身运动\n3. 分组活动\n4. 自由交流\n5. 结束\n\n请自备装备，饮用水由组织者统一提供。',
+          defaultSafetyNotice:
+            '运动前请充分热身，避免受伤。如有心脏病、高血压等不宜剧烈运动的疾病，请提前告知组织者。活动期间请保管好个人财物。',
+          defaultCapacity: 20,
+          defaultCoverImage: {
+            url: 'https://picsum.photos/400/200?random=tpl1',
+            mediaId: 'tpl-img-01',
+          },
+        },
+        {
+          templateId: 'tpl-02',
+          name: '桌游聚会',
+          activityType: 'boardgame',
+          defaultTags: ['桌游聚会'],
+          defaultIntroduction:
+            '桌游之夜来啦！欢迎新老朋友参加。\n\n我们会准备多种桌游，并有资深玩家现场教学。\n\n活动现场提供零食和饮料。',
+          defaultSafetyNotice:
+            '请在公共场所注意个人物品安全。玩桌游时保持友好氛围，不要过度激动。未成年人请在监护人陪同下参加。',
+          defaultCapacity: 8,
+          defaultCoverImage: {
+            url: 'https://picsum.photos/400/200?random=tpl2',
+            mediaId: 'tpl-img-02',
+          },
+        },
+        {
+          templateId: 'tpl-03',
+          name: '户外徒步',
+          activityType: 'hiking',
+          defaultTags: ['户外徒步'],
+          defaultIntroduction:
+            '一起徒步探索自然！\n\n路线包含城市步道和自然小径，全程约 5 公里，徒步时间约 2 小时。\n\n沿途风景优美，适合拍照打卡。',
+          defaultSafetyNotice:
+            '请穿着适合徒步的鞋子，自备饮用水和防晒用品。注意防蚊虫。听从领队安排，不要擅自离队。',
+          defaultCapacity: 15,
+          defaultCoverImage: {
+            url: 'https://picsum.photos/400/200?random=tpl3',
+            mediaId: 'tpl-img-03',
+          },
+        },
+        {
+          templateId: 'tpl-04',
+          name: '学习交流',
+          activityType: 'learning',
+          defaultTags: ['学习交流'],
+          defaultIntroduction:
+            '知识分享与交流活动。\n\n本期主题：待定\n\n适合所有对该主题感兴趣的朋友参加。',
+          defaultSafetyNotice: '公共场所请注意个人物品安全。请尊重他人发言，保持友好讨论氛围。',
+          defaultCapacity: 20,
+          defaultCoverImage: null,
+        },
+        {
+          templateId: 'tpl-05',
+          name: '公益活动',
+          activityType: 'charity',
+          defaultTags: ['公益活动'],
+          defaultIntroduction:
+            '加入我们的公益活动，一起为社会贡献力量！\n\n活动提供所需工具和物资，你只需要带着热情来参加！',
+          defaultSafetyNotice:
+            '请穿着适合户外活动的服装和鞋子。使用工具时注意安全，听从工作人员指导。',
+          defaultCapacity: 30,
+          defaultCoverImage: null,
+        },
+      ],
+      total: 5,
+      page: 1,
+      pageSize: 20,
+      totalPages: 1,
+    },
+  },
+
+  /* 基于模板创建草稿 */
+  'POST /activities/templates/tpl-01/drafts': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: 'tpl-draft-01',
+      title: '运动健身活动',
+      tags: ['运动健身'],
+      introduction:
+        '一起来运动吧！无论你是初学者还是老手，都欢迎参加。\n\n活动流程：\n1. 集合签到\n2. 热身运动\n3. 分组活动\n4. 自由交流\n5. 结束\n\n请自备装备，饮用水由组织者统一提供。',
+      safetyNotice:
+        '运动前请充分热身，避免受伤。如有心脏病、高血压等不宜剧烈运动的疾病，请提前告知组织者。活动期间请保管好个人财物。',
+      capacity: 20,
+      location: null,
+      startAt: null,
+      endAt: null,
+      registrationDeadline: null,
+      feeAmount: null,
+      images: [],
+      reviewStatus: 'draft',
+      updatedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  'POST /activities/templates/tpl-02/drafts': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      activityId: 'tpl-draft-02',
+      title: '桌游聚会',
+      tags: ['桌游聚会'],
+      introduction:
+        '桌游之夜来啦！欢迎新老朋友参加。\n\n我们会准备多种桌游，并有资深玩家现场教学。\n\n活动现场提供零食和饮料。',
+      safetyNotice:
+        '请在公共场所注意个人物品安全。玩桌游时保持友好氛围，不要过度激动。未成年人请在监护人陪同下参加。',
+      capacity: 8,
+      location: null,
+      startAt: null,
+      endAt: null,
+      registrationDeadline: null,
+      feeAmount: null,
+      images: [],
+      reviewStatus: 'draft',
+      updatedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    },
+  },
+
+  /* ===================== 签到导出 ===================== */
+
+  /* 签到导出返回二进制文件，mock 返回文本模拟 */
+  'GET /activities/2001/check-ins/export': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      url: 'https://picsum.photos/400/300?random=export',
+    },
+  },
+
+  /* ===================== 评价图片上传 ===================== */
+
+  'POST /activities/media/review-images': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      mediaId: 'review-img-' + Date.now(),
+      fileName: 'review_image.jpg',
+      contentType: 'image/jpeg',
+      sizeBytes: 204800,
+      usage: 'activityReviewImage',
+      url: 'https://picsum.photos/800/400?random=' + Math.floor(Math.random() * 1000),
+      uploadedAt: new Date().toISOString(),
+    },
+  },
 }
