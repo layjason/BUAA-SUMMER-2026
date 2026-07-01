@@ -11,10 +11,12 @@ import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
+import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
+import io.github.layjason.mayoistar.repository.TeamMemberRepository;
+import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
-import io.github.layjason.mayoistar.repository.activities.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.service.activities.RequestActorResolver;
 import java.time.Instant;
 import java.util.List;
@@ -50,6 +52,12 @@ class ActivityQueryControllerTests {
     private MediaFileRepository mediaFileRepository;
 
     @Autowired
+    private TeamRepository teamRepository;
+
+    @Autowired
+    private TeamMemberRepository teamMemberRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @AfterEach
@@ -58,6 +66,8 @@ class ActivityQueryControllerTests {
         activityImageRepository.deleteAll();
         activityRepository.deleteAll();
         mediaFileRepository.deleteAll();
+        teamMemberRepository.deleteAll();
+        teamRepository.deleteAll();
         userRepository.deleteAll();
     }
 

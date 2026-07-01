@@ -18,4 +18,12 @@ public interface ActivityReviewRecordRepository extends JpaRepository<ActivityRe
      * @return 审核记录列表
      */
     List<ActivityReviewRecord> findByActivityIdOrderByReviewedAtAsc(String activityId);
+
+    /**
+     * 查询指定活动的所有审核记录，按审核时间降序排列。
+     *
+     * @param activityId 活动 ID
+     * @return 审核记录列表
+     */
+    List<ActivityReviewRecord> findByActivityIdOrderByReviewedAtDesc(String activityId);
 }
