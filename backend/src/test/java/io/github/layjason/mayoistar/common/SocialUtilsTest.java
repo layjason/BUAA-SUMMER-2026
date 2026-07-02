@@ -46,7 +46,7 @@ class SocialUtilsTest {
     @DisplayName("url 为空时根据 mediaId 自动生成相对路径")
     void shouldGenerateUrlFromMediaIdWhenUrlIsNull() {
         MediaFile entity = MediaFile.builder()
-                .mediaId("media-2")
+                .mediaId(UUID.fromString("00000000-0000-0000-0000-000000000002"))
                 .fileName("photo.jpg")
                 .contentType("image/jpeg")
                 .sizeBytes(512L)
@@ -57,6 +57,6 @@ class SocialUtilsTest {
 
         CommonDtos.MediaFile dto = SocialUtils.toMediaFileDto(entity);
 
-        assertThat(dto.getUrl()).isEqualTo("/media/media-2");
+        assertThat(dto.getUrl()).isEqualTo("/media/00000000-0000-0000-0000-000000000002");
     }
 }

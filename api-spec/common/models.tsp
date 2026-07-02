@@ -154,6 +154,15 @@ enum MediaUsage {
   activityReviewImage,
 }
 
+@doc("媒体可见性。")
+enum MediaVisibility {
+  @doc("公开可见，仍需签名 URL 才能访问。")
+  publicVisible,
+
+  @doc("私有可见，访问时需要签名 URL、JWT 和对应 ACL 权限。")
+  privateVisible,
+}
+
 @doc("媒体文件元数据，文件已完成上传，业务接口可通过 mediaId 引用，不暴露存储凭据。")
 model MediaFile {
   @doc("媒体文件标识。")
@@ -174,8 +183,41 @@ model MediaFile {
   @doc("访问地址。")
   url?: string;
 
+  @doc("短期或中期签名访问地址，客户端不得作为永久地址保存。")
+  signedUrl?: string;
+
+  @doc("签名访问地址过期时间。")
+  signedUrlExpiresAt?: DateTimeString;
+
+  @doc("媒体可见性。")
+  visibility?: MediaVisibility;
+
   @doc("上传时间。")
   uploadedAt: DateTimeString;
+}
+
+@doc("批量刷新媒体签名 URL 请求。")
+model BatchSignedUrlRequest {
+  @doc("媒体文件标识列表，服务端会去重，单次最多 100 个。")
+  mediaIds: EntityId[];
+}
+
+@doc("媒体签名 URL。")
+model SignedMediaUrl {
+  @doc("媒体文件标识。")
+  mediaId: EntityId;
+
+  @doc("短期或中期签名访问地址。")
+  signedUrl: string;
+
+  @doc("签名访问地址过期时间。")
+  signedUrlExpiresAt: DateTimeString;
+}
+
+@doc("批量刷新媒体签名 URL 响应。")
+model BatchSignedUrlResponse {
+  @doc("成功刷新签名 URL 的媒体列表。")
+  items: SignedMediaUrl[];
 }
 
 @doc("通用媒体上传请求，调用方使用 multipart/form-data，服务端根据调用端点自动设置媒体用途，业务对象只保存 mediaId。")
@@ -194,6 +236,11 @@ interface CommonOperations {
     @body body: bytes;
     @header contentType: string;
   };
+
+  @post
+  @route("/batch-signed-url")
+  @doc("批量刷新媒体签名 URL。公开资源可匿名刷新；私有资源必须携带 JWT 且通过对应 ACL 权限校验。")
+  batchSignedUrl(@body request: BatchSignedUrlRequest): APIResult<BatchSignedUrlResponse>;
 }
 
 @doc("审核状态。")

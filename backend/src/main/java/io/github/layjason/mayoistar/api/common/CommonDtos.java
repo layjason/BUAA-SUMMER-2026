@@ -1,10 +1,12 @@
 package io.github.layjason.mayoistar.api.common;
 
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
@@ -59,8 +61,35 @@ public final class CommonDtos {
         @Nullable
         private String url;
 
+        @Nullable
+        private String signedUrl;
+
+        @Nullable
+        private String signedUrlExpiresAt;
+
+        private MediaVisibility visibility;
+
         @NotNull
         private String uploadedAt;
+    }
+
+    @Data
+    public static class BatchSignedUrlRequest {
+        @NotEmpty
+        @Size(max = 100)
+        private List<UUID> mediaIds;
+    }
+
+    @Data
+    public static class SignedMediaUrl {
+        private UUID mediaId;
+        private String signedUrl;
+        private String signedUrlExpiresAt;
+    }
+
+    @Data
+    public static class BatchSignedUrlResponse {
+        private List<SignedMediaUrl> items;
     }
 
     @Data

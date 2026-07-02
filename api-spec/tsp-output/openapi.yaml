@@ -4843,6 +4843,51 @@ paths:
         - 身份与资料
       security:
         - {}
+  /media/batch-signed-url:
+    post:
+      operationId: CommonOperations_batchSignedUrl
+      description: 批量刷新媒体签名 URL。公开资源可匿名刷新；私有资源必须携带 JWT 且通过对应 ACL 权限校验。
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/BatchSignedUrlResponse'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+      tags:
+        - 通用
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchSignedUrlRequest'
   /media/{mediaId}:
     get:
       operationId: CommonOperations_getMediaFile
@@ -8338,6 +8383,28 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 请求体或 URL 参数无法解析，或不符合 TypeSpec Schema。
+    BatchSignedUrlRequest:
+      type: object
+      required:
+        - mediaIds
+      properties:
+        mediaIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityId'
+          description: 媒体文件标识列表，服务端会去重，单次最多 100 个。
+      description: 批量刷新媒体签名 URL 请求。
+    BatchSignedUrlResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SignedMediaUrl'
+          description: 成功刷新签名 URL 的媒体列表。
+      description: 批量刷新媒体签名 URL 响应。
     Chat.ChatMessage:
       type: object
       required:
@@ -11624,6 +11691,17 @@ components:
         url:
           type: string
           description: 访问地址。
+        signedUrl:
+          type: string
+          description: 短期或中期签名访问地址，客户端不得作为永久地址保存。
+        signedUrlExpiresAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 签名访问地址过期时间。
+        visibility:
+          allOf:
+            - $ref: '#/components/schemas/MediaVisibility'
+          description: 媒体可见性。
         uploadedAt:
           allOf:
             - $ref: '#/components/schemas/DateTimeString'
@@ -11650,6 +11728,12 @@ components:
         - summaryImage
         - activityReviewImage
       description: 媒体用途。
+    MediaVisibility:
+      type: string
+      enum:
+        - publicVisible
+        - privateVisible
+      description: 媒体可见性。
     ReviewDecisionRequest:
       type: object
       required:
@@ -11698,6 +11782,25 @@ components:
         - rejected
         - changeRequired
       description: 审核状态。
+    SignedMediaUrl:
+      type: object
+      required:
+        - mediaId
+        - signedUrl
+        - signedUrlExpiresAt
+      properties:
+        mediaId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 媒体文件标识。
+        signedUrl:
+          type: string
+          description: 短期或中期签名访问地址。
+        signedUrlExpiresAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 签名访问地址过期时间。
+      description: 媒体签名 URL。
     Social.BlacklistItem:
       type: object
       required:
