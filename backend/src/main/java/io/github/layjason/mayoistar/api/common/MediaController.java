@@ -3,8 +3,6 @@ package io.github.layjason.mayoistar.api.common;
 import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.service.media.MediaAccessDescriptor;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import java.io.InputStream;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,13 +35,13 @@ public class MediaController {
     /**
      * 通过签名 URL 获取文件内容。
      *
-     * <p>前置条件：mediaId 对应有效的 MediaFile 记录，请求携带服务端签发的 exp、v、policy、scope、sig。
+     * <p>前置条件：mediaId 对应有效的 MediaFile 记录，请求携带服务端签发的 v、policy、scope、sig。
      *
      * <p>后置条件：签名和权限校验通过后，通过 FileStorageService 流式返回文件内容，HTTP 状态码固定为 200。
      *
      * <p>行为：
      * <ul>
-     *   <li>签名缺失、过期或被篡改 → 403</li>
+     *   <li>签名缺失或被篡改 → 403</li>
      *   <li>私有资源未认证 → 401</li>
      *   <li>私有资源无权限 → 403</li>
      *   <li>mediaId 不存在或已软删除 → 404</li>
@@ -54,7 +50,6 @@ public class MediaController {
      * </ul>
      *
      * @param mediaId        媒体文件唯一标识
-     * @param exp            过期时间戳
      * @param accessVersion  访问版本
      * @param policy         访问策略
      * @param scope          访问作用域
@@ -65,14 +60,13 @@ public class MediaController {
     @GetMapping("/{mediaId}")
     public ResponseEntity<InputStreamResource> getMediaFile(
             @PathVariable UUID mediaId,
-            @RequestParam long exp,
             @RequestParam("v") long accessVersion,
             @RequestParam MediaAccessPolicy policy,
             @RequestParam(defaultValue = "") String scope,
             @RequestParam String sig,
             Authentication authentication) {
         InputStream inputStream =
-                mediaAccessService.openSignedContent(mediaId, exp, accessVersion, policy, scope, sig, authentication);
+                mediaAccessService.openSignedContent(mediaId, accessVersion, policy, scope, sig, authentication);
         MediaAccessDescriptor descriptor = mediaAccessService.loadDescriptor(mediaId);
         InputStreamResource resource = new InputStreamResource(inputStream);
 
@@ -86,36 +80,7 @@ public class MediaController {
         return ResponseEntity.ok().headers(headers).body(resource);
     }
 
-    /**
-     * 批量刷新媒体签名 URL。
-     *
-     * <p>前置条件：请求体包含不超过配置上限的 mediaId 列表；私有媒体调用方必须已认证并具备访问权限。
-     *
-     * <p>后置条件：返回新的签名 URL 和过期时间；刷新请求会在权限校验前执行限流。
-     *
-     * @param request        刷新请求
-     * @param authentication 当前认证信息，可为空
-     * @param servletRequest HTTP 请求
-     * @return 批量刷新结果
-     */
-    @PostMapping("/batch-signed-url")
-    public ResponseEntity<ApiResponse<CommonDtos.BatchSignedUrlResponse>> batchSignedUrl(
-            @Valid @RequestBody CommonDtos.BatchSignedUrlRequest request,
-            Authentication authentication,
-            HttpServletRequest servletRequest) {
-        return ResponseEntity.ok(ApiResponse.success(
-                mediaAccessService.batchSign(request.getMediaIds(), authentication, clientIp(servletRequest))));
-    }
-
     private static String sanitizeHeaderValue(String input) {
         return input.replace('\r', '_').replace('\n', '_');
-    }
-
-    private static String clientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }

@@ -5,7 +5,6 @@ import io.github.layjason.mayoistar.config.MediaAccessProperties;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
-import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
@@ -17,11 +16,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Base64;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -55,7 +50,6 @@ public class MediaAccessService {
     private final ConversationMemberRepository conversationMemberRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final ActivityRepository activityRepository;
-    private final MediaRefreshRateLimiter mediaRefreshRateLimiter;
     private final Clock clock = Clock.systemUTC();
 
     /**
@@ -87,7 +81,6 @@ public class MediaAccessService {
      * <p>不变量：私有资源必须存在有效认证；管理员仍必须提供有效签名 URL。
      *
      * @param mediaId        媒体标识
-     * @param exp            URL 过期时间戳
      * @param accessVersion  URL 中的访问版本
      * @param policy         URL 中的访问策略
      * @param scope          URL 中的访问作用域
@@ -97,17 +90,12 @@ public class MediaAccessService {
      */
     public InputStream openSignedContent(
             UUID mediaId,
-            long exp,
             long accessVersion,
             MediaAccessPolicy policy,
             @Nullable String scope,
             String signature,
             @Nullable Authentication authentication) {
-        Instant expiresAt = Instant.ofEpochSecond(exp);
-        if (!expiresAt.isAfter(clock.instant())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "SignatureExpired");
-        }
-        if (!verifySignature(mediaId, exp, accessVersion, policy, normalizeScope(scope), signature)) {
+        if (!verifySignature(mediaId, accessVersion, policy, normalizeScope(scope), signature)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Permission is denied");
         }
 
@@ -133,7 +121,7 @@ public class MediaAccessService {
      *
      * <p>前置条件：mediaFile 非空。
      *
-     * <p>后置条件：DTO 不暴露长期 url，填充 signedUrl、signedUrlExpiresAt 和 visibility。
+     * <p>后置条件：DTO 不暴露长期 url，填充 signedUrl 和 visibility。
      *
      * @param mediaFile 媒体实体
      * @return 媒体 DTO
@@ -150,52 +138,8 @@ public class MediaAccessService {
         if (mediaFile.getDeletedAt() == null) {
             SignedMediaAccess signed = sign(mediaFile);
             result.setSignedUrl(signed.signedUrl());
-            result.setSignedUrlExpiresAt(signed.expiresAt().toString());
         }
         return result;
-    }
-
-    /**
-     * 批量刷新媒体签名 URL。
-     *
-     * <p>前置条件：mediaIds 非空且数量不超过配置上限。
-     *
-     * <p>后置条件：返回当前调用方有权访问的媒体签名 URL；任一资源无权访问时抛出 HTTP 错误。
-     *
-     * <p>不变量：刷新限流在权限校验和签名生成前执行。
-     *
-     * @param mediaIds        媒体标识列表
-     * @param authentication  当前认证信息，可为空
-     * @param clientIp        客户端 IP
-     * @return 批量签名 URL 响应
-     */
-    public CommonDtos.BatchSignedUrlResponse batchSign(
-            List<UUID> mediaIds, @Nullable Authentication authentication, String clientIp) {
-        List<UUID> distinctMediaIds = new LinkedHashSet<>(mediaIds).stream().toList();
-        if (distinctMediaIds.size() > properties.getBatchSizeLimit()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Too many media IDs");
-        }
-        mediaRefreshRateLimiter.check(rateKey(authentication, clientIp), distinctMediaIds.size());
-
-        List<CommonDtos.SignedMediaUrl> items = distinctMediaIds.stream()
-                .map(mediaId -> {
-                    MediaAccessDescriptor descriptor = loadDescriptor(mediaId);
-                    if (descriptor.deletedAt() != null) {
-                        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found");
-                    }
-                    assertAccessAllowed(descriptor, authentication);
-                    SignedMediaAccess signed = sign(descriptor);
-                    CommonDtos.SignedMediaUrl item = new CommonDtos.SignedMediaUrl();
-                    item.setMediaId(mediaId);
-                    item.setSignedUrl(signed.signedUrl());
-                    item.setSignedUrlExpiresAt(signed.expiresAt().toString());
-                    return item;
-                })
-                .toList();
-
-        CommonDtos.BatchSignedUrlResponse response = new CommonDtos.BatchSignedUrlResponse();
-        response.setItems(items);
-        return response;
     }
 
     /**
@@ -221,6 +165,16 @@ public class MediaAccessService {
         log.info("媒体文件已软删除: mediaId={}, accessVersion={}", mediaId, mediaFile.getAccessVersion());
     }
 
+    /**
+     * 从缓存或数据库加载媒体访问描述符。
+     *
+     * <p>前置条件：mediaId 非空。
+     *
+     * <p>后置条件：缓存命中时直接返回；未命中时从数据库加载并回写缓存。
+     *
+     * @param mediaId 媒体标识
+     * @return 媒体访问描述符
+     */
     public MediaAccessDescriptor loadDescriptor(UUID mediaId) {
         return mediaAccessCache.get(mediaId).orElseGet(() -> {
             MediaFile mediaFile = mediaFileRepository
@@ -233,17 +187,12 @@ public class MediaAccessService {
     }
 
     private SignedMediaAccess sign(MediaAccessDescriptor descriptor) {
-        Duration ttl = ttlFor(descriptor);
-        Instant expiresAt = clock.instant().plus(ttl);
-        long exp = expiresAt.getEpochSecond();
         String scope = normalizeScope(descriptor.scope());
         String signature =
-                createSignature(descriptor.mediaId(), exp, descriptor.accessVersion(), descriptor.policy(), scope);
+                createSignature(descriptor.mediaId(), descriptor.accessVersion(), descriptor.policy(), scope);
         String signedUrl = "/media/"
                 + descriptor.mediaId()
-                + "?exp="
-                + exp
-                + "&v="
+                + "?v="
                 + descriptor.accessVersion()
                 + "&policy="
                 + descriptor.policy().name()
@@ -251,19 +200,7 @@ public class MediaAccessService {
                 + urlEncode(scope)
                 + "&sig="
                 + urlEncode(signature);
-        return new SignedMediaAccess(signedUrl, expiresAt);
-    }
-
-    private Duration ttlFor(MediaAccessDescriptor descriptor) {
-        if (descriptor.visibility() != MediaVisibility.publicVisible) {
-            return properties.getPrivateTtl();
-        }
-        if (descriptor.policy() == MediaAccessPolicy.publicAccess && descriptor.uploadedBy() != null) {
-            if (descriptor.storagePath().startsWith(MediaUsage.avatar.name() + "/")) {
-                return properties.getPublicAvatarTtl();
-            }
-        }
-        return properties.getPublicActivityImageTtl();
+        return new SignedMediaAccess(signedUrl);
     }
 
     private MediaAccessDescriptor toDescriptor(MediaFile mediaFile) {
@@ -329,25 +266,18 @@ public class MediaAccessService {
                 || "anonymousUser".equals(String.valueOf(authentication.getPrincipal()));
     }
 
-    private String rateKey(@Nullable Authentication authentication, String clientIp) {
-        if (!isAnonymous(authentication)) {
-            return "rate:media-refresh:user:" + authentication.getPrincipal();
-        }
-        return "rate:media-refresh:ip:" + clientIp;
-    }
-
     private boolean verifySignature(
-            UUID mediaId, long exp, long accessVersion, MediaAccessPolicy policy, String scope, String signature) {
-        String expected = createSignature(mediaId, exp, accessVersion, policy, scope);
+            UUID mediaId, long accessVersion, MediaAccessPolicy policy, String scope, String signature) {
+        String expected = createSignature(mediaId, accessVersion, policy, scope);
         return MessageDigest.isEqual(
                 expected.getBytes(StandardCharsets.UTF_8), signature.getBytes(StandardCharsets.UTF_8));
     }
 
-    private String createSignature(UUID mediaId, long exp, long accessVersion, MediaAccessPolicy policy, String scope) {
+    private String createSignature(UUID mediaId, long accessVersion, MediaAccessPolicy policy, String scope) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(properties.getSigningSecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            String payload = mediaId + "\n" + exp + "\n" + accessVersion + "\n" + policy.name() + "\n" + scope;
+            String payload = mediaId + "\n" + accessVersion + "\n" + policy.name() + "\n" + scope;
             byte[] digest = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
         } catch (Exception e) {

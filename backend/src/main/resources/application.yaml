@@ -59,9 +59,3 @@ mayoistar:
   media:
     access:
       signing-secret: ${MAYOISTAR_MEDIA_SIGNING_SECRET:${MAYOISTAR_JWT_SECRET:dev-media-signing-secret-change-me}}
-      public-avatar-ttl: ${MAYOISTAR_MEDIA_PUBLIC_AVATAR_TTL:7d}
-      public-activity-image-ttl: ${MAYOISTAR_MEDIA_PUBLIC_ACTIVITY_IMAGE_TTL:24h}
-      private-ttl: ${MAYOISTAR_MEDIA_PRIVATE_TTL:2h}
-      refresh-request-limit-per-minute: ${MAYOISTAR_MEDIA_REFRESH_REQUEST_LIMIT_PER_MINUTE:30}
-      refresh-media-limit-per-minute: ${MAYOISTAR_MEDIA_REFRESH_MEDIA_LIMIT_PER_MINUTE:1000}
-      batch-size-limit: ${MAYOISTAR_MEDIA_BATCH_SIZE_LIMIT:100}
