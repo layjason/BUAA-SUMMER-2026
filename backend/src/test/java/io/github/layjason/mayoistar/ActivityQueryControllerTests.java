@@ -5,8 +5,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
@@ -17,6 +19,7 @@ import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -47,6 +50,9 @@ class ActivityQueryControllerTests {
     private ActivityReviewRecordRepository activityReviewRecordRepository;
 
     @Autowired
+    private ActivityRegistrationRepository activityRegistrationRepository;
+
+    @Autowired
     private MediaFileRepository mediaFileRepository;
 
     @Autowired
@@ -60,6 +66,7 @@ class ActivityQueryControllerTests {
 
     @AfterEach
     void tearDown() {
+        activityRegistrationRepository.deleteAll();
         activityReviewRecordRepository.deleteAll();
         activityImageRepository.deleteAll();
         activityRepository.deleteAll();
@@ -159,6 +166,39 @@ class ActivityQueryControllerTests {
     }
 
     @Test
+    void listMyRegistrationsShouldReturnUserRegistrations() throws Exception {
+        saveUser("user-a");
+        saveUser("user-b");
+        saveUser("organizer");
+        Activity myActivity = saveApprovedActivity("organizer", "我的报名活动");
+        Activity otherActivity = saveApprovedActivity("organizer", "别人的报名活动");
+        saveRegistration(
+                myActivity.getActivityId(),
+                "user-a",
+                RegistrationStatus.waiting,
+                3,
+                Instant.parse("2026-07-02T09:00:00Z"),
+                null);
+        saveRegistration(
+                otherActivity.getActivityId(),
+                "user-b",
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                null);
+
+        mockMvc.perform(get("/activities/registrations/mine")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].activityId").value(myActivity.getActivityId()))
+                .andExpect(jsonPath("$.data.items[0].title").value("我的报名活动"))
+                .andExpect(jsonPath("$.data.items[0].registrationStatus").value("waiting"))
+                .andExpect(jsonPath("$.data.items[0].waitingRank").value(3));
+    }
+
+    @Test
     void getActivityShouldReturnReviewStatusAndRuntimeStatus() throws Exception {
         saveUser("user-a");
         Activity activity = saveApprovedActivity("user-a", "状态测试");
@@ -169,6 +209,26 @@ class ActivityQueryControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reviewStatus").value("approved"))
                 .andExpect(jsonPath("$.data.runtimeStatus").value("notStarted"));
+    }
+
+    private ActivityRegistration saveRegistration(
+            String activityId,
+            String userId,
+            RegistrationStatus status,
+            Integer waitingRank,
+            Instant registeredAt,
+            Instant confirmationDeadline) {
+        return activityRegistrationRepository.save(ActivityRegistration.builder()
+                .registrationId(UUID.randomUUID().toString())
+                .activityId(activityId)
+                .userId(userId)
+                .status(status)
+                .participantNote("测试备注")
+                .acceptedSafetyNotice(true)
+                .waitingRank(waitingRank)
+                .confirmationDeadline(confirmationDeadline)
+                .registeredAt(registeredAt)
+                .build());
     }
 
     private User saveUser(String userId) {

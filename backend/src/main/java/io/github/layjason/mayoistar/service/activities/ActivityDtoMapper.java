@@ -4,6 +4,7 @@ import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import java.time.Instant;
@@ -65,6 +66,40 @@ public class ActivityDtoMapper {
     public ActivityDtos.ActivitySummary toActivitySummary(
             Activity activity, Function<String, CommonDtos.MediaFile> coverImageProvider) {
         ActivityDtos.ActivitySummary dto = new ActivityDtos.ActivitySummary();
+        fillActivitySummary(dto, activity, coverImageProvider);
+        return dto;
+    }
+
+    /**
+     * 将报名记录转为当前用户报名活动摘要 DTO。
+     *
+     * <p>前置条件：registration 非空且已加载关联 Activity。
+     *
+     * <p>后置条件：返回活动摘要字段以及当前用户的报名状态字段。
+     *
+     * <p>不变量：不修改传入实体。
+     *
+     * @param registration 报名记录
+     * @param coverImageProvider 根据活动 ID 获取封面图
+     * @return 当前用户报名活动摘要 DTO
+     */
+    public ActivityDtos.RegisteredActivitySummary toRegisteredActivitySummary(
+            ActivityRegistration registration, Function<String, CommonDtos.MediaFile> coverImageProvider) {
+        Activity activity = registration.getActivity();
+        ActivityDtos.RegisteredActivitySummary dto = new ActivityDtos.RegisteredActivitySummary();
+        fillActivitySummary(dto, activity, coverImageProvider);
+        dto.setRegistrationId(registration.getRegistrationId());
+        dto.setRegistrationStatus(registration.getStatus());
+        dto.setRegisteredAt(formatInstant(registration.getRegisteredAt()));
+        dto.setWaitingRank(registration.getWaitingRank());
+        dto.setConfirmationDeadline(formatInstant(registration.getConfirmationDeadline()));
+        return dto;
+    }
+
+    private void fillActivitySummary(
+            ActivityDtos.ActivitySummary dto,
+            Activity activity,
+            Function<String, CommonDtos.MediaFile> coverImageProvider) {
         dto.setActivityId(activity.getActivityId());
         dto.setTitle(activity.getTitle());
         dto.setTags(activity.getTags() == null ? List.of() : List.copyOf(activity.getTags()));
@@ -78,7 +113,6 @@ public class ActivityDtoMapper {
         // registeredCount 由报名模块补充，当前暂为 0
         dto.setRegisteredCount(0);
         dto.setCapacity(activity.getCapacity());
-        return dto;
     }
 
     /**

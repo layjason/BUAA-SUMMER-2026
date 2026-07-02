@@ -150,6 +150,17 @@ public class ActivityController {
                 ApiResponse.success(activityQueryService.listMyActivities(userId.get(), status, page, pageSize)));
     }
 
+    @GetMapping("/registrations/mine")
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.RegisteredActivitySummary>>> listMyRegistrations(
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
+        Optional<String> userId = requestActorResolver.resolveCurrentUserId();
+        if (userId.isEmpty()) {
+            return responseFactory.emptyPage();
+        }
+        return ResponseEntity.ok(
+                ApiResponse.success(activityQueryService.listMyRegistrations(userId.get(), page, pageSize)));
+    }
+
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> searchActivities(
             @RequestParam(required = false) String keyword,
