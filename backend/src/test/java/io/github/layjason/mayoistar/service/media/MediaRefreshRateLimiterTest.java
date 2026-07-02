@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.layjason.mayoistar.config.MediaAccessProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 @DisplayName("MediaRefreshRateLimiter")
@@ -16,7 +18,7 @@ class MediaRefreshRateLimiterTest {
         MediaAccessProperties properties = new MediaAccessProperties();
         properties.setRefreshRequestLimitPerMinute(1);
         properties.setRefreshMediaLimitPerMinute(100);
-        MediaRefreshRateLimiter limiter = new MediaRefreshRateLimiter(properties);
+        MediaRefreshRateLimiter limiter = new MediaRefreshRateLimiter(properties, emptyProvider());
 
         limiter.check("rate:media-refresh:user:user1", 1);
 
@@ -24,5 +26,29 @@ class MediaRefreshRateLimiterTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting("statusCode.value")
                 .isEqualTo(429);
+    }
+
+    private static ObjectProvider<StringRedisTemplate> emptyProvider() {
+        return new ObjectProvider<>() {
+            @Override
+            public StringRedisTemplate getObject() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public StringRedisTemplate getObject(Object... args) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public StringRedisTemplate getIfAvailable() {
+                return null;
+            }
+
+            @Override
+            public StringRedisTemplate getIfUnique() {
+                return null;
+            }
+        };
     }
 }

@@ -28,6 +28,8 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 @DisplayName("MediaAccessService")
@@ -50,7 +52,7 @@ class MediaAccessServiceTest {
                 mock(ConversationMemberRepository.class),
                 mock(TeamMemberRepository.class),
                 mock(ActivityRepository.class),
-                new MediaRefreshRateLimiter(properties));
+                new MediaRefreshRateLimiter(properties, emptyProvider()));
     }
 
     @Test
@@ -96,6 +98,30 @@ class MediaAccessServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting("statusCode.value")
                 .isEqualTo(401);
+    }
+
+    private static ObjectProvider<StringRedisTemplate> emptyProvider() {
+        return new ObjectProvider<>() {
+            @Override
+            public StringRedisTemplate getObject() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public StringRedisTemplate getObject(Object... args) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public StringRedisTemplate getIfAvailable() {
+                return null;
+            }
+
+            @Override
+            public StringRedisTemplate getIfUnique() {
+                return null;
+            }
+        };
     }
 
     private MediaFile buildMediaFile(
