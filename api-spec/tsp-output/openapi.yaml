@@ -6912,6 +6912,7 @@ components:
         - reviewStatus
         - runtimeStatus
         - registeredCount
+        - occupiedCount
         - capacity
         - introduction
         - safetyNotice
@@ -6966,7 +6967,11 @@ components:
         registeredCount:
           type: integer
           format: int32
-          description: 已报名人数。
+          description: 已确认参加人数（含已报名与已签到），不含候补待确认。
+        occupiedCount:
+          type: integer
+          format: int32
+          description: 当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。
         capacity:
           type: integer
           format: int32
@@ -6996,7 +7001,7 @@ components:
         waitingCount:
           type: integer
           format: int32
-          description: 当前候补人数。
+          description: 当前候补人数（含候补排队与候补待确认），候补待确认占用名额。
         aiContentReview:
           allOf:
             - $ref: '#/components/schemas/Ai.AiContentReviewResult'
@@ -7367,6 +7372,7 @@ components:
         - reviewStatus
         - runtimeStatus
         - registeredCount
+        - occupiedCount
         - capacity
       properties:
         activityId:
@@ -7412,7 +7418,11 @@ components:
         registeredCount:
           type: integer
           format: int32
-          description: 已报名人数。
+          description: 已确认参加人数（含已报名与已签到），不含候补待确认。
+        occupiedCount:
+          type: integer
+          format: int32
+          description: 当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。
         capacity:
           type: integer
           format: int32
@@ -7689,6 +7699,7 @@ components:
         - reviewStatus
         - runtimeStatus
         - registeredCount
+        - occupiedCount
         - capacity
         - registrationId
         - registrationStatus
@@ -7737,7 +7748,11 @@ components:
         registeredCount:
           type: integer
           format: int32
-          description: 已报名人数。
+          description: 已确认参加人数（含已报名与已签到），不含候补待确认。
+        occupiedCount:
+          type: integer
+          format: int32
+          description: 当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。
         capacity:
           type: integer
           format: int32

@@ -156,8 +156,11 @@ model ActivitySummary {
   @doc("活动进行状态。")
   runtimeStatus: ActivityRuntimeStatus;
 
-  @doc("已报名人数。")
+  @doc("已确认参加人数（含已报名与已签到），不含候补待确认。")
   registeredCount: int32;
+
+  @doc("当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。")
+  occupiedCount: int32;
 
   @doc("活动人数上限。")
   capacity: int32;
@@ -229,7 +232,7 @@ model ActivityDetail {
   @doc("活动图片列表。")
   images: MediaFile[];
 
-  @doc("当前候补人数。")
+  @doc("当前候补人数（含候补排队与候补待确认），候补待确认占用名额。")
   waitingCount: int32;
 
   @doc("AI 内容安全审核结果快照。未执行或暂不支持 AI 审核时为空。")
