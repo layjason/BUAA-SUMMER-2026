@@ -66,9 +66,11 @@
       </view>
     </scroll-view>
 
-    <view class="action-bar">
-      <button class="skip-btn" @click="skipTemplate">{{ t('activityTemplates.skip') }}</button>
-    </view>
+    <BottomActionBar>
+      <button class="bar-btn bar-btn-secondary" @click="skipTemplate">
+        {{ t('activityTemplates.skip') }}
+      </button>
+    </BottomActionBar>
   </view>
 </template>
 
@@ -84,6 +86,7 @@ import { ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { api, BusinessError } from '@/api'
+import { BottomActionBar } from '@/components'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
 import { runtimeStatusText as getRuntimeStatusText } from '@/utils/status'
@@ -223,7 +226,7 @@ onUnload(() => {
 }
 
 .container {
-  padding: 32rpx;
+  padding: 32rpx 32rpx calc(240rpx + env(safe-area-inset-bottom));
 }
 
 .header {
@@ -291,7 +294,7 @@ onUnload(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #e6f0fe;
+  background-color: #e8f7f0;
 }
 
 .placeholder-icon {
@@ -373,8 +376,8 @@ onUnload(() => {
 }
 
 .status-registering {
-  background-color: #e6f0fe;
-  color: #1989fa;
+  background-color: #e8f7f0;
+  color: #5ec8a7;
 }
 
 .status-registrationClosed {
@@ -383,8 +386,8 @@ onUnload(() => {
 }
 
 .status-ongoing {
-  background-color: #ebf9e9;
-  color: #07c160;
+  background-color: #e8f7f0;
+  color: #5ec8a7;
 }
 
 .status-ended {
@@ -402,27 +405,7 @@ onUnload(() => {
   color: #ee0a24;
 }
 
-/* ---- 底部 ---- */
-.action-bar {
-  padding: 16rpx 32rpx;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  background-color: #fff;
-  border-top: 2rpx solid #ebedf0;
-  flex-shrink: 0;
-}
-
-.skip-btn {
-  width: 100%;
-  height: 88rpx;
-  line-height: 88rpx;
-  text-align: center;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #1989fa;
-  background-color: #fff;
-  border: 2rpx solid #1989fa;
-  border-radius: 12rpx;
-}
+/* 底部操作按钮已由 BottomActionBar 组件承载 */
 </style>
 
 <style>

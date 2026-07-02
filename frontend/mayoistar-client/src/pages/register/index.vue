@@ -193,10 +193,11 @@ function onNicknameInput(): void {
       }
     } catch {
       if (nickname.value.trim() !== value) return
-      nicknameChecked.value = false
-    } finally {
-      if (nickname.value.trim() !== value) return
       nicknameChecking.value = false
+    } finally {
+      if (nickname.value.trim() === value) {
+        nicknameChecking.value = false
+      }
     }
   }, 500)
 }

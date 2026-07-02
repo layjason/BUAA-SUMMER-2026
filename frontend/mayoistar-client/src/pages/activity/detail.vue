@@ -85,7 +85,7 @@
           <view class="menu-card" hover-class="menu-hover" @click="goParticipants">
             <text class="menu-text">{{ t('activityDetail.viewParticipants') }}</text>
             <view class="menu-right">
-              <text class="menu-count">{{ activity.registeredCount }}/{{ activity.capacity }}</text>
+              <text class="menu-count">{{ activity.occupiedCount }}/{{ activity.capacity }}</text>
               <text class="menu-arrow">&gt;</text>
             </view>
           </view>
@@ -93,52 +93,54 @@
       </scroll-view>
 
       <!-- 底部操作按钮 -->
-      <view class="action-bar">
-        <button
-          class="action-btn"
-          :class="{ disabled: buttonDisabled }"
-          :disabled="buttonDisabled"
-          :loading="actioning"
-          @click="handleAction"
-        >
-          {{ buttonText }}
-        </button>
-        <view class="action-row">
+      <BottomActionBar>
+        <view class="detail-action-stack">
           <button
-            v-if="
-              isOrganizer &&
-              (activity.runtimeStatus === 'registering' || activity.runtimeStatus === 'ongoing')
-            "
-            class="action-btn-sm"
-            @click="handleGenerateQrCode"
+            class="bar-btn bar-btn-primary"
+            :class="{ 'bar-btn-disabled': buttonDisabled }"
+            :disabled="buttonDisabled"
+            :loading="actioning"
+            @click="handleAction"
           >
-            {{ t('activityDetail.generateQrCode') }}
+            {{ buttonText }}
           </button>
-          <button v-if="isOrganizer" class="action-btn-sm" @click="goCheckIns">
-            {{ t('activityDetail.checkInManagement') }}
-          </button>
-          <button v-if="canReview" class="action-btn-sm" @click="goReview">
-            {{ t('activityDetail.writeReview') }}
-          </button>
-          <button
-            v-if="isOrganizer && activity.runtimeStatus === 'ended'"
-            class="action-btn-sm"
-            @click="goSummary"
-          >
-            {{ t('activityDetail.writeSummary') }}
-          </button>
-          <button
-            v-if="
-              isOrganizer &&
-              (activity.runtimeStatus === 'registering' || activity.runtimeStatus === 'ongoing')
-            "
-            class="action-btn-sm"
-            @click="handleExportCheckIns"
-          >
-            {{ t('checkInExport.export') }}
-          </button>
+          <view class="action-row">
+            <button
+              v-if="
+                isOrganizer &&
+                (activity.runtimeStatus === 'registering' || activity.runtimeStatus === 'ongoing')
+              "
+              class="action-btn-sm"
+              @click="handleGenerateQrCode"
+            >
+              {{ t('activityDetail.generateQrCode') }}
+            </button>
+            <button v-if="isOrganizer" class="action-btn-sm" @click="goCheckIns">
+              {{ t('activityDetail.checkInManagement') }}
+            </button>
+            <button v-if="canReview" class="action-btn-sm" @click="goReview">
+              {{ t('activityDetail.writeReview') }}
+            </button>
+            <button
+              v-if="isOrganizer && activity.runtimeStatus === 'ended'"
+              class="action-btn-sm"
+              @click="goSummary"
+            >
+              {{ t('activityDetail.writeSummary') }}
+            </button>
+            <button
+              v-if="
+                isOrganizer &&
+                (activity.runtimeStatus === 'registering' || activity.runtimeStatus === 'ongoing')
+              "
+              class="action-btn-sm"
+              @click="handleExportCheckIns"
+            >
+              {{ t('checkInExport.export') }}
+            </button>
+          </view>
         </view>
-      </view>
+      </BottomActionBar>
     </template>
   </view>
 </template>
@@ -154,7 +156,19 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import {
+  getActivityDetail,
+  getParticipationState as fetchParticipationState,
+} from '@/api/modules/activities'
+import {
+  registerForActivity,
+  cancelRegistration,
+  confirmWaitlist,
+} from '@/api/modules/registrations'
+import { generateCheckInQrCode, checkIn, exportCheckIns } from '@/api/modules/checkin'
+import { BottomActionBar } from '@/components'
+import { isActivityAtCapacity } from '@/utils/activity-capacity'
 import { getErrorMessage } from '@/utils/error'
 import { formatDateTime, formatTimeRange } from '@/utils/date'
 import { runtimeStatusText } from '@/utils/status'
@@ -199,6 +213,7 @@ interface ActivityDetail {
   minAge?: number
   capacity: number
   registeredCount: number
+  occupiedCount: number
   waitingCount: number
   registrationDeadline: string
   organizerId: string
@@ -254,6 +269,13 @@ const canReview = computed(() => {
   return participation.value?.status === 'checkedIn' && activity.value?.runtimeStatus === 'ended'
 })
 
+/** 活动是否已满员（依据 API 返回的 occupiedCount） */
+const isAtCapacity = computed(() => {
+  const act = activity.value
+  if (!act) return false
+  return isActivityAtCapacity(act.occupiedCount, act.capacity)
+})
+
 /** 跳转到评价页 */
 function goReview(): void {
   uni.navigateTo({ url: `/pages/activity/review?activityId=${activityId.value}` })
@@ -272,9 +294,7 @@ function goSummary(): void {
 async function handleExportCheckIns(): Promise<void> {
   try {
     uni.showLoading({ title: t('checkInExport.exporting') })
-    const result = (await api.get('/activities/{activityId}/check-ins/export', {
-      path: { activityId: activityId.value },
-    })) as { url: string }
+    const result = (await exportCheckIns(activityId.value)) as { url: string }
 
     const downloadResult = await uni.downloadFile({ url: result.url })
     uni.hideLoading()
@@ -290,30 +310,26 @@ async function handleExportCheckIns(): Promise<void> {
   }
 }
 
-const isFull = computed(() => {
-  if (!activity.value) return false
-  return activity.value.registeredCount >= activity.value.capacity
-})
-
 const buttonText = computed(() => {
   const p = participation.value
   if (!p) return ''
 
-  if (p.canCheckIn) return t('activityDetail.checkIn')
-  if (p.canConfirmWaitingSeat) return t('activityDetail.confirmWaiting')
-  if (p.canRegister) {
-    if (isFull.value) {
-      return t('activityDetail.registerFull', { count: activity.value!.waitingCount })
-    }
-    return t('activityDetail.registerNow', {
-      count: activity.value!.registeredCount,
-      total: activity.value!.capacity,
-    })
-  }
   if (p.status === 'registered' && p.canCancelRegistration)
     return t('activityDetail.cancelRegistration')
   if (p.status === 'waiting' && p.canCancelRegistration)
     return t('activityDetail.cancelRegistration')
+  if (p.canConfirmWaitingSeat) return t('activityDetail.confirmWaiting')
+  if (p.canCheckIn) return t('activityDetail.checkIn')
+  if (p.canRegister) {
+    const act = activity.value!
+    if (isAtCapacity.value) {
+      return t('activityDetail.registerFull', { count: act.waitingCount ?? 0 })
+    }
+    return t('activityDetail.registerNow', {
+      count: act.occupiedCount,
+      total: act.capacity,
+    })
+  }
   if (p.status === 'waiting') {
     return t('activityDetail.waitingRank', { rank: p.waitingRank ?? '?' })
   }
@@ -336,20 +352,20 @@ const buttonDisabled = computed(() => {
 function handleAction(): void {
   const p = participation.value
   if (!p || buttonDisabled.value) return
-  if (p.canCheckIn) {
-    handleCheckIn()
+  if ((p.status === 'registered' || p.status === 'waiting') && p.canCancelRegistration) {
+    showCancelConfirm()
     return
   }
   if (p.canConfirmWaitingSeat) {
     handleConfirmWaiting()
     return
   }
-  if (p.canRegister) {
-    showSafetyConfirm()
+  if (p.canCheckIn) {
+    handleCheckIn()
     return
   }
-  if ((p.status === 'registered' || p.status === 'waiting') && p.canCancelRegistration) {
-    showCancelConfirm()
+  if (p.canRegister) {
+    showSafetyConfirm()
     return
   }
 }
@@ -434,10 +450,7 @@ async function handleCheckIn(): Promise<void> {
   }
 
   try {
-    await api.post('/activities/{activityId}/check-ins', {
-      path: { activityId: activityId.value },
-      body: { qrCodeToken },
-    })
+    await checkIn(activityId.value, qrCodeToken)
     uni.showToast({ title: '签到成功', icon: 'success' })
     await loadData()
   } catch (error) {
@@ -459,9 +472,10 @@ async function handleCheckIn(): Promise<void> {
 async function handleGenerateQrCode(): Promise<void> {
   try {
     uni.showLoading({ title: '生成中...' })
-    const result = (await api.post('/activities/{activityId}/check-in-qrcode', {
-      path: { activityId: activityId.value },
-    })) as { qrCodeToken: string; expiresAt: string }
+    const result = (await generateCheckInQrCode(activityId.value)) as {
+      qrCodeToken: string
+      expiresAt: string
+    }
     const qrImageUrl =
       'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' +
       encodeURIComponent(result.qrCodeToken)
@@ -514,11 +528,11 @@ function goCheckIns(): void {
 async function handleRegister(): Promise<void> {
   actioning.value = true
   try {
-    await api.post('/activities/{activityId}/registrations', {
-      path: { activityId: activityId.value },
-      body: { acceptedSafetyNotice: true },
-    })
-    uni.showToast({ title: '报名成功', icon: 'success' })
+    const result = (await registerForActivity(activityId.value, {
+      acceptedSafetyNotice: true,
+    })) as { status?: string }
+    const message = result.status === 'waiting' ? '已加入候补' : '报名成功'
+    uni.showToast({ title: message, icon: 'success' })
     await loadData()
   } catch (error) {
     if (error instanceof BusinessError) {
@@ -534,9 +548,7 @@ async function handleRegister(): Promise<void> {
 async function handleCancelRegistration(): Promise<void> {
   actioning.value = true
   try {
-    await api.post('/activities/{activityId}/registrations/cancel', {
-      path: { activityId: activityId.value },
-    })
+    await cancelRegistration(activityId.value)
     uni.showToast({ title: '已取消报名', icon: 'success' })
     await loadData()
   } catch (error) {
@@ -553,10 +565,7 @@ async function handleCancelRegistration(): Promise<void> {
 async function handleConfirmWaiting(): Promise<void> {
   actioning.value = true
   try {
-    await api.post('/activities/{activityId}/waiting-confirmations', {
-      path: { activityId: activityId.value },
-      body: { confirmed: true },
-    })
+    await confirmWaitlist(activityId.value)
     uni.showToast({ title: '已确认名额', icon: 'success' })
     await loadData()
   } catch (error) {
@@ -573,10 +582,8 @@ async function handleConfirmWaiting(): Promise<void> {
 async function loadData(): Promise<void> {
   try {
     const [act, state] = await Promise.all([
-      api.get('/activities/{activityId}', { path: { activityId: activityId.value } }),
-      api.get('/activities/{activityId}/participation-state', {
-        path: { activityId: activityId.value },
-      }),
+      getActivityDetail(activityId.value),
+      fetchParticipationState(activityId.value),
     ])
     activity.value = act as ActivityDetail
     participation.value = state as ParticipationState
@@ -626,6 +633,8 @@ onLoad((query) => {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  padding-bottom: calc(260rpx + env(safe-area-inset-bottom));
 }
 
 .swiper-wrapper {
@@ -692,8 +701,8 @@ onLoad((query) => {
 }
 
 .status-registering {
-  background-color: #e6f0fe;
-  color: #1989fa;
+  background-color: #e8f7f0;
+  color: #5ec8a7;
 }
 
 .status-registrationClosed {
@@ -702,8 +711,8 @@ onLoad((query) => {
 }
 
 .status-ongoing {
-  background-color: #ebf9e9;
-  color: #07c160;
+  background-color: #e8f7f0;
+  color: #5ec8a7;
 }
 
 .status-ended {
@@ -759,8 +768,8 @@ onLoad((query) => {
 
 .tag-chip {
   font-size: 22rpx;
-  color: #1989fa;
-  background-color: #e6f0fe;
+  color: #5ec8a7;
+  background-color: #e8f7f0;
   padding: 4rpx 14rpx;
   border-radius: 4rpx;
 }
@@ -785,7 +794,7 @@ onLoad((query) => {
 
 .expand-icon {
   font-size: 24rpx;
-  color: #1989fa;
+  color: #5ec8a7;
 }
 
 .section-body {
@@ -796,29 +805,21 @@ onLoad((query) => {
   white-space: pre-wrap;
 }
 
-.action-bar {
-  padding: 16rpx 32rpx;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  background-color: #fff;
-  border-top: 2rpx solid #ebedf0;
-}
-
-.action-btn {
-  width: 100%;
-  height: 96rpx;
-  line-height: 96rpx;
-  text-align: center;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #fff;
-  background-color: #1989fa;
-  border-radius: 12rpx;
-  border: none;
-}
-
-.action-btn.disabled {
+.bar-btn-disabled {
   background-color: #c8c9cc;
   color: #fff;
+  border-color: #c8c9cc;
+}
+
+.detail-action-stack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-action-stack .bar-btn {
+  width: 100%;
+  flex: none;
 }
 
 .action-row {
@@ -830,16 +831,21 @@ onLoad((query) => {
 
 .action-btn-sm {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 160rpx;
   height: 64rpx;
   line-height: 64rpx;
+  margin: 0;
   text-align: center;
   font-size: 24rpx;
-  color: #1989fa;
-  background-color: #f0f6ff;
+  color: #5ec8a7;
+  background-color: #e8f7f0;
   border-radius: 8rpx;
   border: none;
   padding: 0 12rpx;
+  box-sizing: border-box;
 }
 
 /* ---- 参与者菜单 ---- */

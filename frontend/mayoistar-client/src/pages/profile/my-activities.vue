@@ -82,7 +82,8 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import { getMyActivities, getDrafts } from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
 import { runtimeStatusText as getRuntimeStatus } from '@/utils/status'
@@ -127,7 +128,7 @@ const drafts = ref<DraftItem[]>([])
  */
 async function loadActivities(): Promise<void> {
   try {
-    const result = await api.get('/activities/mine')
+    const result = await getMyActivities()
     activities.value = result.items as ActivityItem[]
   } catch (error) {
     if (error instanceof BusinessError) {
@@ -143,7 +144,7 @@ async function loadActivities(): Promise<void> {
  */
 async function loadDrafts(): Promise<void> {
   try {
-    const result = await api.get('/activities/drafts')
+    const result = await getDrafts()
     drafts.value = result.items as DraftItem[]
   } catch (error) {
     if (error instanceof BusinessError) {
@@ -189,10 +190,10 @@ async function onRefresh(): Promise<void> {
   errorMsg.value = ''
   try {
     if (activeTab.value === 'published') {
-      const result = await api.get('/activities/mine')
+      const result = await getMyActivities()
       activities.value = result.items as ActivityItem[]
     } else {
-      const result = await api.get('/activities/drafts')
+      const result = await getDrafts()
       drafts.value = result.items as DraftItem[]
     }
   } catch {

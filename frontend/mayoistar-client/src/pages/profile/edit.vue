@@ -327,8 +327,7 @@ async function loadProfile(): Promise<void> {
   try {
     if (isMerchant.value) {
       const profile = await api.get('/identity/me/merchant-profile')
-      formNickname.value = profile.merchantNickname
-      formMerchantName.value = profile.merchantName
+      formNickname.value = profile.formMerchantName.value = profile.merchantName
       if (profile.avatar?.url) avatarUrl.value = profile.avatar.url
       if (profile.interestedActivityFields?.length) {
         selectedTags.value = new Set(profile.interestedActivityFields)
@@ -454,7 +453,7 @@ async function handleSave(): Promise<void> {
 }
 
 .edit-container {
-  padding: 32rpx 32rpx 48rpx;
+  padding: 32rpx 32rpx calc(160rpx + env(safe-area-inset-bottom));
 }
 
 .action-bar {
@@ -625,18 +624,6 @@ async function handleSave(): Promise<void> {
   font-size: 26rpx;
   color: #ee0a24;
   margin-top: 8rpx;
-}
-
-<style > page {
-  height: 100%;
-  overflow: hidden;
-}
-</style>
-
-<style>
-page {
-  height: 100%;
-  overflow: hidden;
 }
 </style>
 

@@ -23,3 +23,4 @@ dist
 # Cache
 .eslintcache
 *.tsbuildinfo
+.vite

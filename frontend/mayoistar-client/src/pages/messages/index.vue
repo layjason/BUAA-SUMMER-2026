@@ -30,6 +30,7 @@
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
 }
 
 .placeholder {

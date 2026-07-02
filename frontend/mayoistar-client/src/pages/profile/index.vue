@@ -231,7 +231,7 @@ async function handleLogout(): Promise<void> {
 }
 
 .profile-container {
-  padding: 32rpx 32rpx 48rpx;
+  padding: 32rpx 32rpx calc(120rpx + env(safe-area-inset-bottom));
 }
 
 .user-card {
@@ -327,8 +327,10 @@ async function handleLogout(): Promise<void> {
   border: none;
   margin-top: 16rpx;
 }
+</style>
 
-<style > page {
+<style>
+page {
   height: 100%;
   overflow: hidden;
 }

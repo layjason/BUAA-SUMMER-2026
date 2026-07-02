@@ -1821,13 +1821,18 @@ export interface components {
             location: components["schemas"]["LocationInfo"];
             /** @description 是否需要人工审核。 */
             manualReviewRequired: boolean;
+            /**
+             * Format: int32
+             * @description 当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。
+             */
+            occupiedCount: number;
             /** @description 活动发起人用户标识。 */
             organizerId: components["schemas"]["EntityId"];
             /** @description 活动发起人展示名称。 */
             organizerName: string;
             /**
              * Format: int32
-             * @description 已报名人数。
+             * @description 已确认参加人数（含已报名与已签到），不含候补待确认。
              */
             registeredCount: number;
             /** @description 报名截止时间。 */
@@ -1848,7 +1853,7 @@ export interface components {
             title: string;
             /**
              * Format: int32
-             * @description 当前候补人数。
+             * @description 当前候补人数（含候补排队与候补待确认），候补待确认占用名额。
              */
             waitingCount: number;
         };
@@ -2073,7 +2078,12 @@ export interface components {
             location: components["schemas"]["LocationInfo"];
             /**
              * Format: int32
-             * @description 已报名人数。
+             * @description 当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。
+             */
+            occupiedCount: number;
+            /**
+             * Format: int32
+             * @description 已确认参加人数（含已报名与已签到），不含候补待确认。
              */
             registeredCount: number;
             /** @description 活动审核状态。 */
@@ -2240,11 +2250,16 @@ export interface components {
             feeAmount?: number;
             /** @description 活动地点。 */
             location: components["schemas"]["LocationInfo"];
+            /**
+             * Format: int32
+             * @description 当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。
+             */
+            occupiedCount: number;
             /** @description 报名或候补创建时间。 */
             registeredAt: components["schemas"]["DateTimeString"];
             /**
              * Format: int32
-             * @description 已报名人数。
+             * @description 已确认参加人数（含已报名与已签到），不含候补待确认。
              */
             registeredCount: number;
             /** @description 报名记录标识。 */
@@ -2594,27 +2609,22 @@ export interface components {
             /** @description 文本消息内容。 */
             text?: string;
         };
-        /** @description 聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话的新消息。 */
+        /** @description 聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话中的实时事件。 */
         "Chat.ChatRealtimeEvent": {
             /** @description 发生事件的会话标识。 */
             conversationId: components["schemas"]["EntityId"];
-            /**
-             * Format: int32
-             * @description 当前用户在该会话中的最新未读消息数。
-             */
-            conversationUnreadCount: number;
             /** @description 实时事件类型。 */
             kind: components["schemas"]["Chat.ChatRealtimeEventKind"];
-            /** @description 新创建的聊天消息。 */
-            message: components["schemas"]["Chat.ChatMessage"];
             /** @description 事件发生时间。 */
             occurredAt: components["schemas"]["DateTimeString"];
+            /** @description 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload。 */
+            payload: components["schemas"]["Chat.MessageCreatedPayload"] | components["schemas"]["Chat.MessageRecalledPayload"] | components["schemas"]["Chat.MessageForwardedPayload"];
         };
         /**
-         * @description 聊天实时事件类型。
+         * @description 聊天实时事件类型。friendRequestCreated 事件通过 /queue/social-events 推送，不在此枚举内。
          * @enum {string}
          */
-        "Chat.ChatRealtimeEventKind": "messageCreated";
+        "Chat.ChatRealtimeEventKind": "messageCreated" | "messageRecalled" | "messageForwarded";
         /**
          * @description 会话类型。
          * @enum {string}
@@ -2660,6 +2670,26 @@ export interface components {
             /** @description 待标记为已读的消息标识列表。 */
             messageIds: components["schemas"]["EntityId"][];
         };
+        /** @description 消息创建事件负载。 */
+        "Chat.MessageCreatedPayload": {
+            /**
+             * Format: int32
+             * @description 当前用户在该会话中的最新未读消息数。
+             */
+            conversationUnreadCount: number;
+            /** @description 新创建的聊天消息。 */
+            message: components["schemas"]["Chat.ChatMessage"];
+        };
+        /** @description 消息转发事件负载。 */
+        "Chat.MessageForwardedPayload": {
+            /**
+             * Format: int32
+             * @description 当前用户在该会话中的最新未读消息数。
+             */
+            conversationUnreadCount: number;
+            /** @description 转发产生的新聊天消息。 */
+            message: components["schemas"]["Chat.ChatMessage"];
+        };
         /**
          * @description 消息类型。
          * @enum {string}
@@ -2670,6 +2700,11 @@ export interface components {
          * @enum {string}
          */
         "Chat.MessageReadStatus": "unread" | "read";
+        /** @description 消息撤回事件负载。 */
+        "Chat.MessageRecalledPayload": {
+            /** @description 被撤回的聊天消息，其 recalled 字段为 true。 */
+            message: components["schemas"]["Chat.ChatMessage"];
+        };
         /** @description 消息发送请求，调用方属于会话，创建消息并更新未读状态，不同消息类型只使用对应内容字段。 */
         "Chat.SendMessageRequest": {
             /** @description 图片消息对应的媒体文件标识。 */
@@ -3414,6 +3449,21 @@ export interface components {
              */
             message: "Media usage is invalid";
         };
+        /** @description 50018：消息引用的媒体文件不存在。 */
+        "Errors.Chat.MediaReferenceInvalid": {
+            /**
+             * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+             * @enum {number}
+             */
+            code: 50018;
+            /** @description 错误上下文，默认无额外业务数据。 */
+            data: components["schemas"]["EmptyData"];
+            /**
+             * @description 平台错误消息，业务错误使用英文模板文案。
+             * @enum {string}
+             */
+            message: "Referenced media does not exist";
+        };
         /** @description 50006：消息内容与消息类型不匹配。 */
         "Errors.Chat.MessageContentInvalid": {
             /**
@@ -3608,6 +3658,21 @@ export interface components {
              * @enum {string}
              */
             message: "Account is inactive";
+        };
+        /** @description 10019：账号因多次登录失败被暂时锁定。message 中会提示剩余锁定时间。 */
+        "Errors.Identity.AccountLocked": {
+            /**
+             * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+             * @enum {number}
+             */
+            code: 10019;
+            /** @description 错误上下文，默认无额外业务数据。 */
+            data: components["schemas"]["EmptyData"];
+            /**
+             * @description 平台错误消息，业务错误使用英文模板文案。
+             * @enum {string}
+             */
+            message: "Account is temporarily locked due to multiple failed login attempts";
         };
         /** @description 10015：激活邮件重发过于频繁。 */
         "Errors.Identity.ActivationEmailRateLimited": {
@@ -7462,7 +7527,7 @@ export interface operations {
                          * @enum {string}
                          */
                         message: "For Super Earth!";
-                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Chat.ConversationNotVisible"] | components["schemas"]["Errors.Chat.ConversationMemberRequired"] | components["schemas"]["Errors.Chat.MessageContentInvalid"];
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Chat.ConversationNotVisible"] | components["schemas"]["Errors.Chat.ConversationMemberRequired"] | components["schemas"]["Errors.Chat.MessageContentInvalid"] | components["schemas"]["Errors.Chat.MediaReferenceInvalid"];
                 };
             };
         };

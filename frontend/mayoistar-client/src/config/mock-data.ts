@@ -1415,8 +1415,11 @@ export const mockData: Record<string, MockResponse> = {
       activityId: 'tpl-draft-01',
       title: '运动健身活动',
       tags: ['运动健身'],
-      introduction:
-        '一起来运动吧！无论你是初学者还是老手，都欢迎参加。\n\n活动流程：\n1. 集合签到\n2. 热身运动\n3. 分组活动\n4. 自由交流\n5. 结束\n\n请自备装备，饮用水由组织者统一提供。',
+      introduction: [
+        '一起来运动吧！无论你是初学者还是老手，都欢迎参加。\n\n',
+        '活动流程：\n1. 集合签到\n2. 热身运动\n3. 分组活动\n4. 自由交流\n5. 结束\n\n',
+        '请自备装备，饮用水由组织者统一提供。',
+      ].join(''),
       safetyNotice:
         '运动前请充分热身，避免受伤。如有心脏病、高血压等不宜剧烈运动的疾病，请提前告知组织者。活动期间请保管好个人财物。',
       capacity: 20,
@@ -3216,8 +3219,11 @@ export const mockData: Record<string, MockResponse> = {
           name: '运动健身',
           activityType: 'sports',
           defaultTags: ['运动健身'],
-          defaultIntroduction:
-            '一起来运动吧！无论你是初学者还是老手，都欢迎参加。\n\n活动流程：\n1. 集合签到\n2. 热身运动\n3. 分组活动\n4. 自由交流\n5. 结束\n\n请自备装备，饮用水由组织者统一提供。',
+          defaultIntroduction: [
+            '一起来运动吧！无论你是初学者还是老手，都欢迎参加。\n\n',
+            '活动流程：\n1. 集合签到\n2. 热身运动\n3. 分组活动\n4. 自由交流\n5. 结束\n\n',
+            '请自备装备，饮用水由组织者统一提供。',
+          ].join(''),
           defaultSafetyNotice:
             '运动前请充分热身，避免受伤。如有心脏病、高血压等不宜剧烈运动的疾病，请提前告知组织者。活动期间请保管好个人财物。',
           defaultCapacity: 20,
@@ -3295,8 +3301,11 @@ export const mockData: Record<string, MockResponse> = {
       activityId: 'tpl-draft-01',
       title: '运动健身活动',
       tags: ['运动健身'],
-      introduction:
-        '一起来运动吧！无论你是初学者还是老手，都欢迎参加。\n\n活动流程：\n1. 集合签到\n2. 热身运动\n3. 分组活动\n4. 自由交流\n5. 结束\n\n请自备装备，饮用水由组织者统一提供。',
+      introduction: [
+        '一起来运动吧！无论你是初学者还是老手，都欢迎参加。\n\n',
+        '活动流程：\n1. 集合签到\n2. 热身运动\n3. 分组活动\n4. 自由交流\n5. 结束\n\n',
+        '请自备装备，饮用水由组织者统一提供。',
+      ].join(''),
       safetyNotice:
         '运动前请充分热身，避免受伤。如有心脏病、高血压等不宜剧烈运动的疾病，请提前告知组织者。活动期间请保管好个人财物。',
       capacity: 20,

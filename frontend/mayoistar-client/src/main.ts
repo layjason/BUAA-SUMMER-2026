@@ -10,9 +10,12 @@ import {
   setRefreshTokenGetter,
   setMockHandler,
 } from '@/api/client'
+import { USE_MOCK, API_BASE_URL } from '@/api/config'
+import { initMockDb } from '@/mock/database'
+import { handleMockRequest } from '@/mock/mockServer'
+import { setCurrentUserId } from '@/mock/workflow'
 import { useAuthStore } from '@/stores/auth'
 import zhCN from './locales/zh-CN.json'
-import { devConfig, isDevEnabled } from '@/config/dev'
 
 const i18n = createI18n({
   legacy: false,
@@ -30,35 +33,36 @@ export function createApp() {
   const authStore = useAuthStore()
   authStore.initFromStorage()
 
-  // 数据模式：拦截 HTTP + 自动注入登录态
-  if (isDevEnabled('mockApi')) {
-    authStore.saveTokens('dev-mock-access-token', 'dev-mock-refresh-token')
-    authStore.userId = '10001'
-    authStore.userKind = devConfig.mockUserKind
+  // ===== 有状态 Mock Server =====
+  // USE_MOCK 为 true 时，所有 API 请求走内存态 mockDb（有状态 workflow）
+  // USE_MOCK 为 false 时，走真实 HTTP 请求
+  // 注意：不再自动登录，登录必须通过登录页完成
+  if (USE_MOCK) {
+    initMockDb()
 
-    const responses = devConfig.mockData
-    setMockHandler((method, path) => {
-      const fullKey = `${method} ${path}`
-      const cleanKey = `${method} ${path.split('?')[0]}`
-      const mock = responses[fullKey] ?? responses[cleanKey]
-      if (!mock) return null
-      return Promise.resolve(mock as { code: number; message: string; data: unknown })
-    })
+    // 如果之前已登录（storage 中有 userId），同步到 workflow 的 currentUserId
+    if (authStore.userId) {
+      setCurrentUserId(Number(authStore.userId))
+    }
+
+    // 将 mockServer 的路由处理函数注入 client.ts 的 mockHandler
+    setMockHandler((method, path, body) => handleMockRequest(method, path, body))
   }
 
+  // ===== Token 与 API 基础配置 =====
   setTokenGetter(() => authStore.getAccessToken())
   setRefreshTokenGetter(() => authStore.getRefreshToken())
-  setBaseUrl('http://localhost:4010')
+  setBaseUrl(API_BASE_URL)
   setTokenSaver((access, refresh) => authStore.saveTokens(access, refresh))
 
   setOnTokenExpired(() => {
-    if (isDevEnabled('mockApi')) return
+    if (USE_MOCK) return
     authStore.clearTokens()
     uni.redirectTo({ url: '/pages/login/index' })
   })
 
-  // 应用启动时主动刷新 Token（数据模式下 mock token 无需刷新）
-  if (authStore.isLoggedIn && !isDevEnabled('mockApi')) {
+  // 应用启动时主动刷新 Token（mock 模式下无需刷新）
+  if (authStore.isLoggedIn && !USE_MOCK) {
     authStore.tryRefreshToken()
   }
 

@@ -118,6 +118,16 @@
         </view>
 
         <!-- 地点 -->
+        <view class="form-item">
+          <text class="label"><text class="req">* </text>选择地点</text>
+          <view class="location-picker" @click="showLocationPicker">
+            <text :class="selectedLocationLabel ? 'location-text' : 'location-placeholder'">
+              {{ selectedLocationLabel || '点击选择活动地点' }}
+            </text>
+            <text class="location-arrow">&gt;</text>
+          </view>
+          <text v-if="errors.location" class="field-error">{{ errors.location }}</text>
+        </view>
         <FormInput
           v-model="formAddress"
           :label="t('activityEdit.locationAddress')"
@@ -198,16 +208,14 @@
         <FormError :message="formError" />
       </view>
     </scroll-view>
-    <view class="action-bar">
-      <view class="action-row">
-        <button class="btn btn-draft" :loading="savingDraft" @click="handleSaveDraft">
-          {{ t('activityEdit.saveDraft') }}
-        </button>
-        <button class="btn btn-submit" :loading="submitting" @click="handleSubmit">
-          {{ t('activityEdit.submitReview') }}
-        </button>
-      </view>
-    </view>
+    <BottomActionBar>
+      <button class="bar-btn bar-btn-secondary" :disabled="savingDraft" @click="handleSaveDraft">
+        {{ savingDraft ? '保存中...' : t('activityEdit.saveDraft') }}
+      </button>
+      <button class="bar-btn bar-btn-primary" :disabled="submitting" @click="handleSubmit">
+        {{ submitting ? '提交中...' : t('activityEdit.submitReview') }}
+      </button>
+    </BottomActionBar>
   </view>
 </template>
 
@@ -219,12 +227,21 @@
  * 前置条件：用户已登录
  * 后置条件：保存草稿后留在当前页；提交审核后返回上一页
  */
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import {
+  createDraft,
+  updateDraft,
+  getDraft,
+  submitDraft,
+  uploadActivityImages,
+} from '@/api/modules/activities'
+import { getInterestTags } from '@/api/modules/profile'
+import { MOCK_ACTIVITY_LOCATIONS } from '@/config/mock-locations'
 import { getErrorMessage } from '@/utils/error'
-import { FormInput, FormError } from '@/components'
+import { BottomActionBar, FormInput, FormError } from '@/components'
 
 const { t } = useI18n()
 
@@ -235,6 +252,8 @@ const formTitle = ref('')
 const formAddress = ref('')
 const formCity = ref('')
 const formPlaceName = ref('')
+const locationLongitude = ref<number | null>(null)
+const locationLatitude = ref<number | null>(null)
 const formCapacity = ref('')
 const formFeeAmount = ref('')
 const formFeeDescription = ref('')
@@ -260,12 +279,45 @@ const submitting = ref(false)
 const formError = ref('')
 const errors = ref<Record<string, string>>({})
 
+/** 已选地点展示文案 */
+const selectedLocationLabel = computed(() => {
+  if (!formPlaceName.value && !formAddress.value) return ''
+  if (formPlaceName.value) return `${formPlaceName.value} · ${formCity.value}`
+  return `${formAddress.value} · ${formCity.value}`
+})
+
+/**
+ * 打开 mock 地点选择器
+ *
+ * 前置条件：MOCK_ACTIVITY_LOCATIONS 已配置
+ * 后置条件：回填 LocationInfo 各字段与坐标
+ */
+function showLocationPicker(): void {
+  uni.showActionSheet({
+    itemList: MOCK_ACTIVITY_LOCATIONS.map((item) => item.placeName),
+    success: (res) => {
+      const location = MOCK_ACTIVITY_LOCATIONS[res.tapIndex]
+      if (!location) return
+      formCity.value = location.city
+      formAddress.value = location.address
+      formPlaceName.value = location.placeName
+      locationLongitude.value = location.point.longitude
+      locationLatitude.value = location.point.latitude
+      if (errors.value.location) {
+        const next = { ...errors.value }
+        delete next.location
+        errors.value = next
+      }
+    },
+  })
+}
+
 /**
  * 加载系统可用标签
  */
 async function loadTags(): Promise<void> {
   try {
-    const tags = await api.get('/identity/interest-tags')
+    const tags = await getInterestTags()
     availableTags.value = tags as { name: string }[]
   } catch {
     /* 标签加载失败不影响编辑 */
@@ -322,10 +374,8 @@ async function handleAddImage(): Promise<void> {
     })
     for (const tempPath of res.tempFilePaths) {
       try {
-        const result = (await api.upload('/activities/media/images', tempPath)) as {
-          mediaId: string
-          url?: string
-        }
+        const results = await uploadActivityImages([tempPath])
+        const result = results[0] as { mediaId: string; url?: string }
         imageIds.value.push(result.mediaId)
         imagePreviews.value.push(result.url || tempPath)
       } catch {
@@ -359,12 +409,20 @@ function buildPayload(): Record<string, unknown> {
   if (endISO) payload.endAt = endISO
   if (deadlineISO) payload.registrationDeadline = deadlineISO
 
-  if (formAddress.value.trim() || formCity.value.trim()) {
+  if (
+    formAddress.value.trim() &&
+    formCity.value.trim() &&
+    locationLongitude.value != null &&
+    locationLatitude.value != null
+  ) {
     payload.location = {
       address: formAddress.value.trim(),
       city: formCity.value.trim(),
       placeName: formPlaceName.value.trim() || undefined,
-      point: { longitude: 116.4, latitude: 39.9 },
+      point: {
+        longitude: locationLongitude.value,
+        latitude: locationLatitude.value,
+      },
     }
   }
 
@@ -412,6 +470,9 @@ function validate(): boolean {
     e.registrationDeadline = t('activityEdit.deadlineInvalid')
   }
 
+  if (locationLongitude.value == null || locationLatitude.value == null) {
+    e.location = '请先选择活动地点'
+  }
   if (!formAddress.value.trim()) e.address = t('activityEdit.addressRequired')
   if (!formCity.value.trim()) e.city = t('activityEdit.cityRequired')
 
@@ -439,12 +500,9 @@ async function handleSaveDraft(): Promise<void> {
   try {
     const payload = buildPayload()
     if (isEdit.value) {
-      await api.patch('/activities/drafts/{activityId}', {
-        path: { activityId: activityId.value },
-        body: payload,
-      })
+      await updateDraft(activityId.value, payload)
     } else {
-      const result = (await api.post('/activities/drafts', { body: payload })) as {
+      const result = (await createDraft(payload)) as {
         activityId: string
       }
       activityId.value = result.activityId
@@ -475,19 +533,16 @@ async function handleSubmit(): Promise<void> {
     const payload = buildPayload()
     let id = activityId.value
     if (!id) {
-      const result = (await api.post('/activities/drafts', { body: payload })) as {
+      const result = (await createDraft(payload)) as {
         activityId: string
       }
       id = result.activityId
       activityId.value = id
     } else {
-      await api.patch('/activities/drafts/{activityId}', {
-        path: { activityId: id },
-        body: payload,
-      })
+      await updateDraft(id, payload)
     }
 
-    await api.post('/activities/{activityId}/submit', { path: { activityId: id } })
+    await submitDraft(id)
     uni.showToast({ title: t('activityEdit.submitSuccess'), icon: 'success' })
     setTimeout(() => uni.navigateBack(), 1500)
   } catch (error) {
@@ -515,9 +570,7 @@ function parseISO(iso: string): { date: string; time: string } | null {
 
 async function loadDraft(): Promise<void> {
   try {
-    const draft = await api.get('/activities/drafts/{activityId}', {
-      path: { activityId: activityId.value },
-    })
+    const draft = await getDraft(activityId.value)
 
     formTitle.value = draft.title ?? ''
     formIntroduction.value = draft.introduction ?? ''
@@ -525,6 +578,8 @@ async function loadDraft(): Promise<void> {
     formAddress.value = draft.location?.address ?? ''
     formCity.value = draft.location?.city ?? ''
     formPlaceName.value = draft.location?.placeName ?? ''
+    locationLongitude.value = draft.location?.point?.longitude ?? null
+    locationLatitude.value = draft.location?.point?.latitude ?? null
     formCapacity.value = draft.capacity != null ? String(draft.capacity) : ''
     formFeeAmount.value = draft.feeAmount != null ? String(draft.feeAmount) : ''
     formFeeDescription.value = draft.feeDescription ?? ''
@@ -570,7 +625,7 @@ onLoad((query) => {
 
 <style scoped>
 .page {
-  background-color: #f7f8fa;
+  background: linear-gradient(160deg, #f8fafc 0%, #fff9f5 100%);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -584,7 +639,7 @@ onLoad((query) => {
 }
 
 .edit-container {
-  padding: 32rpx 32rpx 48rpx;
+  padding: 32rpx 32rpx calc(200rpx + env(safe-area-inset-bottom));
 }
 
 .section {
@@ -690,9 +745,9 @@ onLoad((query) => {
 }
 
 .tag-chip.active {
-  border-color: #1989fa;
-  color: #1989fa;
-  background-color: #e6f0fe;
+  border-color: #5ec8a7;
+  color: #5ec8a7;
+  background-color: #e8f7f0;
 }
 
 .hint {
@@ -738,6 +793,32 @@ onLoad((query) => {
   box-sizing: border-box;
 }
 
+/* ---- 地点选择 ---- */
+.location-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 88rpx;
+  padding: 0 24rpx;
+  background-color: #fff;
+  border-radius: 8rpx;
+}
+
+.location-text {
+  font-size: 28rpx;
+  color: #323233;
+}
+
+.location-placeholder {
+  font-size: 28rpx;
+  color: #c8c9cc;
+}
+
+.location-arrow {
+  font-size: 28rpx;
+  color: #c8c9cc;
+}
+
 /* ---- 字段错误 ---- */
 .field-error {
   display: block;
@@ -746,41 +827,7 @@ onLoad((query) => {
   margin-top: 8rpx;
 }
 
-/* ---- 操作按钮 ---- */
-.action-bar {
-  padding: 16rpx 32rpx;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  background-color: #fff;
-  border-top: 2rpx solid #ebedf0;
-  flex-shrink: 0;
-}
-
-.action-row {
-  display: flex;
-  gap: 24rpx;
-}
-
-.btn {
-  flex: 1;
-  height: 96rpx;
-  line-height: 96rpx;
-  text-align: center;
-  font-size: 30rpx;
-  font-weight: 600;
-  border-radius: 12rpx;
-  border: none;
-}
-
-.btn-draft {
-  background-color: #fff;
-  color: #1989fa;
-  border: 2rpx solid #1989fa;
-}
-
-.btn-submit {
-  background-color: #07c160;
-  color: #fff;
-}
+/* 操作按钮已由 BottomActionBar 组件承载 */
 </style>
 
 <style>

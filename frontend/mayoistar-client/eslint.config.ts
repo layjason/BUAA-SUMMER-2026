@@ -13,6 +13,7 @@ export default defineConfigWithVueTs(
     '**/dist/**',
     '**/dist-ssr/**',
     '**/coverage/**',
+    '.vite/**',
     'src/api/types/**',
     '*.d.ts',
     'src/**/*.d.ts',
@@ -26,6 +27,7 @@ export default defineConfigWithVueTs(
     rules: {
       'vue/multi-word-component-names': 'off',
       'vue/valid-template-root': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
 

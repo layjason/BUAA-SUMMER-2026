@@ -22,11 +22,6 @@
     >
       <view v-if="loading && items.length === 0" class="loading-text">{{ t('home.loading') }}</view>
 
-      <view v-else-if="activeTab === 'nearby'" class="dev-placeholder">
-        <text class="dev-icon">📍</text>
-        <text class="dev-text">{{ t('home.nearbyDev') }}</text>
-      </view>
-
       <view v-else-if="errorMsg && items.length === 0" class="error-box">
         <text class="error-text">{{ errorMsg }}</text>
         <view class="retry-btn" @click="loadFeed">{{ t('home.retry') }}</view>
@@ -34,7 +29,7 @@
 
       <view v-else-if="items.length === 0" class="empty-text">{{ t('home.empty') }}</view>
 
-      <view v-else>
+      <view v-else style="padding-bottom: calc(120rpx + env(safe-area-inset-bottom))">
         <view
           v-for="item in items"
           :key="item.activityId"
@@ -112,7 +107,8 @@
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import { getFeed } from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
 import { runtimeStatusText } from '@/utils/status'
@@ -168,13 +164,7 @@ async function loadFeed(): Promise<void> {
   noMoreData.value = false
   currentPage.value = 1
   try {
-    const result = await api.get('/activities/feed', {
-      query: {
-        tab: activeTab.value,
-        page: 1,
-        pageSize,
-      },
-    })
+    const result = await getFeed(activeTab.value, 1, pageSize)
     items.value = (result.items ?? []) as ActivityItem[]
     noMoreData.value = (result.totalPages ?? 1) <= 1
   } catch (error) {
@@ -194,13 +184,7 @@ async function onRefresh(): Promise<void> {
   noMoreData.value = false
   currentPage.value = 1
   try {
-    const result = await api.get('/activities/feed', {
-      query: {
-        tab: activeTab.value,
-        page: 1,
-        pageSize,
-      },
-    })
+    const result = await getFeed(activeTab.value, 1, pageSize)
     items.value = (result.items ?? []) as ActivityItem[]
     noMoreData.value = (result.totalPages ?? 1) <= 1
   } catch {
@@ -216,13 +200,7 @@ async function loadMore(): Promise<void> {
   loadError.value = false
   const nextPage = currentPage.value + 1
   try {
-    const result = await api.get('/activities/feed', {
-      query: {
-        tab: activeTab.value,
-        page: nextPage,
-        pageSize,
-      },
-    })
+    const result = await getFeed(activeTab.value, nextPage, pageSize)
     const newItems = (result.items ?? []) as ActivityItem[]
     if (newItems.length === 0) {
       noMoreData.value = true
@@ -242,11 +220,11 @@ function switchTab(tab: FeedTab): void {
   if (activeTab.value === tab) return
   activeTab.value = tab
   items.value = []
-  if (tab !== 'nearby') loadFeed()
+  loadFeed()
 }
 
 onShow(() => {
-  if (items.value.length === 0 && activeTab.value !== 'nearby') loadFeed()
+  if (items.value.length === 0) loadFeed()
 })
 
 function goDetail(activityId: string): void {
@@ -285,8 +263,8 @@ function goCreate(): void {
 }
 
 .tab.active {
-  color: #1989fa;
-  border-bottom-color: #1989fa;
+  color: #5ec8a7;
+  border-bottom-color: #5ec8a7;
   font-weight: 600;
 }
 
@@ -302,24 +280,6 @@ function goCreate(): void {
   font-size: 28rpx;
   color: #969799;
   padding-top: 120rpx;
-}
-
-.dev-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-top: 160rpx;
-}
-
-.dev-icon {
-  font-size: 72rpx;
-  margin-bottom: 16rpx;
-}
-
-.dev-text {
-  font-size: 28rpx;
-  color: #969799;
 }
 
 .error-box {
@@ -338,8 +298,8 @@ function goCreate(): void {
   margin-top: 24rpx;
   padding: 16rpx 48rpx;
   font-size: 26rpx;
-  color: #1989fa;
-  border: 2rpx solid #1989fa;
+  color: #5ec8a7;
+  border: 2rpx solid #5ec8a7;
   border-radius: 8rpx;
 }
 
@@ -410,8 +370,8 @@ function goCreate(): void {
 }
 
 .status-registering {
-  background-color: #e6f0fe;
-  color: #1989fa;
+  background-color: rgba(94, 200, 167, 0.1);
+  color: #5ec8a7;
 }
 
 .status-registrationClosed {
@@ -448,8 +408,8 @@ function goCreate(): void {
 
 .tag {
   font-size: 22rpx;
-  color: #1989fa;
-  background-color: #e6f0fe;
+  color: #5ec8a7;
+  background-color: rgba(94, 200, 167, 0.08);
   padding: 2rpx 12rpx;
   border-radius: 4rpx;
 }
@@ -511,11 +471,11 @@ function goCreate(): void {
   width: 100rpx;
   height: 100rpx;
   border-radius: 50%;
-  background-color: #1989fa;
+  background-color: #5ec8a7;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4rpx 16rpx rgba(25, 137, 250, 0.4);
+  box-shadow: 0 4rpx 16rpx rgba(94, 200, 167, 0.4);
 }
 
 .fab-icon {

@@ -90,13 +90,26 @@ type OpBody<Op> = Op extends { requestBody: { content: { 'application/json': inf
 
 /**
  * 查询参数
+ *
+ * OpenAPI 生成结构中 parameters.query 常为可选属性（query?: {...}），
+ * 需同时匹配必选与可选两种形态。
  */
-type OpQuery<Op> = Op extends { parameters: { query: infer Q } } ? { [K in keyof Q]?: Q[K] } : never
+type OpQuery<Op> = Op extends { parameters: infer Params }
+  ? Params extends { query?: infer Q }
+    ? Q extends undefined
+      ? never
+      : { [K in keyof Q]?: Q[K] }
+    : never
+  : never
 
 /**
  * 路径参数
  */
-type OpPath<Op> = Op extends { parameters: { path: infer P } } ? { [K in keyof P]: P[K] } : never
+type OpPath<Op> = Op extends { parameters: infer Params }
+  ? Params extends { path: infer P }
+    ? { [K in keyof P]: P[K] }
+    : never
+  : never
 
 /**
  * 响应 data
@@ -282,7 +295,14 @@ function rawRequest(
 ): Promise<{ code: number; message: string; data: unknown }> {
   if (mockHandler) {
     const mockResult = mockHandler(method, url, body)
-    if (mockResult != null) return mockResult
+    if (mockResult != null) {
+      return mockResult.then((res) => {
+        // Mock 响应也需要检查 code，确保错误能被页面 catch
+        if (res.code === 200) return res
+        if (res.code === 401) throw new TokenExpiredError()
+        throw new BusinessError(res.code, res.message)
+      })
+    }
   }
   const ctx = {}
   setRetryContext(ctx, { method, url, body })
@@ -308,7 +328,14 @@ export function get<P extends keyof paths>(
   if (options?.query) {
     const params = new URLSearchParams()
     for (const [k, v] of Object.entries(options.query)) {
-      if (v !== undefined && v !== null) params.append(k, String(v))
+      if (v === undefined || v === null) continue
+      if (Array.isArray(v)) {
+        for (const item of v) {
+          if (item !== undefined && item !== null) params.append(k, String(item))
+        }
+      } else {
+        params.append(k, String(v))
+      }
     }
     const qs = params.toString()
     if (qs) fullPath += `?${qs}`
@@ -366,7 +393,13 @@ export function upload<T>(
 ): Promise<T> {
   if (mockHandler) {
     const mockResult = mockHandler('POST', uploadPath, { filePath, formData })
-    if (mockResult != null) return mockResult.then((r) => r.data as T)
+    if (mockResult != null) {
+      return mockResult.then((r) => {
+        if (r.code === 200) return r.data as T
+        if (r.code === 401) throw new TokenExpiredError()
+        throw new BusinessError(r.code, r.message)
+      })
+    }
   }
   const url = `${baseUrl}${uploadPath}`
   const authHeader: Record<string, string> = {}

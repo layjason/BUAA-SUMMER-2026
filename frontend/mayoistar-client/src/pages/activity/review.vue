@@ -186,7 +186,7 @@ onLoad((query) => {
 }
 
 .form-container {
-  padding: 32rpx;
+  padding: 32rpx 32rpx calc(80rpx + env(safe-area-inset-bottom));
 }
 
 .title {
