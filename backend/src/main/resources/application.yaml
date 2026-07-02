@@ -12,6 +12,11 @@ spring:
       add-mappings: false
   jackson:
     default-property-inclusion: non_null
+  data:
+    redis:
+      host: ${MAYOISTAR_REDIS_HOST:localhost}
+      port: ${MAYOISTAR_REDIS_PORT:6379}
+      password: ${MAYOISTAR_REDIS_PASSWORD:}
   mail:
     host: ${MAYOISTAR_MAIL_HOST:example.com}
     port: ${MAYOISTAR_MAIL_PORT:587}
