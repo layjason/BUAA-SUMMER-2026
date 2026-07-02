@@ -7,12 +7,15 @@ import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
+import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCountService;
+import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCounts;
 import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +35,7 @@ public class ActivitySearchService {
     private static final double EARTH_RADIUS_METERS = 6_371_000D;
 
     private final ActivityRepository activityRepository;
+    private final ActivityRegistrationCountService activityRegistrationCountService;
 
     @Transactional(readOnly = true)
     public PageResult<ActivityDtos.ActivitySummary> search(SearchCriteria criteria) {
@@ -39,9 +43,15 @@ public class ActivitySearchService {
         int pageSize = normalizePageSize(criteria.pageSize());
         Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.ASC, "startAt"));
         var result = activityRepository.findAll(toSpecification(criteria), pageable);
+        Map<String, ActivityRegistrationCounts> countsByActivityId =
+                activityRegistrationCountService.countByActivityIds(result.getContent().stream()
+                        .map(Activity::getActivityId)
+                        .toList());
         List<ActivityDtos.ActivitySummary> items = result.getContent().stream()
                 .filter(activity -> matchesDistance(activity, criteria))
-                .map(this::toSummary)
+                .map(activity -> toSummary(
+                        activity,
+                        countsByActivityId.getOrDefault(activity.getActivityId(), ActivityRegistrationCounts.zero())))
                 .toList();
         return new PageResult<>(items, result.getTotalElements(), page, pageSize, result.getTotalPages());
     }
@@ -142,7 +152,7 @@ public class ActivitySearchService {
         return EARTH_RADIUS_METERS * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    private ActivityDtos.ActivitySummary toSummary(Activity activity) {
+    private ActivityDtos.ActivitySummary toSummary(Activity activity, ActivityRegistrationCounts counts) {
         ActivityDtos.ActivitySummary dto = new ActivityDtos.ActivitySummary();
         dto.setActivityId(activity.getActivityId());
         dto.setTitle(activity.getTitle());
@@ -153,7 +163,8 @@ public class ActivitySearchService {
         dto.setFeeAmount(activity.getFeeAmount());
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setRuntimeStatus(activity.getRuntimeStatus());
-        dto.setRegisteredCount(0);
+        dto.setRegisteredCount(counts.registeredCount());
+        dto.setOccupiedCount(counts.occupiedCount());
         dto.setCapacity(activity.getCapacity());
         return dto;
     }

@@ -8,7 +8,6 @@ import io.github.layjason.mayoistar.entity.activities.ActivityImage;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
-import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
@@ -16,7 +15,6 @@ import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
-import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -26,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +50,7 @@ public class ActivityQueryService {
     private final MediaFileRepository mediaFileRepository;
     private final UserRepository userRepository;
     private final ActivityDtoMapper activityDtoMapper;
-    private final ActivityRegistrationRepository activityRegistrationRepository;
+    private final ActivityRegistrationCountService activityRegistrationCountService;
 
     /**
      * 查询活动详情。
@@ -122,7 +119,11 @@ public class ActivityQueryService {
                 resolvedPage,
                 resolvedPageSize,
                 activityPage.getTotalElements());
-        return activityDtoMapper.toActivitySummaryPage(activityPage, this::loadCoverImage);
+        Map<String, ActivityRegistrationCounts> countsByActivityId = loadCounts(activityPage.getContent());
+        return activityDtoMapper.toActivitySummaryPage(
+                activityPage,
+                this::loadCoverImage,
+                activityId -> countsByActivityId.getOrDefault(activityId, ActivityRegistrationCounts.zero()));
     }
 
     private String sanitizeForLog(String value) {
@@ -291,17 +292,15 @@ public class ActivityQueryService {
                 activityReviewRecordRepository.findByActivityIdOrderByReviewedAtDesc(activity.getActivityId());
         List<ActivityDtos.ReviewRecord> reviewRecordDtos =
                 reviewRecords.stream().map(activityDtoMapper::toReviewRecord).toList();
+        ActivityRegistrationCounts counts =
+                activityRegistrationCountService.countByActivityId(activity.getActivityId());
         ActivityDtos.ActivityDetail detail = activityDtoMapper.toActivityDetail(
                 activity,
                 organizerName,
                 mediaFiles,
                 mediaId -> sortOrderByMediaId.getOrDefault(mediaId, Integer.MAX_VALUE),
-                reviewRecordDtos);
-        String activityId = activity.getActivityId();
-        detail.setRegisteredCount(
-                countByStatus(activityId, RegistrationStatus.registered, RegistrationStatus.checkedIn));
-        detail.setWaitingCount(
-                countByStatus(activityId, RegistrationStatus.waiting, RegistrationStatus.waitingConfirmation));
+                reviewRecordDtos,
+                counts);
         return detail;
     }
 
@@ -389,12 +388,8 @@ public class ActivityQueryService {
         return earthRadiusMeters * c;
     }
 
-    /**
-     * 统计指定活动在给定状态集合中的报名记录数。
-     */
-    private int countByStatus(String activityId, RegistrationStatus... statuses) {
-        return activityRegistrationRepository
-                .findByActivityIdAndStatusIn(activityId, Set.of(statuses))
-                .size();
+    private Map<String, ActivityRegistrationCounts> loadCounts(List<Activity> activities) {
+        return activityRegistrationCountService.countByActivityIds(
+                activities.stream().map(Activity::getActivityId).toList());
     }
 }

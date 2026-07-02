@@ -5,16 +5,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +45,9 @@ class ActivitySearchIntegrationTests {
     private UserRepository userRepository;
 
     @Autowired
+    private ActivityRegistrationRepository activityRegistrationRepository;
+
+    @Autowired
     private ActivitySearchService activitySearchService;
 
     /**
@@ -54,16 +61,7 @@ class ActivitySearchIntegrationTests {
      */
     @BeforeEach
     void setUp() {
-        userRepository.save(User.builder()
-                .userId("search-user")
-                .email("search@example.com")
-                .nickname("搜索用户")
-                .passwordHash("hashed")
-                .kind(UserKind.personal)
-                .accountStatus(AccountStatus.active)
-                .createdAt(Instant.parse("2026-06-30T00:00:00Z"))
-                .updatedAt(Instant.parse("2026-06-30T00:00:00Z"))
-                .build());
+        userRepository.save(user("search-user"));
         activityRepository.save(activity(
                 "search-board-game",
                 "桌游夜",
@@ -91,7 +89,18 @@ class ActivitySearchIntegrationTests {
                 39.908,
                 ActivityReviewStatus.draft,
                 ActivityRuntimeStatus.registering));
+        userRepository.save(user("registered-user"));
+        userRepository.save(user("checked-in-user"));
+        userRepository.save(user("waiting-confirmation-user"));
+        userRepository.save(user("waiting-user"));
+        userRepository.save(user("canceled-user"));
+        saveRegistration("search-board-game", "registered-user", RegistrationStatus.registered);
+        saveRegistration("search-board-game", "checked-in-user", RegistrationStatus.checkedIn);
+        saveRegistration("search-board-game", "waiting-confirmation-user", RegistrationStatus.waitingConfirmation);
+        saveRegistration("search-board-game", "waiting-user", RegistrationStatus.waiting);
+        saveRegistration("search-board-game", "canceled-user", RegistrationStatus.canceled);
         activityRepository.flush();
+        activityRegistrationRepository.flush();
     }
 
     /**
@@ -124,6 +133,9 @@ class ActivitySearchIntegrationTests {
                 .extracting(ActivityDtos.ActivitySummary::getActivityId)
                 .containsExactly("search-board-game");
         assertThat(result.getTotal()).isEqualTo(1L);
+        ActivityDtos.ActivitySummary summary = result.getItems().getFirst();
+        assertThat(summary.getRegisteredCount()).isEqualTo(2);
+        assertThat(summary.getOccupiedCount()).isEqualTo(3);
     }
 
     /**
@@ -186,5 +198,30 @@ class ActivitySearchIntegrationTests {
                 .createdAt(Instant.parse("2026-06-30T00:00:00Z"))
                 .updatedAt(Instant.parse("2026-06-30T00:00:00Z"))
                 .build();
+    }
+
+    private User user(String userId) {
+        return User.builder()
+                .userId(userId)
+                .email(userId + "@example.com")
+                .nickname(userId)
+                .passwordHash("hashed")
+                .kind(UserKind.personal)
+                .accountStatus(AccountStatus.active)
+                .createdAt(Instant.parse("2026-06-30T00:00:00Z"))
+                .updatedAt(Instant.parse("2026-06-30T00:00:00Z"))
+                .build();
+    }
+
+    private ActivityRegistration saveRegistration(String activityId, String userId, RegistrationStatus status) {
+        return activityRegistrationRepository.save(ActivityRegistration.builder()
+                .registrationId(UUID.randomUUID().toString())
+                .activityId(activityId)
+                .userId(userId)
+                .status(status)
+                .participantNote("测试备注")
+                .acceptedSafetyNotice(true)
+                .registeredAt(Instant.parse("2026-07-01T00:00:00Z"))
+                .build());
     }
 }

@@ -152,6 +152,7 @@ public final class ActivityDtos {
         private ActivityReviewStatus reviewStatus;
         private ActivityRuntimeStatus runtimeStatus;
         private Integer registeredCount;
+        private Integer occupiedCount;
         private Integer capacity;
     }
 
@@ -177,6 +178,7 @@ public final class ActivityDtos {
         private ActivityReviewStatus reviewStatus;
         private ActivityRuntimeStatus runtimeStatus;
         private Integer registeredCount;
+        private Integer occupiedCount;
         private Integer capacity;
         private String introduction;
         private String safetyNotice;

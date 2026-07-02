@@ -39,10 +39,13 @@ import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamModerationRecordRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCountService;
+import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCounts;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -81,6 +84,7 @@ public class AdminService {
     private final TeamModerationRecordRepository teamModerationRecordRepository;
     private final ReportRepository reportRepository;
     private final ReportService reportService;
+    private final ActivityRegistrationCountService activityRegistrationCountService;
 
     /**
      * @param userRepository                   用户数据访问
@@ -96,6 +100,7 @@ public class AdminService {
      * @param teamModerationRecordRepository   小队治理记录数据访问
      * @param reportRepository                 举报数据访问
      * @param reportService                    举报服务
+     * @param activityRegistrationCountService 活动报名计数服务
      */
     public AdminService(
             UserRepository userRepository,
@@ -110,7 +115,8 @@ public class AdminService {
             TeamMemberRepository teamMemberRepository,
             TeamModerationRecordRepository teamModerationRecordRepository,
             ReportRepository reportRepository,
-            ReportService reportService) {
+            ReportService reportService,
+            ActivityRegistrationCountService activityRegistrationCountService) {
         this.userRepository = userRepository;
         this.merchantProfileRepository = merchantProfileRepository;
         this.qualificationRepository = qualificationRepository;
@@ -124,6 +130,7 @@ public class AdminService {
         this.teamModerationRecordRepository = teamModerationRecordRepository;
         this.reportRepository = reportRepository;
         this.reportService = reportService;
+        this.activityRegistrationCountService = activityRegistrationCountService;
     }
 
     // ======================== 商家管理 ========================
@@ -347,8 +354,11 @@ public class AdminService {
         Pageable pageable = buildPageable(page, pageSize);
         Page<Activity> activityPage = activityRepository.findByOrganizerId(userId, pageable);
 
+        Map<String, ActivityRegistrationCounts> countsByActivityId = loadCounts(activityPage.getContent());
         List<ActivityDtos.ActivitySummary> items = activityPage.getContent().stream()
-                .map(this::buildActivitySummary)
+                .map(activity -> buildActivitySummary(
+                        activity,
+                        countsByActivityId.getOrDefault(activity.getActivityId(), ActivityRegistrationCounts.zero())))
                 .collect(Collectors.toList());
 
         return new PageResult<>(
@@ -601,8 +611,11 @@ public class AdminService {
 
         Page<Activity> activityPage = activityRepository.findAll(spec, pageable);
 
+        Map<String, ActivityRegistrationCounts> countsByActivityId = loadCounts(activityPage.getContent());
         List<ActivityDtos.ActivitySummary> items = activityPage.getContent().stream()
-                .map(this::buildActivitySummary)
+                .map(activity -> buildActivitySummary(
+                        activity,
+                        countsByActivityId.getOrDefault(activity.getActivityId(), ActivityRegistrationCounts.zero())))
                 .collect(Collectors.toList());
 
         return new PageResult<>(
@@ -905,8 +918,11 @@ public class AdminService {
         Pageable pageable = buildPageable(page, pageSize);
         Page<Activity> activityPage = activityRepository.findByTeamId(teamId, pageable);
 
+        Map<String, ActivityRegistrationCounts> countsByActivityId = loadCounts(activityPage.getContent());
         List<ActivityDtos.ActivitySummary> items = activityPage.getContent().stream()
-                .map(this::buildActivitySummary)
+                .map(activity -> buildActivitySummary(
+                        activity,
+                        countsByActivityId.getOrDefault(activity.getActivityId(), ActivityRegistrationCounts.zero())))
                 .collect(Collectors.toList());
 
         return new PageResult<>(
@@ -1140,7 +1156,7 @@ public class AdminService {
         return dto;
     }
 
-    private ActivityDtos.ActivitySummary buildActivitySummary(Activity activity) {
+    private ActivityDtos.ActivitySummary buildActivitySummary(Activity activity, ActivityRegistrationCounts counts) {
         ActivityDtos.ActivitySummary summary = new ActivityDtos.ActivitySummary();
         summary.setActivityId(activity.getActivityId());
         summary.setTitle(activity.getTitle());
@@ -1150,7 +1166,8 @@ public class AdminService {
         summary.setFeeAmount(activity.getFeeAmount());
         summary.setReviewStatus(activity.getReviewStatus());
         summary.setRuntimeStatus(activity.getRuntimeStatus());
-        summary.setRegisteredCount(0);
+        summary.setRegisteredCount(counts.registeredCount());
+        summary.setOccupiedCount(counts.occupiedCount());
         summary.setCapacity(activity.getCapacity());
         summary.setLocation(buildLocationInfo(activity));
         return summary;
@@ -1166,7 +1183,10 @@ public class AdminService {
         detail.setFeeAmount(activity.getFeeAmount());
         detail.setReviewStatus(activity.getReviewStatus());
         detail.setRuntimeStatus(activity.getRuntimeStatus());
-        detail.setRegisteredCount(0);
+        ActivityRegistrationCounts counts =
+                activityRegistrationCountService.countByActivityId(activity.getActivityId());
+        detail.setRegisteredCount(counts.registeredCount());
+        detail.setOccupiedCount(counts.occupiedCount());
         detail.setCapacity(activity.getCapacity());
         detail.setIntroduction(activity.getIntroduction());
         detail.setSafetyNotice(activity.getSafetyNotice());
@@ -1177,7 +1197,7 @@ public class AdminService {
         detail.setOrganizerId(activity.getOrganizerId());
         detail.setManualReviewRequired(activity.getManualReviewRequired());
         detail.setImages(List.of());
-        detail.setWaitingCount(0);
+        detail.setWaitingCount(counts.waitingCount());
         detail.setLocation(buildLocationInfo(activity));
 
         if (activity.getOrganizer() != null) {
@@ -1191,6 +1211,11 @@ public class AdminService {
         detail.setReviewRecords(reviewRecords);
 
         return detail;
+    }
+
+    private Map<String, ActivityRegistrationCounts> loadCounts(List<Activity> activities) {
+        return activityRegistrationCountService.countByActivityIds(
+                activities.stream().map(Activity::getActivityId).toList());
     }
 
     /**

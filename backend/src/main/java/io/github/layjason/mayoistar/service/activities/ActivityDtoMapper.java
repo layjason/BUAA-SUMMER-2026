@@ -37,9 +37,11 @@ public class ActivityDtoMapper {
      * @return ActivitySummary 分页结果
      */
     public PageResult<ActivityDtos.ActivitySummary> toActivitySummaryPage(
-            Page<Activity> activityPage, Function<String, CommonDtos.MediaFile> coverImageProvider) {
+            Page<Activity> activityPage,
+            Function<String, CommonDtos.MediaFile> coverImageProvider,
+            Function<String, ActivityRegistrationCounts> countsProvider) {
         List<ActivityDtos.ActivitySummary> items = activityPage.getContent().stream()
-                .map(activity -> toActivitySummary(activity, coverImageProvider))
+                .map(activity -> toActivitySummary(activity, coverImageProvider, countsProvider))
                 .toList();
         return new PageResult<>(
                 items,
@@ -54,7 +56,7 @@ public class ActivityDtoMapper {
      *
      * <p>前置条件：activity 非空。
      *
-     * <p>后置条件：返回包含基本摘要字段的 DTO，registeredCount 暂为 0（由报名模块补充）。
+     * <p>后置条件：返回包含基本摘要字段和报名计数的 DTO。
      *
      * <p>不变量：不修改传入实体。
      *
@@ -63,7 +65,9 @@ public class ActivityDtoMapper {
      * @return ActivitySummary DTO
      */
     public ActivityDtos.ActivitySummary toActivitySummary(
-            Activity activity, Function<String, CommonDtos.MediaFile> coverImageProvider) {
+            Activity activity,
+            Function<String, CommonDtos.MediaFile> coverImageProvider,
+            Function<String, ActivityRegistrationCounts> countsProvider) {
         ActivityDtos.ActivitySummary dto = new ActivityDtos.ActivitySummary();
         dto.setActivityId(activity.getActivityId());
         dto.setTitle(activity.getTitle());
@@ -75,8 +79,9 @@ public class ActivityDtoMapper {
         dto.setFeeAmount(activity.getFeeAmount());
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setRuntimeStatus(activity.getRuntimeStatus());
-        // registeredCount 由报名模块补充，当前暂为 0
-        dto.setRegisteredCount(0);
+        ActivityRegistrationCounts counts = countsProvider.apply(activity.getActivityId());
+        dto.setRegisteredCount(counts.registeredCount());
+        dto.setOccupiedCount(counts.occupiedCount());
         dto.setCapacity(activity.getCapacity());
         return dto;
     }
@@ -86,7 +91,7 @@ public class ActivityDtoMapper {
      *
      * <p>前置条件：activity 非空，organizerName 非空。
      *
-     * <p>后置条件：返回包含完整详情字段的 DTO，registeredCount 和 waitingCount 暂为 0（由报名模块补充）。
+     * <p>后置条件：返回包含完整详情字段和报名计数的 DTO。
      *
      * <p>不变量：不修改传入实体。
      *
@@ -102,7 +107,8 @@ public class ActivityDtoMapper {
             String organizerName,
             List<MediaFile> mediaFiles,
             Function<String, Integer> imageSortOrderProvider,
-            List<ActivityDtos.ReviewRecord> reviewRecords) {
+            List<ActivityDtos.ReviewRecord> reviewRecords,
+            ActivityRegistrationCounts counts) {
         ActivityDtos.ActivityDetail dto = new ActivityDtos.ActivityDetail();
         dto.setActivityId(activity.getActivityId());
         dto.setTitle(activity.getTitle());
@@ -120,8 +126,8 @@ public class ActivityDtoMapper {
         dto.setFeeAmount(activity.getFeeAmount());
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setRuntimeStatus(activity.getRuntimeStatus());
-        // registeredCount 由报名模块补充，当前暂为 0
-        dto.setRegisteredCount(0);
+        dto.setRegisteredCount(counts.registeredCount());
+        dto.setOccupiedCount(counts.occupiedCount());
         dto.setCapacity(activity.getCapacity());
         dto.setIntroduction(activity.getIntroduction());
         dto.setSafetyNotice(activity.getSafetyNotice());
@@ -134,8 +140,7 @@ public class ActivityDtoMapper {
                         imageSortOrderProvider.apply(right.getMediaId())))
                 .map(this::toMediaFile)
                 .toList());
-        // waitingCount 由报名模块补充，当前暂为 0
-        dto.setWaitingCount(0);
+        dto.setWaitingCount(counts.waitingCount());
         dto.setManualReviewRequired(activity.getManualReviewRequired());
         dto.setFeeDescription(activity.getFeeDescription());
         dto.setMinAge(activity.getMinAge());

@@ -6,8 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
@@ -19,6 +21,7 @@ import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
 import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
 import java.time.Instant;
 import java.util.List;
@@ -47,6 +50,9 @@ class ActivityQueryServiceTests {
     private ActivityReviewRecordRepository activityReviewRecordRepository;
 
     @Autowired
+    private ActivityRegistrationRepository activityRegistrationRepository;
+
+    @Autowired
     private MediaFileRepository mediaFileRepository;
 
     @Autowired
@@ -60,6 +66,7 @@ class ActivityQueryServiceTests {
 
     @AfterEach
     void tearDown() {
+        activityRegistrationRepository.deleteAll();
         activityReviewRecordRepository.deleteAll();
         activityImageRepository.deleteAll();
         activityRepository.deleteAll();
@@ -83,7 +90,31 @@ class ActivityQueryServiceTests {
         assertThat(detail.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.notStarted);
         assertThat(detail.getOrganizerName()).isEqualTo(organizer.getNickname());
         assertThat(detail.getRegisteredCount()).isZero();
+        assertThat(detail.getOccupiedCount()).isZero();
         assertThat(detail.getWaitingCount()).isZero();
+    }
+
+    @Test
+    void getActivityShouldReturnRegistrationCountsWithContractSemantics() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "计数活动");
+        saveUser("registered-user");
+        saveUser("checked-in-user");
+        saveUser("waiting-confirmation-user");
+        saveUser("waiting-user");
+        saveUser("canceled-user");
+        saveRegistration(activity.getActivityId(), "registered-user", RegistrationStatus.registered);
+        saveRegistration(activity.getActivityId(), "checked-in-user", RegistrationStatus.checkedIn);
+        saveRegistration(activity.getActivityId(), "waiting-confirmation-user", RegistrationStatus.waitingConfirmation);
+        saveRegistration(activity.getActivityId(), "waiting-user", RegistrationStatus.waiting);
+        saveRegistration(activity.getActivityId(), "canceled-user", RegistrationStatus.canceled);
+
+        ActivityDtos.ActivityDetail detail =
+                activityQueryService.getActivity(Optional.empty(), activity.getActivityId());
+
+        assertThat(detail.getRegisteredCount()).isEqualTo(2);
+        assertThat(detail.getOccupiedCount()).isEqualTo(3);
+        assertThat(detail.getWaitingCount()).isEqualTo(2);
     }
 
     @Test
@@ -228,7 +259,29 @@ class ActivityQueryServiceTests {
         assertThat(summary.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
         assertThat(summary.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.notStarted);
         assertThat(summary.getRegisteredCount()).isZero();
+        assertThat(summary.getOccupiedCount()).isZero();
         assertThat(summary.getCapacity()).isEqualTo(8);
+    }
+
+    @Test
+    void listMyActivitiesShouldReturnRegistrationCounts() {
+        User user = saveUser("user-a");
+        Activity activity = saveApprovedActivity(user.getUserId(), "计数摘要");
+        saveUser("registered-user");
+        saveUser("checked-in-user");
+        saveUser("waiting-confirmation-user");
+        saveUser("waiting-user");
+        saveRegistration(activity.getActivityId(), "registered-user", RegistrationStatus.registered);
+        saveRegistration(activity.getActivityId(), "checked-in-user", RegistrationStatus.checkedIn);
+        saveRegistration(activity.getActivityId(), "waiting-confirmation-user", RegistrationStatus.waitingConfirmation);
+        saveRegistration(activity.getActivityId(), "waiting-user", RegistrationStatus.waiting);
+
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityQueryService.listMyActivities(user.getUserId(), null, 1, 20);
+
+        ActivityDtos.ActivitySummary summary = result.getItems().getFirst();
+        assertThat(summary.getRegisteredCount()).isEqualTo(2);
+        assertThat(summary.getOccupiedCount()).isEqualTo(3);
     }
 
     @Test
@@ -341,6 +394,18 @@ class ActivityQueryServiceTests {
     }
 
     // ========== 辅助方法 ==========
+
+    private ActivityRegistration saveRegistration(String activityId, String userId, RegistrationStatus status) {
+        return activityRegistrationRepository.save(ActivityRegistration.builder()
+                .registrationId(UUID.randomUUID().toString())
+                .activityId(activityId)
+                .userId(userId)
+                .status(status)
+                .participantNote("测试备注")
+                .acceptedSafetyNotice(true)
+                .registeredAt(Instant.now())
+                .build());
+    }
 
     private User saveUser(String userId) {
         return userRepository.save(User.builder()

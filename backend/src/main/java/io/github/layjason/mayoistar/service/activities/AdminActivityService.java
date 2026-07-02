@@ -7,7 +7,6 @@ import io.github.layjason.mayoistar.entity.activities.ActivityImage;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
-import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
@@ -16,13 +15,11 @@ import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
-import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +47,7 @@ public class AdminActivityService {
     private final MediaFileRepository mediaFileRepository;
     private final UserRepository userRepository;
     private final ActivityDtoMapper activityDtoMapper;
-    private final ActivityRegistrationRepository activityRegistrationRepository;
+    private final ActivityRegistrationCountService activityRegistrationCountService;
 
     /**
      * 管理员查询活动详情（不受可见性限制）。
@@ -106,6 +103,10 @@ public class AdminActivityService {
             activityPage = activityRepository.findAll(pageRequest);
         }
 
+        Map<String, ActivityRegistrationCounts> countsByActivityId =
+                activityRegistrationCountService.countByActivityIds(activityPage.getContent().stream()
+                        .map(Activity::getActivityId)
+                        .toList());
         List<ActivityDtos.ActivitySummary> items = activityPage.getContent().stream()
                 .filter(activity -> {
                     if (sanitizedKeyword != null && !sanitizedKeyword.isBlank()) {
@@ -121,7 +122,10 @@ public class AdminActivityService {
                     }
                     return true;
                 })
-                .map(activity -> activityDtoMapper.toActivitySummary(activity, id -> null))
+                .map(activity -> activityDtoMapper.toActivitySummary(
+                        activity,
+                        id -> null,
+                        activityId -> countsByActivityId.getOrDefault(activityId, ActivityRegistrationCounts.zero())))
                 .toList();
 
         log.info("管理员已查询活动列表");
@@ -304,17 +308,15 @@ public class AdminActivityService {
                 activityReviewRecordRepository.findByActivityIdOrderByReviewedAtDesc(activity.getActivityId());
         List<ActivityDtos.ReviewRecord> reviewRecordDtos =
                 reviewRecords.stream().map(activityDtoMapper::toReviewRecord).toList();
+        ActivityRegistrationCounts counts =
+                activityRegistrationCountService.countByActivityId(activity.getActivityId());
         ActivityDtos.ActivityDetail detail = activityDtoMapper.toActivityDetail(
                 activity,
                 organizerName,
                 mediaFiles,
                 mediaId -> sortOrderByMediaId.getOrDefault(mediaId, Integer.MAX_VALUE),
-                reviewRecordDtos);
-        String activityId = activity.getActivityId();
-        detail.setRegisteredCount(
-                countByStatus(activityId, RegistrationStatus.registered, RegistrationStatus.checkedIn));
-        detail.setWaitingCount(
-                countByStatus(activityId, RegistrationStatus.waiting, RegistrationStatus.waitingConfirmation));
+                reviewRecordDtos,
+                counts);
         return detail;
     }
 
@@ -327,14 +329,5 @@ public class AdminActivityService {
         Map<String, MediaFile> mediaFileMap = mediaFileRepository.findByMediaIdIn(mediaIds).stream()
                 .collect(Collectors.toMap(MediaFile::getMediaId, mediaFile -> mediaFile));
         return mediaIds.stream().map(mediaFileMap::get).filter(Objects::nonNull).toList();
-    }
-
-    /**
-     * 统计指定活动在给定状态集合中的报名记录数。
-     */
-    private int countByStatus(String activityId, RegistrationStatus... statuses) {
-        return activityRegistrationRepository
-                .findByActivityIdAndStatusIn(activityId, Set.of(statuses))
-                .size();
     }
 }

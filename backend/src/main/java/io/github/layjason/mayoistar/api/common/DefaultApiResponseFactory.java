@@ -120,6 +120,7 @@ public class DefaultApiResponseFactory {
         dto.setReviewStatus(ActivityReviewStatus.approved);
         dto.setRuntimeStatus(ActivityRuntimeStatus.notStarted);
         dto.setRegisteredCount(0);
+        dto.setOccupiedCount(0);
         dto.setCapacity(20);
         dto.setIntroduction("默认活动简介");
         dto.setSafetyNotice("默认安全须知");
@@ -508,6 +509,7 @@ public class DefaultApiResponseFactory {
         dto.setReviewStatus(ActivityReviewStatus.approved);
         dto.setRuntimeStatus(ActivityRuntimeStatus.notStarted);
         dto.setRegisteredCount(0);
+        dto.setOccupiedCount(0);
         dto.setCapacity(20);
     }
 
