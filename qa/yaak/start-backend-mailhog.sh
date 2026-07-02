@@ -31,10 +31,12 @@ fi
 
 REDIS_HOST="${MAYOISTAR_REDIS_HOST:-localhost}"
 REDIS_PORT="${MAYOISTAR_REDIS_PORT:-6379}"
-if command -v redis-cli >/dev/null 2>&1; then
-    if ! redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" ping >/dev/null 2>&1; then
+if command -v nc >/dev/null 2>&1; then
+    if ! nc -z -w 3 "$REDIS_HOST" "$REDIS_PORT" 2>/dev/null; then
         echo "Warning: Redis is not reachable at ${REDIS_HOST}:${REDIS_PORT}. Backend will fail to start because Redis is required for media access cache and rate limiting." >&2
     fi
+else
+    echo "Warning: nc not found; cannot check Redis endpoint ${REDIS_HOST}:${REDIS_PORT}." >&2
 fi
 
 cd "$BACKEND_DIR"
