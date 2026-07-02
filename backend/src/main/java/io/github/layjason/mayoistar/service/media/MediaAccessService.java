@@ -29,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.Nullable;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
@@ -120,7 +121,11 @@ public class MediaAccessService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Permission is denied");
         }
         assertAccessAllowed(descriptor, authentication);
-        return fileStorageService.retrieve(descriptor.storagePath());
+        try {
+            return fileStorageService.retrieve(descriptor.storagePath());
+        } catch (RuntimeException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found", e);
+        }
     }
 
     /**
@@ -281,7 +286,7 @@ public class MediaAccessService {
                 && descriptor.visibility() == MediaVisibility.publicVisible) {
             return;
         }
-        if (authentication == null || !authentication.isAuthenticated()) {
+        if (isAnonymous(authentication)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication is required");
         }
         String userId = String.valueOf(authentication.getPrincipal());
@@ -317,8 +322,15 @@ public class MediaAccessService {
                 .anyMatch("ROLE_admin"::equals);
     }
 
+    private boolean isAnonymous(@Nullable Authentication authentication) {
+        return authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken
+                || "anonymousUser".equals(String.valueOf(authentication.getPrincipal()));
+    }
+
     private String rateKey(@Nullable Authentication authentication, String clientIp) {
-        if (authentication != null && authentication.isAuthenticated()) {
+        if (!isAnonymous(authentication)) {
             return "rate:media-refresh:user:" + authentication.getPrincipal();
         }
         return "rate:media-refresh:ip:" + clientIp;

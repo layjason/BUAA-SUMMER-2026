@@ -13,7 +13,6 @@ import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_MEMBER_REQU
 import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
-import io.github.layjason.mayoistar.common.SocialUtils;
 import io.github.layjason.mayoistar.entity.chat.ChatMessage;
 import io.github.layjason.mayoistar.entity.chat.Conversation;
 import io.github.layjason.mayoistar.entity.chat.MessageKind;
@@ -31,6 +30,7 @@ import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import io.github.layjason.mayoistar.repository.TeamAnnouncementReadRepository;
 import io.github.layjason.mayoistar.repository.TeamAnnouncementRepository;
 import io.github.layjason.mayoistar.repository.TeamMemberRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -69,6 +69,7 @@ public class ChatService {
     private final TeamAnnouncementRepository teamAnnouncementRepository;
     private final TeamAnnouncementReadRepository teamAnnouncementReadRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final MediaAccessService mediaAccessService;
 
     // ========================================
     // Send Message
@@ -626,7 +627,7 @@ public class ChatService {
     }
 
     private CommonDtos.MediaFile toMediaFileDto(io.github.layjason.mayoistar.entity.common.MediaFile entity) {
-        return SocialUtils.toMediaFileDto(entity);
+        return mediaAccessService.toSignedDto(entity);
     }
 
     /**

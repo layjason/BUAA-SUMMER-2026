@@ -2,7 +2,6 @@ package io.github.layjason.mayoistar.service;
 
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
-import io.github.layjason.mayoistar.common.SocialUtils;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.social.Blacklist;
 import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
@@ -18,6 +17,7 @@ import io.github.layjason.mayoistar.repository.FriendshipRepository;
 import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -47,6 +47,7 @@ public class BlacklistServiceImpl implements BlacklistService {
     private final ConversationRepository conversationRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final MessageReadRepository messageReadRepository;
+    private final MediaAccessService mediaAccessService;
 
     public BlacklistServiceImpl(
             BlacklistRepository blacklistRepository,
@@ -58,7 +59,8 @@ public class BlacklistServiceImpl implements BlacklistService {
             ConversationMemberRepository conversationMemberRepository,
             ConversationRepository conversationRepository,
             ChatMessageRepository chatMessageRepository,
-            MessageReadRepository messageReadRepository) {
+            MessageReadRepository messageReadRepository,
+            MediaAccessService mediaAccessService) {
         this.blacklistRepository = blacklistRepository;
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
@@ -69,6 +71,7 @@ public class BlacklistServiceImpl implements BlacklistService {
         this.conversationRepository = conversationRepository;
         this.chatMessageRepository = chatMessageRepository;
         this.messageReadRepository = messageReadRepository;
+        this.mediaAccessService = mediaAccessService;
     }
 
     /**
@@ -213,7 +216,7 @@ public class BlacklistServiceImpl implements BlacklistService {
             item.setNickname(user.getNickname());
             personalProfileRepository.findByUserId(user.getUserId()).ifPresent(profile -> {
                 if (profile.getAvatar() != null) {
-                    item.setAvatar(SocialUtils.toMediaFileDto(profile.getAvatar()));
+                    item.setAvatar(mediaAccessService.toSignedDto(profile.getAvatar()));
                 }
             });
         });

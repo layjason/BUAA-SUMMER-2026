@@ -71,9 +71,9 @@ public class MediaController {
             @RequestParam(defaultValue = "") String scope,
             @RequestParam String sig,
             Authentication authentication) {
-        MediaAccessDescriptor descriptor = mediaAccessService.loadDescriptor(mediaId);
         InputStream inputStream =
                 mediaAccessService.openSignedContent(mediaId, exp, accessVersion, policy, scope, sig, authentication);
+        MediaAccessDescriptor descriptor = mediaAccessService.loadDescriptor(mediaId);
         InputStreamResource resource = new InputStreamResource(inputStream);
 
         HttpHeaders headers = new HttpHeaders();

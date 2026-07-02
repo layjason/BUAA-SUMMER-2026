@@ -17,6 +17,7 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -55,6 +56,7 @@ public class ActivityQueryService {
     private final UserRepository userRepository;
     private final ActivityDtoMapper activityDtoMapper;
     private final ActivityRegistrationRepository activityRegistrationRepository;
+    private final MediaAccessService mediaAccessService;
 
     /**
      * 查询活动详情。
@@ -319,20 +321,7 @@ public class ActivityQueryService {
         UUID firstMediaId = activityImages.getFirst().getMediaId();
         return mediaFileRepository
                 .findById(firstMediaId)
-                .map(mediaFile -> {
-                    CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
-                    dto.setMediaId(mediaFile.getMediaId());
-                    dto.setFileName(mediaFile.getFileName());
-                    dto.setContentType(mediaFile.getContentType());
-                    dto.setSizeBytes(mediaFile.getSizeBytes());
-                    dto.setUsage(mediaFile.getUsage());
-                    dto.setUrl(mediaFile.getUrl());
-                    dto.setUploadedAt(
-                            mediaFile.getUploadedAt() == null
-                                    ? null
-                                    : mediaFile.getUploadedAt().toString());
-                    return dto;
-                })
+                .map(mediaAccessService::toSignedDto)
                 .orElse(null);
     }
 

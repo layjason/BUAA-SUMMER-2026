@@ -2,7 +2,6 @@ package io.github.layjason.mayoistar.service;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
-import io.github.layjason.mayoistar.common.SocialUtils;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.MerchantProfile;
@@ -15,6 +14,7 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
 import io.github.layjason.mayoistar.repository.QualificationRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +40,7 @@ public class MerchantProfileService {
     private final QualificationRepository qualificationRepository;
     private final MediaFileRepository mediaFileRepository;
     private final MediaFileUploadService mediaFileUploadService;
+    private final MediaAccessService mediaAccessService;
 
     /**
      * @param userRepository             用户数据访问
@@ -53,12 +54,14 @@ public class MerchantProfileService {
             MerchantProfileRepository merchantProfileRepository,
             QualificationRepository qualificationRepository,
             MediaFileRepository mediaFileRepository,
-            MediaFileUploadService mediaFileUploadService) {
+            MediaFileUploadService mediaFileUploadService,
+            MediaAccessService mediaAccessService) {
         this.userRepository = userRepository;
         this.merchantProfileRepository = merchantProfileRepository;
         this.qualificationRepository = qualificationRepository;
         this.mediaFileRepository = mediaFileRepository;
         this.mediaFileUploadService = mediaFileUploadService;
+        this.mediaAccessService = mediaAccessService;
     }
 
     /**
@@ -244,7 +247,7 @@ public class MerchantProfileService {
         // 头像
         if (profile.getAvatarMediaId() != null) {
             mediaFileRepository.findById(profile.getAvatarMediaId()).ifPresent(avatar -> {
-                dto.setAvatar(SocialUtils.toMediaFileDto(avatar));
+                dto.setAvatar(mediaAccessService.toSignedDto(avatar));
             });
         }
 
@@ -271,7 +274,8 @@ public class MerchantProfileService {
                     mediaFileRepository
                             .findById(licenseId)
                             .ifPresentOrElse(
-                                    mf -> urls.add(mf.getUrl() != null ? mf.getUrl() : "/media/" + licenseId),
+                                    mf -> urls.add(
+                                            mediaAccessService.toSignedDto(mf).getSignedUrl()),
                                     () -> urls.add(""));
                 }
                 detail.setLicenseImageUrls(urls);

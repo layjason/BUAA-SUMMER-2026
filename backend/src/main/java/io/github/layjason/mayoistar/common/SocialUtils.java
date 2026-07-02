@@ -31,7 +31,8 @@ public class SocialUtils {
         dto.setContentType(entity.getContentType());
         dto.setSizeBytes(entity.getSizeBytes());
         dto.setUsage(entity.getUsage());
-        dto.setUrl(entity.getUrl() != null ? entity.getUrl() : "/media/" + entity.getMediaId());
+        dto.setUrl(entity.getUrl());
+        dto.setVisibility(entity.getVisibility());
         dto.setUploadedAt(entity.getUploadedAt().toString());
         return dto;
     }

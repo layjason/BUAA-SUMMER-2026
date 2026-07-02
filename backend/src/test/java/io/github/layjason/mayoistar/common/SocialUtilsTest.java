@@ -43,8 +43,8 @@ class SocialUtilsTest {
     }
 
     @Test
-    @DisplayName("url 为空时根据 mediaId 自动生成相对路径")
-    void shouldGenerateUrlFromMediaIdWhenUrlIsNull() {
+    @DisplayName("url 为空时不再生成长期媒体地址")
+    void shouldNotGenerateLongLivedUrlWhenUrlIsNull() {
         MediaFile entity = MediaFile.builder()
                 .mediaId(UUID.fromString("00000000-0000-0000-0000-000000000002"))
                 .fileName("photo.jpg")
@@ -57,6 +57,6 @@ class SocialUtilsTest {
 
         CommonDtos.MediaFile dto = SocialUtils.toMediaFileDto(entity);
 
-        assertThat(dto.getUrl()).isEqualTo("/media/00000000-0000-0000-0000-000000000002");
+        assertThat(dto.getUrl()).isNull();
     }
 }
