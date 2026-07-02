@@ -25,5 +25,13 @@ Get-Content $envFile | ForEach-Object {
 $env:SPRING_PROFILES_ACTIVE = "dev"
 $env:SPRING_CONFIG_IMPORT = "optional:file:.env.mailhog.example[.properties]"
 
+$storageEndpoint = if ($env:MAYOISTAR_S3_ENDPOINT) { $env:MAYOISTAR_S3_ENDPOINT } else { "http://localhost:9000" }
+try {
+    Invoke-WebRequest -Uri $storageEndpoint -Method Head -TimeoutSec 3 | Out-Null
+}
+catch {
+    Write-Warning "RustFS/S3 endpoint is not reachable: $storageEndpoint. File upload QA cases require docker compose to start rustfs."
+}
+
 Set-Location $resolvedBackendDir
 mvn spring-boot:run
