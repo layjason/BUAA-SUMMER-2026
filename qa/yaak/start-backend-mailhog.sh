@@ -28,5 +28,13 @@ else
     echo "Warning: curl not found; cannot check RustFS/S3 endpoint $STORAGE_ENDPOINT." >&2
 fi
 
+REDIS_HOST="${MAYOISTAR_REDIS_HOST:-localhost}"
+REDIS_PORT="${MAYOISTAR_REDIS_PORT:-6379}"
+if command -v redis-cli >/dev/null 2>&1; then
+    if ! redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" ping >/dev/null 2>&1; then
+        echo "Warning: Redis is not reachable at ${REDIS_HOST}:${REDIS_PORT}. Backend will fail to start because Redis is required for media access cache and rate limiting." >&2
+    fi
+fi
+
 cd "$BACKEND_DIR"
 mvn spring-boot:run
