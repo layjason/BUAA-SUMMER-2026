@@ -99,7 +99,6 @@ public class MediaFileUploadService {
             throw new RuntimeException("文件上传失败", e);
         }
 
-        String publicUrl = fileStorageService.getPublicUrl(key);
         Instant now = Instant.now();
 
         MediaFile mediaFile = MediaFile.builder()
@@ -109,7 +108,7 @@ public class MediaFileUploadService {
                 .sizeBytes(size)
                 .usage(usage)
                 .storagePath(key)
-                .url(publicUrl)
+                .url(buildMediaAccessPath(mediaId))
                 .uploadedBy(userId)
                 .uploadedAt(now)
                 .build();
@@ -193,6 +192,22 @@ public class MediaFileUploadService {
         result.setUrl(mediaFile.getUrl());
         result.setUploadedAt(mediaFile.getUploadedAt().toString());
         return result;
+    }
+
+    /**
+     * 生成后端统一媒体访问路径。
+     *
+     * <p>前置条件：mediaId 非空且对应即将持久化的媒体文件。
+     *
+     * <p>后置条件：返回可交给客户端直接访问的相对路径，由后端代理读取对象存储。
+     *
+     * <p>不变量：客户端不依赖对象存储公开读地址。
+     *
+     * @param mediaId 媒体文件唯一标识
+     * @return 后端媒体访问路径
+     */
+    private static String buildMediaAccessPath(UUID mediaId) {
+        return "/media/" + mediaId;
     }
 
     private static String sanitizeForLog(String input) {

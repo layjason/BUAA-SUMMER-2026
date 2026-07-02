@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -81,7 +82,6 @@ class MediaFileUploadServiceTest {
 
             when(fileStorageService.store(anyString(), any(InputStream.class), anyString(), anyLong()))
                     .thenReturn("test-key");
-            when(fileStorageService.getPublicUrl(anyString())).thenReturn("http://localhost:9000/bucket/test-key");
 
             CommonDtos.MediaFile result = mediaFileUploadService.upload("user1", file, MediaUsage.avatar);
 
@@ -107,7 +107,6 @@ class MediaFileUploadServiceTest {
 
             when(fileStorageService.store(anyString(), any(InputStream.class), anyString(), anyLong()))
                     .thenReturn("test-key");
-            when(fileStorageService.getPublicUrl(anyString())).thenReturn("http://localhost:9000/bucket/test-key");
 
             CommonDtos.MediaFile result = mediaFileUploadService.upload("user1", file, MediaUsage.teamFile);
 
@@ -138,7 +137,6 @@ class MediaFileUploadServiceTest {
 
             when(fileStorageService.store(anyString(), any(InputStream.class), anyString(), anyLong()))
                     .thenReturn("test-key");
-            when(fileStorageService.getPublicUrl(anyString())).thenReturn("http://localhost:9000/bucket/test-key");
 
             CommonDtos.MediaFile result = mediaFileUploadService.upload("user1", file, MediaUsage.chatImage);
 
@@ -151,26 +149,26 @@ class MediaFileUploadServiceTest {
     class MetadataPersistence {
 
         @Test
-        @DisplayName("上传后正确保存 MediaFile 并设置 URL")
-        void shouldSaveMediaFileWithUrl() {
+        @DisplayName("上传后正确保存 MediaFile 并设置后端媒体访问路径")
+        void shouldSaveMediaFileWithBackendMediaAccessPath() {
             MultipartFile file = mockFile("image/png", 500L, "avatar.png");
-            String expectedUrl = "http://localhost:9000/mayoistar-media/avatar/user1/mock-id_avatar.png";
 
             when(fileStorageService.store(anyString(), any(InputStream.class), eq("image/png"), eq(500L)))
                     .thenReturn("avatar/user1/mock-id_avatar.png");
-            when(fileStorageService.getPublicUrl(anyString())).thenReturn(expectedUrl);
 
             CommonDtos.MediaFile result = mediaFileUploadService.upload("user1", file, MediaUsage.avatar);
 
-            assertThat(result.getUrl()).isEqualTo(expectedUrl);
+            assertThat(result.getUrl()).isEqualTo("/media/" + result.getMediaId());
             assertThat(result.getFileName()).isEqualTo("avatar.png");
             assertThat(result.getSizeBytes()).isEqualTo(500L);
             assertThat(result.getUsage()).isEqualTo(MediaUsage.avatar);
 
             ArgumentCaptor<MediaFile> captor = ArgumentCaptor.forClass(MediaFile.class);
             verify(mediaFileRepository).save(captor.capture());
-            assertThat(captor.getValue().getUrl()).isEqualTo(expectedUrl);
+            assertThat(captor.getValue().getUrl())
+                    .isEqualTo("/media/" + captor.getValue().getMediaId());
             assertThat(captor.getValue().getUploadedBy()).isEqualTo("user1");
+            verify(fileStorageService, never()).getPublicUrl(anyString());
         }
     }
 
@@ -204,7 +202,7 @@ class MediaFileUploadServiceTest {
         }
 
         @Test
-        @DisplayName("无公开 URL 时从对象存储读取文件流")
+        @DisplayName("从对象存储读取文件流")
         void shouldRetrieveContentFromStorage() {
             UUID mediaId = UUID.randomUUID();
             MediaFile mediaFile = buildMediaFile(mediaId, null);
