@@ -10,7 +10,7 @@ services:
       redis:
         condition: service_healthy
       rustfs:
-        condition: service_healthy
+        condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: prod
       MAYOISTAR_DB_HOST: postgres
@@ -79,12 +79,6 @@ services:
       - "9001:9001"
     volumes:
       - rustfs-data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9001 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
     restart: unless-stopped
     networks:
       - mayoistar

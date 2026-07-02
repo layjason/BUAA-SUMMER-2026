@@ -49,12 +49,6 @@ services:
       - "9001:9001"
     volumes:
       - rustfs-local-data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9001 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
     restart: unless-stopped
 
 volumes:
