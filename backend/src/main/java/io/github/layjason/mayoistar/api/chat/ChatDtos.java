@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.api.chat;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.api.validation.ValidMessageContent;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.chat.MessageKind;
 import jakarta.validation.constraints.NotBlank;
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
 
 /**
@@ -23,13 +25,14 @@ public final class ChatDtos {
 
     /* ========== 请求 DTO ========== */
 
+    @ValidMessageContent
     @Data
     public static class SendMessageRequest {
         @NotNull
         private MessageKind kind;
 
         private String text;
-        private String imageMediaId;
+        private UUID imageMediaId;
         private CommonDtos.LocationInfo location;
         private List<String> mentionedUserIds;
         private Boolean mentionAll;
@@ -56,13 +59,13 @@ public final class ChatDtos {
     @Data
     public static class DeleteTeamFilesRequest {
         @NotEmpty
-        private List<String> mediaIds;
+        private List<UUID> mediaIds;
     }
 
     @Data
     public static class DeleteTeamAlbumImagesRequest {
         @NotEmpty
-        private List<String> mediaIds;
+        private List<UUID> mediaIds;
     }
 
     @Data
@@ -114,12 +117,33 @@ public final class ChatDtos {
         private String sentAt;
     }
 
+    /**
+     * 聊天实时事件负载标记接口，具体类型由 ChatRealtimeEvent.kind 区分。
+     */
+    public interface ChatRealtimeEventPayload {}
+
+    @Data
+    public static class MessageCreatedPayload implements ChatRealtimeEventPayload {
+        private ChatMessage message;
+        private Integer conversationUnreadCount;
+    }
+
+    @Data
+    public static class MessageRecalledPayload implements ChatRealtimeEventPayload {
+        private ChatMessage message;
+    }
+
+    @Data
+    public static class MessageForwardedPayload implements ChatRealtimeEventPayload {
+        private ChatMessage message;
+        private Integer conversationUnreadCount;
+    }
+
     @Data
     public static class ChatRealtimeEvent {
         private String kind;
         private String conversationId;
-        private ChatMessage message;
-        private Integer conversationUnreadCount;
+        private ChatRealtimeEventPayload payload;
         private String occurredAt;
     }
 

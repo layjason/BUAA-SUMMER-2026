@@ -1,11 +1,13 @@
 package io.github.layjason.mayoistar.api.chat;
 
 import io.github.layjason.mayoistar.api.common.ApiResponse;
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.common.SecurityUtils;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.service.ChatService;
+import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class ChatController {
     private final DefaultApiResponseFactory responseFactory;
     private final ChatService chatService;
     private final SecurityUtils securityUtils;
+    private final MediaFileUploadService mediaFileUploadService;
 
     @GetMapping("/conversations")
     public ResponseEntity<ApiResponse<PageResult<ChatDtos.ConversationSummary>>> listConversations(
@@ -59,9 +62,11 @@ public class ChatController {
     }
 
     @PostMapping(value = "/media/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>> uploadChatImage(
+    public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> uploadChatImage(
             @RequestPart(value = "file") MultipartFile file) {
-        return responseFactory.mediaFile(MediaUsage.chatImage);
+        String userId = securityUtils.getCurrentUserId();
+        var result = mediaFileUploadService.upload(userId, file, MediaUsage.chatImage);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/messages/read")
@@ -88,9 +93,11 @@ public class ChatController {
     }
 
     @PostMapping(value = "/teams/{teamId}/album-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
-            uploadTeamAlbumImage(@PathVariable String teamId, @RequestPart(value = "file") MultipartFile file) {
-        return responseFactory.mediaFile(MediaUsage.teamAlbum);
+    public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> uploadTeamAlbumImage(
+            @PathVariable String teamId, @RequestPart(value = "file") MultipartFile file) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = mediaFileUploadService.upload(userId, file, MediaUsage.teamAlbum);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/teams/{teamId}/album-images")
@@ -111,19 +118,25 @@ public class ChatController {
     @PostMapping("/teams/{teamId}/announcements")
     public ResponseEntity<ApiResponse<ChatDtos.TeamAnnouncement>> publishAnnouncement(
             @PathVariable String teamId, @Valid @RequestBody ChatDtos.TeamAnnouncementRequest request) {
-        return responseFactory.teamAnnouncement();
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.publishAnnouncement(teamId, userId, request.getContent());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/teams/{teamId}/announcements/{announcementId}/read")
     public ResponseEntity<ApiResponse<ChatDtos.TeamAnnouncement>> markAnnouncementRead(
             @PathVariable String teamId, @PathVariable String announcementId) {
-        return responseFactory.teamAnnouncement();
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.markAnnouncementRead(teamId, announcementId, userId);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping(value = "/teams/{teamId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>> uploadTeamFile(
+    public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> uploadTeamFile(
             @PathVariable String teamId, @RequestPart(value = "file") MultipartFile file) {
-        return responseFactory.mediaFile(MediaUsage.teamFile);
+        String userId = securityUtils.getCurrentUserId();
+        var result = mediaFileUploadService.upload(userId, file, MediaUsage.teamFile);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/teams/{teamId}/files")

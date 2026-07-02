@@ -4,17 +4,23 @@ import io.github.layjason.mayoistar.api.common.ApiErrorResponse;
 import io.github.layjason.mayoistar.api.common.EmptyData;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 全局异常处理器。
  *
  * <p>类职责：将业务异常和校验异常转换为符合 API 约定的错误响应。
  *
- * <p>类不变量：所有错误响应的 HTTP 状态码固定为 200，错误码通过 ApiErrorResponse.code 传递。
+ * <p>类不变量：
+ * <ul>
+ *   <li>业务逻辑错误的 HTTP 状态码固定为 200，错误码通过 ApiErrorResponse.code 传递。</li>
+ *   <li>基础设施/框架层错误（404/500）返回对应的 HTTP 状态码，响应体同样使用 ApiErrorResponse 格式。</li>
+ * </ul>
  */
 @Slf4j
 @ControllerAdvice
@@ -83,5 +89,45 @@ public class GlobalExceptionHandler {
         body.setMessage(message);
         body.setData(new EmptyData());
         return ResponseEntity.ok(body);
+    }
+
+    /**
+     * 处理资源不存在的异常。
+     *
+     * <p>前置条件：DispatcherServlet 未找到匹配的处理器映射，NoResourceFoundException 被抛出。
+     *
+     * <p>后置条件：返回 code=404、message 为异常消息的 API 错误响应，HTTP 404。
+     *
+     * @param ex 资源不存在异常
+     * @return 错误响应
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse<EmptyData>> handleNoResourceFound(NoResourceFoundException ex) {
+        log.warn("资源未找到: {}", ex.getMessage());
+        ApiErrorResponse<EmptyData> body = new ApiErrorResponse<>();
+        body.setCode(404);
+        body.setMessage(ex.getMessage());
+        body.setData(new EmptyData());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    /**
+     * 处理未预期的服务器内部异常（兜底处理器）。
+     *
+     * <p>前置条件：Controller 层抛出任何未在前面处理器中匹配的异常。
+     *
+     * <p>后置条件：返回 code=500、message 为固定英文文案的 API 错误响应，HTTP 500。
+     *
+     * @param ex 未预期的异常
+     * @return 错误响应
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse<EmptyData>> handleException(Exception ex) {
+        log.error("服务器内部错误", ex);
+        ApiErrorResponse<EmptyData> body = new ApiErrorResponse<>();
+        body.setCode(500);
+        body.setMessage("An internal server error has occurred");
+        body.setData(new EmptyData());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }

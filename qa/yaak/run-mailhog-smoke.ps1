@@ -409,7 +409,7 @@ if ($resp.code -eq 200) {
 }
 
 Send-YaakRequest "01.05 Duplicate personal email should fail" -ExpectedCodes @(10001)
-Send-YaakRequest "01.06 Profile without token should fail" -ExpectedCodes @(403)
+Send-YaakRequest "01.06 Profile without token should fail" -ExpectedCodes @(401)
 
 if ($personalLoginReady) {
     Send-YaakRequest "01.07 Get personal profile"

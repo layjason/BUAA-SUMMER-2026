@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.layjason.mayoistar.api.admin.AdminDtos;
+import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
@@ -20,9 +21,7 @@ import io.github.layjason.mayoistar.entity.identity.Qualification;
 import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
-import io.github.layjason.mayoistar.entity.social.Report;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
-import io.github.layjason.mayoistar.entity.social.ReportTargetType;
 import io.github.layjason.mayoistar.entity.social.Team;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
@@ -89,6 +88,9 @@ class AdminServiceTest {
     @Mock
     private ReportRepository reportRepository;
 
+    @Mock
+    private ReportService reportService;
+
     private AdminService adminService;
 
     private final String adminId = UUID.randomUUID().toString();
@@ -111,7 +113,8 @@ class AdminServiceTest {
                 teamRepository,
                 teamMemberRepository,
                 teamModerationRecordRepository,
-                reportRepository);
+                reportRepository,
+                reportService);
     }
 
     // ======================== 商家审核 ========================
@@ -366,32 +369,38 @@ class AdminServiceTest {
     class DecideReport {
 
         @Test
-        @DisplayName("成功处理举报")
+        @DisplayName("成功处理举报，委托给 ReportService")
         void shouldDecideReport() {
-            Report report = buildReport();
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
-            when(reportRepository.findById(reportId)).thenReturn(Optional.of(report));
 
             AdminDtos.ReportDecisionRequest request = new AdminDtos.ReportDecisionRequest();
             request.setStatus(ReportStatus.resolved);
             request.setHandlingNote("已处理");
+
+            SocialDtos.Report expectedResult = new SocialDtos.Report();
+            expectedResult.setReportId(reportId);
+            expectedResult.setStatus(ReportStatus.resolved);
+            expectedResult.setHandlingNote("已处理");
+            when(reportService.decideReport(reportId, ReportStatus.resolved, "已处理"))
+                    .thenReturn(expectedResult);
 
             var result = adminService.decideReport(reportId, adminId, request);
 
             assertThat(result.getStatus()).isEqualTo(ReportStatus.resolved);
-            assertThat(report.getStatus()).isEqualTo(ReportStatus.resolved);
-            assertThat(report.getHandlingNote()).isEqualTo("已处理");
+            assertThat(result.getHandlingNote()).isEqualTo("已处理");
+            verify(reportService).decideReport(reportId, ReportStatus.resolved, "已处理");
         }
 
         @Test
-        @DisplayName("举报不存在抛出 60007")
+        @DisplayName("举报不存在时传播 ReportService 的异常")
         void shouldThrowWhenReportNotFound() {
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
-            when(reportRepository.findById(reportId)).thenReturn(Optional.empty());
 
             AdminDtos.ReportDecisionRequest request = new AdminDtos.ReportDecisionRequest();
             request.setStatus(ReportStatus.resolved);
             request.setHandlingNote("已处理");
+            when(reportService.decideReport(reportId, ReportStatus.resolved, "已处理"))
+                    .thenThrow(new BusinessException(60007, "Report does not exist"));
 
             assertThatThrownBy(() -> adminService.decideReport(reportId, adminId, request))
                     .isInstanceOf(BusinessException.class)
@@ -699,7 +708,7 @@ class AdminServiceTest {
                 .qualificationId(UUID.randomUUID().toString())
                 .userId(userId)
                 .status(QualificationStatus.pending)
-                .licenseMediaIds(List.of(UUID.randomUUID().toString()))
+                .licenseMediaIds(List.of(UUID.randomUUID()))
                 .submittedAt(Instant.now())
                 .createdAt(Instant.now())
                 .build();
@@ -743,18 +752,6 @@ class AdminServiceTest {
                 .leaderId(userId)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
-                .build();
-    }
-
-    private Report buildReport() {
-        return Report.builder()
-                .reportId(reportId)
-                .reporterUserId(userId)
-                .targetType(ReportTargetType.user)
-                .targetId(UUID.randomUUID().toString())
-                .reason("违规内容")
-                .status(ReportStatus.pending)
-                .createdAt(Instant.now())
                 .build();
     }
 }

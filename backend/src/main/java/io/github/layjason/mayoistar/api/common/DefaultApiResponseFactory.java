@@ -25,6 +25,7 @@ import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
@@ -87,7 +88,7 @@ public class DefaultApiResponseFactory {
      */
     public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> mediaFile(MediaUsage usage) {
         CommonDtos.MediaFile file = new CommonDtos.MediaFile();
-        file.setMediaId("media-placeholder");
+        file.setMediaId(UUID.randomUUID());
         file.setFileName("placeholder.png");
         file.setContentType("image/png");
         file.setSizeBytes(0L);
@@ -302,11 +303,14 @@ public class DefaultApiResponseFactory {
         message.setRecalled(false);
         message.setSentAt(NOW);
 
+        ChatDtos.MessageCreatedPayload payload = new ChatDtos.MessageCreatedPayload();
+        payload.setMessage(message);
+        payload.setConversationUnreadCount(0);
+
         ChatDtos.ChatRealtimeEvent dto = new ChatDtos.ChatRealtimeEvent();
         dto.setKind("messageCreated");
         dto.setConversationId("conversation-placeholder");
-        dto.setMessage(message);
-        dto.setConversationUnreadCount(0);
+        dto.setPayload(payload);
         dto.setOccurredAt(NOW);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }

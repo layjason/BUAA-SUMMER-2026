@@ -1,5 +1,7 @@
 package io.github.layjason.mayoistar.config;
 
+import io.github.layjason.mayoistar.exception.SecurityErrorHandler;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -20,7 +22,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration
 @EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfiguration {
+
+    private final SecurityErrorHandler securityErrorHandler;
 
     private static final String[] PUBLIC_ENDPOINTS = {
         "/identity/auth/register/**",
@@ -37,6 +42,10 @@ public class SecurityConfiguration {
 
     private static final String[] MERCHANT_ENDPOINTS = {
         "/identity/me/merchant-profile", "/identity/me/merchant-qualification", "/identity/media/license",
+    };
+
+    private static final String[] WEBSOCKET_ENDPOINTS = {
+        "/chat/ws/**",
     };
 
     /**
@@ -63,12 +72,17 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(PUBLIC_ENDPOINTS)
                         .permitAll()
+                        .requestMatchers(WEBSOCKET_ENDPOINTS)
+                        .permitAll()
                         .requestMatchers("/admin/**")
                         .hasRole("admin")
                         .requestMatchers(MERCHANT_ENDPOINTS)
                         .hasRole("merchant")
                         .anyRequest()
                         .authenticated())
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(securityErrorHandler)
+                        .accessDeniedHandler(securityErrorHandler))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

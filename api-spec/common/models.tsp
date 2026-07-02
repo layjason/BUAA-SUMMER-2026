@@ -184,12 +184,12 @@ model MediaUploadRequest {
   file: HttpPart<bytes>;
 }
 
-@route("/common")
+@route("/media")
 @tag("通用")
 interface CommonOperations {
   @get
-  @route("/media/{mediaId}")
-  @doc("根据媒体文件标识获取文件内容，返回原始二进制流，Content-Type 根据原始上传类型设置。")
+  @route("/{mediaId}")
+  @doc("根据媒体文件标识获取文件内容，成功时固定返回 200 和原始二进制流，Content-Type 根据上传时的 MIME 类型设置。")
   getMediaFile(@path @doc("媒体文件标识") mediaId: EntityId): {
     @body body: bytes;
     @header contentType: string;

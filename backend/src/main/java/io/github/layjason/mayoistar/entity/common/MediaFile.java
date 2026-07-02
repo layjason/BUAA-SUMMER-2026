@@ -11,6 +11,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -36,8 +37,8 @@ import lombok.ToString;
 public class MediaFile {
 
     @Id
-    @Column(name = "media_id", length = 36)
-    private String mediaId;
+    @Column(name = "media_id", columnDefinition = "UUID")
+    private UUID mediaId;
 
     @Column(name = "file_name", nullable = false, length = 255)
     private String fileName;

@@ -2,6 +2,7 @@ package io.github.layjason.mayoistar.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.layjason.mayoistar.AbstractIntegrationTest;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
@@ -18,8 +19,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -27,10 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>类职责：验证好友申请通过后自动创建会话的级联行为。
  */
-@SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class FriendRequestServiceIntegrationTest {
+class FriendRequestServiceIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private FriendRequestService friendRequestService;
@@ -66,7 +63,9 @@ class FriendRequestServiceIntegrationTest {
     void acceptFriendRequestCreatesConversation() {
         friendRequestService.decideFriendRequest(anon.getUserId(), requestId, true);
 
-        var conversations = conversationRepository.findAll();
+        var conversations = conversationRepository.findAll().stream()
+                .filter(conversation -> conversation.getKind() == ConversationKind.friend)
+                .toList();
         assertThat(conversations).as("接受好友申请后应创建会话").hasSize(1);
 
         var conversation = conversations.getFirst();
@@ -86,7 +85,9 @@ class FriendRequestServiceIntegrationTest {
     void rejectFriendRequestDoesNotCreateConversation() {
         friendRequestService.decideFriendRequest(anon.getUserId(), requestId, false);
 
-        var conversations = conversationRepository.findAll();
+        var conversations = conversationRepository.findAll().stream()
+                .filter(conversation -> conversation.getKind() == ConversationKind.friend)
+                .toList();
         assertThat(conversations).as("拒绝好友申请不应创建会话").isEmpty();
     }
 
