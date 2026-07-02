@@ -25,12 +25,15 @@ Get-Content $envFile | ForEach-Object {
 $env:SPRING_PROFILES_ACTIVE = "dev"
 $env:SPRING_CONFIG_IMPORT = "optional:file:.env.mailhog.example[.properties]"
 
-$storageEndpoint = if ($env:MAYOISTAR_S3_ENDPOINT) { $env:MAYOISTAR_S3_ENDPOINT } else { "http://localhost:9000" }
+$storageHost = if ($env:MAYOISTAR_S3_HOST) { $env:MAYOISTAR_S3_HOST } else { "localhost" }
+$storagePort = if ($env:MAYOISTAR_S3_PORT) { $env:MAYOISTAR_S3_PORT } else { "9000" }
 try {
-    Invoke-WebRequest -Uri $storageEndpoint -TimeoutSec 3 | Out-Null
+    $tcp = New-Object System.Net.Sockets.TcpClient
+    $tcp.Connect($storageHost, [int]$storagePort)
+    $tcp.Close()
 }
 catch {
-    Write-Warning "RustFS/S3 endpoint is not reachable: $storageEndpoint. File upload QA cases require docker compose to start rustfs."
+    Write-Warning "RustFS/S3 endpoint is not reachable at ${storageHost}:${storagePort}. File upload QA cases require docker compose to start rustfs."
 }
 
 $redisHost = if ($env:MAYOISTAR_REDIS_HOST) { $env:MAYOISTAR_REDIS_HOST } else { "localhost" }
