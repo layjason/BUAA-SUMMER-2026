@@ -3,6 +3,8 @@ package io.github.layjason.mayoistar.api.common;
 import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.service.media.MediaAccessDescriptor;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.io.InputStream;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -82,7 +86,36 @@ public class MediaController {
         return ResponseEntity.ok().headers(headers).body(resource);
     }
 
+    /**
+     * 批量刷新媒体签名 URL。
+     *
+     * <p>前置条件：请求体包含不超过配置上限的 mediaId 列表；私有媒体调用方必须已认证并具备访问权限。
+     *
+     * <p>后置条件：返回新的签名 URL 和过期时间；刷新请求会在权限校验前执行限流。
+     *
+     * @param request        刷新请求
+     * @param authentication 当前认证信息，可为空
+     * @param servletRequest HTTP 请求
+     * @return 批量刷新结果
+     */
+    @PostMapping("/batch-signed-url")
+    public ResponseEntity<ApiResponse<CommonDtos.BatchSignedUrlResponse>> batchSignedUrl(
+            @Valid @RequestBody CommonDtos.BatchSignedUrlRequest request,
+            Authentication authentication,
+            HttpServletRequest servletRequest) {
+        return ResponseEntity.ok(ApiResponse.success(
+                mediaAccessService.batchSign(request.getMediaIds(), authentication, clientIp(servletRequest))));
+    }
+
     private static String sanitizeHeaderValue(String input) {
         return input.replace('\r', '_').replace('\n', '_');
+    }
+
+    private static String clientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

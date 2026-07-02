@@ -20,6 +20,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -52,6 +54,7 @@ public class MediaAccessService {
     private final ConversationMemberRepository conversationMemberRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final ActivityRepository activityRepository;
+    private final MediaRefreshRateLimiter mediaRefreshRateLimiter;
     private final Clock clock = Clock.systemUTC();
 
     /**
@@ -145,6 +148,49 @@ public class MediaAccessService {
             result.setSignedUrlExpiresAt(signed.expiresAt().toString());
         }
         return result;
+    }
+
+    /**
+     * 批量刷新媒体签名 URL。
+     *
+     * <p>前置条件：mediaIds 非空且数量不超过配置上限。
+     *
+     * <p>后置条件：返回当前调用方有权访问的媒体签名 URL；任一资源无权访问时抛出 HTTP 错误。
+     *
+     * <p>不变量：刷新限流在权限校验和签名生成前执行。
+     *
+     * @param mediaIds        媒体标识列表
+     * @param authentication  当前认证信息，可为空
+     * @param clientIp        客户端 IP
+     * @return 批量签名 URL 响应
+     */
+    public CommonDtos.BatchSignedUrlResponse batchSign(
+            List<UUID> mediaIds, @Nullable Authentication authentication, String clientIp) {
+        List<UUID> distinctMediaIds = new LinkedHashSet<>(mediaIds).stream().toList();
+        if (distinctMediaIds.size() > properties.getBatchSizeLimit()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Too many media IDs");
+        }
+        mediaRefreshRateLimiter.check(rateKey(authentication, clientIp), distinctMediaIds.size());
+
+        List<CommonDtos.SignedMediaUrl> items = distinctMediaIds.stream()
+                .map(mediaId -> {
+                    MediaAccessDescriptor descriptor = loadDescriptor(mediaId);
+                    if (descriptor.deletedAt() != null) {
+                        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found");
+                    }
+                    assertAccessAllowed(descriptor, authentication);
+                    SignedMediaAccess signed = sign(descriptor);
+                    CommonDtos.SignedMediaUrl item = new CommonDtos.SignedMediaUrl();
+                    item.setMediaId(mediaId);
+                    item.setSignedUrl(signed.signedUrl());
+                    item.setSignedUrlExpiresAt(signed.expiresAt().toString());
+                    return item;
+                })
+                .toList();
+
+        CommonDtos.BatchSignedUrlResponse response = new CommonDtos.BatchSignedUrlResponse();
+        response.setItems(items);
+        return response;
     }
 
     /**
@@ -269,6 +315,13 @@ public class MediaAccessService {
         return authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .anyMatch("ROLE_admin"::equals);
+    }
+
+    private String rateKey(@Nullable Authentication authentication, String clientIp) {
+        if (authentication != null && authentication.isAuthenticated()) {
+            return "rate:media-refresh:user:" + authentication.getPrincipal();
+        }
+        return "rate:media-refresh:ip:" + clientIp;
     }
 
     private boolean verifySignature(
