@@ -26,11 +26,12 @@ $env:SPRING_PROFILES_ACTIVE = "dev"
 $env:SPRING_CONFIG_IMPORT = "optional:file:.env.mailhog.example[.properties]"
 
 $storageEndpoint = if ($env:MAYOISTAR_S3_ENDPOINT) { $env:MAYOISTAR_S3_ENDPOINT } else { "http://localhost:9000" }
+$consoleEndpoint = "$storageEndpoint".Replace(":9000", ":9001")
 try {
-    Invoke-WebRequest -Uri $storageEndpoint -TimeoutSec 3 | Out-Null
+    Invoke-WebRequest -Uri $consoleEndpoint -TimeoutSec 3 | Out-Null
 }
 catch {
-    Write-Warning "RustFS/S3 endpoint is not reachable: $storageEndpoint. File upload QA cases require docker compose to start rustfs."
+    Write-Warning "RustFS console endpoint is not reachable: $consoleEndpoint. File upload QA cases require docker compose to start rustfs."
 }
 
 $redisHost = if ($env:MAYOISTAR_REDIS_HOST) { $env:MAYOISTAR_REDIS_HOST } else { "localhost" }
