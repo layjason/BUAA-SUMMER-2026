@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,13 +35,14 @@ import org.springframework.web.server.ResponseStatusException;
 class MediaAccessServiceTest {
 
     private FileStorageService fileStorageService;
+    private MediaFileRepository mediaFileRepository;
     private MediaAccessService mediaAccessService;
 
     @BeforeEach
     void setUp() {
         MediaAccessProperties properties = new MediaAccessProperties();
         properties.setSigningSecret("unit-test-secret");
-        MediaFileRepository mediaFileRepository = mock(MediaFileRepository.class);
+        mediaFileRepository = mock(MediaFileRepository.class);
         fileStorageService = mock(FileStorageService.class);
         mediaAccessService = new MediaAccessService(
                 properties,
@@ -60,6 +62,7 @@ class MediaAccessServiceTest {
                 buildMediaFile(mediaId, MediaVisibility.publicVisible, MediaAccessPolicy.publicAccess, "");
         InputStream expectedStream = new ByteArrayInputStream("image-data".getBytes(StandardCharsets.UTF_8));
         when(fileStorageService.retrieve("avatar/user1/avatar.png")).thenReturn(expectedStream);
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
 
         SignedMediaAccess signed = mediaAccessService.sign(mediaFile);
         Map<String, String> params = queryParams(signed.signedUrl());
@@ -80,6 +83,7 @@ class MediaAccessServiceTest {
     void shouldRejectAnonymousPrivateMediaAccess() {
         UUID mediaId = UUID.randomUUID();
         MediaFile mediaFile = buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.owner, "user1");
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
         SignedMediaAccess signed = mediaAccessService.sign(mediaFile);
         Map<String, String> params = queryParams(signed.signedUrl());
 

@@ -67,7 +67,6 @@ public class MediaAccessService {
         if (descriptor.deletedAt() != null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found");
         }
-        mediaAccessCache.put(descriptor);
         return sign(descriptor);
     }
 
