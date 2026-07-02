@@ -240,7 +240,9 @@ interface CommonOperations {
   @post
   @route("/batch-signed-url")
   @doc("批量刷新媒体签名 URL。公开资源可匿名刷新；私有资源必须携带 JWT 且通过对应 ACL 权限校验。")
-  batchSignedUrl(@body request: BatchSignedUrlRequest): APIResult<BatchSignedUrlResponse>;
+  batchSignedUrl(
+    @body request: BatchSignedUrlRequest,
+  ): APIResult<BatchSignedUrlResponse>;
 }
 
 @doc("审核状态。")
