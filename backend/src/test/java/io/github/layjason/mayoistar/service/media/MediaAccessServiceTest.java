@@ -28,8 +28,6 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 @DisplayName("MediaAccessService")
@@ -51,8 +49,7 @@ class MediaAccessServiceTest {
                 new InMemoryMediaAccessCache(),
                 mock(ConversationMemberRepository.class),
                 mock(TeamMemberRepository.class),
-                mock(ActivityRepository.class),
-                new MediaRefreshRateLimiter(properties, emptyProvider()));
+                mock(ActivityRepository.class));
     }
 
     @Test
@@ -69,7 +66,6 @@ class MediaAccessServiceTest {
 
         InputStream result = mediaAccessService.openSignedContent(
                 mediaId,
-                Long.parseLong(params.get("exp")),
                 Long.parseLong(params.get("v")),
                 MediaAccessPolicy.valueOf(params.get("policy")),
                 params.get("scope"),
@@ -89,7 +85,6 @@ class MediaAccessServiceTest {
 
         assertThatThrownBy(() -> mediaAccessService.openSignedContent(
                         mediaId,
-                        Long.parseLong(params.get("exp")),
                         Long.parseLong(params.get("v")),
                         MediaAccessPolicy.valueOf(params.get("policy")),
                         params.get("scope"),
@@ -98,30 +93,6 @@ class MediaAccessServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting("statusCode.value")
                 .isEqualTo(401);
-    }
-
-    private static ObjectProvider<StringRedisTemplate> emptyProvider() {
-        return new ObjectProvider<>() {
-            @Override
-            public StringRedisTemplate getObject() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public StringRedisTemplate getObject(Object... args) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public StringRedisTemplate getIfAvailable() {
-                return null;
-            }
-
-            @Override
-            public StringRedisTemplate getIfUnique() {
-                return null;
-            }
-        };
     }
 
     private MediaFile buildMediaFile(

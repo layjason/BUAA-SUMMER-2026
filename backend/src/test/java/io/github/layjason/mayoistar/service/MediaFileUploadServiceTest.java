@@ -65,7 +65,6 @@ class MediaFileUploadServiceTest {
             dto.setUsage(mediaFile.getUsage());
             dto.setVisibility(mediaFile.getVisibility());
             dto.setSignedUrl("/media/" + mediaFile.getMediaId() + "?sig=test");
-            dto.setSignedUrlExpiresAt("2026-07-01T02:00:00Z");
             dto.setUploadedAt(mediaFile.getUploadedAt().toString());
             return dto;
         });

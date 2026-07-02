@@ -47,11 +47,11 @@ class MediaControllerTest {
         InputStream inputStream = new ByteArrayInputStream("image-data".getBytes());
 
         when(mediaAccessService.loadDescriptor(mediaId)).thenReturn(descriptor);
-        when(mediaAccessService.openSignedContent(mediaId, 123L, 1L, MediaAccessPolicy.publicAccess, "", "sig", null))
+        when(mediaAccessService.openSignedContent(mediaId, 1L, MediaAccessPolicy.publicAccess, "", "sig", null))
                 .thenReturn(inputStream);
 
         ResponseEntity<?> response =
-                mediaController.getMediaFile(mediaId, 123L, 1L, MediaAccessPolicy.publicAccess, "", "sig", null);
+                mediaController.getMediaFile(mediaId, 1L, MediaAccessPolicy.publicAccess, "", "sig", null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isInstanceOf(InputStreamResource.class);
@@ -61,8 +61,7 @@ class MediaControllerTest {
         assertThat(response.getHeaders().getContentDisposition())
                 .isEqualTo(ContentDisposition.inline().filename("avatar.png").build());
         verify(mediaAccessService).loadDescriptor(mediaId);
-        verify(mediaAccessService)
-                .openSignedContent(mediaId, 123L, 1L, MediaAccessPolicy.publicAccess, "", "sig", null);
+        verify(mediaAccessService).openSignedContent(mediaId, 1L, MediaAccessPolicy.publicAccess, "", "sig", null);
         verifyNoMoreInteractions(mediaAccessService);
     }
 
