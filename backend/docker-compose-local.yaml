@@ -19,6 +19,10 @@ services:
 
   redis:
     image: ${REDIS_IMAGE:-redis:7-alpine}
+    command: >
+      redis-server
+      --tcp-keepalive 60
+      --timeout 0
     ports:
       - "${DEV_REDIS_PORT:-6379}:6379"
     healthcheck:
