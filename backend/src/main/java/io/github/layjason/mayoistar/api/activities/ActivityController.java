@@ -17,6 +17,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -153,6 +154,17 @@ public class ActivityController {
         }
         return ResponseEntity.ok(
                 ApiResponse.success(activityQueryService.listMyActivities(userId.get(), status, page, pageSize)));
+    }
+
+    @GetMapping("/registrations/mine")
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.RegisteredActivitySummary>>> listMyRegistrations(
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
+        Optional<String> userId = requestActorResolver.resolveCurrentUserId();
+        if (userId.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(
+                ApiResponse.success(activityQueryService.listMyRegistrations(userId.get(), page, pageSize)));
     }
 
     @GetMapping("/search")

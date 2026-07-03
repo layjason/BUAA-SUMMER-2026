@@ -327,7 +327,8 @@ async function loadProfile(): Promise<void> {
   try {
     if (isMerchant.value) {
       const profile = await api.get('/identity/me/merchant-profile')
-      formNickname.value = profile.formMerchantName.value = profile.merchantName
+      formNickname.value = profile.nickname
+      formMerchantName.value = profile.merchantName
       if (profile.avatar?.url) avatarUrl.value = profile.avatar.url
       if (profile.interestedActivityFields?.length) {
         selectedTags.value = new Set(profile.interestedActivityFields)
@@ -342,7 +343,7 @@ async function loadProfile(): Promise<void> {
       const profile = await api.get('/identity/me/profile')
       formNickname.value = profile.nickname
       if (profile.avatar?.url) avatarUrl.value = profile.avatar.url
-      if (profile.gender) formGender.value = profile.gender
+      if (profile.gender) formGender.value = profile.gender as typeof formGender.value
       if (profile.birthday) formBirthday.value = profile.birthday
       if (profile.signature) formSignature.value = profile.signature
       if (profile.interestTags?.length) {
@@ -405,7 +406,7 @@ async function handleSave(): Promise<void> {
     if (isMerchant.value) {
       await api.patch('/identity/me/merchant-profile', {
         body: {
-          merchantNickname: nickname,
+          nickname: nickname,
           merchantName: formMerchantName.value.trim(),
           avatarMediaId: avatarMediaId.value || undefined,
           interestedActivityFields: [...selectedTags.value],

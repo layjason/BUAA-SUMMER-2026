@@ -45,6 +45,14 @@ export interface MockActivity {
   reviewStatus: 'draft' | 'pending' | 'approved' | 'rejected' | 'changeRequired'
   isTakenDown: boolean
   createdAt: string
+  aiContentReview?: {
+    status: 'succeeded'
+    riskLevel: 'low' | 'medium' | 'high' | 'uncertain'
+    suggestedReviewStatus: 'pending' | 'approved' | 'rejected' | 'changeRequired'
+    reasons: string[]
+  }
+  /** 是否要求签到时校验位置；未设置时 mock 默认视为 false */
+  requireLocationCheck?: boolean
 }
 
 export interface MockDraft {
@@ -71,6 +79,8 @@ export interface MockDraft {
   capacity: number
   minAge: number
   tags: string[]
+  /** 是否要求签到时校验位置；未设置时 mock 默认视为 false */
+  requireLocationCheck?: boolean
   reviewStatus: 'draft' | 'rejected' | 'changeRequired'
   sourceType: 'manual' | 'template' | 'clone' | 'ai'
   createdAt: string
@@ -107,6 +117,7 @@ export interface MockReview {
   userId: number
   rating: number
   content: string
+  tags: string[]
   createdAt: string
 }
 
@@ -117,6 +128,7 @@ export interface MockSummary {
   title: string
   content: string
   images: string[]
+  imageTags: Array<{ mediaId: string; tags: string[] }>
   createdAt: string
 }
 

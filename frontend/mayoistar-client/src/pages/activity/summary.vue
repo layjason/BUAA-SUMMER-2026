@@ -23,6 +23,23 @@
           </view>
         </view>
 
+        <!-- AI 图片分类确认 -->
+        <view v-if="imageClassifications.size > 0" class="form-item">
+          <text class="label">AI 图片分类（可编辑确认）</text>
+          <view
+            v-for="[mediaId, tags] in imageClassifications"
+            :key="mediaId"
+            class="classification-row"
+          >
+            <text class="classification-media">{{
+              mediaId ? mediaId.slice(0, 8) + '...' : '—'
+            }}</text>
+            <view class="classification-tags">
+              <text v-for="tag in tags" :key="tag" class="tag-chip">{{ tag }}</text>
+            </view>
+          </view>
+        </view>
+
         <!-- 总结标题 -->
         <view class="form-item">
           <text class="label">{{ t('activitySummary.summaryTitle') }}</text>
@@ -46,12 +63,14 @@
         </view>
 
         <FormError :message="formError" />
-
-        <button class="submit-btn" :loading="submitting" @click="handleSubmit">
-          {{ t('activitySummary.submit') }}
-        </button>
       </view>
     </scroll-view>
+
+    <BottomActionBar>
+      <button class="bar-btn bar-btn-primary" :loading="submitting" @click="handleSubmit">
+        {{ t('activitySummary.submit') }}
+      </button>
+    </BottomActionBar>
   </view>
 </template>
 
@@ -66,9 +85,16 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import {
+  createActivitySummary,
+  getMyActivitySummary,
+  uploadActivityImages,
+  type MyActivitySummaryResult,
+} from '@/api/modules/activities'
+import { classifyImages, type ImageClassificationResult } from '@/api/modules/ai'
 import { getErrorMessage } from '@/utils/error'
-import { FormError } from '@/components'
+import { FormError, BottomActionBar } from '@/components'
 
 const { t } = useI18n()
 
@@ -79,35 +105,67 @@ const imagePreviews = ref<string[]>([])
 const imageIds = ref<string[]>([])
 const submitting = ref(false)
 const formError = ref('')
+// AI 图片分类结果：mediaId -> tags
+const imageClassifications = ref<Map<string, string[]>>(new Map())
 
+/**
+ * 添加图片并调用 AI 分类
+ *
+ * 批量上传图片后，调用 AI 接口获取分类标签供用户确认。
+ */
 async function handleAddImage(): Promise<void> {
   try {
     const res = await uni.chooseImage({
       count: 9 - imagePreviews.value.length,
       sizeType: ['compressed'],
     })
-    for (const tempPath of res.tempFilePaths) {
-      try {
-        const result = (await api.upload('/activities/media/images', tempPath)) as {
-          mediaId: string
-          url?: string
-        }
-        imageIds.value.push(result.mediaId)
-        imagePreviews.value.push(result.url || tempPath)
-      } catch {
-        formError.value = '图片上传失败'
+    try {
+      const results = await uploadActivityImages(res.tempFilePaths as string[])
+      const newMediaIds: string[] = []
+      for (const r of results) {
+        const mediaId = r.mediaId
+        const url = r.url
+        if (!mediaId) continue
+        imageIds.value.push(mediaId)
+        imagePreviews.value.push(url || '')
+        newMediaIds.push(mediaId)
       }
+      // 调用 AI 图片分类
+      try {
+        const classification: ImageClassificationResult = await classifyImages(newMediaIds)
+        if (classification.status === 'succeeded' && classification.items) {
+          for (const item of classification.items) {
+            imageClassifications.value.set(item.mediaId, item.suggestedTags)
+          }
+        }
+      } catch {
+        // 分类失败不阻塞
+      }
+    } catch {
+      formError.value = '图片上传失败'
     }
   } catch {
     /* 用户取消选择 */
   }
 }
 
+/**
+ * 移除已上传的图片及其分类结果
+ *
+ * @param index 图片在列表中的索引
+ */
 function removeImage(index: number): void {
+  const removedId = imageIds.value[index]
   imageIds.value.splice(index, 1)
   imagePreviews.value.splice(index, 1)
+  imageClassifications.value.delete(removedId)
 }
 
+/**
+ * 提交活动总结
+ *
+ * 将用户确认的图片分类标签作为 confirmedImageTags 提交。
+ */
 async function handleSubmit(): Promise<void> {
   if (submitting.value) return
   if (!summaryTitle.value.trim()) {
@@ -122,14 +180,17 @@ async function handleSubmit(): Promise<void> {
   submitting.value = true
 
   try {
-    await api.post('/activities/{activityId}/summaries', {
-      path: { activityId: activityId.value },
-      body: {
-        title: summaryTitle.value.trim(),
-        content: summaryContent.value.trim(),
-        imageIds: [...imageIds.value],
-        confirmedImageTags: imageIds.value.map((id) => ({ mediaId: id, tags: [] })),
-      },
+    // 构建 confirmedImageTags：优先使用 AI 分类结果，否则空标签
+    const confirmedImageTags = imageIds.value.map((id) => ({
+      mediaId: id,
+      tags: imageClassifications.value.get(id) ?? [],
+    }))
+
+    await createActivitySummary(activityId.value, {
+      title: summaryTitle.value.trim(),
+      content: summaryContent.value.trim(),
+      imageIds: [...imageIds.value],
+      confirmedImageTags,
     })
     uni.showToast({ title: t('activitySummary.success'), icon: 'success' })
     setTimeout(() => uni.navigateBack(), 1500)
@@ -149,7 +210,19 @@ onLoad((query) => {
   if (!activityId.value) {
     uni.showToast({ title: '缺少活动标识', icon: 'none' })
     setTimeout(() => uni.navigateBack(), 1000)
+    return
   }
+  void (async () => {
+    try {
+      const result: MyActivitySummaryResult = await getMyActivitySummary(activityId.value)
+      if (result.summary) {
+        uni.showToast({ title: t('activityDetail.alreadySummarized'), icon: 'none' })
+        setTimeout(() => uni.navigateBack(), 1000)
+      }
+    } catch {
+      /* 查询失败不阻塞填写 */
+    }
+  })()
 })
 </script>
 
@@ -169,7 +242,7 @@ onLoad((query) => {
 }
 
 .form-container {
-  padding: 32rpx 32rpx calc(80rpx + env(safe-area-inset-bottom));
+  padding: 32rpx 32rpx calc(240rpx + env(safe-area-inset-bottom));
 }
 
 .title {
@@ -263,18 +336,35 @@ onLoad((query) => {
   line-height: 1;
 }
 
-.submit-btn {
-  width: 100%;
-  height: 88rpx;
-  line-height: 88rpx;
-  text-align: center;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #fff;
-  background-color: #1989fa;
-  border-radius: 12rpx;
-  border: none;
-  margin-top: 16rpx;
+/* AI 图片分类 */
+.classification-row {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 8rpx;
+  padding: 16rpx 20rpx;
+  margin-bottom: 12rpx;
+}
+
+.classification-media {
+  font-size: 22rpx;
+  color: #969799;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.classification-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.tag-chip {
+  font-size: 22rpx;
+  color: #5ec8a7;
+  background-color: #e8f7f0;
+  padding: 4rpx 12rpx;
+  border-radius: 4rpx;
 }
 </style>
 

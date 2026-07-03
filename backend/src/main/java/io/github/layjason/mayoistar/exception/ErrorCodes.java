@@ -123,4 +123,16 @@ public final class ErrorCodes {
 
     /** 图片媒体文件不存在或不支持 AI 分类 */
     public static final int IMAGE_MEDIA_UNAVAILABLE = 30003;
+
+    /** 小队媒体文件不存在 */
+    public static final int TEAM_MEDIA_NOT_FOUND = 50019;
+
+    /** 调用方缺少小队媒体管理权限 */
+    public static final int TEAM_MEDIA_PERMISSION_DENIED = 50020;
+
+    /** 投票选项数量不合法（至少两个） */
+    public static final int POLL_OPTIONS_INVALID = 50021;
+
+    /** 投票不存在、已截止或调用方不可投票 */
+    public static final int POLL_UNAVAILABLE = 50022;
 }

@@ -93,6 +93,7 @@ describe('mock schema-types 契约应用', () => {
           latitude: expect.any(Number),
         }),
       }),
+      requireLocationCheck: expect.any(Boolean),
     })
   })
 
