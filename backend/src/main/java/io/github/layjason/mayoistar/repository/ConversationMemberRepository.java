@@ -25,4 +25,9 @@ public interface ConversationMemberRepository extends JpaRepository<Conversation
     @Modifying
     @Query("DELETE FROM ConversationMember cm WHERE cm.conversationId = :conversationId")
     void deleteByConversationId(@Param("conversationId") String conversationId);
+
+    @Modifying
+    @Query("DELETE FROM ConversationMember cm WHERE cm.conversationId = :conversationId AND cm.userId = :userId")
+    void deleteByConversationIdAndUserId(
+            @Param("conversationId") String conversationId, @Param("userId") String userId);
 }

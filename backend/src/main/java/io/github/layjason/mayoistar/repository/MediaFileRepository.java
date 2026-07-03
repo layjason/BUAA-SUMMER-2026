@@ -1,9 +1,12 @@
 package io.github.layjason.mayoistar.repository;
 
 import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -20,4 +23,8 @@ public interface MediaFileRepository extends JpaRepository<MediaFile, UUID> {
      * @return 匹配的媒体文件列表
      */
     List<MediaFile> findByMediaIdIn(Collection<UUID> mediaIds);
+
+    Page<MediaFile> findByTeamIdAndUsage(String teamId, MediaUsage usage, Pageable pageable);
+
+    List<MediaFile> findByMediaIdInAndTeamId(Collection<UUID> mediaIds, String teamId);
 }
