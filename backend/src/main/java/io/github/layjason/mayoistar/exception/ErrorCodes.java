@@ -70,6 +70,9 @@ public final class ErrorCodes {
     /** 图片大小超出限制 */
     public static final int IMAGE_TOO_LARGE = 20019;
 
+    /** 活动要求位置签到，但用户未提供位置信息 */
+    public static final int CHECK_IN_LOCATION_REQUIRED = 20021;
+
     /* ========== 社交 ========== */
 
     /** 目标用户不存在或不可见 */

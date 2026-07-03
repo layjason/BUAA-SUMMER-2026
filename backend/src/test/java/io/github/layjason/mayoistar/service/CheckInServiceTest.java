@@ -340,6 +340,85 @@ class CheckInServiceTest {
         }
 
         @Test
+        @DisplayName("活动要求位置校验但用户未提供位置时抛出异常")
+        void requireLocationCheckButNoLocationProvidedThrowsException() {
+            Activity activity = buildActivity(ORGANIZER_ID, ActivityRuntimeStatus.ongoing);
+            activity.setPointLat(39.9042);
+            activity.setPointLon(116.4074);
+            activity.setRequireLocationCheck(true);
+            ActivityRegistration registration = buildRegistration(RegistrationStatus.registered);
+            String token = buildValidToken(ACTIVITY_ID);
+
+            when(activityRepository.findById(ACTIVITY_ID)).thenReturn(Optional.of(activity));
+            when(registrationRepository.findByActivityIdAndUserIdForUpdate(ACTIVITY_ID, USER_ID))
+                    .thenReturn(Optional.of(registration));
+
+            // 不传位置信息
+            assertThatThrownBy(() -> checkInService.checkIn(USER_ID, ACTIVITY_ID, token, null))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(20021);
+        }
+
+        @Test
+        @DisplayName("活动要求位置校验时用户提供有效位置签到成功")
+        void requireLocationCheckWithValidLocationCheckInSuccessfully() {
+            Activity activity = buildActivity(ORGANIZER_ID, ActivityRuntimeStatus.ongoing);
+            activity.setPointLat(39.9042);
+            activity.setPointLon(116.4074);
+            activity.setRequireLocationCheck(true);
+            ActivityRegistration registration = buildRegistration(RegistrationStatus.registered);
+            String token = buildValidToken(ACTIVITY_ID);
+
+            when(activityRepository.findById(ACTIVITY_ID)).thenReturn(Optional.of(activity));
+            when(registrationRepository.findByActivityIdAndUserIdForUpdate(ACTIVITY_ID, USER_ID))
+                    .thenReturn(Optional.of(registration));
+            when(registrationRepository.save(any())).thenReturn(registration);
+
+            // 临近位置（~100 米）
+            var geoPoint = new io.github.layjason.mayoistar.api.common.CommonDtos.GeoPoint();
+            geoPoint.setLatitude(39.9048);
+            geoPoint.setLongitude(116.4080);
+
+            ActivityDtos.CheckInRequest request = new ActivityDtos.CheckInRequest();
+            request.setQrCodeToken(token);
+            request.setCurrentLocation(geoPoint);
+
+            ActivityDtos.CheckInRecord result = checkInService.checkIn(USER_ID, ACTIVITY_ID, token, request);
+
+            assertThat(result.getRegistrationStatus()).isEqualTo(RegistrationStatus.checkedIn);
+        }
+
+        @Test
+        @DisplayName("活动要求位置校验但位置超出范围时抛出异常")
+        void requireLocationCheckWithOutOfRangeLocationThrowsException() {
+            Activity activity = buildActivity(ORGANIZER_ID, ActivityRuntimeStatus.ongoing);
+            activity.setPointLat(39.9042);
+            activity.setPointLon(116.4074);
+            activity.setRequireLocationCheck(true);
+            ActivityRegistration registration = buildRegistration(RegistrationStatus.registered);
+            String token = buildValidToken(ACTIVITY_ID);
+
+            when(activityRepository.findById(ACTIVITY_ID)).thenReturn(Optional.of(activity));
+            when(registrationRepository.findByActivityIdAndUserIdForUpdate(ACTIVITY_ID, USER_ID))
+                    .thenReturn(Optional.of(registration));
+
+            // 远距离位置（1000 公里外）
+            var geoPoint = new io.github.layjason.mayoistar.api.common.CommonDtos.GeoPoint();
+            geoPoint.setLatitude(31.2304);
+            geoPoint.setLongitude(121.4737);
+
+            ActivityDtos.CheckInRequest request = new ActivityDtos.CheckInRequest();
+            request.setQrCodeToken(token);
+            request.setCurrentLocation(geoPoint);
+
+            assertThatThrownBy(() -> checkInService.checkIn(USER_ID, ACTIVITY_ID, token, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(20014);
+        }
+
+        @Test
         @DisplayName("用户位置经纬度为 null 时跳过位置校验，签到成功")
         void skipLocationCheckWhenUserLocationNullLatLon() {
             Activity activity = buildActivity(ORGANIZER_ID, ActivityRuntimeStatus.ongoing);

@@ -96,6 +96,8 @@ public class ActivityDraftService {
                 .feeAmount(request.getFeeAmount())
                 .feeDescription(request.getFeeDescription())
                 .minAge(request.getMinAge())
+                .requireLocationCheck(
+                        request.getRequireLocationCheck() != null ? request.getRequireLocationCheck() : false)
                 .registrationDeadline(parseInstant(request.getRegistrationDeadline(), "报名截止时间"))
                 .reviewStatus(ActivityReviewStatus.draft)
                 .runtimeStatus(ActivityRuntimeStatus.notStarted)
@@ -199,6 +201,8 @@ public class ActivityDraftService {
         activity.setFeeAmount(request.getFeeAmount());
         activity.setFeeDescription(request.getFeeDescription());
         activity.setMinAge(request.getMinAge());
+        activity.setRequireLocationCheck(
+                request.getRequireLocationCheck() != null ? request.getRequireLocationCheck() : false);
         activity.setRegistrationDeadline(parseInstant(request.getRegistrationDeadline(), "报名截止时间"));
         activity.setUpdatedAt(Instant.now());
         Activity savedActivity = activityRepository.save(activity);

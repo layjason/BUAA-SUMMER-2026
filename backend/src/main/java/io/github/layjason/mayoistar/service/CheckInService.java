@@ -123,6 +123,7 @@ public class CheckInService {
      *   <li>token 签名无效或过期 → ErrorCodes.CHECK_IN_QR_CODE_INVALID</li>
      *   <li>用户未报名 → ErrorCodes.REGISTRATION_NOT_FOUND</li>
      *   <li>用户非 registered 状态 → ErrorCodes.CHECK_IN_QR_CODE_INVALID</li>
+     *   <li>活动要求位置校验但用户未提供 → ErrorCodes.CHECK_IN_LOCATION_REQUIRED</li>
      *   <li>位置校验不通过 → ErrorCodes.CHECK_IN_LOCATION_INVALID</li>
      * </ul>
      *
@@ -157,12 +158,16 @@ public class CheckInService {
             throw new BusinessException(ErrorCodes.CHECK_IN_QR_CODE_INVALID, "签到二维码无效");
         }
 
-        // 位置校验（若提供了当前位置）
-        if (currentLocationHolder != null) {
-            ActivityDtos.CheckInRequest req = currentLocationHolder;
-            if (req.getCurrentLocation() != null) {
-                validateLocation(activity, req.getCurrentLocation());
+        // 位置校验
+        // 若活动发起人设置了要求位置校验，则用户必须提供有效位置信息并进行距离校验
+        if (Boolean.TRUE.equals(activity.getRequireLocationCheck())) {
+            if (currentLocationHolder == null || currentLocationHolder.getCurrentLocation() == null) {
+                throw new BusinessException(ErrorCodes.CHECK_IN_LOCATION_REQUIRED, "该活动要求签到位置校验，请提供当前位置信息");
             }
+            validateLocation(activity, currentLocationHolder.getCurrentLocation());
+        } else if (currentLocationHolder != null && currentLocationHolder.getCurrentLocation() != null) {
+            // 活动不要求位置校验时，若用户主动提供了位置，仍进行校验
+            validateLocation(activity, currentLocationHolder.getCurrentLocation());
         }
 
         // 执行签到

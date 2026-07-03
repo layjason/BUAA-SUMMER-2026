@@ -227,6 +227,7 @@ CREATE TABLE activities (
     review_status           VARCHAR(30)   NOT NULL,
     runtime_status          VARCHAR(30)   NOT NULL,
     manual_review_required  BOOLEAN       NOT NULL DEFAULT FALSE,
+    require_location_check  BOOLEAN       NOT NULL DEFAULT FALSE,
     created_at              TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at              TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT pk_activities PRIMARY KEY (activity_id)
