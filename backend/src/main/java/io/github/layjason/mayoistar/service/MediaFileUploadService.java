@@ -195,22 +195,26 @@ public class MediaFileUploadService {
 
     private static MediaVisibility defaultVisibility(MediaUsage usage) {
         return switch (usage) {
-            case avatar, activityImage, summaryImage -> MediaVisibility.publicVisible;
-            case merchantLicense, chatImage, teamFile, teamAlbum, activityReviewImage -> MediaVisibility.privateVisible;
+            case avatar, summaryImage -> MediaVisibility.publicVisible;
+            // activityImage 上传时活动尚不存在，初态仅上传者可预览，绑定草稿/发布后再升级
+            case merchantLicense, chatImage, teamFile, teamAlbum, activityImage, activityReviewImage ->
+                MediaVisibility.privateVisible;
         };
     }
 
     private static MediaAccessPolicy defaultAccessPolicy(MediaUsage usage) {
         return switch (usage) {
-            case avatar, activityImage, summaryImage -> MediaAccessPolicy.publicAccess;
-            case merchantLicense, chatImage, teamFile, teamAlbum, activityReviewImage -> MediaAccessPolicy.owner;
+            case avatar, summaryImage -> MediaAccessPolicy.publicAccess;
+            // activityImage 初态为 owner，绑定草稿升级为 activityOwner，审核通过后升级为 publicAccess
+            case merchantLicense, chatImage, teamFile, teamAlbum, activityImage, activityReviewImage ->
+                MediaAccessPolicy.owner;
         };
     }
 
     private static String defaultAccessScope(String userId, MediaUsage usage) {
         return switch (usage) {
-            case avatar, activityImage, summaryImage -> "";
-            case merchantLicense, chatImage, teamFile, teamAlbum, activityReviewImage -> userId;
+            case avatar, summaryImage -> "";
+            case merchantLicense, chatImage, teamFile, teamAlbum, activityImage, activityReviewImage -> userId;
         };
     }
 
