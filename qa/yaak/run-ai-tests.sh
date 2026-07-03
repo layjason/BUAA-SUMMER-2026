@@ -1,0 +1,379 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# 默认参数
+WORKSPACE_NAME="${1:-MayoiStar AI}"
+BASE_URL="${2:-http://localhost:8080}"
+TEST_IMAGE_FILE="${3:-$SCRIPT_DIR/test-avatar.png}"
+
+GREEN='\033[32m'
+RED='\033[31m'
+YELLOW='\033[33m'
+RESET='\033[0m'
+
+# 测试结果记录: "name|expected|actual|passed"
+TEST_RESULTS_FILE="$(mktemp)"
+
+if ! command -v jq &>/dev/null; then
+    echo "Error: jq is required but not found." >&2
+    exit 1
+fi
+
+if ! command -v yaak &>/dev/null; then
+    echo "Error: yaak CLI not found." >&2
+    exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ ! -f "$TEST_IMAGE_FILE" ]]; then
+    echo "Error: test image not found: $TEST_IMAGE_FILE" >&2
+    exit 1
+fi
+
+invoke_yaak_lines() {
+    local output
+    output="$(yaak "$@" 2>&1)" || {
+        local exit_code=$?
+        echo "yaak $* failed with exit code $exit_code." >&2
+        echo "$output" >&2
+        exit $exit_code
+    }
+    echo "$output" | grep -v '^$' || true
+}
+
+invoke_yaak_string() {
+    invoke_yaak_lines "$@"
+}
+
+# 从前置条件：传入 yaak verbose 输出；后置条件：提取 JSON 响应体
+get_response_json_from_yaak_output() {
+    python3 -c "
+import sys, re
+text = sys.stdin.read()
+text = re.sub(r'\x1b\[[0-9;]*m', '', text)
+lines = text.split('\n')
+normalized = []
+for line in lines:
+    trimmed = line.strip()
+    if trimmed.startswith('* '):
+        continue
+    if trimmed.startswith('< '):
+        trimmed = trimmed[2:].strip()
+    normalized.append(trimmed)
+text = '\n'.join(normalized)
+start = text.rfind('{\"code\"')
+if start < 0:
+    sys.stdout.write('')
+    sys.exit(0)
+depth = 0
+in_string = False
+escaped = False
+for i in range(start, len(text)):
+    c = text[i]
+    if escaped:
+        escaped = False
+        continue
+    if c == '\\\\':
+        escaped = True
+        continue
+    if c == '\"':
+        in_string = not in_string
+        continue
+    if in_string:
+        continue
+    if c == '{':
+        depth += 1
+    if c == '}':
+        depth -= 1
+        if depth == 0:
+            sys.stdout.write(text[start:i+1])
+            sys.exit(0)
+sys.stdout.write('')
+" <<< "$1"
+}
+
+# 从前置条件：传入 yaak verbose 输出；后置条件：提取 HTTP 状态码
+get_http_status_code_from_yaak_output() {
+    local raw_output="$1" line
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^\<[[:space:]]*HTTP/[0-9.]+[[:space:]]+([0-9]{3}) ]]; then
+            local status="${BASH_REMATCH[1]}"
+            local reason="${line#*${status} }"
+            local code_line="${status}${reason}"
+            code_line="$(echo "$code_line" | xargs)"
+            printf '%d\t%s\n' "$status" "$code_line"
+            return
+        fi
+    done <<< "$raw_output"
+    printf 'null\t\n'
+}
+
+get_yaak_id_by_name() {
+    local lines="$1" name="$2" line
+    line="$(echo "$lines" | grep -E "^[^[:space:]]+[[:space:]]+-[[:space:]].*${name}$" | head -1)"
+    if [[ -z "$line" ]]; then
+        echo "Cannot find Yaak item named '$name'." >&2
+        exit 1
+    fi
+    echo "$line" | awk '{print $1}'
+}
+
+get_yaak_workspace_id() {
+    local workspaces
+    workspaces="$(invoke_yaak_lines workspace list)"
+    get_yaak_id_by_name "$workspaces" "$1"
+}
+
+get_yaak_environment_id() {
+    local environments line
+    environments="$(invoke_yaak_lines environment list "$1")"
+    line="$(echo "$environments" | head -1)"
+    if [[ -z "$line" ]]; then
+        echo "No Yaak environment found in workspace $1." >&2
+        exit 1
+    fi
+    echo "$line" | awk '{print $1}'
+}
+
+get_yaak_request_id() {
+    local requests
+    requests="$(invoke_yaak_lines request list "$1")"
+    get_yaak_id_by_name "$requests" "$2"
+}
+
+set_yaak_environment_variables() {
+    local environment_id="$1" env_json new_vars="{}" pair key value merged updated_variables payload
+    shift
+    env_json="$(invoke_yaak_string environment show "$environment_id")"
+    for pair in "$@"; do
+        key="${pair%%=*}"
+        value="${pair#*=}"
+        new_vars="$(echo "$new_vars" | jq --arg k "$key" --arg v "$value" '.[$k] = $v')"
+    done
+    merged="$(echo "$env_json" | jq --argjson new "$new_vars" \
+        '[.variables[] | {(.name): (.value // "")}] | add // {} | . * $new')"
+    updated_variables="$(echo "$merged" | jq 'to_entries | sort_by(.key) | map({name: .key, value: (.value | tostring), enabled: true})')"
+    payload="$(echo "$env_json" | jq --argjson vars "$updated_variables" \
+        '{id: .id, workspaceId: .workspaceId, name: .name, variables: $vars}' -c)"
+    invoke_yaak_lines environment update "--json=$payload" >/dev/null
+}
+
+# 记录测试结果
+record_result() {
+    local name="$1" expected="$2" actual="$3"
+    local passed="false"
+    IFS=',' read -ra expected_arr <<< "$expected"
+    for e in "${expected_arr[@]}"; do
+        if [[ "$e" == "$actual" ]]; then
+            passed="true"
+            break
+        fi
+    done
+    echo "${name}|${expected}|${actual}|${passed}" >> "$TEST_RESULTS_FILE"
+}
+
+# 发送请求，显示详情，比对预期 code，返回响应 JSON
+send_yaak_request_json() {
+    local name="$1"
+    local expected="${2:-200}"
+    local request_id show_json method url body_text body_type raw_output http_status resp_body resp actual_code passed expected_str
+
+    request_id="$(get_yaak_request_id "$WORKSPACE_ID" "$name")"
+    show_json="$(invoke_yaak_string request show "$request_id")"
+
+    method="$(echo "$show_json" | jq -r '.method')"
+    url="$(echo "$show_json" | jq -r '.url')"
+    body_text="$(echo "$show_json" | jq -r '.body.text // empty')"
+    body_type="$(echo "$show_json" | jq -r '.bodyType // empty')"
+
+    echo ""
+    printf '%0.s═' $(seq 1 60); echo
+    echo "  $name"
+    printf '%0.s─' $(seq 1 60); echo
+    echo "  $method $url"
+
+    echo "$show_json" | jq -r '.headers[]? | select(.enabled) | "  > \(.name): \(.value)"'
+
+    if [[ -n "$body_text" ]]; then
+        echo "  Body:"
+        echo "  $body_text"
+    elif [[ "$body_type" == "multipart/form-data" ]]; then
+        echo "  Body (form):"
+        echo "$show_json" | jq -r '.body.form[]? | select(.enabled) | "    \(.name) = \(if .file then \"[file: \(.file)]\" else .value end)"'
+    else
+        echo "  Body: (none)"
+    fi
+
+    raw_output="$(invoke_yaak_string request send "$request_id" -e "$ENVIRONMENT_ID" -v)"
+    http_status="$(get_http_status_code_from_yaak_output "$raw_output")"
+    resp_body="$(get_response_json_from_yaak_output "$raw_output")"
+
+    printf '%0.s─' $(seq 1 60); echo
+    local status_code="$(echo "$http_status" | cut -f1)"
+    local status_line="$(echo "$http_status" | cut -f2)"
+    echo "  ← $status_line"
+    echo "  $resp_body"
+
+    if [[ -z "$resp_body" ]]; then
+        resp="{\"code\": $status_code, \"message\": \"\", \"data\": {}}"
+    else
+        resp="$resp_body"
+    fi
+    actual_code="$(echo "$resp" | jq -r '.code')"
+
+    record_result "$name" "$expected" "$actual_code"
+
+    passed="false"
+    IFS=',' read -ra expected_arr <<< "$expected"
+    for e in "${expected_arr[@]}"; do
+        if [[ "$e" == "$actual_code" ]]; then
+            passed="true"
+            break
+        fi
+    done
+
+    if [[ "$passed" == "true" ]]; then
+        echo -e "  ${GREEN}✓ PASS${RESET} (code=$actual_code)"
+    else
+        expected_str="$expected"
+        echo -e "  ${RED}✗ FAIL${RESET} (expected=$expected_str, actual=$actual_code, message=$(echo "$resp" | jq -r '.message'))"
+    fi
+
+    echo "$resp"
+}
+
+# 输出跳过信息
+write_skip() {
+    local reason="$1"
+    echo -e "  ${YELLOW}[skip]${RESET} $reason"
+}
+
+# 打印测试汇总
+print_summary() {
+    local total passed failed
+    total="$(wc -l < "$TEST_RESULTS_FILE")"
+    passed="$(grep -c '|true$' "$TEST_RESULTS_FILE" || echo 0)"
+    failed="$(grep -c '|false$' "$TEST_RESULTS_FILE" || echo 0)"
+
+    printf '\n%0.s#' $(seq 1 60); echo
+    echo "#  测试结果汇总"
+    printf '%0.s#' $(seq 1 60); echo
+    echo ""
+    echo -e "  通过: ${GREEN}${passed}${RESET} / ${total}"
+    if [[ "$failed" -gt 0 ]]; then
+        echo -e "  失败: ${RED}${failed}${RESET}"
+        echo ""
+        echo "  失败的测试:"
+        while IFS='|' read -r name expected actual passed_flag; do
+            if [[ "$passed_flag" == "false" ]]; then
+                echo -e "    ${RED}✗ ${name}${RESET} (expected=${expected}, actual=${actual})"
+            fi
+        done < "$TEST_RESULTS_FILE"
+    fi
+    if [[ "$passed" -eq "$total" ]]; then
+        echo -e "  ${GREEN}全部通过!${RESET}"
+    fi
+    rm -f "$TEST_RESULTS_FILE"
+}
+
+# ======== 开始测试 ========
+
+printf '\n%0.s#' $(seq 1 60); echo
+echo "#  MayoiStar AI 图片分类自动化测试"
+printf '%0.s#' $(seq 1 60); echo
+
+WORKSPACE_ID="$(get_yaak_workspace_id "$WORKSPACE_NAME")"
+ENVIRONMENT_ID="$(get_yaak_environment_id "$WORKSPACE_ID")"
+
+set_yaak_environment_variables "$ENVIRONMENT_ID" \
+    "baseUrl=$BASE_URL" \
+    "testUserEmail=test_user@mayoistar.qa" \
+    "testUserPassword=4g9Pf6KNpw4rxe3NL7hij9l2" \
+    "testImageFile=$TEST_IMAGE_FILE" \
+    "nonexistentMediaId=00000000-0000-0000-0000-000000000000" \
+    "accessToken=" "testImageMediaId=" "testImageMediaId2="
+
+# ======== 00 登录 ========
+printf '\n%0.s#' $(seq 1 60); echo
+echo "#  00 登录"
+printf '%0.s#' $(seq 1 60); echo
+
+RESP="$(send_yaak_request_json "个人用户登录 test_user")"
+LOGIN_OK=false
+if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
+    set_yaak_environment_variables "$ENVIRONMENT_ID" \
+        "accessToken=$(echo "$RESP" | jq -r '.data.tokens.accessToken')"
+    LOGIN_OK=true
+    echo "  [env] accessToken 已保存"
+fi
+
+if [[ "$LOGIN_OK" != "true" ]]; then
+    echo -e "  ${RED}登录失败，终止测试${RESET}"
+    print_summary
+    exit 1
+fi
+
+# ======== 01 图片上传 ========
+printf '\n%0.s#' $(seq 1 60); echo
+echo "#  01 图片上传"
+printf '%0.s#' $(seq 1 60); echo
+
+RESP="$(send_yaak_request_json "上传活动图片 1")"
+UPLOAD_OK=false
+if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
+    set_yaak_environment_variables "$ENVIRONMENT_ID" \
+        "testImageMediaId=$(echo "$RESP" | jq -r '.data.mediaId')"
+    UPLOAD_OK=true
+    echo "  [env] testImageMediaId 已保存"
+fi
+
+if [[ "$UPLOAD_OK" == "true" ]]; then
+    RESP="$(send_yaak_request_json "上传活动图片 2")"
+    if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
+        set_yaak_environment_variables "$ENVIRONMENT_ID" \
+            "testImageMediaId2=$(echo "$RESP" | jq -r '.data.mediaId')"
+        echo "  [env] testImageMediaId2 已保存"
+    fi
+else
+    write_skip "图片上传失败，跳过后续分类用例。"
+fi
+
+# ======== 02 图片分类 - 正常流程 ========
+if [[ "$UPLOAD_OK" == "true" ]]; then
+    printf '\n%0.s#' $(seq 1 60); echo
+    echo "#  02 图片分类 - 正常流程"
+    printf '%0.s#' $(seq 1 60); echo
+
+    RESP="$(send_yaak_request_json "分类单张图片")"
+    if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
+        DATA_STATUS="$(echo "$RESP" | jq -r '.data.status')"
+        ITEMS_COUNT="$(echo "$RESP" | jq -r '.data.items | length')"
+        echo "  [info] status=$DATA_STATUS, items=$ITEMS_COUNT"
+        if [[ "$DATA_STATUS" == "succeeded" && "$ITEMS_COUNT" -ge 1 ]]; then
+            FIRST_TAG="$(echo "$RESP" | jq -r '.data.items[0].suggestedTags[0]')"
+            FIRST_CONF="$(echo "$RESP" | jq -r '.data.items[0].confidence')"
+            echo "  [info] 第一张分类: tag=$FIRST_TAG, confidence=$FIRST_CONF"
+        fi
+    fi
+
+    send_yaak_request_json "分类多张图片"
+else
+    write_skip "testImageMediaId 未就绪，跳过正常流程分类用例。"
+fi
+
+# ======== 03 图片分类 - 异常与边界 ========
+printf '\n%0.s#' $(seq 1 60); echo
+echo "#  03 图片分类 - 异常与边界"
+printf '%0.s#' $(seq 1 60); echo
+
+send_yaak_request_json "空 mediaIds 列表"
+
+# 不存在的 mediaId（CLIP 可用时返回 30003，不可用时返回 30001）
+send_yaak_request_json "不存在的 mediaId" "30001,30003"
+
+# 未认证访问
+send_yaak_request_json "未认证访问" "401"
+
+# ======== 汇总 ========
+print_summary
