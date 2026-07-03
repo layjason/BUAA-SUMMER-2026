@@ -80,6 +80,9 @@ model ActivityUpsertRequest {
 
   @doc("活动图片媒体文件标识列表，第一张为封面。")
   imageIds?: EntityId[];
+
+  @doc("是否要求签到用户提供位置信息进行位置校验。true 时签到必须传入 currentLocation，且服务端校验距离。")
+  requireLocationCheck?: boolean;
 }
 
 @doc("活动草稿保存请求。草稿阶段允许只填写部分活动信息，提交审核时再校验完整性。")
@@ -122,6 +125,9 @@ model ActivityDraftUpsertRequest {
 
   @doc("活动图片媒体文件标识列表。")
   imageIds?: EntityId[];
+
+  @doc("是否要求签到用户提供位置信息进行位置校验。")
+  requireLocationCheck?: boolean;
 }
 
 @doc("活动摘要。")
@@ -164,6 +170,9 @@ model ActivitySummary {
 
   @doc("活动人数上限。")
   capacity: int32;
+
+  @doc("是否要求签到用户提供位置信息进行位置校验。")
+  requireLocationCheck: boolean;
 }
 
 @doc("我报名的活动摘要，包含活动信息与当前用户的报名状态。")
@@ -285,6 +294,9 @@ model ActivityDraftDetail {
 
   @doc("参与者最低年龄要求。")
   minAge?: int32;
+
+  @doc("是否要求签到用户提供位置信息进行位置校验。")
+  requireLocationCheck?: boolean;
 
   @doc("活动图片列表。")
   images: MediaFile[];
@@ -477,12 +489,12 @@ model CheckInQrCode {
   expiresAt: DateTimeString;
 }
 
-@doc("扫码签到请求，二维码有效，报名记录进入已签到状态，开启位置校验时当前位置必须在活动地点附近。")
+@doc("扫码签到请求，二维码有效，报名记录进入已签到状态。若活动发起人设置了要求位置校验，则必须传入 currentLocation 且必须在活动地点附近。")
 model CheckInRequest {
   @doc("扫码得到的签到二维码 token。")
   qrCodeToken: string;
 
-  @doc("签到时用户当前位置，用于可选的位置校验。")
+  @doc("签到时用户当前位置。活动不要求位置校验时可不传；活动要求位置校验时必须传入。")
   currentLocation?: GeoPoint;
 }
 
@@ -816,7 +828,7 @@ interface ActivityOperations {
 
   @post
   @route("/{activityId}/check-ins")
-  @doc("扫码签到，二维码有效且用户已报名，记录签到时间，需要位置校验时必须处于活动地点附近。")
+  @doc("扫码签到，二维码有效且用户已报名，记录签到时间。活动要求位置校验时用户必须传入当前位置且在活动地点附近。")
   checkIn(@path activityId: EntityId, @body body: CheckInRequest): APIResult<
     CheckInRecord,
 
@@ -824,6 +836,7 @@ interface ActivityOperations {
       | QujuApi.Errors.Activities.RegistrationNotFound
       | QujuApi.Errors.Activities.CheckInQrCodeInvalid
       | QujuApi.Errors.Activities.CheckInLocationInvalid
+      | QujuApi.Errors.Activities.CheckInLocationRequired
   >;
 
   @get

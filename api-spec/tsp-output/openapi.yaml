@@ -867,7 +867,7 @@ paths:
   /activities/{activityId}/check-ins:
     post:
       operationId: ActivityOperations_checkIn
-      description: 扫码签到，二维码有效且用户已报名，记录签到时间，需要位置校验时必须处于活动地点附近。
+      description: 扫码签到，二维码有效且用户已报名，记录签到时间。活动要求位置校验时用户必须传入当前位置且在活动地点附近。
       parameters:
         - name: activityId
           in: path
@@ -910,6 +910,7 @@ paths:
                   - $ref: '#/components/schemas/Errors.Activities.RegistrationNotFound'
                   - $ref: '#/components/schemas/Errors.Activities.CheckInQrCodeInvalid'
                   - $ref: '#/components/schemas/Errors.Activities.CheckInLocationInvalid'
+                  - $ref: '#/components/schemas/Errors.Activities.CheckInLocationRequired'
       tags:
         - 活动
       requestBody:
@@ -7173,6 +7174,7 @@ components:
         - registeredCount
         - occupiedCount
         - capacity
+        - requireLocationCheck
         - introduction
         - safetyNotice
         - registrationDeadline
@@ -7235,6 +7237,9 @@ components:
           type: integer
           format: int32
           description: 活动人数上限。
+        requireLocationCheck:
+          type: boolean
+          description: 是否要求签到用户提供位置信息进行位置校验。
         introduction:
           type: string
           description: 活动完整简介。
@@ -7333,6 +7338,9 @@ components:
           type: integer
           format: int32
           description: 参与者最低年龄要求。
+        requireLocationCheck:
+          type: boolean
+          description: 是否要求签到用户提供位置信息进行位置校验。
         images:
           type: array
           items:
@@ -7432,6 +7440,9 @@ components:
           items:
             $ref: '#/components/schemas/EntityId'
           description: 活动图片媒体文件标识列表。
+        requireLocationCheck:
+          type: boolean
+          description: 是否要求签到用户提供位置信息进行位置校验。
       description: 活动草稿保存请求。草稿阶段允许只填写部分活动信息，提交审核时再校验完整性。
     Activities.ActivityFeedTab:
       type: string
@@ -7676,6 +7687,7 @@ components:
         - registeredCount
         - occupiedCount
         - capacity
+        - requireLocationCheck
       properties:
         activityId:
           allOf:
@@ -7729,6 +7741,9 @@ components:
           type: integer
           format: int32
           description: 活动人数上限。
+        requireLocationCheck:
+          type: boolean
+          description: 是否要求签到用户提供位置信息进行位置校验。
       description: 活动摘要。
     Activities.ActivitySummaryPost:
       type: object
@@ -7900,6 +7915,9 @@ components:
           items:
             $ref: '#/components/schemas/EntityId'
           description: 活动图片媒体文件标识列表，第一张为封面。
+        requireLocationCheck:
+          type: boolean
+          description: 是否要求签到用户提供位置信息进行位置校验。true 时签到必须传入 currentLocation，且服务端校验距离。
       description: 活动基础信息请求，地点来自地图选点，时间范围合法，可用于草稿保存或提交审核，费用字段只表达信息，不触发支付。
     Activities.CheckInQrCode:
       type: object
@@ -7959,8 +7977,8 @@ components:
         currentLocation:
           allOf:
             - $ref: '#/components/schemas/GeoPoint'
-          description: 签到时用户当前位置，用于可选的位置校验。
-      description: 扫码签到请求，二维码有效，报名记录进入已签到状态，开启位置校验时当前位置必须在活动地点附近。
+          description: 签到时用户当前位置。活动不要求位置校验时可不传；活动要求位置校验时必须传入。
+      description: 扫码签到请求，二维码有效，报名记录进入已签到状态。若活动发起人设置了要求位置校验，则必须传入 currentLocation 且必须在活动地点附近。
     Activities.ImageTagConfirmation:
       type: object
       required:
@@ -8019,6 +8037,7 @@ components:
         - registeredCount
         - occupiedCount
         - capacity
+        - requireLocationCheck
         - registrationId
         - registrationStatus
         - registeredAt
@@ -8075,6 +8094,9 @@ components:
           type: integer
           format: int32
           description: 活动人数上限。
+        requireLocationCheck:
+          type: boolean
+          description: 是否要求签到用户提供位置信息进行位置校验。
         registrationId:
           allOf:
             - $ref: '#/components/schemas/EntityId'
@@ -9195,6 +9217,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 20014：用户当前位置不满足签到位置校验。
+    Errors.Activities.CheckInLocationRequired:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 20020
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Check-in location is required
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 20020：活动要求位置签到，但用户未提供位置信息。
     Errors.Activities.CheckInQrCodeInvalid:
       type: object
       allOf:
