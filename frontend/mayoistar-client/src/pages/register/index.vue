@@ -331,6 +331,7 @@ async function handleRegister() {
       await api.post('/identity/auth/register/merchant', {
         body: {
           email: email.value.trim(),
+          nickname: nickname.value.trim(),
           password: password.value,
         },
       })
