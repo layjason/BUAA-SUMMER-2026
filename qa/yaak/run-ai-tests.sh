@@ -4,7 +4,7 @@ set -euo pipefail
 # 默认参数
 WORKSPACE_NAME="${1:-MayoiStar AI}"
 BASE_URL="${2:-http://localhost:8080}"
-TEST_IMAGE_FILE="${3:-$SCRIPT_DIR/test-avatar.png}"
+TEST_IMAGE_FILE="${3}"
 
 GREEN='\033[32m'
 RED='\033[31m'
@@ -25,6 +25,10 @@ if ! command -v yaak &>/dev/null; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ -z "$TEST_IMAGE_FILE" ]]; then
+    TEST_IMAGE_FILE="$SCRIPT_DIR/test-avatar.png"
+fi
 
 if [[ ! -f "$TEST_IMAGE_FILE" ]]; then
     echo "Error: test image not found: $TEST_IMAGE_FILE" >&2
