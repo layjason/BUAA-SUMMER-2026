@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.layjason.mayoistar.api.activities.ActivityController;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
+import io.github.layjason.mayoistar.common.SecurityUtils;
 import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
 import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.activities.Activity;
@@ -30,6 +31,7 @@ import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRe
 import io.github.layjason.mayoistar.service.ActivityRegistrationService;
 import io.github.layjason.mayoistar.service.ActivityRegistrationStateService;
 import io.github.layjason.mayoistar.service.ActivitySearchService;
+import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
 import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
 import io.github.layjason.mayoistar.service.activities.RequestActorResolver;
@@ -168,8 +170,8 @@ class ActivityQueryControllerTests {
     }
 
     @Test
-    void listMyRegistrationsShouldReturnForbiddenWhenNotAuthenticated() throws Exception {
-        mockMvc.perform(get("/activities/registrations/mine")).andExpect(status().isForbidden());
+    void listMyRegistrationsShouldReturnUnauthorizedWhenNotAuthenticated() throws Exception {
+        mockMvc.perform(get("/activities/registrations/mine")).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -179,6 +181,8 @@ class ActivityQueryControllerTests {
         ActivityController controller = new ActivityController(
                 new DefaultApiResponseFactory(),
                 mock(ActivitySearchService.class),
+                mock(SecurityUtils.class),
+                mock(MediaFileUploadService.class),
                 requestActorResolver,
                 mock(ActivityDraftService.class),
                 mock(ActivityQueryService.class),
