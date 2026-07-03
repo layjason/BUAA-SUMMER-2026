@@ -199,8 +199,9 @@ public class MediaAccessService {
      *
      * <p>前置条件：mediaId 对应有效的媒体文件，且 {@code callerUserId} 为该文件的上传者。
      *
-     * <p>后置条件：accessPolicy 和 accessScopeId 已更新，accessVersion 递增，旧签名 URL
-     * 因版本不匹配而失效，缓存中的快照已刷新。
+     * <p>后置条件：当目标 policy/scope 与现值不同时，accessPolicy 和 accessScopeId 已更新，
+     * accessVersion 递增，旧签名 URL 因版本不匹配而失效，缓存中的快照已刷新；若目标与现值一致
+     * 则跳过，不递增版本（幂等，避免重复绑定草稿造成的版本膨胀）。
      *
      * @param mediaId      媒体标识
      * @param policy       新的访问策略
@@ -218,6 +219,11 @@ public class MediaAccessService {
         if (mediaFile.getDeletedAt() != null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found");
         }
+        if (mediaFile.getAccessPolicy() == policy
+                && normalizeScope(mediaFile.getAccessScopeId()).equals(normalizeScope(scope))) {
+            log.debug("媒体访问策略未变化，跳过更新: mediaId={}, policy={}, scope={}", mediaId, policy, scope);
+            return;
+        }
         mediaFile.setAccessPolicy(policy);
         mediaFile.setAccessScopeId(scope);
         mediaFile.setAccessVersion(mediaFile.getAccessVersion() + 1);
@@ -228,6 +234,52 @@ public class MediaAccessService {
                 mediaId,
                 policy,
                 scope,
+                mediaFile.getAccessVersion());
+    }
+
+    /**
+     * 以权威身份覆盖媒体的访问策略、作用域与可见性，递增访问版本使旧签名 URL 失效。
+     *
+     * <p>重要：本方法<strong>不执行 owner 校验</strong>，调用方（如管理员审核发布、下架、恢复流程）
+     * 必须在调用前完成独立的权限检查。相较于 owner 校验版本，本方法可同时更新 {@code visibility}，
+     * 用于活动图片在 {@code activityOwner}（私有）与 {@code publicAccess}（公开）之间翻转。
+     *
+     * <p>前置条件：mediaId 对应有效且未软删除的媒体文件；调用方已完成鉴权。
+     *
+     * <p>后置条件：当目标状态与现值不同时，accessPolicy、accessScopeId、visibility 已更新，
+     * accessVersion 递增，缓存已刷新；若目标状态与现值完全一致则跳过，不递增版本（幂等）。
+     *
+     * @param mediaId    媒体标识
+     * @param policy     新的访问策略
+     * @param scope      新的访问作用域
+     * @param visibility 新的可见性
+     */
+    @Transactional
+    public void overrideAccessPolicy(UUID mediaId, MediaAccessPolicy policy, String scope, MediaVisibility visibility) {
+        MediaFile mediaFile = mediaFileRepository
+                .findById(mediaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file not found"));
+        if (mediaFile.getDeletedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found");
+        }
+        if (mediaFile.getAccessPolicy() == policy
+                && normalizeScope(mediaFile.getAccessScopeId()).equals(normalizeScope(scope))
+                && mediaFile.getVisibility() == visibility) {
+            log.debug("媒体访问策略未变化，跳过覆盖: mediaId={}, policy={}, scope={}", mediaId, policy, scope);
+            return;
+        }
+        mediaFile.setAccessPolicy(policy);
+        mediaFile.setAccessScopeId(scope);
+        mediaFile.setVisibility(visibility);
+        mediaFile.setAccessVersion(mediaFile.getAccessVersion() + 1);
+        mediaFileRepository.save(mediaFile);
+        mediaAccessCache.put(toDescriptor(mediaFile));
+        log.info(
+                "媒体访问策略已覆盖: mediaId={}, policy={}, scope={}, visibility={}, accessVersion={}",
+                mediaId,
+                policy,
+                scope,
+                visibility,
                 mediaFile.getAccessVersion());
     }
 

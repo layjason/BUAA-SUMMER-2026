@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -190,17 +191,95 @@ class MediaAccessServiceTest {
     }
 
     @Test
-    @DisplayName("updateAccessPolicy：非上传者调用应返回 403")
-    void shouldRejectUpdateAccessPolicyWhenNotOwner() {
+    @DisplayName("copyForScope：源文件已删除应返回 404")
+    void shouldRejectCopyForScopeWhenSourceDeleted() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile source = buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.owner, "user1");
+        source.setDeletedAt(Instant.parse("2026-07-03T00:00:00Z"));
+
+        assertThatThrownBy(() -> mediaAccessService.copyForScope(
+                        source, "user2", MediaAccessPolicy.conversationMember, "conv-target"))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode.value")
+                .isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName("updateAccessPolicy：目标与现值一致时幂等跳过、不递增版本")
+    void shouldSkipUpdateAccessPolicyWhenUnchanged() {
         UUID mediaId = UUID.randomUUID();
         MediaFile mediaFile = buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.owner, "user1");
         when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
 
-        assertThatThrownBy(() -> mediaAccessService.updateAccessPolicy(
-                        mediaId, MediaAccessPolicy.conversationMember, "conv-x", "user2"))
+        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.owner, "user1", "user1");
+
+        verify(mediaFileRepository, never()).save(any(MediaFile.class));
+        assertThat(mediaFile.getAccessVersion()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("overrideAccessPolicy：更新 policy + scope + visibility，递增版本")
+    void shouldOverrideAccessPolicyWithVisibility() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile mediaFile = buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.owner, "user1");
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
+        when(mediaFileRepository.save(any(MediaFile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        mediaAccessService.overrideAccessPolicy(
+                mediaId, MediaAccessPolicy.publicAccess, "", MediaVisibility.publicVisible);
+
+        ArgumentCaptor<MediaFile> captor = ArgumentCaptor.forClass(MediaFile.class);
+        verify(mediaFileRepository).save(captor.capture());
+        assertThat(captor.getValue().getAccessPolicy()).isEqualTo(MediaAccessPolicy.publicAccess);
+        assertThat(captor.getValue().getAccessScopeId()).isEqualTo("");
+        assertThat(captor.getValue().getVisibility()).isEqualTo(MediaVisibility.publicVisible);
+        assertThat(captor.getValue().getAccessVersion()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("overrideAccessPolicy：幂等——目标与现值一致时不递增版本")
+    void shouldSkipOverrideWhenUnchanged() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile mediaFile =
+                buildMediaFile(mediaId, MediaVisibility.publicVisible, MediaAccessPolicy.publicAccess, "");
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
+
+        mediaAccessService.overrideAccessPolicy(
+                mediaId, MediaAccessPolicy.publicAccess, "", MediaVisibility.publicVisible);
+
+        verify(mediaFileRepository, never()).save(any(MediaFile.class));
+        assertThat(mediaFile.getAccessVersion()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("overrideAccessPolicy：已删除文件应返回 404")
+    void shouldRejectOverrideOnDeletedFile() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile mediaFile = buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.owner, "user1");
+        mediaFile.setDeletedAt(Instant.parse("2026-07-03T00:00:00Z"));
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
+
+        assertThatThrownBy(() -> mediaAccessService.overrideAccessPolicy(
+                        mediaId, MediaAccessPolicy.publicAccess, "", MediaVisibility.publicVisible))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting("statusCode.value")
-                .isEqualTo(403);
+                .isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName("overrideAccessPolicy：仅 visibility 变更也递增版本")
+    void shouldIncrementVersionWhenOnlyVisibilityChanges() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile mediaFile =
+                buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.activityOwner, "act-1");
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
+        when(mediaFileRepository.save(any(MediaFile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        mediaAccessService.overrideAccessPolicy(
+                mediaId, MediaAccessPolicy.activityOwner, "act-1", MediaVisibility.publicVisible);
+
+        assertThat(mediaFile.getVisibility()).isEqualTo(MediaVisibility.publicVisible);
+        assertThat(mediaFile.getAccessVersion()).isEqualTo(2L);
     }
 
     @Test
@@ -346,20 +425,6 @@ class MediaAccessServiceTest {
 
         assertThatThrownBy(() -> mediaAccessService.updateAccessPolicy(
                         mediaId, MediaAccessPolicy.conversationMember, "conv-x", "user1"))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting("statusCode.value")
-                .isEqualTo(404);
-    }
-
-    @Test
-    @DisplayName("copyForScope：源文件已删除应返回 404")
-    void shouldRejectCopyForScopeWhenSourceDeleted() {
-        UUID mediaId = UUID.randomUUID();
-        MediaFile source = buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.owner, "user1");
-        source.setDeletedAt(Instant.parse("2026-07-03T00:00:00Z"));
-
-        assertThatThrownBy(() -> mediaAccessService.copyForScope(
-                        source, "user2", MediaAccessPolicy.conversationMember, "conv-target"))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting("statusCode.value")
                 .isEqualTo(404);
