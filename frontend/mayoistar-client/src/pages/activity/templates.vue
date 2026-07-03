@@ -20,9 +20,9 @@
               @click="selectTemplate(tpl)"
             >
               <image
-                v-if="tpl.defaultCoverImage?.url"
+                v-if="tpl.defaultCoverImage?.signedUrl"
                 class="card-cover"
-                :src="tpl.defaultCoverImage.url"
+                :src="tpl.defaultCoverImage.signedUrl"
                 mode="aspectFill"
               />
               <view v-else class="card-cover card-cover-placeholder">

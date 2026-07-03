@@ -178,7 +178,6 @@ class MediaFileUploadServiceTest {
 
             CommonDtos.MediaFile result = mediaFileUploadService.upload("user1", file, MediaUsage.avatar);
 
-            assertThat(result.getUrl()).isNull();
             assertThat(result.getSignedUrl()).startsWith("/media/");
             assertThat(result.getFileName()).isEqualTo("avatar.png");
             assertThat(result.getSizeBytes()).isEqualTo(500L);
@@ -187,7 +186,6 @@ class MediaFileUploadServiceTest {
 
             ArgumentCaptor<MediaFile> captor = ArgumentCaptor.forClass(MediaFile.class);
             verify(mediaFileRepository).save(captor.capture());
-            assertThat(captor.getValue().getUrl()).isNull();
             assertThat(captor.getValue().getVisibility()).isEqualTo(MediaVisibility.publicVisible);
             assertThat(captor.getValue().getAccessPolicy()).isEqualTo(MediaAccessPolicy.publicAccess);
             assertThat(captor.getValue().getAccessVersion()).isEqualTo(1L);
@@ -221,7 +219,7 @@ class MediaFileUploadServiceTest {
         @DisplayName("根据 mediaId 获取元数据")
         void shouldGetMediaFileMetadata() {
             UUID mediaId = UUID.randomUUID();
-            MediaFile mediaFile = buildMediaFile(mediaId, "http://localhost:9000/bucket/avatar.png");
+            MediaFile mediaFile = buildMediaFile(mediaId);
             when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
 
             MediaFile result = mediaFileUploadService.getMediaFile(mediaId);
@@ -246,7 +244,7 @@ class MediaFileUploadServiceTest {
         @DisplayName("从对象存储读取文件流")
         void shouldRetrieveContentFromStorage() {
             UUID mediaId = UUID.randomUUID();
-            MediaFile mediaFile = buildMediaFile(mediaId, null);
+            MediaFile mediaFile = buildMediaFile(mediaId);
             InputStream expectedStream = new ByteArrayInputStream("image-data".getBytes());
 
             when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
@@ -262,7 +260,7 @@ class MediaFileUploadServiceTest {
         @DisplayName("对象存储中文件不存在时抛出 404")
         void shouldThrow404WhenStorageObjectMissing() {
             UUID mediaId = UUID.randomUUID();
-            MediaFile mediaFile = buildMediaFile(mediaId, null);
+            MediaFile mediaFile = buildMediaFile(mediaId);
 
             when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
             when(fileStorageService.retrieve("avatar/user1/avatar.png")).thenThrow(new RuntimeException("not found"));
@@ -274,7 +272,7 @@ class MediaFileUploadServiceTest {
         }
     }
 
-    private MediaFile buildMediaFile(UUID mediaId, String url) {
+    private MediaFile buildMediaFile(UUID mediaId) {
         return MediaFile.builder()
                 .mediaId(mediaId)
                 .fileName("avatar.png")
@@ -282,7 +280,6 @@ class MediaFileUploadServiceTest {
                 .sizeBytes(100L)
                 .usage(MediaUsage.avatar)
                 .storagePath("avatar/user1/avatar.png")
-                .url(url)
                 .uploadedBy("user1")
                 .uploadedAt(Instant.parse("2026-07-01T00:00:00Z"))
                 .build();

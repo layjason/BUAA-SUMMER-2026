@@ -375,9 +375,9 @@ async function handleAddImage(): Promise<void> {
     for (const tempPath of res.tempFilePaths) {
       try {
         const results = await uploadActivityImages([tempPath])
-        const result = results[0] as { mediaId: string; url?: string }
+        const result = results[0] as { mediaId: string; signedUrl?: string }
         imageIds.value.push(result.mediaId)
-        imagePreviews.value.push(result.url || tempPath)
+        imagePreviews.value.push(result.signedUrl || tempPath)
       } catch {
         formError.value = '图片上传失败'
       }
@@ -604,7 +604,7 @@ async function loadDraft(): Promise<void> {
     }
 
     if (draft.images.length) {
-      imagePreviews.value = draft.images.map((i) => i.url ?? '')
+      imagePreviews.value = draft.images.map((i) => i.signedUrl ?? '')
       imageIds.value = draft.images.map((i) => i.mediaId)
     }
   } catch (error) {

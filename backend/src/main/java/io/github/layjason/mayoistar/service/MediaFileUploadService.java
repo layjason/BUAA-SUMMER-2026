@@ -116,7 +116,6 @@ public class MediaFileUploadService {
                 .sizeBytes(size)
                 .usage(usage)
                 .storagePath(key)
-                .url(null)
                 .visibility(defaultVisibility(usage))
                 .accessPolicy(defaultAccessPolicy(usage))
                 .accessScopeId(defaultAccessScope(userId, usage))

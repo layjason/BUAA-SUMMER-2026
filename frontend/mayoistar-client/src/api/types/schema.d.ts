@@ -4625,8 +4625,6 @@ export interface components {
             sizeBytes: number;
             /** @description 上传时间。 */
             uploadedAt: components["schemas"]["DateTimeString"];
-            /** @description 访问地址。 */
-            url?: string;
             /** @description 媒体用途。 */
             usage: components["schemas"]["MediaUsage"];
             /** @description 媒体可见性。 */

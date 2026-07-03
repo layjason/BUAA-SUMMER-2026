@@ -180,9 +180,6 @@ model MediaFile {
   @doc("媒体用途。")
   usage: MediaUsage;
 
-  @doc("访问地址。")
-  url?: string;
-
   @doc("签名访问地址，客户端不得作为永久地址保存。")
   signedUrl?: string;
 

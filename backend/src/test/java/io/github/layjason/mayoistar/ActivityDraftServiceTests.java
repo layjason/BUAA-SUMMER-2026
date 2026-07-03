@@ -359,7 +359,6 @@ class ActivityDraftServiceTests {
                 .sizeBytes(1L)
                 .usage(MediaUsage.activityImage)
                 .storagePath("/tmp/" + mediaId)
-                .url("https://example.com/" + mediaId)
                 .uploadedBy(userId)
                 .uploadedAt(Instant.now())
                 .build());

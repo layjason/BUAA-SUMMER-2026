@@ -451,10 +451,10 @@ export const Activities: React.FC = () => {
           <div className="space-y-6 text-xs text-slate-600 leading-relaxed font-semibold">
             {/* Header info */}
             <div className="space-y-3 pb-5 border-b border-slate-100 text-left">
-              {detail.coverImage?.url && (
+              {detail.coverImage?.signedUrl && (
                 <div className="aspect-16/9 rounded-2xl overflow-hidden border border-slate-200/80 mb-3 bg-slate-100 shadow-inner">
                   <img
-                    src={detail.coverImage.url}
+                    src={detail.coverImage.signedUrl}
                     alt="活动封面"
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
@@ -601,7 +601,7 @@ export const Activities: React.FC = () => {
                 <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">
                   活动现场环境/物料附图
                 </p>
-                <ImagePreviewGrid images={detail.images.map((img) => img.url || '')} />
+                <ImagePreviewGrid images={detail.images.map((img) => img.signedUrl || '')} />
               </div>
             )}
 

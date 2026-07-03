@@ -133,7 +133,7 @@ function mockUploadResponse(usage: string = 'activityImage'): Record<string, unk
     contentType: 'image/jpeg',
     sizeBytes: 50000,
     usage,
-    url: `https://picsum.photos/seed/${encodeURIComponent(mediaId)}/400/300`,
+    signedUrl: `https://picsum.photos/seed/${encodeURIComponent(mediaId)}/400/300`,
     uploadedAt: now,
   }
 }
