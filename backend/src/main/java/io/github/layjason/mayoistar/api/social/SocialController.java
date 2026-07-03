@@ -2,7 +2,6 @@ package io.github.layjason.mayoistar.api.social;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.ApiResponse;
-import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.EmptyData;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.common.SecurityUtils;
@@ -35,7 +34,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/social")
 public class SocialController {
 
-    private final DefaultApiResponseFactory responseFactory;
     private final BlacklistService blacklistService;
     private final FriendRequestService friendRequestService;
     private final FriendshipService friendshipService;

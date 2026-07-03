@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.layjason.mayoistar.api.chat.ChatDtos;
+import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
+import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
@@ -24,16 +26,17 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@Import({TestSecurityConfiguration.class, TestStorageConfiguration.class})
 class ChatServicePollTest {
 
     @Autowired
@@ -57,167 +60,124 @@ class ChatServicePollTest {
     @Autowired
     private PollVoteRepository pollVoteRepository;
 
-    @Nested
-    @DisplayName("创建投票")
-    class CreatePoll {
+    private User taki;
+    private User anon;
+    private String teamId;
+    private String pollId;
 
-        private User leader;
-        private String teamId;
+    @BeforeEach
+    void setUp() {
+        taki = createUser("taki@mygo.band", "立希");
+        anon = createUser("anon@mygo.band", "愛音");
 
-        @BeforeEach
-        void setUp() {
-            leader = createUser("poll-leader@test.test", "投票队长");
+        teamId = UUID.randomUUID().toString();
+        Team team = Team.builder()
+                .teamId(teamId)
+                .name("MyGO!!!!! 合宿計画")
+                .tags(List.of())
+                .joinMode(TeamJoinMode.publicJoin)
+                .capacity(10)
+                .status(TeamStatus.active)
+                .creatorId(taki.getUserId())
+                .leaderId(taki.getUserId())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        teamRepository.save(team);
 
-            teamId = UUID.randomUUID().toString();
-            Team team = Team.builder()
-                    .teamId(teamId)
-                    .name("投票小隊")
-                    .tags(List.of())
-                    .joinMode(TeamJoinMode.publicJoin)
-                    .capacity(10)
-                    .status(TeamStatus.active)
-                    .creatorId(leader.getUserId())
-                    .leaderId(leader.getUserId())
-                    .createdAt(Instant.now())
-                    .updatedAt(Instant.now())
-                    .build();
-            teamRepository.save(team);
+        teamMemberRepository.save(TeamMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .teamId(teamId)
+                .userId(taki.getUserId())
+                .role(TeamMemberRole.leader)
+                .points(0)
+                .joinedAt(Instant.now())
+                .build());
+        teamMemberRepository.save(TeamMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .teamId(teamId)
+                .userId(anon.getUserId())
+                .role(TeamMemberRole.member)
+                .points(0)
+                .joinedAt(Instant.now())
+                .build());
 
-            teamMemberRepository.save(TeamMember.builder()
-                    .memberId(UUID.randomUUID().toString())
-                    .teamId(teamId)
-                    .userId(leader.getUserId())
-                    .role(TeamMemberRole.leader)
-                    .points(0)
-                    .joinedAt(Instant.now())
-                    .build());
-        }
-
-        @Test
-        @DisplayName("队长创建投票成功")
-        void createPollSuccess() {
-            var request = new ChatDtos.TeamPollCreateRequest();
-            request.setTitle("周末去哪");
-            request.setOptions(List.of("爬山", "聚餐", "看电影"));
-
-            var result = chatService.createPoll(teamId, leader.getUserId(), request);
-
-            assertThat(result.getPollId()).isNotNull();
-            assertThat(result.getTitle()).isEqualTo("周末去哪");
-            assertThat(result.getOptions()).hasSize(3);
-            assertThat(result.getOptions().get(0).getVoteCount()).isEqualTo(0);
-        }
-
-        @Test
-        @DisplayName("选项少于2个应拒绝")
-        void createPollTooFewOptions() {
-            var request = new ChatDtos.TeamPollCreateRequest();
-            request.setTitle("只有一个选项");
-            request.setOptions(List.of("同意"));
-
-            assertThatThrownBy(() -> chatService.createPoll(teamId, leader.getUserId(), request))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("At least two");
-        }
-
-        @Test
-        @DisplayName("非成员创建投票应拒绝")
-        void createPollNonMember() {
-            User outsider = createUser("outsider-poll@test.test", "外部者");
-            var request = new ChatDtos.TeamPollCreateRequest();
-            request.setTitle("非法投票");
-            request.setOptions(List.of("A", "B"));
-
-            assertThatThrownBy(() -> chatService.createPoll(teamId, outsider.getUserId(), request))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("membership");
-        }
+        var createReq = new ChatDtos.TeamPollCreateRequest();
+        createReq.setTitle("合宿の行き先");
+        createReq.setOptions(List.of("軽井沢", "箱根"));
+        var poll = chatService.createPoll(teamId, taki.getUserId(), createReq);
+        pollId = poll.getPollId();
     }
 
-    @Nested
-    @DisplayName("参与投票")
-    class VotePoll {
+    @Test
+    @DisplayName("立希创建练习时间投票——みんなで決めよう")
+    void createPollSuccess() {
+        var request = new ChatDtos.TeamPollCreateRequest();
+        request.setTitle("今週の練習はいつ？");
+        request.setOptions(List.of("月曜日", "水曜日", "金曜日"));
 
-        private User leader;
-        private User member;
-        private String teamId;
-        private String pollId;
+        var result = chatService.createPoll(teamId, taki.getUserId(), request);
 
-        @BeforeEach
-        void setUp() {
-            leader = createUser("vote-leader@test.test", "投票创立者");
-            member = createUser("vote-member@test.test", "投票成员");
+        assertThat(result.getPollId()).isNotNull();
+        assertThat(result.getTitle()).isEqualTo("今週の練習はいつ？");
+        assertThat(result.getOptions()).hasSize(3);
+        assertThat(result.getOptions().get(0).getVoteCount()).isEqualTo(0);
+    }
 
-            teamId = UUID.randomUUID().toString();
-            Team team = Team.builder()
-                    .teamId(teamId)
-                    .name("投票小队2")
-                    .tags(List.of())
-                    .joinMode(TeamJoinMode.publicJoin)
-                    .capacity(10)
-                    .status(TeamStatus.active)
-                    .creatorId(leader.getUserId())
-                    .leaderId(leader.getUserId())
-                    .createdAt(Instant.now())
-                    .updatedAt(Instant.now())
-                    .build();
-            teamRepository.save(team);
+    @Test
+    @DisplayName("选项只有一个应拒绝——選択肢は2つ以上必要")
+    void createPollTooFewOptions() {
+        var request = new ChatDtos.TeamPollCreateRequest();
+        request.setTitle("只有一个选项");
+        request.setOptions(List.of("同意"));
 
-            teamMemberRepository.save(TeamMember.builder()
-                    .memberId(UUID.randomUUID().toString())
-                    .teamId(teamId)
-                    .userId(leader.getUserId())
-                    .role(TeamMemberRole.leader)
-                    .points(0)
-                    .joinedAt(Instant.now())
-                    .build());
-            teamMemberRepository.save(TeamMember.builder()
-                    .memberId(UUID.randomUUID().toString())
-                    .teamId(teamId)
-                    .userId(member.getUserId())
-                    .role(TeamMemberRole.member)
-                    .points(0)
-                    .joinedAt(Instant.now())
-                    .build());
+        assertThatThrownBy(() -> chatService.createPoll(teamId, taki.getUserId(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("At least two");
+    }
 
-            var createReq = new ChatDtos.TeamPollCreateRequest();
-            createReq.setTitle("午餐选择");
-            createReq.setOptions(List.of("拉面", "寿司"));
-            var poll = chatService.createPoll(teamId, leader.getUserId(), createReq);
-            pollId = poll.getPollId();
-        }
+    @Test
+    @DisplayName("非成员创建投票应拒绝——部外者は口出し無用")
+    void createPollNonMember() {
+        User outsider = createUser("stranger@mygo.band", "部外者");
+        var request = new ChatDtos.TeamPollCreateRequest();
+        request.setTitle("部外者の投票");
+        request.setOptions(List.of("A", "B"));
 
-        @Test
-        @DisplayName("成员投票成功")
-        void votePollSuccess() {
-            var options = pollOptionRepository.findByPollId(pollId);
-            String optionId = options.get(0).getOptionId();
+        assertThatThrownBy(() -> chatService.createPoll(teamId, outsider.getUserId(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("membership");
+    }
 
-            var voteReq = new ChatDtos.VotePollRequest();
-            voteReq.setOptionId(optionId);
+    @Test
+    @DisplayName("愛音投票选择軽井沢——合宿楽しみ！")
+    void votePollSuccess() {
+        var options = pollOptionRepository.findByPollId(pollId);
+        String optionId = options.get(0).getOptionId();
 
-            var result = chatService.votePoll(teamId, pollId, member.getUserId(), voteReq);
+        var voteReq = new ChatDtos.VotePollRequest();
+        voteReq.setOptionId(optionId);
 
-            assertThat(result.getOptions().get(0).getVoteCount()).isEqualTo(1);
-            assertThat(result.getOptions().get(1).getVoteCount()).isEqualTo(0);
-        }
+        var result = chatService.votePoll(teamId, pollId, anon.getUserId(), voteReq);
 
-        @Test
-        @DisplayName("重复投票覆盖前次选择")
-        void votePollOverride() {
-            var options = pollOptionRepository.findByPollId(pollId);
+        assertThat(result.getOptions().get(0).getVoteCount()).isEqualTo(1);
+    }
 
-            var voteReq1 = new ChatDtos.VotePollRequest();
-            voteReq1.setOptionId(options.get(0).getOptionId());
-            chatService.votePoll(teamId, pollId, member.getUserId(), voteReq1);
+    @Test
+    @DisplayName("愛音改票——やっぱり箱根の方がいいかも")
+    void votePollOverride() {
+        var options = pollOptionRepository.findByPollId(pollId);
 
-            var voteReq2 = new ChatDtos.VotePollRequest();
-            voteReq2.setOptionId(options.get(1).getOptionId());
-            var result = chatService.votePoll(teamId, pollId, member.getUserId(), voteReq2);
+        var voteReq1 = new ChatDtos.VotePollRequest();
+        voteReq1.setOptionId(options.get(0).getOptionId());
+        chatService.votePoll(teamId, pollId, anon.getUserId(), voteReq1);
 
-            assertThat(result.getOptions().get(0).getVoteCount()).isEqualTo(0);
-            assertThat(result.getOptions().get(1).getVoteCount()).isEqualTo(1);
-        }
+        var voteReq2 = new ChatDtos.VotePollRequest();
+        voteReq2.setOptionId(options.get(1).getOptionId());
+        var result = chatService.votePoll(teamId, pollId, anon.getUserId(), voteReq2);
+
+        assertThat(result.getOptions().get(0).getVoteCount()).isEqualTo(0);
+        assertThat(result.getOptions().get(1).getVoteCount()).isEqualTo(1);
     }
 
     private User createUser(String email, String nickname) {

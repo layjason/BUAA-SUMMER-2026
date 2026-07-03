@@ -91,7 +91,4 @@ public class MediaFile {
     @Column(name = "uploaded_at", nullable = false)
     @Builder.Default
     private Instant uploadedAt = Instant.now();
-
-    @Column(name = "team_id", length = 36)
-    private String teamId;
 }

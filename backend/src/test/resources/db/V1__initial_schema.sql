@@ -23,7 +23,6 @@ CREATE TABLE media_files (
     deleted_at      TIMESTAMP WITH TIME ZONE,
     uploaded_by     VARCHAR(36)  NOT NULL,
     uploaded_at     TIMESTAMP WITH TIME ZONE NOT NULL,
-    team_id         VARCHAR(36),
     CONSTRAINT pk_media_files PRIMARY KEY (media_id)
 );
 
@@ -31,7 +30,6 @@ CREATE INDEX idx_media_files_uploaded_by ON media_files (uploaded_by);
 CREATE INDEX idx_media_files_usage       ON media_files (usage);
 CREATE INDEX idx_media_files_access_scope ON media_files (access_policy, access_scope_id);
 CREATE INDEX idx_media_files_deleted_at ON media_files (deleted_at);
-CREATE INDEX idx_media_files_team_id     ON media_files (team_id);
 
 COMMENT ON TABLE media_files IS '媒体文件元数据，记录上传文件的存储信息和用途。业务对象通过 media_id 引用媒体文件，不直接存储文件内容或存储凭据。';
 
@@ -681,6 +679,23 @@ COMMENT ON COLUMN team_moderation_records.action IS '治理动作。不变量：
 COMMENT ON COLUMN team_moderation_records.reason IS '治理原因或说明';
 COMMENT ON COLUMN team_moderation_records.operator_id IS '操作管理员 ID';
 COMMENT ON COLUMN team_moderation_records.created_at IS '治理时间，UTC 时区';
+
+CREATE TABLE team_media_files (
+    id       UUID        NOT NULL,
+    team_id  VARCHAR(36) NOT NULL,
+    media_id UUID        NOT NULL,
+    CONSTRAINT pk_team_media_files PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_team_media_files_team  ON team_media_files (team_id);
+CREATE INDEX idx_team_media_files_media ON team_media_files (media_id);
+CREATE UNIQUE INDEX uq_team_media_files_pair ON team_media_files (team_id, media_id);
+
+COMMENT ON TABLE team_media_files IS '小队与媒体文件的关联，记录小队拥有的群文件和相册图片，解耦 media_files 表与小队业务。';
+
+COMMENT ON COLUMN team_media_files.id IS '关联记录唯一标识，UUID 格式';
+COMMENT ON COLUMN team_media_files.team_id IS '关联小队 ID';
+COMMENT ON COLUMN team_media_files.media_id IS '关联媒体文件 ID';
 
 -- --------------------------------------------------------------------------
 -- chat - 即时通讯

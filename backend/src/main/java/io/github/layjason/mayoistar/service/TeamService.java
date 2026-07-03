@@ -33,6 +33,7 @@ import io.github.layjason.mayoistar.entity.social.Team;
 import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
 import io.github.layjason.mayoistar.entity.social.TeamJoinRequest;
 import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
+import io.github.layjason.mayoistar.entity.social.TeamMediaFile;
 import io.github.layjason.mayoistar.entity.social.TeamMember;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
@@ -43,6 +44,7 @@ import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
 import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.TeamJoinRequestRepository;
+import io.github.layjason.mayoistar.repository.TeamMediaFileRepository;
 import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamPointRecordRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
@@ -86,6 +88,7 @@ public class TeamService {
     private final BlacklistRepository blacklistRepository;
     private final UserRepository userRepository;
     private final MediaFileRepository mediaFileRepository;
+    private final TeamMediaFileRepository teamMediaFileRepository;
     private final ActivityRepository activityRepository;
     private final ActivityImageRepository activityImageRepository;
 
@@ -712,7 +715,7 @@ public class TeamService {
      *
      * <p>前置条件：{@code userId} 是小队成员，文件实体已保存。
      *
-     * <p>后置条件：文件 teamId 已设置并保存。
+     * <p>后置条件：小队-媒体关联已建立。
      *
      * @param teamId  小队 ID
      * @param userId  上传者 ID
@@ -726,8 +729,13 @@ public class TeamService {
         MediaFile file = mediaFileRepository
                 .findById(mediaId)
                 .orElseThrow(() -> new BusinessException(TEAM_MEDIA_NOT_FOUND, "Media file not found"));
-        file.setTeamId(teamId);
-        mediaFileRepository.save(file);
+
+        TeamMediaFile teamMedia = TeamMediaFile.builder()
+                .id(UUID.randomUUID())
+                .teamId(teamId)
+                .mediaId(mediaId)
+                .build();
+        teamMediaFileRepository.save(teamMedia);
 
         log.info("群文件已上传: teamId={}, mediaId={}, uploadedBy={}", teamId, mediaId, userId);
         return toMediaFileDto(file);
@@ -744,18 +752,21 @@ public class TeamService {
     public PageResult<CommonDtos.MediaFile> listTeamFiles(String teamId, String userId, int page, int pageSize) {
         requireTeamMember(teamId, userId);
 
-        var filePage = mediaFileRepository.findByTeamIdAndUsage(
-                teamId, MediaUsage.teamFile, PageRequest.of(page - 1, pageSize));
+        var tmPage = teamMediaFileRepository.findByTeamId(teamId, PageRequest.of(page - 1, pageSize));
+        List<UUID> mediaIds =
+                tmPage.getContent().stream().map(TeamMediaFile::getMediaId).collect(Collectors.toList());
 
-        List<CommonDtos.MediaFile> items =
-                filePage.getContent().stream().map(this::toMediaFileDto).collect(Collectors.toList());
+        List<MediaFile> files = mediaIds.isEmpty() ? List.of() : mediaFileRepository.findByMediaIdIn(mediaIds);
+        Map<UUID, MediaFile> fileMap = files.stream().collect(Collectors.toMap(MediaFile::getMediaId, f -> f));
+
+        List<CommonDtos.MediaFile> items = mediaIds.stream()
+                .map(fileMap::get)
+                .filter(f -> f != null && f.getUsage() == MediaUsage.teamFile)
+                .map(this::toMediaFileDto)
+                .collect(Collectors.toList());
 
         return new PageResult<>(
-                items,
-                filePage.getTotalElements(),
-                filePage.getNumber() + 1,
-                filePage.getSize(),
-                filePage.getTotalPages());
+                items, tmPage.getTotalElements(), tmPage.getNumber() + 1, tmPage.getSize(), tmPage.getTotalPages());
     }
 
     /**
@@ -763,16 +774,18 @@ public class TeamService {
      *
      * <p>前置条件：{@code userId} 是队长或管理员，指定文件均属于该小队。
      *
-     * <p>后置条件：指定文件已删除。
+     * <p>后置条件：关联记录和媒体文件均已删除。
      */
     public void deleteTeamFiles(String teamId, String userId, List<UUID> mediaIds) {
         requireTeamAdmin(teamId, userId);
 
-        List<MediaFile> files = mediaFileRepository.findByMediaIdInAndTeamId(mediaIds, teamId);
-        if (files.size() != mediaIds.size()) {
+        List<TeamMediaFile> teamMedias = teamMediaFileRepository.findByMediaIdInAndTeamId(mediaIds, teamId);
+        if (teamMedias.size() != mediaIds.size()) {
             throw new BusinessException(TEAM_MEDIA_NOT_FOUND, "Some media files do not belong to this team");
         }
 
+        teamMediaFileRepository.deleteAll(teamMedias);
+        List<MediaFile> files = mediaFileRepository.findByMediaIdIn(mediaIds);
         mediaFileRepository.deleteAll(files);
         log.info("群文件已删除: teamId={}, count={}", teamId, mediaIds.size());
     }
@@ -782,7 +795,7 @@ public class TeamService {
      *
      * <p>前置条件：{@code userId} 是小队成员，图片实体已保存。
      *
-     * <p>后置条件：图片 teamId 已设置并保存。
+     * <p>后置条件：小队-媒体关联已建立，usage 更新为 teamAlbum。
      */
     public CommonDtos.MediaFile uploadTeamAlbumImage(String teamId, String userId, UUID mediaId) {
         requireTeamMember(teamId, userId);
@@ -790,9 +803,15 @@ public class TeamService {
         MediaFile file = mediaFileRepository
                 .findById(mediaId)
                 .orElseThrow(() -> new BusinessException(TEAM_MEDIA_NOT_FOUND, "Media file not found"));
-        file.setTeamId(teamId);
         file.setUsage(MediaUsage.teamAlbum);
         mediaFileRepository.save(file);
+
+        TeamMediaFile teamMedia = TeamMediaFile.builder()
+                .id(UUID.randomUUID())
+                .teamId(teamId)
+                .mediaId(mediaId)
+                .build();
+        teamMediaFileRepository.save(teamMedia);
 
         log.info("小队相册图片已上传: teamId={}, mediaId={}, uploadedBy={}", teamId, mediaId, userId);
         return toMediaFileDto(file);
@@ -809,18 +828,21 @@ public class TeamService {
     public PageResult<CommonDtos.MediaFile> listTeamAlbumImages(String teamId, String userId, int page, int pageSize) {
         requireTeamMember(teamId, userId);
 
-        var imagePage = mediaFileRepository.findByTeamIdAndUsage(
-                teamId, MediaUsage.teamAlbum, PageRequest.of(page - 1, pageSize));
+        var tmPage = teamMediaFileRepository.findByTeamId(teamId, PageRequest.of(page - 1, pageSize));
+        List<UUID> mediaIds =
+                tmPage.getContent().stream().map(TeamMediaFile::getMediaId).collect(Collectors.toList());
 
-        List<CommonDtos.MediaFile> items =
-                imagePage.getContent().stream().map(this::toMediaFileDto).collect(Collectors.toList());
+        List<MediaFile> files = mediaIds.isEmpty() ? List.of() : mediaFileRepository.findByMediaIdIn(mediaIds);
+        Map<UUID, MediaFile> fileMap = files.stream().collect(Collectors.toMap(MediaFile::getMediaId, f -> f));
+
+        List<CommonDtos.MediaFile> items = mediaIds.stream()
+                .map(fileMap::get)
+                .filter(f -> f != null && f.getUsage() == MediaUsage.teamAlbum)
+                .map(this::toMediaFileDto)
+                .collect(Collectors.toList());
 
         return new PageResult<>(
-                items,
-                imagePage.getTotalElements(),
-                imagePage.getNumber() + 1,
-                imagePage.getSize(),
-                imagePage.getTotalPages());
+                items, tmPage.getTotalElements(), tmPage.getNumber() + 1, tmPage.getSize(), tmPage.getTotalPages());
     }
 
     /**
@@ -828,16 +850,18 @@ public class TeamService {
      *
      * <p>前置条件：{@code userId} 是队长或管理员，指定图片均属于该小队相册。
      *
-     * <p>后置条件：指定图片已删除。
+     * <p>后置条件：关联记录和媒体文件均已删除。
      */
     public void deleteTeamAlbumImages(String teamId, String userId, List<UUID> mediaIds) {
         requireTeamAdmin(teamId, userId);
 
-        List<MediaFile> files = mediaFileRepository.findByMediaIdInAndTeamId(mediaIds, teamId);
-        if (files.size() != mediaIds.size()) {
+        List<TeamMediaFile> teamMedias = teamMediaFileRepository.findByMediaIdInAndTeamId(mediaIds, teamId);
+        if (teamMedias.size() != mediaIds.size()) {
             throw new BusinessException(TEAM_MEDIA_NOT_FOUND, "Some media files do not belong to this team");
         }
 
+        teamMediaFileRepository.deleteAll(teamMedias);
+        List<MediaFile> files = mediaFileRepository.findByMediaIdIn(mediaIds);
         mediaFileRepository.deleteAll(files);
         log.info("小队相册图片已删除: teamId={}, count={}", teamId, mediaIds.size());
     }
