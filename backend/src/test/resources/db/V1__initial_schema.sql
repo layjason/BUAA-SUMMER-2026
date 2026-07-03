@@ -681,6 +681,23 @@ COMMENT ON COLUMN team_moderation_records.reason IS '治理原因或说明';
 COMMENT ON COLUMN team_moderation_records.operator_id IS '操作管理员 ID';
 COMMENT ON COLUMN team_moderation_records.created_at IS '治理时间，UTC 时区';
 
+CREATE TABLE team_media_files (
+    id       UUID        NOT NULL,
+    team_id  VARCHAR(36) NOT NULL,
+    media_id UUID        NOT NULL,
+    CONSTRAINT pk_team_media_files PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_team_media_files_team  ON team_media_files (team_id);
+CREATE INDEX idx_team_media_files_media ON team_media_files (media_id);
+CREATE UNIQUE INDEX uq_team_media_files_pair ON team_media_files (team_id, media_id);
+
+COMMENT ON TABLE team_media_files IS '小队与媒体文件的关联，记录小队拥有的群文件和相册图片，解耦 media_files 表与小队业务。';
+
+COMMENT ON COLUMN team_media_files.id IS '关联记录唯一标识，UUID 格式';
+COMMENT ON COLUMN team_media_files.team_id IS '关联小队 ID';
+COMMENT ON COLUMN team_media_files.media_id IS '关联媒体文件 ID';
+
 -- --------------------------------------------------------------------------
 -- chat - 即时通讯
 -- --------------------------------------------------------------------------

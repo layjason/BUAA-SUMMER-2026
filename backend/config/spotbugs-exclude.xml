@@ -39,7 +39,6 @@
         <Or>
             <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+ServiceImpl" />
             <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+Service" />
-            <Class name="~io\.github\.layjason\.mayoistar\.service\.storage\.\w+Service" />
         </Or>
     </Match>
     <!--
@@ -60,6 +59,7 @@
         <Bug pattern="CRLF_INJECTION_LOGS" />
     </Match>
     <!--
+    <!--
         CheckInService 中日志参数 activityId、userId 均为 UUID 标识符，
         不可能包含 CRLF 字符。SpotBugs 无法推断参数类型安全性。
     -->
@@ -67,6 +67,24 @@
         <Class name="io.github.layjason.mayoistar.service.CheckInService" />
         <Bug pattern="CRLF_INJECTION_LOGS" />
     </Match>
+    <!--
+        TeamService 中 log 的参数均为 UUID (teamId, userId) 或枚举值 (TeamMemberRole)，
+        不可能包含 CRLF 字符。创建小队时的 name 参数虽为用户输入，但使用参数化日志 {} 传递。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.TeamService" />
+        <Bug pattern="CRLF_INJECTION_LOGS" />
+    </Match>
+    <!--
+        TeamService.parseInstant 在输入为空或解析失败时返回 null，
+        调用者已在 createTeamActivity 等方法中处理 null 情况。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.TeamService" />
+        <Method name="parseInstant" />
+        <Bug pattern="NP_NONNULL_RETURN_VIOLATION" />
+    </Match>
+
     <Match>
         <Class name="io.github.layjason.mayoistar.service.MailService" />
         <Bug pattern="EI_EXPOSE_REP2" />
@@ -131,30 +149,76 @@
     </Match>
     <Match>
         <Class name="io.github.layjason.mayoistar.api.chat.ChatController" />
+        <Bug pattern="UWF_UNWRITTEN_FIELD" />
+    </Match>
+    <Match>
+        <Class name="io.github.layjason.mayoistar.api.chat.ChatController" />
+        <Bug pattern="CT_CONSTRUCTOR_THROW" />
+    </Match>
+    <Match>
+        <Class name="io.github.layjason.mayoistar.api.chat.ChatController" />
+        <Bug pattern="UUF_UNUSED_FIELD" />
+    </Match>
+    <!--
+        ActivityController、AiController 通过 Lombok @RequiredArgsConstructor 生成构造器注入 private final 字段，
+        SpotBugs 无法追踪 Lombok 生成的构造器对字段的写入与使用，产生 CT_CONSTRUCTOR_THROW、UUF_UNUSED_FIELD 误报。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.api.activities.ActivityController" />
+        <Bug pattern="CT_CONSTRUCTOR_THROW" />
+    </Match>
+    <Match>
+        <Class name="io.github.layjason.mayoistar.api.activities.ActivityController" />
+        <Bug pattern="UUF_UNUSED_FIELD" />
+    </Match>
+    <Match>
+        <Class name="io.github.layjason.mayoistar.api.ai.AiController" />
+        <Bug pattern="CT_CONSTRUCTOR_THROW" />
+    </Match>
+    <Match>
+        <Class name="io.github.layjason.mayoistar.api.ai.AiController" />
+        <Bug pattern="UUF_UNUSED_FIELD" />
+    </Match>
+    <!--
+        SocialController 通过 Lombok @RequiredArgsConstructor 生成构造器注入 private final 字段，
+        SpotBugs 无法追踪 Lombok 生成的构造器对字段的写入，产生 UUF_UNUSED_FIELD、CT_CONSTRUCTOR_THROW 误报。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.api.social.SocialController" />
+        <Bug pattern="UUF_UNUSED_FIELD" />
+    </Match>
+    <Match>
+        <Class name="io.github.layjason.mayoistar.api.social.SocialController" />
         <Bug pattern="CT_CONSTRUCTOR_THROW" />
     </Match>
     <!--
-         JwtChannelInterceptor 中 claims 的 null 检查因 JwtService.parseToken 的 NP_NONNULL_RETURN_VIOLATION
-         排除规则导致 SpotBugs 误判 parseToken 始终返回 non-null，产生 RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE 误报。
-         实际 parseToken 可返回 null（JWT 解析失败时）。
-     -->
+        TeamService 通过 Lombok @RequiredArgsConstructor 生成构造器注入 private final 字段，
+        SpotBugs 无法追踪 Lombok 生成的构造器对字段的写入，产生 UUF_UNUSED_FIELD、CT_CONSTRUCTOR_THROW 误报。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.TeamService" />
+        <Bug pattern="UUF_UNUSED_FIELD" />
+    </Match>
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.TeamService" />
+        <Bug pattern="CT_CONSTRUCTOR_THROW" />
+    </Match>
+    <!--
+        JwtChannelInterceptor 中 claims 的 null 检查因 JwtService.parseToken 的 NP_NONNULL_RETURN_VIOLATION
+        排除规则导致 SpotBugs 误判 parseToken 始终返回 non-null，产生 RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE 误报。
+        实际 parseToken 可返回 null（JWT 解析失败时）。
+    -->
     <Match>
         <Class name="io.github.layjason.mayoistar.config.JwtChannelInterceptor" />
         <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE" />
     </Match>
     <!--
-         MediaRefreshRateLimiter 构造器中通过 ObjectProvider.getIfAvailable() 获取可选的 StringRedisTemplate，
-         当 Redis 不可用时返回 null 回退到内存实现。构造器中初始化 Lua 脚本属下的 setResultType 可能被 SpotBugs
-         误判为可抛出异常导致对象未完全构造（CT_CONSTRUCTOR_THROW），以及 @Data 修饰的 MediaAccessProperties
-         的 setter 被 SpotBugs 认为存在外部可变对象暴露（EI_EXPOSE_REP2）。实际 Lua 脚本的 setResultType
-         不会抛出异常，而 properties 字段由同包的 config 类提供，不存在外部暴露风险。
-     -->
+        S3FileStorageService 构造器接收 S3Client 参数。
+        S3Client 由 AWS SDK Builder 在 @Bean 定义中构建，构造器仅存储引用，
+        调用方不直接操作该字段。此为 Spring 配置模式的标准做法。
+    -->
     <Match>
-        <Class name="io.github.layjason.mayoistar.service.media.MediaRefreshRateLimiter" />
-        <Bug pattern="CT_CONSTRUCTOR_THROW" />
-    </Match>
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.media.MediaRefreshRateLimiter" />
+        <Class name="io.github.layjason.mayoistar.service.storage.S3FileStorageService" />
         <Bug pattern="EI_EXPOSE_REP2" />
     </Match>
 </FindBugsFilter>

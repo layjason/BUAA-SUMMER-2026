@@ -29,4 +29,12 @@ public interface TeamRepository extends JpaRepository<Team, String>, JpaSpecific
      * @return 分页结果
      */
     Page<Team> findByCreatorId(String creatorId, Pageable pageable);
+
+    /**
+     * 检查指定名称的小队是否存在。
+     *
+     * @param name 小队名称
+     * @return 存在时返回 true
+     */
+    boolean existsByName(String name);
 }
