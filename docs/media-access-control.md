@@ -2,6 +2,8 @@
 
 ## 更新日志
 
+- Version: 5 20260704 000759
+  - 明确活动图片（activityImage）访问策略生命周期：上传初态为 owner（仅上传者预览），绑定草稿升级为 activityOwner（仅组织者可见），审核通过/恢复上架升级为 publicAccess（公开），下架回退为 activityOwner；说明发布/下架递增 accessVersion 会使旧签名 URL 失效，客户端应重新查询活动详情获取当前 URL
 - Version: 4 20260703 224845
   - 补充聊天图片上传后 URL 生命周期说明，明确上传 URL 在发送消息后因策略升级而失效
   - 群文件/相册删除统一使用软删除，递增 accessVersion 使旧 URL 立即失效
@@ -75,6 +77,10 @@ mediaId + v + policy + scope
 - **群文件**（`POST /chat/teams/{teamId}/files`）：上传 + 关联小队一步完成，策略在 `TeamService.uploadTeamFile()` 中即时升级为 `teamMember`。返回的 `signedUrl` 即为小队签名 URL，小队所有成员均可访问。
 
 - **小队相册**（`POST /chat/teams/{teamId}/album-images`）：同群文件，上传后策略即时升级为 `teamMember`。
+
+- **活动图片**（`POST /activities/media/images`）：上传时活动尚不存在，无法确定 `scope=activityId`，因此初始策略为 `owner`（`scope=上传者`），仅上传者可预览。绑定到活动草稿时（`ActivityDraftService.saveDraft/updateDraft`）升级为 `activityOwner`（`scope=activityId`），仅活动组织者可见；从草稿移除的图片会被软删除，旧签名 URL 立即失效。活动审核通过或下架后恢复上架时（`AdminActivityService.reviewActivity(approved)`、`restoreActivity`），图片升级为 `publicAccess`/`publicVisible`，任何人（含匿名）可经签名 URL 访问，并可被 CDN 缓存；活动被下架时（`takeDownActivity`）图片回退为 `activityOwner`，公开 URL 因 `accessVersion` 递增立即失效。
+
+  每次策略翻转都会递增 `accessVersion`，使此前签发的 URL 失效。这是刻意设计：发布前只有组织者持有 URL，发布后所有查询入口（活动详情、我的活动、管理端详情）都会在查询阶段重新签名并返回当前有效的 URL，因此不会有人被旧 URL 卡住。客户端不应跨"活动状态变更"复用旧 URL，而应重新查询活动接口获取。
 
 上传完成后，后端可返回 `mediaId` 和当前 `signedUrl`。
 
