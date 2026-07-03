@@ -303,6 +303,10 @@ public class ChatService {
                 .map(ChatMessage::getMessageId)
                 .collect(Collectors.toList());
 
+        messages.stream()
+                .filter(msg -> msg.getImageMediaId() != null)
+                .forEach(msg -> org.hibernate.Hibernate.initialize(msg.getImage()));
+
         if (!validMessageIds.isEmpty()) {
             int updated =
                     messageReadRepository.markAsRead(validMessageIds, userId, MessageReadStatus.read, Instant.now());
