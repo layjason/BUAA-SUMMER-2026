@@ -230,7 +230,7 @@ const initialActivities = [
     reviewStatus: 'approved',
     runtimeStatus: 'registering',
     registeredCount: 42,
-    occupiedCount: 42,
+    occupiedCount: 45,
     capacity: 100,
     requireLocationCheck: true,
     introduction:
@@ -413,7 +413,7 @@ const initialActivities = [
     registeredCount: 4,
     occupiedCount: 4,
     capacity: 15,
-    requireLocationCheck: false,
+    requireLocationCheck: true,
     introduction:
       '绝望坡连续数十个陡峭山头连登，重装负重15kg以上，路况全为野路碎石，无任何补给点。此次为高强度拉练，谢绝所有无重装经验的新人。出了任何危险责任全自负。',
     safetyNotice: '山高路陡，常年有野猪，气温高。必须携带足够1.5L*4瓶水。签署生死免责协议。',
