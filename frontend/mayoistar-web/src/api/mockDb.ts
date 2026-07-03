@@ -821,9 +821,7 @@ class MockDatabase {
    * 后置条件：返回该用户作为发起人的所有活动摘要。
    */
   public getUserActivities(userId: string): ActivitySummary[] {
-    return this.activities
-      .filter((a) => a.organizerId === userId)
-      .map(toActivitySummary);
+    return this.activities.filter((a) => a.organizerId === userId).map(toActivitySummary);
   }
 
   /**
@@ -881,9 +879,7 @@ class MockDatabase {
     // Mock: 返回队长创建的活动作为小队活动
     const team = this.teams.find((t) => t.teamId === teamId);
     if (!team) return [];
-    return this.activities
-      .filter((a) => a.organizerId === team.leaderId)
-      .map(toActivitySummary);
+    return this.activities.filter((a) => a.organizerId === team.leaderId).map(toActivitySummary);
   }
 
   /**
