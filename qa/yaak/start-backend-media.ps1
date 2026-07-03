@@ -1,120 +1,142 @@
-﻿param(
+param(
     [string] $BackendDir = (Join-Path $PSScriptRoot "..\..\backend")
 )
 
-# 瀹氫箟甯︽椂闂寸殑鏃ュ織杈撳嚭鍑芥暟
-function Write-Log ($Message, $Color = "Cyan") {
-    $Timestamp = Get-Date -Format "HH:mm:ss"
-    Write-Host "[$Timestamp] $Message" -ForegroundColor $Color
+$ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = [Console]::OutputEncoding
+
+# 输出带时间戳的日志。
+function Write-Log {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Message,
+        [string] $Color = "Cyan"
+    )
+    $timestamp = Get-Date -Format "HH:mm:ss"
+    Write-Host "[$timestamp] $Message" -ForegroundColor $Color
 }
 
-# 瀹氫箟蹇€?TCP 鎺㈡祴鍑芥暟
-function Test-Port ($HostName, $Port, $TimeoutMs = 2000) {
-    $tcp = New-Object System.Net.Sockets.TcpClient
+# 前置条件：HostName 为可解析主机名，Port 为 TCP 端口；后置条件：端口可连接时返回 true，否则返回 false；不变量：函数不会抛出连接异常。
+function Test-Port {
+    param(
+        [Parameter(Mandatory = $true)] [string] $HostName,
+        [Parameter(Mandatory = $true)] [int] $Port,
+        [int] $TimeoutMs = 2000
+    )
+    $tcp = [System.Net.Sockets.TcpClient]::new()
     try {
-        # 寮哄埗灏?localhost 鏇挎崲涓?127.0.0.1 閬垮厤 IPv6 瑙ｆ瀽鍧?        $target = if ($HostName -eq "localhost") { "127.0.0.1" } else { $HostName }
-        $connect = $tcp.BeginConnect($target, [int]$Port, $null, $null)
+        $target = if ($HostName -eq "localhost") { "127.0.0.1" } else { $HostName }
+        $connect = $tcp.BeginConnect($target, $Port, $null, $null)
         $wait = $connect.AsyncWaitHandle.WaitOne($TimeoutMs, $false)
         if (-not $wait -or -not $tcp.Connected) { return $false }
         $tcp.EndConnect($connect)
         return $true
     }
-    catch { return $false }
-    finally { $tcp.Close() }
+    catch {
+        return $false
+    }
+    finally {
+        $tcp.Close()
+    }
 }
 
-$ScriptStartTime = Get-Date
-Write-Log ">>> 濯掍綋閴存潈娴嬭瘯 - 鐜棰勬鏌ュ紑濮?.."
+# 前置条件：环境文件使用 KEY=VALUE 格式；后置条件：有效键值写入当前进程环境变量；不变量：空行和注释行不会改变环境。
+function Import-EnvFile {
+    param([Parameter(Mandatory = $true)] [string] $Path)
+    Get-Content $Path | ForEach-Object {
+        $line = $_.Trim()
+        if ($line -eq "" -or $line.StartsWith("#")) { return }
+        $parts = $line -split "=", 2
+        if ($parts.Count -ne 2) { return }
+        [Environment]::SetEnvironmentVariable($parts[0], $parts[1], "Process")
+    }
+}
 
-$ErrorActionPreference = "Stop"
+# 前置条件：环境变量可能包含端点 URL 或独立端口；后置条件：返回可用于 TCP 探测的端口号；不变量：无法解析时返回默认端口。
+function Get-PortFromEndpoint {
+    param(
+        [string] $Endpoint,
+        [string] $ExplicitPort,
+        [int] $DefaultPort
+    )
+    if ($ExplicitPort) { return [int] $ExplicitPort }
+    if ($Endpoint -and $Endpoint -match ':(\d+)(/.*)?$') { return [int] $Matches[1] }
+    return $DefaultPort
+}
 
-# 1. 璺緞瑙ｆ瀽
+$scriptStartTime = Get-Date
+Write-Log ">>> 媒体鉴权测试 - 环境预检查开始..."
+
 $resolvedBackendDir = (Resolve-Path $BackendDir).Path
 $envFile = Join-Path $resolvedBackendDir ".env.mailhog.example"
 if (-not (Test-Path $envFile)) {
-    throw "鏃犳硶鎵惧埌閰嶇疆鏂囦欢: $envFile"
+    throw "无法找到配置文件: $envFile"
 }
 
-# 2. 鍔犺浇鐜鍙橀噺骞惰В鏋?Write-Log "姝ｅ湪浠?$envFile 娉ㄥ叆鐜鍙橀噺..."
-Get-Content $envFile | ForEach-Object {
-    $line = $_.Trim()
-    if ($line -eq "" -or $line.StartsWith("#")) { return }
-    $parts = $line -split "=", 2
-    if ($parts.Count -ne 2) { return }
-    [Environment]::SetEnvironmentVariable($parts[0], $parts[1], "Process")
-}
+Write-Log "正在从 $envFile 注入环境变量..."
+Import-EnvFile -Path $envFile
 
-# 娉ㄥ叆 Spring 鐗规湁鍙橀噺
 $env:SPRING_PROFILES_ACTIVE = "dev"
 $env:SPRING_CONFIG_IMPORT = "optional:file:.env.mailhog.example[.properties]"
 
-# 3. 妫€鏌ユ祴璇曠礌鏉愭枃浠?Write-Log "姝ｅ湪妫€鏌ユ祴璇曠礌鏉愭枃浠?.."
+Write-Log "正在检查测试素材文件..."
 $testImage = Join-Path $PSScriptRoot "test-avatar.png"
 $licenseImage = Join-Path $PSScriptRoot "test-license.png"
 $chatImageFile = Join-Path (Join-Path $PSScriptRoot "fixtures") "chat-image.txt"
 
 if (-not (Test-Path $testImage)) {
-    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] 缂哄皯 test-avatar.png锛屽ご鍍忎笂浼犳祴璇曞皢澶辫触銆?
+    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] 缺少 test-avatar.png，头像上传测试将失败。"
 }
 else {
-    Write-Log "test-avatar.png 瀛樺湪" "Green"
+    Write-Log "test-avatar.png 存在" "Green"
 }
 
 if (-not (Test-Path $licenseImage)) {
-    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] 缂哄皯 test-license.png锛屾墽鐓т笂浼犳祴璇曞皢澶辫触銆?
+    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] 缺少 test-license.png，执照上传测试将失败。"
 }
 else {
-    Write-Log "test-license.png 瀛樺湪" "Green"
+    Write-Log "test-license.png 存在" "Green"
 }
 
 if (-not (Test-Path $chatImageFile)) {
-    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] 缂哄皯 fixtures/chat-image.txt锛岃亰澶╁浘鐗囨祴璇曞皢澶辫触銆?
+    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] 缺少 fixtures/chat-image.txt，聊天图片测试将失败。"
 }
 else {
-    Write-Log "fixtures/chat-image.txt 瀛樺湪" "Green"
+    Write-Log "fixtures/chat-image.txt 存在" "Green"
 }
 
-# 4. 妫€鏌?S3 (閫傞厤 MAYOISTAR_S3_ENDPOINT)
-Write-Log "姝ｅ湪妫€鏌?S3 鏈嶅姟..."
-$s3Host = "127.0.0.1"
-$s3Port = 9000
-if ($env:MAYOISTAR_S3_ENDPOINT -match ':(\d+)') {
-    $s3Port = $Matches[1]
-}
-
-if (Test-Port $s3Host $s3Port) {
-    Write-Log "S3 鏈嶅姟鎺㈡祴鎴愬姛 (${s3Host}:${s3Port})" "Green"
+Write-Log "正在检查 S3 服务..."
+$s3Host = if ($env:MAYOISTAR_S3_HOST) { $env:MAYOISTAR_S3_HOST } else { "127.0.0.1" }
+$s3Port = Get-PortFromEndpoint -Endpoint $env:MAYOISTAR_S3_ENDPOINT -ExplicitPort $env:MAYOISTAR_S3_PORT -DefaultPort 9000
+if (Test-Port -HostName $s3Host -Port $s3Port) {
+    Write-Log "S3 服务探测成功 ($($s3Host):$($s3Port))" "Green"
 }
 else {
-    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] S3 绔彛 ${s3Port} 鏈搷搴斻€傛枃浠朵笂浼犲姛鑳藉皢涓嶅彲鐢ㄣ€?
+    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] S3 端口 $s3Port 未响应，文件上传功能将不可用。"
 }
 
-# 5. 妫€鏌?Redis (閫傞厤 DEV_REDIS_PORT)
-Write-Log "姝ｅ湪妫€鏌?Redis 鏈嶅姟..."
-$redisHost = "127.0.0.1"
-$redisPort = if ($env:DEV_REDIS_PORT) { $env:DEV_REDIS_PORT } else { "6379" }
-
-if (Test-Port $redisHost $redisPort) {
-    Write-Log "Redis 鏈嶅姟鎺㈡祴鎴愬姛 (${redisHost}:${redisPort})" "Green"
+Write-Log "正在检查 Redis 服务..."
+$redisHost = if ($env:MAYOISTAR_REDIS_HOST) { $env:MAYOISTAR_REDIS_HOST } else { "127.0.0.1" }
+$redisPort = if ($env:MAYOISTAR_REDIS_PORT) { [int] $env:MAYOISTAR_REDIS_PORT } elseif ($env:DEV_REDIS_PORT) { [int] $env:DEV_REDIS_PORT } else { 6379 }
+if (Test-Port -HostName $redisHost -Port $redisPort) {
+    Write-Log "Redis 服务探测成功 ($($redisHost):$($redisPort))" "Green"
 }
 else {
-    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] Redis 绔彛 ${redisPort} 鏈搷搴斻€傚悗绔惎鍔ㄥ悗鍙兘鎶ラ敊銆?
+    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] Redis 端口 $redisPort 未响应，后端启动后可能报错。"
 }
 
-# 6. 妫€鏌?MailHog (SMTP)
-Write-Log "姝ｅ湪妫€鏌?MailHog 鏈嶅姟..."
-$smtpPort = if ($env:DEV_MAILHOG_SMTP_PORT) { $env:DEV_MAILHOG_SMTP_PORT } else { "1025" }
-if (Test-Port "127.0.0.1" $smtpPort) {
-    Write-Log "MailHog SMTP 鎺㈡祴鎴愬姛 (127.0.0.1:${smtpPort})" "Green"
+Write-Log "正在检查 MailHog 服务..."
+$smtpPort = if ($env:DEV_MAILHOG_SMTP_PORT) { [int] $env:DEV_MAILHOG_SMTP_PORT } else { 1025 }
+if (Test-Port -HostName "127.0.0.1" -Port $smtpPort) {
+    Write-Log "MailHog SMTP 探测成功 (127.0.0.1:$($smtpPort))" "Green"
 }
 else {
-    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] MailHog 鏈惎鍔紝閭欢鍙戦€佸姛鑳藉皢澶辨晥銆?
+    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] MailHog 未启动，邮件发送功能将失效。"
 }
 
-# 7. 杩愯鍚庣
-$Duration = [Math]::Round(((Get-Date) - $ScriptStartTime).TotalSeconds, 2)
-Write-Log ">>> 鎵€鏈夐妫€鏌ュ湪 ${Duration} 绉掑唴瀹屾垚" "Yellow"
-Write-Log "姝ｅ湪鎵ц mvn spring-boot:run..." "Magenta"
+$duration = [Math]::Round(((Get-Date) - $scriptStartTime).TotalSeconds, 2)
+Write-Log ">>> 所有预检查在 $duration 秒内完成" "Yellow"
+Write-Log "正在执行 mvn spring-boot:run..." "Magenta"
 
 Set-Location $resolvedBackendDir
 mvn spring-boot:run

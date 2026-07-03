@@ -19,6 +19,8 @@ $TestPeerId = "22222222-2222-2222-2222-222222222222"
 $AdminUserId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = [Console]::OutputEncoding
 $script:testResults = [System.Collections.ArrayList]::new()
 $stamp = Get-Date -Format "yyyyMMddHHmmss"
 $MerchantEmail = "yaak-media-merchant.$stamp@example.com"
@@ -240,9 +242,9 @@ function Send-YaakRequestJson {
     $showJson = Invoke-YaakString -Arguments @("request", "show", $requestId)
     $req = $showJson | ConvertFrom-Json
 
-    Write-Host "`n$('═' * 60)"
+    Write-Host "`n$('=' * 60)"
     Write-Host "  $Name"
-    Write-Host "$('─' * 60)"
+    Write-Host "$('-' * 60)"
     Write-Host "  $($req.method) $($req.url)"
 
     if ($req.headers) {
@@ -274,8 +276,8 @@ function Send-YaakRequestJson {
     $httpStatus = Get-HttpStatusCodeFromYaakOutput -RawOutput $rawOutput
     $respBody = Get-ResponseJsonFromYaakOutput -RawOutput $rawOutput
 
-    Write-Host "$('─' * 60)"
-    Write-Host "  ← $($httpStatus.Line)"
+    Write-Host "$('-' * 60)"
+    Write-Host "  <- $($httpStatus.Line)"
     Write-Host "  $respBody"
 
     if ([string]::IsNullOrWhiteSpace($respBody)) {
@@ -290,13 +292,13 @@ function Send-YaakRequestJson {
 
     if ($passed) {
         Write-Host "  " -NoNewline
-        Write-Host "✓ PASS" -ForegroundColor Green -NoNewline
+        Write-Host "PASS" -ForegroundColor Green -NoNewline
         Write-Host " (code=$actualCode)"
     }
     else {
         $expectedStr = $ExpectedCodes -join ','
         Write-Host "  " -NoNewline
-        Write-Host "✗ FAIL" -ForegroundColor Red -NoNewline
+        Write-Host "FAIL" -ForegroundColor Red -NoNewline
         Write-Host " (expected=$expectedStr, actual=$actualCode, message=$($resp.message))"
     }
 
@@ -362,7 +364,7 @@ function Write-TestSummary {
         Write-Host "  失败的测试:"
         foreach ($f in $failed) {
             Write-Host "    " -NoNewline
-            Write-Host "✗ $($f.Name)" -ForegroundColor Red -NoNewline
+            Write-Host "FAIL $($f.Name)" -ForegroundColor Red -NoNewline
             Write-Host " (expected=$($f.Expected -join '|'), actual=$($f.Actual))"
         }
     }
@@ -530,17 +532,17 @@ if ($resp.code -eq 200) {
 Write-Log "正在发送私聊图片消息（触发策略升级为 conversationMember）..." "Cyan"
 Send-YaakRequest "01.02 发送私聊图片消息"
 
-Write-Log "1.1 私聊成员 test_peer 下载图片 → 200" "Cyan"
+Write-Log "1.1 私聊成员 test_peer 下载图片 => 200" "Cyan"
 Send-YaakRequest "01.03 私聊成员 test_peer 下载图片" @(200)
 
-Write-Log "1.2 管理员下载私聊图片 → 200" "Cyan"
+Write-Log "1.2 管理员下载私聊图片 => 200" "Cyan"
 Send-YaakRequest "01.04 管理员下载私聊图片" @(200)
 
-Write-Log "1.3 匿名下载私聊图片 → 401" "Cyan"
+Write-Log "1.3 匿名下载私聊图片 => 401" "Cyan"
 Send-YaakRequest "01.05 匿名下载私聊图片" @(401)
 
 if ($merchantLoginOk) {
-    Write-Log "1.4 非成员商家下载私聊图片 → 403" "Cyan"
+    Write-Log "1.4 非成员商家下载私聊图片 => 403" "Cyan"
     Send-YaakRequest "01.06 非成员商家下载私聊图片" @(403)
 }
 else {
@@ -585,10 +587,10 @@ if ($resp.code -eq 200) {
 Write-Log "正在发送群聊图片消息（触发策略升级为 conversationMember）..." "Cyan"
 Send-YaakRequest "02.04 发送群聊图片消息"
 
-Write-Log "2.1 群成员 test_peer 下载群聊图片 → 200" "Cyan"
+Write-Log "2.1 群成员 test_peer 下载群聊图片 => 200" "Cyan"
 Send-YaakRequest "02.05 群成员 test_peer 下载图片" @(200)
 
-Write-Log "2.2 管理员下载群聊图片 → 200" "Cyan"
+Write-Log "2.2 管理员下载群聊图片 => 200" "Cyan"
 Send-YaakRequest "02.06 管理员下载群聊图片" @(200)
 
 # 注册非成员用户并测试
@@ -607,7 +609,7 @@ if ($resp.code -eq 200) {
     Set-YaakEnvironmentVariables $script:EnvironmentId @{ outsiderAccessToken = $resp.data.tokens.accessToken }
 }
 
-Write-Log "2.3 非成员用户下载群聊图片 → 403" "Cyan"
+Write-Log "2.3 非成员用户下载群聊图片 => 403" "Cyan"
 Send-YaakRequest "02.10 非成员用户下载群聊图片" @(403)
 
 # ============================================================================
@@ -620,13 +622,13 @@ Write-Host "$('#' * 60)"
 Write-Log "test_peer 退出小队..." "Cyan"
 Send-YaakRequest "03.01 test_peer 退出小队"
 
-Write-Log "3.1 已退出的 test_peer 下载群聊图片 → 403" "Cyan"
+Write-Log "3.1 已退出的 test_peer 下载群聊图片 => 403" "Cyan"
 Send-YaakRequest "03.02 已退出用户 test_peer 下载图片" @(403)
 
-Write-Log "3.2 仍在群中 test_user 下载群聊图片 → 200" "Cyan"
+Write-Log "3.2 仍在群中 test_user 下载群聊图片 => 200" "Cyan"
 Send-YaakRequest "03.03 仍在群中 test_user 下载图片" @(200)
 
-Write-Log "3.3 管理员下载已退出群聊图片 → 200" "Cyan"
+Write-Log "3.3 管理员下载已退出群聊图片 => 200" "Cyan"
 Send-YaakRequest "03.04 管理员下载已退出群聊图片" @(200)
 
 # ============================================================================
@@ -653,16 +655,16 @@ else {
         Write-Host "  [env] licenseMediaId=$mediaId"
     }
 
-    Write-Log "4.1 商家本人下载执照 → 200" "Cyan"
+    Write-Log "4.1 商家本人下载执照 => 200" "Cyan"
     Send-YaakRequest "04.02 商家本人下载执照" @(200)
 
-    Write-Log "4.2 管理员下载商家执照 → 200" "Cyan"
+    Write-Log "4.2 管理员下载商家执照 => 200" "Cyan"
     Send-YaakRequest "04.03 管理员下载商家执照" @(200)
 
-    Write-Log "4.3 test_user 非所有者下载商家执照 → 403" "Cyan"
+    Write-Log "4.3 test_user 非所有者下载商家执照 => 403" "Cyan"
     Send-YaakRequest "04.04 test_user 非所有者下载执照" @(403)
 
-    Write-Log "4.4 匿名下载商家执照 → 401" "Cyan"
+    Write-Log "4.4 匿名下载商家执照 => 401" "Cyan"
     Send-YaakRequest "04.05 匿名下载商家执照" @(401)
 }
 
@@ -682,16 +684,16 @@ if ($resp.code -eq 200) {
     Write-Host "  [env] avatarSignedUrl 已保存"
 }
 
-Write-Log "5.1 管理员下载私聊图片 → 200" "Cyan"
+Write-Log "5.1 管理员下载私聊图片 => 200" "Cyan"
 Send-YaakRequest "05.02 管理员下载私聊图片" @(200)
 
-Write-Log "5.2 管理员下载群聊图片 → 200" "Cyan"
+Write-Log "5.2 管理员下载群聊图片 => 200" "Cyan"
 Send-YaakRequest "05.03 管理员下载群聊图片" @(200)
 
-Write-Log "5.3 管理员下载商家执照 → 200" "Cyan"
+Write-Log "5.3 管理员下载商家执照 => 200" "Cyan"
 Send-YaakRequest "05.04 管理员下载商家执照" @(200)
 
-Write-Log "5.4 管理员下载公开头像 → 200" "Cyan"
+Write-Log "5.4 管理员下载公开头像 => 200" "Cyan"
 Send-YaakRequest "05.05 管理员下载公开头像" @(200)
 
 # ============================================================================
@@ -726,16 +728,16 @@ else {
     Write-Skip "无法解析 signedUrl，跳过签名完整性测试。"
 }
 
-Write-Log "6.1 有效签名下载 → 200" "Cyan"
+Write-Log "6.1 有效签名下载 => 200" "Cyan"
 Send-YaakRequest "06.01 有效签名下载" @(200)
 
-Write-Log "6.2 篡改签名下载 → 403" "Cyan"
+Write-Log "6.2 篡改签名下载 => 403" "Cyan"
 Send-YaakRequest "06.02 篡改签名下载" @(403)
 
-Write-Log "6.3 缺少签名参数下载 → 403" "Cyan"
+Write-Log "6.3 缺少签名参数下载 => 403" "Cyan"
 Send-YaakRequest "06.03 缺少签名参数下载" @(403)
 
-Write-Log "6.4 不存在媒体ID下载 → 404" "Cyan"
+Write-Log "6.4 不存在媒体ID下载 => 404" "Cyan"
 Send-YaakRequest "06.04 不存在媒体ID下载" @(404)
 
 # ============================================================================
