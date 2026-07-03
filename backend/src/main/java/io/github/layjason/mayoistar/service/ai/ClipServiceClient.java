@@ -37,10 +37,10 @@ public class ClipServiceClient {
      * <p>后置条件：创建已配置 JSON 编解码的 RestClient 实例。
      *
      * @param properties AI 配置属性
-     * @param builder    Spring 自动配置的 RestClient.Builder
      */
-    public ClipServiceClient(AiProperties properties, RestClient.Builder builder) {
-        this.restClient = builder.baseUrl(properties.getClip().getEndpoint()).build();
+    public ClipServiceClient(AiProperties properties) {
+        this.restClient =
+                RestClient.builder().baseUrl(properties.getClip().getEndpoint()).build();
     }
 
     /**
