@@ -149,4 +149,12 @@
         <Class name="io.github.layjason.mayoistar.service.media.MediaRefreshRateLimiter" />
         <Bug pattern="EI_EXPOSE_REP2" />
     </Match>
+    <!--
+        ClipServiceClient 通过构造器注入 RestClient bean（由 ClipClientConfig 创建），
+        RestClient 为不可变对象。SpotBugs 无法识别 Spring IoC 容器管理的不可变性。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.ai.ClipServiceClient" />
+        <Bug pattern="EI_EXPOSE_REP2" />
+    </Match>
 </FindBugsFilter>

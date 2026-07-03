@@ -1,6 +1,5 @@
 package io.github.layjason.mayoistar.service.ai;
 
-import io.github.layjason.mayoistar.config.AiProperties;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.service.ai.ClipModels.ClipClassifyRequest;
@@ -21,7 +20,7 @@ import org.springframework.web.client.RestClientException;
  *
  * <p>类职责：封装与 Python CLIP 边车服务的 HTTP 通信，处理图片编码、请求发送、响应解析和错误处理。
  *
- * <p>类不变量：RestClient 通过 Spring 自动配置的 RestClient.Builder 构建，具备完整的 message converter 和错误处理。
+ * <p>类不变量：RestClient 由 ClipClientConfig 创建并注入，包含显式注册的 MappingJackson2HttpMessageConverter。
  */
 @Slf4j
 @Component
@@ -32,15 +31,14 @@ public class ClipServiceClient {
     /**
      * 构造 CLIP 服务客户端。
      *
-     * <p>前置条件：AiProperties 中 clip.endpoint 为有效的 HTTP URL；RestClient.Builder 已由 Spring Boot 装配 Jackson converter。
+     * <p>前置条件：clipRestClient 已由 ClipClientConfig 创建，包含 Jackson converter。
      *
-     * <p>后置条件：创建可正确序列化 JSON 请求体的 RestClient 实例。
+     * <p>后置条件：客户端可正确序列化 JSON 请求体并解析响应。
      *
-     * @param properties AI 配置属性
-     * @param builder    RestClient.Builder（由 ClipClientConfig 注册为 bean，经 Spring Boot 自动装配）
+     * @param restClient CLIP 服务 RestClient（由 ClipClientConfig 注入）
      */
-    public ClipServiceClient(AiProperties properties, RestClient.Builder builder) {
-        this.restClient = builder.baseUrl(properties.getClip().getEndpoint()).build();
+    public ClipServiceClient(RestClient restClient) {
+        this.restClient = restClient;
     }
 
     /**
