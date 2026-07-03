@@ -75,6 +75,7 @@ public class ActivityDraftMapper {
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setUpdatedAt(formatInstant(activity.getUpdatedAt()));
         dto.setCreatedAt(formatInstant(activity.getCreatedAt()));
+        dto.setRequireLocationCheck(activity.getRequireLocationCheck());
         return dto;
     }
 
@@ -172,6 +173,7 @@ public class ActivityDraftMapper {
         dto.setFeeDescription(activity.getFeeDescription());
         dto.setMinAge(activity.getMinAge());
         dto.setReviewRecords(reviewRecords);
+        dto.setRequireLocationCheck(activity.getRequireLocationCheck());
         return dto;
     }
 

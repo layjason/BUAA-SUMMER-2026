@@ -69,6 +69,8 @@ public final class ActivityDtos {
         private Integer minAge;
 
         private List<UUID> imageIds;
+
+        private Boolean requireLocationCheck;
     }
 
     @Data
@@ -89,6 +91,8 @@ public final class ActivityDtos {
         private String feeDescription;
         private Integer minAge;
         private List<UUID> imageIds;
+
+        private Boolean requireLocationCheck;
     }
 
     @Data
@@ -155,6 +159,7 @@ public final class ActivityDtos {
         private ActivityRuntimeStatus runtimeStatus;
         private Integer registeredCount;
         private Integer capacity;
+        private Boolean requireLocationCheck;
     }
 
     @Data
@@ -201,6 +206,7 @@ public final class ActivityDtos {
         private String feeDescription;
         private Integer minAge;
         private List<ReviewRecord> reviewRecords;
+        private Boolean requireLocationCheck;
     }
 
     @Data
@@ -222,6 +228,7 @@ public final class ActivityDtos {
         private ActivityReviewStatus reviewStatus;
         private String updatedAt;
         private String createdAt;
+        private Boolean requireLocationCheck;
     }
 
     @Data

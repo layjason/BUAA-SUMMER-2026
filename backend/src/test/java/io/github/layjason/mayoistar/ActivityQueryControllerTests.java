@@ -31,6 +31,7 @@ import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRe
 import io.github.layjason.mayoistar.service.ActivityRegistrationService;
 import io.github.layjason.mayoistar.service.ActivityRegistrationStateService;
 import io.github.layjason.mayoistar.service.ActivitySearchService;
+import io.github.layjason.mayoistar.service.CheckInService;
 import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
 import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
@@ -187,7 +188,8 @@ class ActivityQueryControllerTests {
                 mock(ActivityDraftService.class),
                 mock(ActivityQueryService.class),
                 mock(ActivityRegistrationService.class),
-                mock(ActivityRegistrationStateService.class));
+                mock(ActivityRegistrationStateService.class),
+                mock(CheckInService.class));
 
         var response = controller.listMyRegistrations(null, null);
 

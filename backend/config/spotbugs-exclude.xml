@@ -59,6 +59,14 @@
         <Bug pattern="CRLF_INJECTION_LOGS" />
     </Match>
     <!--
+        CheckInService 中日志参数 activityId、userId 均为 UUID 标识符，
+        不可能包含 CRLF 字符。SpotBugs 无法推断参数类型安全性。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.CheckInService" />
+        <Bug pattern="CRLF_INJECTION_LOGS" />
+    </Match>
+    <!--
         TeamService 中 log 的参数均为 UUID (teamId, userId) 或枚举值 (TeamMemberRole)，
         不可能包含 CRLF 字符。创建小队时的 name 参数虽为用户输入，但使用参数化日志 {} 传递。
     -->
@@ -75,6 +83,7 @@
         <Method name="parseInstant" />
         <Bug pattern="NP_NONNULL_RETURN_VIOLATION" />
     </Match>
+
     <Match>
         <Class name="io.github.layjason.mayoistar.service.MailService" />
         <Bug pattern="EI_EXPOSE_REP2" />
