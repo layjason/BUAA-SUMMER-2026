@@ -10,7 +10,7 @@ services:
       redis:
         condition: service_healthy
       rustfs:
-        condition: service_started
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
       MAYOISTAR_DB_HOST: postgres
@@ -39,7 +39,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      test:
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -73,14 +74,29 @@ services:
   rustfs:
     image: rustfs/rustfs:latest
     environment:
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-rustfsadmin}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-rustfsadmin}
       RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS: "*"
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
       - rustfs-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh",
+          "-ec",
+          'host="$${RUSTFS_HEALTHCHECK_HOST:-127.0.0.1}"; curl -fsS "http://$${host}:9000/health" && curl -fsS "http://$${host}:9001/rustfs/console/health"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
     networks:
       - mayoistar
