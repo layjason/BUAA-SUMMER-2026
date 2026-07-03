@@ -3,7 +3,6 @@ package io.github.layjason.mayoistar.service.activities;
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
-import io.github.layjason.mayoistar.entity.activities.ActivityImage;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
@@ -12,16 +11,11 @@ import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
-import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
-import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -42,12 +36,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminActivityService {
 
     private final ActivityRepository activityRepository;
-    private final ActivityImageRepository activityImageRepository;
     private final ActivityReviewRecordRepository activityReviewRecordRepository;
-    private final MediaFileRepository mediaFileRepository;
     private final UserRepository userRepository;
     private final ActivityDtoMapper activityDtoMapper;
     private final ActivityRegistrationCountService activityRegistrationCountService;
+    private final ActivityMediaQueryService activityMediaQueryService;
 
     /**
      * 管理员查询活动详情（不受可见性限制）。
@@ -124,7 +117,7 @@ public class AdminActivityService {
                 })
                 .map(activity -> activityDtoMapper.toActivitySummary(
                         activity,
-                        id -> null,
+                        activityMediaQueryService::loadCoverImage,
                         activityId -> countsByActivityId.getOrDefault(activityId, ActivityRegistrationCounts.zero())))
                 .toList();
 
@@ -293,13 +286,9 @@ public class AdminActivityService {
      * 加载活动详情（复用 ActivityQueryService 的模式）。
      */
     private ActivityDtos.ActivityDetail loadActivityDetail(Activity activity) {
-        List<ActivityImage> activityImages =
-                activityImageRepository.findByActivityIdOrderBySortOrderAsc(activity.getActivityId());
-        List<MediaFile> mediaFiles = loadMediaFiles(activityImages);
-        Map<String, Integer> sortOrderByMediaId = new LinkedHashMap<>();
-        for (ActivityImage activityImage : activityImages) {
-            sortOrderByMediaId.put(activityImage.getMediaId(), activityImage.getSortOrder());
-        }
+        List<MediaFile> mediaFiles = activityMediaQueryService.loadMediaFiles(activity.getActivityId());
+        Map<String, Integer> sortOrderByMediaId =
+                activityMediaQueryService.loadImageSortOrders(activity.getActivityId());
         String organizerName = userRepository
                 .findById(activity.getOrganizerId())
                 .map(user -> user.getNickname())
@@ -318,16 +307,5 @@ public class AdminActivityService {
                 reviewRecordDtos,
                 counts);
         return detail;
-    }
-
-    private List<MediaFile> loadMediaFiles(List<ActivityImage> activityImages) {
-        if (activityImages.isEmpty()) {
-            return List.of();
-        }
-        List<String> mediaIds =
-                activityImages.stream().map(ActivityImage::getMediaId).toList();
-        Map<String, MediaFile> mediaFileMap = mediaFileRepository.findByMediaIdIn(mediaIds).stream()
-                .collect(Collectors.toMap(MediaFile::getMediaId, mediaFile -> mediaFile));
-        return mediaIds.stream().map(mediaFileMap::get).filter(Objects::nonNull).toList();
     }
 }

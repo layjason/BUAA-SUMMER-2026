@@ -1,10 +1,8 @@
 package io.github.layjason.mayoistar.service.activities;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
-import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
-import io.github.layjason.mayoistar.entity.activities.ActivityImage;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
@@ -12,19 +10,14 @@ import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
-import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
-import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -45,12 +38,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class ActivityQueryService {
 
     private final ActivityRepository activityRepository;
-    private final ActivityImageRepository activityImageRepository;
     private final ActivityReviewRecordRepository activityReviewRecordRepository;
-    private final MediaFileRepository mediaFileRepository;
     private final UserRepository userRepository;
     private final ActivityDtoMapper activityDtoMapper;
     private final ActivityRegistrationCountService activityRegistrationCountService;
+    private final ActivityMediaQueryService activityMediaQueryService;
 
     /**
      * 查询活动详情。
@@ -122,7 +114,7 @@ public class ActivityQueryService {
         Map<String, ActivityRegistrationCounts> countsByActivityId = loadCounts(activityPage.getContent());
         return activityDtoMapper.toActivitySummaryPage(
                 activityPage,
-                this::loadCoverImage,
+                activityMediaQueryService::loadCoverImage,
                 activityId -> countsByActivityId.getOrDefault(activityId, ActivityRegistrationCounts.zero()));
     }
 
@@ -277,13 +269,9 @@ public class ActivityQueryService {
      * 加载活动详情（含图片、发起人昵称、审核记录）。
      */
     private ActivityDtos.ActivityDetail loadActivityDetail(Activity activity) {
-        List<ActivityImage> activityImages =
-                activityImageRepository.findByActivityIdOrderBySortOrderAsc(activity.getActivityId());
-        List<MediaFile> mediaFiles = loadMediaFiles(activityImages);
-        Map<String, Integer> sortOrderByMediaId = new LinkedHashMap<>();
-        for (ActivityImage activityImage : activityImages) {
-            sortOrderByMediaId.put(activityImage.getMediaId(), activityImage.getSortOrder());
-        }
+        List<MediaFile> mediaFiles = activityMediaQueryService.loadMediaFiles(activity.getActivityId());
+        Map<String, Integer> sortOrderByMediaId =
+                activityMediaQueryService.loadImageSortOrders(activity.getActivityId());
         String organizerName = userRepository
                 .findById(activity.getOrganizerId())
                 .map(user -> user.getNickname())
@@ -302,47 +290,6 @@ public class ActivityQueryService {
                 reviewRecordDtos,
                 counts);
         return detail;
-    }
-
-    /**
-     * 加载活动封面图。
-     *
-     * <p>后置条件：返回第一张活动图片对应的 MediaFile DTO，无图片时返回 null。
-     */
-    private CommonDtos.MediaFile loadCoverImage(String activityId) {
-        List<ActivityImage> activityImages = activityImageRepository.findByActivityIdOrderBySortOrderAsc(activityId);
-        if (activityImages.isEmpty()) {
-            return null;
-        }
-        String firstMediaId = activityImages.getFirst().getMediaId();
-        return mediaFileRepository
-                .findById(firstMediaId)
-                .map(mediaFile -> {
-                    CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
-                    dto.setMediaId(mediaFile.getMediaId());
-                    dto.setFileName(mediaFile.getFileName());
-                    dto.setContentType(mediaFile.getContentType());
-                    dto.setSizeBytes(mediaFile.getSizeBytes());
-                    dto.setUsage(mediaFile.getUsage());
-                    dto.setUrl(mediaFile.getUrl());
-                    dto.setUploadedAt(
-                            mediaFile.getUploadedAt() == null
-                                    ? null
-                                    : mediaFile.getUploadedAt().toString());
-                    return dto;
-                })
-                .orElse(null);
-    }
-
-    private List<MediaFile> loadMediaFiles(List<ActivityImage> activityImages) {
-        if (activityImages.isEmpty()) {
-            return List.of();
-        }
-        List<String> mediaIds =
-                activityImages.stream().map(ActivityImage::getMediaId).toList();
-        Map<String, MediaFile> mediaFileMap = mediaFileRepository.findByMediaIdIn(mediaIds).stream()
-                .collect(Collectors.toMap(MediaFile::getMediaId, mediaFile -> mediaFile));
-        return mediaIds.stream().map(mediaFileMap::get).filter(Objects::nonNull).toList();
     }
 
     private ActivityReviewStatus parseReviewStatus(String status) {
