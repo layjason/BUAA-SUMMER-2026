@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -155,7 +156,7 @@ public class ActivityController {
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
         Optional<String> userId = requestActorResolver.resolveCurrentUserId();
         if (userId.isEmpty()) {
-            return responseFactory.emptyPage();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(
                 ApiResponse.success(activityQueryService.listMyRegistrations(userId.get(), page, pageSize)));

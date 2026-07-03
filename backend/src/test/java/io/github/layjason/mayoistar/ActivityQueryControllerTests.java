@@ -1,9 +1,14 @@
 package io.github.layjason.mayoistar;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.layjason.mayoistar.api.activities.ActivityController;
+import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
@@ -20,14 +25,22 @@ import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
+import io.github.layjason.mayoistar.service.ActivityRegistrationService;
+import io.github.layjason.mayoistar.service.ActivityRegistrationStateService;
+import io.github.layjason.mayoistar.service.ActivitySearchService;
+import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
+import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
+import io.github.layjason.mayoistar.service.activities.RequestActorResolver;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -148,6 +161,29 @@ class ActivityQueryControllerTests {
     @Test
     void listMyActivitiesShouldReturnForbiddenWhenNotAuthenticated() throws Exception {
         mockMvc.perform(get("/activities/mine")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listMyRegistrationsShouldReturnForbiddenWhenNotAuthenticated() throws Exception {
+        mockMvc.perform(get("/activities/registrations/mine")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listMyRegistrationsShouldReturnForbiddenWhenCurrentUserMissing() {
+        RequestActorResolver requestActorResolver = mock(RequestActorResolver.class);
+        when(requestActorResolver.resolveCurrentUserId()).thenReturn(Optional.empty());
+        ActivityController controller = new ActivityController(
+                new DefaultApiResponseFactory(),
+                mock(ActivitySearchService.class),
+                requestActorResolver,
+                mock(ActivityDraftService.class),
+                mock(ActivityQueryService.class),
+                mock(ActivityRegistrationService.class),
+                mock(ActivityRegistrationStateService.class));
+
+        var response = controller.listMyRegistrations(null, null);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     @Test
