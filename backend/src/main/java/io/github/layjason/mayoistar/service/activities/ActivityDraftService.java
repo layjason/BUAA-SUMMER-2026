@@ -12,6 +12,7 @@ import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
@@ -247,9 +248,9 @@ public class ActivityDraftService {
     private Activity findActivityForSubmit(String organizerId, String activityId) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(20002, "Activity {activityId} is not visible"));
+                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible"));
         if (!activity.getOrganizerId().equals(organizerId)) {
-            throw new BusinessException(20003, "无权操作其他用户的活动");
+            throw new BusinessException(ErrorCodes.ACTIVITY_PERMISSION_DENIED, "无权操作其他用户的活动");
         }
         return activity;
     }
@@ -333,13 +334,13 @@ public class ActivityDraftService {
     private Activity findOwnedDraft(String organizerId, String activityId) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(20002, "Activity {activityId} is not visible"));
+                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible"));
         if (!activity.getOrganizerId().equals(organizerId)) {
-            throw new BusinessException(20003, "无权访问其他用户的活动草稿");
+            throw new BusinessException(ErrorCodes.ACTIVITY_PERMISSION_DENIED, "无权访问其他用户的活动草稿");
         }
         if (activity.getReviewStatus() != ActivityReviewStatus.draft
                 && activity.getReviewStatus() != ActivityReviewStatus.changeRequired) {
-            throw new BusinessException(20005, "当前活动不允许按草稿规则访问");
+            throw new BusinessException(ErrorCodes.ACTIVITY_STATE_NOT_SUBMITTABLE, "当前活动不允许按草稿规则访问");
         }
         return activity;
     }
@@ -387,7 +388,7 @@ public class ActivityDraftService {
     private void validateMediaFiles(Collection<UUID> mediaIds) {
         List<MediaFile> mediaFiles = mediaFileRepository.findByMediaIdIn(mediaIds);
         if (mediaFiles.size() != mediaIds.size()) {
-            throw new BusinessException(20017, "存在不可用的活动图片");
+            throw new BusinessException(ErrorCodes.MEDIA_FILE_UNAVAILABLE, "存在不可用的活动图片");
         }
     }
 
@@ -402,23 +403,23 @@ public class ActivityDraftService {
         Instant startAt = parseInstant(request.getStartAt(), "活动开始时间");
         Instant endAt = parseInstant(request.getEndAt(), "活动结束时间");
         if (startAt != null && endAt != null && !endAt.isAfter(startAt)) {
-            throw new BusinessException(20004, "活动结束时间必须晚于开始时间");
+            throw new BusinessException(ErrorCodes.INVALID_ACTIVITY_SCHEDULE, "活动结束时间必须晚于开始时间");
         }
         Instant registrationDeadline = parseInstant(request.getRegistrationDeadline(), "报名截止时间");
         if (registrationDeadline != null && startAt != null && registrationDeadline.isAfter(startAt)) {
-            throw new BusinessException(20004, "报名截止时间不能晚于活动开始时间");
+            throw new BusinessException(ErrorCodes.INVALID_ACTIVITY_SCHEDULE, "报名截止时间不能晚于活动开始时间");
         }
         if (request.getCapacity() != null && request.getCapacity() < 1) {
-            throw new BusinessException(20004, "活动人数上限必须大于 0");
+            throw new BusinessException(ErrorCodes.INVALID_ACTIVITY_SCHEDULE, "活动人数上限必须大于 0");
         }
         if (request.getMinAge() != null && request.getMinAge() < 0) {
-            throw new BusinessException(20004, "最小年龄不能为负数");
+            throw new BusinessException(ErrorCodes.INVALID_ACTIVITY_SCHEDULE, "最小年龄不能为负数");
         }
         if (location != null && location.getPoint() != null) {
             Double longitude = location.getPoint().getLongitude();
             Double latitude = location.getPoint().getLatitude();
             if (longitude == null || latitude == null) {
-                throw new BusinessException(20004, "活动地点坐标必须同时提供经纬度");
+                throw new BusinessException(ErrorCodes.INVALID_ACTIVITY_SCHEDULE, "活动地点坐标必须同时提供经纬度");
             }
         }
     }
@@ -430,7 +431,7 @@ public class ActivityDraftService {
         try {
             return Instant.parse(value);
         } catch (DateTimeParseException exception) {
-            throw new BusinessException(20004, fieldName + "格式不合法");
+            throw new BusinessException(ErrorCodes.INVALID_ACTIVITY_SCHEDULE, fieldName + "格式不合法");
         }
     }
 

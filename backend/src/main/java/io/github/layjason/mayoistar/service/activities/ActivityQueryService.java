@@ -11,6 +11,7 @@ import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
@@ -72,13 +73,13 @@ public class ActivityQueryService {
      * @param userId 当前调用者 ID，未认证时为空
      * @param activityId 活动 ID
      * @return 活动详情
-     * @throws BusinessException 20002 活动不存在或不可见
+     * @throws BusinessException ErrorCodes.ACTIVITY_NOT_VISIBLE 活动不存在或不可见
      */
     @Transactional(readOnly = true)
     public ActivityDtos.ActivityDetail getActivity(Optional<String> userId, String activityId) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(20002, "Activity {activityId} is not visible"));
+                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible"));
         checkVisibility(userId, activity);
 
         ActivityDtos.ActivityDetail detail = loadActivityDetail(activity);
@@ -254,7 +255,7 @@ public class ActivityQueryService {
      *
      * <p>前置条件：activity 非空且已持久化。
      *
-     * <p>后置条件：可见时正常返回，不可见时抛出 20002。
+     * <p>后置条件：可见时正常返回，不可见时抛出 ErrorCodes.ACTIVITY_NOT_VISIBLE。
      *
      * <p>可见性规则：
      * <ul>
@@ -272,7 +273,7 @@ public class ActivityQueryService {
         if (userId.isPresent() && userId.get().equals(activity.getOrganizerId())) {
             return;
         }
-        throw new BusinessException(20002, "Activity {activityId} is not visible");
+        throw new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible");
     }
 
     /**
@@ -340,7 +341,7 @@ public class ActivityQueryService {
         try {
             return ActivityReviewStatus.valueOf(status);
         } catch (IllegalArgumentException e) {
-            throw new BusinessException(20004, "无效的审核状态筛选条件：" + status);
+            throw new BusinessException(ErrorCodes.INVALID_ACTIVITY_SCHEDULE, "无效的审核状态筛选条件：" + status);
         }
     }
 

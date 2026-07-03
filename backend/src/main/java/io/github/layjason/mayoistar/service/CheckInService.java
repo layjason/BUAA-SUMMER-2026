@@ -9,6 +9,7 @@ import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
 import java.nio.charset.StandardCharsets;
@@ -66,9 +67,9 @@ public class CheckInService {
      *
      * <p>行为：
      * <ul>
-     *   <li>活动不存在或不可见 → 20002</li>
-     *   <li>调用方不是活动发起人 → 20003</li>
-     *   <li>活动已结束或已下架 → 20013</li>
+     *   <li>活动不存在或不可见 → ErrorCodes.ACTIVITY_NOT_VISIBLE</li>
+     *   <li>调用方不是活动发起人 → ErrorCodes.ACTIVITY_PERMISSION_DENIED</li>
+     *   <li>活动已结束或已下架 → ErrorCodes.CHECK_IN_QR_CODE_INVALID</li>
      * </ul>
      *
      * @param userId     调用方用户 ID
@@ -78,15 +79,15 @@ public class CheckInService {
     public ActivityDtos.CheckInQrCode generateCheckInQrCode(@NonNull String userId, @NonNull String activityId) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(20002, "Activity " + activityId + " is not visible"));
+                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity " + activityId + " is not visible"));
 
         if (!Objects.equals(activity.getOrganizerId(), userId)) {
-            throw new BusinessException(20003, "无权生成签到二维码");
+            throw new BusinessException(ErrorCodes.ACTIVITY_PERMISSION_DENIED, "无权生成签到二维码");
         }
 
         if (activity.getRuntimeStatus() == ActivityRuntimeStatus.ended
                 || activity.getRuntimeStatus() == ActivityRuntimeStatus.takenDown) {
-            throw new BusinessException(20013, "当前活动状态不允许生成签到二维码");
+            throw new BusinessException(ErrorCodes.CHECK_IN_QR_CODE_INVALID, "当前活动状态不允许生成签到二维码");
         }
 
         Instant now = Instant.now();
@@ -118,10 +119,10 @@ public class CheckInService {
      *
      * <p>行为：
      * <ul>
-     *   <li>token 签名无效或过期 → 20013</li>
-     *   <li>用户未报名 → 20011</li>
-     *   <li>用户非 registered 状态 → 20013</li>
-     *   <li>位置校验不通过 → 20014</li>
+     *   <li>token 签名无效或过期 → ErrorCodes.CHECK_IN_QR_CODE_INVALID</li>
+     *   <li>用户未报名 → ErrorCodes.REGISTRATION_NOT_FOUND</li>
+     *   <li>用户非 registered 状态 → ErrorCodes.CHECK_IN_QR_CODE_INVALID</li>
+     *   <li>位置校验不通过 → ErrorCodes.CHECK_IN_LOCATION_INVALID</li>
      * </ul>
      *
      * @param userId          签到用户 ID
@@ -142,16 +143,16 @@ public class CheckInService {
         // 检查活动是否可见
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(20002, "Activity " + activityId + " is not visible"));
+                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity " + activityId + " is not visible"));
 
         // 查找报名记录（加悲观写锁，防止并发重复签到）
         ActivityRegistration registration = registrationRepository
                 .findByActivityIdAndUserIdForUpdate(activityId, userId)
-                .orElseThrow(() -> new BusinessException(20011, "未报名该活动，无法签到"));
+                .orElseThrow(() -> new BusinessException(ErrorCodes.REGISTRATION_NOT_FOUND, "未报名该活动，无法签到"));
 
         // 检查报名状态
         if (registration.getStatus() != RegistrationStatus.registered) {
-            throw new BusinessException(20013, "签到二维码无效");
+            throw new BusinessException(ErrorCodes.CHECK_IN_QR_CODE_INVALID, "签到二维码无效");
         }
 
         // 位置校验（若提供了当前位置）
@@ -186,8 +187,8 @@ public class CheckInService {
      *
      * <p>行为：
      * <ul>
-     *   <li>活动不存在或不可见 → 20002</li>
-     *   <li>调用方不是活动发起人 → 20003</li>
+     *   <li>活动不存在或不可见 → ErrorCodes.ACTIVITY_NOT_VISIBLE</li>
+     *   <li>调用方不是活动发起人 → ErrorCodes.ACTIVITY_PERMISSION_DENIED</li>
      * </ul>
      *
      * @param userId     调用方用户 ID
@@ -201,10 +202,10 @@ public class CheckInService {
             @NonNull String userId, @NonNull String activityId, @Nullable Integer page, @Nullable Integer pageSize) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(20002, "Activity " + activityId + " is not visible"));
+                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity " + activityId + " is not visible"));
 
         if (!Objects.equals(activity.getOrganizerId(), userId)) {
-            throw new BusinessException(20003, "无权查看签到列表");
+            throw new BusinessException(ErrorCodes.ACTIVITY_PERMISSION_DENIED, "无权查看签到列表");
         }
 
         int pageNum = page != null && page > 0 ? page : 1;
@@ -228,8 +229,8 @@ public class CheckInService {
      *
      * <p>行为：
      * <ul>
-     *   <li>活动不存在或不可见 → 20002</li>
-     *   <li>调用方不是活动发起人 → 20003</li>
+     *   <li>活动不存在或不可见 → ErrorCodes.ACTIVITY_NOT_VISIBLE</li>
+     *   <li>调用方不是活动发起人 → ErrorCodes.ACTIVITY_PERMISSION_DENIED</li>
      * </ul>
      *
      * @param userId     调用方用户 ID
@@ -240,10 +241,10 @@ public class CheckInService {
     public byte[] exportCheckIns(@NonNull String userId, @NonNull String activityId) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(20002, "Activity " + activityId + " is not visible"));
+                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity " + activityId + " is not visible"));
 
         if (!Objects.equals(activity.getOrganizerId(), userId)) {
-            throw new BusinessException(20003, "无权导出签到数据");
+            throw new BusinessException(ErrorCodes.ACTIVITY_PERMISSION_DENIED, "无权导出签到数据");
         }
 
         List<ActivityRegistration> registrations =
@@ -281,7 +282,7 @@ public class CheckInService {
      *
      * <p>前置条件：token 非空，activityId 非空。
      *
-     * <p>后置条件：签名有效且未过期时通过；否则抛出 BusinessException(20013)。
+     * <p>后置条件：签名有效且未过期时通过；否则抛出 BusinessException(ErrorCodes.CHECK_IN_QR_CODE_INVALID)。
      *
      * @param activityId 活动 ID
      * @param token      二维码 token
@@ -289,14 +290,14 @@ public class CheckInService {
     private void validateQRCodeToken(String activityId, String token) {
         String[] parts = token.split("\\.");
         if (parts.length != 2) {
-            throw new BusinessException(20013, "签到二维码无效");
+            throw new BusinessException(ErrorCodes.CHECK_IN_QR_CODE_INVALID, "签到二维码无效");
         }
 
         try {
             String payload = new String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8);
             String[] payloadParts = payload.split("\\|");
             if (payloadParts.length != 2) {
-                throw new BusinessException(20013, "签到二维码无效");
+                throw new BusinessException(ErrorCodes.CHECK_IN_QR_CODE_INVALID, "签到二维码无效");
             }
 
             String tokenActivityId = payloadParts[0];
@@ -304,27 +305,27 @@ public class CheckInService {
             try {
                 expiresAtEpoch = Long.parseLong(payloadParts[1]);
             } catch (NumberFormatException e) {
-                throw new BusinessException(20013, "签到二维码无效");
+                throw new BusinessException(ErrorCodes.CHECK_IN_QR_CODE_INVALID, "签到二维码无效");
             }
 
             // 检查活动 ID 是否匹配
             if (!tokenActivityId.equals(activityId)) {
-                throw new BusinessException(20013, "签到二维码无效");
+                throw new BusinessException(ErrorCodes.CHECK_IN_QR_CODE_INVALID, "签到二维码无效");
             }
 
             // 检查是否过期
             if (Instant.now().getEpochSecond() > expiresAtEpoch) {
-                throw new BusinessException(20013, "签到二维码无效");
+                throw new BusinessException(ErrorCodes.CHECK_IN_QR_CODE_INVALID, "签到二维码无效");
             }
 
             // 验证签名
             byte[] expectedSig = createSignature(activityId, expiresAtEpoch);
             byte[] actualSig = Base64.getUrlDecoder().decode(parts[1]);
             if (!MessageDigest.isEqual(expectedSig, actualSig)) {
-                throw new BusinessException(20013, "签到二维码无效");
+                throw new BusinessException(ErrorCodes.CHECK_IN_QR_CODE_INVALID, "签到二维码无效");
             }
         } catch (IllegalArgumentException e) {
-            throw new BusinessException(20013, "签到二维码无效");
+            throw new BusinessException(ErrorCodes.CHECK_IN_QR_CODE_INVALID, "签到二维码无效");
         }
     }
 
@@ -333,7 +334,7 @@ public class CheckInService {
      *
      * <p>前置条件：activity 有有效的位置坐标，currentLocation 非空。
      *
-     * <p>后置条件：距离在允许范围内时通过；否则抛出 BusinessException(20014)。
+     * <p>后置条件：距离在允许范围内时通过；否则抛出 BusinessException(ErrorCodes.CHECK_IN_LOCATION_INVALID)。
      *
      * @param activity        活动实体
      * @param currentLocation 用户当前位置
@@ -360,7 +361,7 @@ public class CheckInService {
                     activity.getActivityId(),
                     String.format("%.0f", distance),
                     properties.getLocationCheckMeters());
-            throw new BusinessException(20014, "签到位置不在活动地点附近");
+            throw new BusinessException(ErrorCodes.CHECK_IN_LOCATION_INVALID, "签到位置不在活动地点附近");
         }
     }
 
