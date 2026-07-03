@@ -5,6 +5,7 @@ import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityImage;
+import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
@@ -128,6 +129,47 @@ public class ActivityQueryService {
                 resolvedPageSize,
                 activityPage.getTotalElements());
         return activityDtoMapper.toActivitySummaryPage(activityPage, this::loadCoverImage);
+    }
+
+    /**
+     * 查询当前用户报名的活动列表。
+     *
+     * <p>前置条件：userId 非空（调用方已认证）。
+     *
+     * <p>后置条件：分页返回 userId 的报名记录及对应活动摘要，按报名时间倒序。
+     *
+     * <p>不变量：不修改任何持久化数据。
+     *
+     * @param userId 当前调用者 ID
+     * @param page 页码
+     * @param pageSize 每页大小
+     * @return 当前用户报名活动摘要分页结果
+     */
+    @Transactional(readOnly = true)
+    public PageResult<ActivityDtos.RegisteredActivitySummary> listMyRegistrations(
+            String userId, Integer page, Integer pageSize) {
+        int resolvedPage = page == null || page < 1 ? 1 : page;
+        int resolvedPageSize = pageSize == null || pageSize < 1 ? 20 : pageSize;
+        PageRequest pageRequest = PageRequest.of(resolvedPage - 1, resolvedPageSize);
+
+        Page<ActivityRegistration> registrationPage =
+                activityRegistrationRepository.findByUserIdOrderByRegisteredAtDesc(userId, pageRequest);
+        List<ActivityDtos.RegisteredActivitySummary> items = registrationPage.getContent().stream()
+                .map(registration -> activityDtoMapper.toRegisteredActivitySummary(registration, this::loadCoverImage))
+                .toList();
+
+        log.debug(
+                "已查询我的报名列表，userId={}, page={}, pageSize={}, total={}",
+                sanitizeForLog(userId),
+                resolvedPage,
+                resolvedPageSize,
+                registrationPage.getTotalElements());
+        return new PageResult<>(
+                items,
+                registrationPage.getTotalElements(),
+                registrationPage.getNumber() + 1,
+                registrationPage.getSize(),
+                registrationPage.getTotalPages());
     }
 
     private String sanitizeForLog(String value) {

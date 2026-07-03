@@ -25,6 +25,11 @@ function goToDrafts(): void {
 function goToMyActivities(): void {
   uni.navigateTo({ url: '/pages/profile/my-activities' })
 }
+
+/** 跳转到 AI 生成页 */
+function goToAiDraft(): void {
+  uni.navigateTo({ url: '/pages/activity/ai-draft' })
+}
 </script>
 
 <template>
@@ -56,7 +61,7 @@ function goToMyActivities(): void {
       </view>
 
       <!-- AI 生成 -->
-      <view class="option-card" @tap="goToCreate">
+      <view class="option-card" @tap="goToAiDraft">
         <view class="option-icon">🤖</view>
         <view class="option-content">
           <text class="option-title">AI 智能生成</text>

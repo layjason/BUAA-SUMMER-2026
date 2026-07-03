@@ -55,6 +55,10 @@ import {
   getCheckIns,
   createReview,
   createSummary,
+  listActivityReviews,
+  getMyActivityReview,
+  listActivitySummaries,
+  getMyActivitySummary,
   cloneActivity,
   createDraftFromTemplate,
   getUserProfile,
@@ -119,12 +123,18 @@ function err(code: number, message: string): MockApiResponse<null> {
   return { code, message, data: null }
 }
 
-/** 模拟上传响应 */
-function mockUploadResponse(): Record<string, unknown> {
+/** 模拟上传响应（与 OpenAPI MediaFile 对齐） */
+function mockUploadResponse(usage: string = 'activityImage'): Record<string, unknown> {
+  const now = new Date().toISOString()
+  const mediaId = `media_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   return {
-    id: Date.now(),
-    url: `https://picsum.photos/seed/${Date.now()}/400/300`,
-    usage: 'general',
+    mediaId,
+    fileName: `${mediaId}.jpg`,
+    contentType: 'image/jpeg',
+    sizeBytes: 50000,
+    usage,
+    url: `https://picsum.photos/seed/${encodeURIComponent(mediaId)}/400/300`,
+    uploadedAt: now,
   }
 }
 
@@ -353,17 +363,17 @@ const routes: Route[] = [
   {
     method: 'POST',
     pattern: '/activities/media/images',
-    handler: () => ok(mockUploadResponse()),
+    handler: () => ok(mockUploadResponse('activityImage')),
   },
   {
     method: 'POST',
     pattern: '/activities/media/review-images',
-    handler: () => ok(mockUploadResponse()),
+    handler: () => ok(mockUploadResponse('reviewImage')),
   },
   {
     method: 'POST',
     pattern: '/identity/media/avatar',
-    handler: () => ok(mockUploadResponse()),
+    handler: () => ok(mockUploadResponse('avatar')),
   },
 
   /* ===== 活动详情 / 提交 / 参与状态 ===== */
@@ -466,6 +476,36 @@ const routes: Route[] = [
   },
 
   /* ===== 评价 / 总结 ===== */
+  {
+    method: 'GET',
+    pattern: '/activities/{activityId}/reviews/mine',
+    handler: (params) =>
+      ok(getMyActivityReview(parseInt(params.activityId, 10), getCurrentUserId())),
+  },
+  {
+    method: 'GET',
+    pattern: '/activities/{activityId}/reviews',
+    handler: (params, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(listActivityReviews(parseInt(params.activityId, 10), page, pageSize))
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/activities/{activityId}/summaries/mine',
+    handler: (params) =>
+      ok(getMyActivitySummary(parseInt(params.activityId, 10), getCurrentUserId())),
+  },
+  {
+    method: 'GET',
+    pattern: '/activities/{activityId}/summaries',
+    handler: (params, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(listActivitySummaries(parseInt(params.activityId, 10), page, pageSize))
+    },
+  },
   {
     method: 'POST',
     pattern: '/activities/{activityId}/reviews',
@@ -595,15 +635,30 @@ const routes: Route[] = [
     pattern: '/ai/activity-plans',
     handler: (_p, _q, body) =>
       ok({
-        status: 'completed',
+        status: 'succeeded',
         title: `AI 建议：${(body.topic as string) ?? '趣味活动'}`,
         introduction:
           '这是一个由 AI 生成的活动方案。包含了活动的基本信息、流程安排和注意事项。你可以根据实际情况进行修改。',
         safetyNotice: '请注意活动安全，遵守场地规则，随身携带个人物品。如遇紧急情况请联系组织者。',
-        suggestedTags: ['趣味', '社交', '休闲'],
+        tags: ['趣味', '社交', '休闲'],
         suggestedCapacity: 20,
-        suggestedDuration: 120,
+        suggestedRegistrationDeadline: new Date(Date.now() + 3 * 86400000).toISOString(),
       }),
+  },
+  {
+    method: 'POST',
+    pattern: '/ai/image-classifications',
+    handler: (_p, _q, body) => {
+      const mediaIds = (body.mediaIds as string[]) ?? []
+      return ok({
+        status: 'succeeded',
+        items: mediaIds.map((id) => ({
+          mediaId: id,
+          suggestedTags: ['活动现场', '合影'],
+          confidence: 0.85,
+        })),
+      })
+    },
   },
 
   /* ===== 重置演示数据 ===== */

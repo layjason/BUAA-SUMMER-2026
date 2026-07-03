@@ -6,9 +6,29 @@
 import { get, post, patch, upload } from '@/api/request'
 import type { components } from '@/api/types/schema'
 
-type MediaFile = components['schemas']['MediaFile']
+export type {
+  ActivityDetail,
+  ActivityDraftDetail,
+  ActivityDraftSummary,
+  ActivityParticipationState,
+  ActivityReviewListItem,
+  ActivitySummariesPage,
+  ActivityReviewsPage,
+  ActivitySummary,
+  ActivitySummaryPost,
+  ActivityTemplate,
+  CheckInQrCode,
+  MediaFile,
+  MyActivityReviewResult,
+  MyActivitySummaryResult,
+  RegistrationResult,
+} from '@/api/types/activity-schemas'
+
+import type { MediaFile } from '@/api/types/activity-schemas'
 type ActivityFeedTab = components['schemas']['Activities.ActivityFeedTab']
 type ActivityDraftUpsertRequest = components['schemas']['Activities.ActivityDraftUpsertRequest']
+type ActivitySummaryPostRequest = components['schemas']['Activities.ActivitySummaryPostRequest']
+type ActivityReviewRequest = components['schemas']['Activities.ActivityReviewRequest']
 
 /** 搜索活动查询参数（与 OpenAPI ActivityOperations_searchActivities 对齐） */
 export type SearchActivitiesParams = {
@@ -78,6 +98,13 @@ export function uploadActivityImages(filePaths: string[]): Promise<MediaFile[]> 
   return Promise.all(filePaths.map((fp) => upload<MediaFile>('/activities/media/images', fp)))
 }
 
+/** 批量上传评价图片，返回所有上传结果 */
+export function uploadReviewImages(filePaths: string[]): Promise<MediaFile[]> {
+  return Promise.all(
+    filePaths.map((fp) => upload<MediaFile>('/activities/media/review-images', fp)),
+  )
+}
+
 /** 克隆历史活动为新草稿 */
 export function cloneActivity(activityId: string) {
   return post('/activities/{activityId}/clone', {
@@ -128,5 +155,51 @@ export function updateDraft(activityId: string, data: ActivityDraftUpsertRequest
 export function submitDraft(activityId: string) {
   return post('/activities/{activityId}/submit', {
     path: { activityId },
+  })
+}
+
+/** 获取活动图文总结列表 */
+export function getActivitySummaries(activityId: string, page?: number, pageSize?: number) {
+  return get('/activities/{activityId}/summaries', {
+    path: { activityId },
+    query: { page: page ?? 1, pageSize: pageSize ?? 20 },
+  })
+}
+
+/** 获取当前用户对指定活动发布的总结 */
+export function getMyActivitySummary(activityId: string) {
+  return get('/activities/{activityId}/summaries/mine', {
+    path: { activityId },
+  })
+}
+
+/** 发布活动图文总结 */
+export function createActivitySummary(activityId: string, data: ActivitySummaryPostRequest) {
+  return post('/activities/{activityId}/summaries', {
+    path: { activityId },
+    body: data,
+  })
+}
+
+/** 获取活动评价列表 */
+export function getActivityReviews(activityId: string, page?: number, pageSize?: number) {
+  return get('/activities/{activityId}/reviews', {
+    path: { activityId },
+    query: { page: page ?? 1, pageSize: pageSize ?? 20 },
+  })
+}
+
+/** 获取当前用户对指定活动的评价 */
+export function getMyActivityReview(activityId: string) {
+  return get('/activities/{activityId}/reviews/mine', {
+    path: { activityId },
+  })
+}
+
+/** 提交活动评价 */
+export function createActivityReview(activityId: string, data: ActivityReviewRequest) {
+  return post('/activities/{activityId}/reviews', {
+    path: { activityId },
+    body: data,
   })
 }

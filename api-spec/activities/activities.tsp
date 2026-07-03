@@ -80,6 +80,9 @@ model ActivityUpsertRequest {
 
   @doc("活动图片媒体文件标识列表，第一张为封面。")
   imageIds?: EntityId[];
+
+  @doc("是否要求签到用户提供位置信息进行位置校验。true 时签到必须传入 currentLocation，且服务端校验距离。")
+  requireLocationCheck?: boolean;
 }
 
 @doc("活动草稿保存请求。草稿阶段允许只填写部分活动信息，提交审核时再校验完整性。")
@@ -122,6 +125,9 @@ model ActivityDraftUpsertRequest {
 
   @doc("活动图片媒体文件标识列表。")
   imageIds?: EntityId[];
+
+  @doc("是否要求签到用户提供位置信息进行位置校验。")
+  requireLocationCheck?: boolean;
 }
 
 @doc("活动摘要。")
@@ -164,6 +170,9 @@ model ActivitySummary {
 
   @doc("活动人数上限。")
   capacity: int32;
+
+  @doc("是否要求签到用户提供位置信息进行位置校验。")
+  requireLocationCheck: boolean;
 }
 
 @doc("我报名的活动摘要，包含活动信息与当前用户的报名状态。")
@@ -285,6 +294,9 @@ model ActivityDraftDetail {
 
   @doc("参与者最低年龄要求。")
   minAge?: int32;
+
+  @doc("是否要求签到用户提供位置信息进行位置校验。")
+  requireLocationCheck?: boolean;
 
   @doc("活动图片列表。")
   images: MediaFile[];
@@ -477,12 +489,12 @@ model CheckInQrCode {
   expiresAt: DateTimeString;
 }
 
-@doc("扫码签到请求，二维码有效，报名记录进入已签到状态，开启位置校验时当前位置必须在活动地点附近。")
+@doc("扫码签到请求，二维码有效，报名记录进入已签到状态。若活动发起人设置了要求位置校验，则必须传入 currentLocation 且必须在活动地点附近。")
 model CheckInRequest {
   @doc("扫码得到的签到二维码 token。")
   qrCodeToken: string;
 
-  @doc("签到时用户当前位置，用于可选的位置校验。")
+  @doc("签到时用户当前位置。活动不要求位置校验时可不传；活动要求位置校验时必须传入。")
   currentLocation?: GeoPoint;
 }
 
@@ -586,6 +598,26 @@ model ActivityReview {
 
   @doc("评价创建时间。")
   createdAt: DateTimeString;
+}
+
+@doc("活动评价列表项，在评价基础上补充评价用户展示昵称。")
+model ActivityReviewListItem {
+  ...ActivityReview;
+
+  @doc("评价用户展示昵称。")
+  nickname: string;
+}
+
+@doc("当前登录用户对指定活动的评价查询结果。")
+model MyActivityReviewResult {
+  @doc("评价内容，当前用户未评价时为空。")
+  review?: ActivityReview;
+}
+
+@doc("当前登录用户对指定活动发布的总结查询结果。")
+model MyActivitySummaryResult {
+  @doc("总结内容，当前用户未发布时为空。")
+  summary?: ActivitySummaryPost;
 }
 
 @route("/activities")
@@ -796,7 +828,7 @@ interface ActivityOperations {
 
   @post
   @route("/{activityId}/check-ins")
-  @doc("扫码签到，二维码有效且用户已报名，记录签到时间，需要位置校验时必须处于活动地点附近。")
+  @doc("扫码签到，二维码有效且用户已报名，记录签到时间。活动要求位置校验时用户必须传入当前位置且在活动地点附近。")
   checkIn(@path activityId: EntityId, @body body: CheckInRequest): APIResult<
     CheckInRecord,
 
@@ -804,6 +836,7 @@ interface ActivityOperations {
       | QujuApi.Errors.Activities.RegistrationNotFound
       | QujuApi.Errors.Activities.CheckInQrCodeInvalid
       | QujuApi.Errors.Activities.CheckInLocationInvalid
+      | QujuApi.Errors.Activities.CheckInLocationRequired
   >;
 
   @get
@@ -821,9 +854,25 @@ interface ActivityOperations {
   @doc("导出签到数据，调用方为活动发起人或管理员，返回二进制表格文件，该接口允许不使用 APIResponse 包装。")
   exportCheckIns(@path activityId: EntityId): bytes;
 
+  @get
+  @route("/{activityId}/summaries")
+  @doc("获取活动图文总结列表，活动存在且调用方可见，分页返回已发布的活动总结，用于活动详情页展示回顾内容。")
+  listSummaries(@path activityId: EntityId, ...PageQuery): APIResult<
+    PageResult<ActivitySummaryPost>,
+    QujuApi.Errors.Activities.ActivityNotVisible
+  >;
+
+  @get
+  @route("/{activityId}/summaries/mine")
+  @doc("获取当前登录用户对指定活动发布的总结，调用方已登录，未发布时 summary 为空。")
+  getMySummary(@path activityId: EntityId): APIResult<
+    MyActivitySummaryResult,
+    QujuApi.Errors.Activities.ActivityNotVisible
+  >;
+
   @post
   @route("/{activityId}/summaries")
-  @doc("发布活动图文总结，活动已结束且调用方为发起人，发布总结，AI 图片标签必须经人工确认。")
+  @doc("发布活动图文总结，活动已结束且调用方为发起人，每个活动仅允许发布一篇总结，AI 图片标签必须经人工确认。")
   createSummary(
     @path activityId: EntityId,
     @body body: ActivitySummaryPostRequest,
@@ -834,6 +883,23 @@ interface ActivityOperations {
       | QujuApi.Errors.Activities.ActivityPermissionDenied
       | QujuApi.Errors.Activities.ActivityNotEnded
       | QujuApi.Errors.Activities.MediaFileUnavailable
+      | QujuApi.Errors.Activities.DuplicateSummary
+  >;
+
+  @get
+  @route("/{activityId}/reviews")
+  @doc("获取活动评价列表，活动存在且调用方可见，分页返回参与者评价，用于活动详情页展示评价摘要。")
+  listReviews(@path activityId: EntityId, ...PageQuery): APIResult<
+    PageResult<ActivityReviewListItem>,
+    QujuApi.Errors.Activities.ActivityNotVisible
+  >;
+
+  @get
+  @route("/{activityId}/reviews/mine")
+  @doc("获取当前登录用户对指定活动的评价，调用方已登录，未评价时 review 为空。")
+  getMyReview(@path activityId: EntityId): APIResult<
+    MyActivityReviewResult,
+    QujuApi.Errors.Activities.ActivityNotVisible
   >;
 
   @post

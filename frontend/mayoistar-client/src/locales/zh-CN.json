@@ -167,7 +167,8 @@
     "statusEnded": "已结束",
     "statusNotStarted": "未开始",
     "statusTakenDown": "已下架",
-    "statusDraft": "草稿"
+    "statusDraft": "草稿",
+    "statusChangeRequired": "需修改"
   },
 
   "myRegistrations": {
@@ -207,6 +208,13 @@
     "viewParticipants": "参与者列表",
     "writeReview": "评价活动",
     "writeSummary": "发布总结",
+    "reviewSubmitted": "已评价",
+    "summarySubmitted": "已发布总结",
+    "alreadyReviewed": "你已评价过该活动",
+    "alreadySummarized": "你已发布过活动总结",
+    "summarySection": "活动总结",
+    "reviewsSection": "活动评价（{count}）",
+    "reviewStars": "{rating} 分",
     "checkInManagement": "签到管理",
     "generateQrCode": "生成签到二维码",
     "qrCodeTitle": "签到二维码",
@@ -341,5 +349,42 @@
   "reviewImages": {
     "addImage": "添加图片",
     "uploading": "上传中..."
+  },
+
+  "aiDraft": {
+    "title": "AI 智能生成活动",
+    "topic": "活动主题",
+    "topicPlaceholder": "例如：周末户外徒步",
+    "activityType": "活动类型",
+    "activityTypePlaceholder": "例如：户外运动",
+    "city": "城市",
+    "cityPlaceholder": "例如：北京",
+    "expectedParticipants": "期望参与人数",
+    "expectedParticipantsPlaceholder": "请输入期望人数",
+    "additionalRequirements": "补充要求",
+    "additionalRequirementsPlaceholder": "例如：适合初学者，请详细描述",
+    "generating": "AI 正在生成活动方案...",
+    "generate": "AI 生成",
+    "topicRequired": "请输入活动主题",
+    "failed": "AI 生成失败，请稍后重试"
+  },
+
+  "aiReview": {
+    "title": "AI 内容审核",
+    "riskLevel": "风险等级",
+    "reason": "原因",
+    "riskLow": "低",
+    "riskMedium": "中",
+    "riskHigh": "高",
+    "riskUncertain": "不确定"
+  },
+
+  "reviewTags": {
+    "organized": "组织有序",
+    "goodAtmosphere": "氛围很好",
+    "rewarding": "收获满满",
+    "goodVenue": "场地不错",
+    "reasonableTime": "时间合理",
+    "worthIt": "物超所值"
   }
 }

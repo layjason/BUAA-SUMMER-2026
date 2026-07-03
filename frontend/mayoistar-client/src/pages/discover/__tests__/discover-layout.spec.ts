@@ -15,6 +15,8 @@ describe('发现页移动端滚动布局', () => {
     expect(source).toContain('.discover-scroll')
     expect(source).toContain('flex: 1;')
     expect(source).toContain('overflow: hidden;')
-    expect(source).toContain('padding-bottom: calc(#{$safe-bottom} + #{$tabbar-height} + #{$spacing-xl});')
+    expect(source).toContain(
+      'padding-bottom: calc(#{$safe-bottom} + #{$tabbar-height} + #{$spacing-xl});',
+    )
   })
 })
