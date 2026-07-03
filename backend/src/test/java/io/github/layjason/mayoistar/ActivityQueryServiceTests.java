@@ -94,7 +94,51 @@ class ActivityQueryServiceTests {
         assertThat(detail.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.notStarted);
         assertThat(detail.getOrganizerName()).isEqualTo(organizer.getNickname());
         assertThat(detail.getRegisteredCount()).isZero();
+        assertThat(detail.getOccupiedCount()).isZero();
         assertThat(detail.getWaitingCount()).isZero();
+    }
+
+    @Test
+    void getActivityShouldReturnRegistrationCountsWithContractSemantics() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "计数活动");
+        saveUser("registered-user");
+        saveUser("checked-in-user");
+        saveUser("waiting-confirmation-user");
+        saveUser("waiting-user");
+        saveUser("canceled-user");
+        saveRegistration(activity.getActivityId(), "registered-user", RegistrationStatus.registered);
+        saveRegistration(activity.getActivityId(), "checked-in-user", RegistrationStatus.checkedIn);
+        saveRegistration(activity.getActivityId(), "waiting-confirmation-user", RegistrationStatus.waitingConfirmation);
+        saveRegistration(activity.getActivityId(), "waiting-user", RegistrationStatus.waiting);
+        saveRegistration(activity.getActivityId(), "canceled-user", RegistrationStatus.canceled);
+
+        ActivityDtos.ActivityDetail detail =
+                activityQueryService.getActivity(Optional.empty(), activity.getActivityId());
+
+        assertThat(detail.getRegisteredCount()).isEqualTo(2);
+        assertThat(detail.getOccupiedCount()).isEqualTo(3);
+        assertThat(detail.getWaitingCount()).isEqualTo(2);
+    }
+
+    @Test
+    void getActivityShouldExposeOccupiedCountWhenWaitingConfirmationFillsCapacity() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "待确认占座活动", 7);
+        for (int index = 1; index <= 6; index++) {
+            String userId = "registered-user-" + index;
+            saveUser(userId);
+            saveRegistration(activity.getActivityId(), userId, RegistrationStatus.registered);
+        }
+        saveUser("waiting-confirmation-user");
+        saveRegistration(activity.getActivityId(), "waiting-confirmation-user", RegistrationStatus.waitingConfirmation);
+
+        ActivityDtos.ActivityDetail detail =
+                activityQueryService.getActivity(Optional.empty(), activity.getActivityId());
+
+        assertThat(detail.getRegisteredCount()).isEqualTo(6);
+        assertThat(detail.getOccupiedCount()).isEqualTo(7);
+        assertThat(detail.getCapacity()).isEqualTo(7);
     }
 
     @Test
@@ -239,7 +283,29 @@ class ActivityQueryServiceTests {
         assertThat(summary.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
         assertThat(summary.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.notStarted);
         assertThat(summary.getRegisteredCount()).isZero();
+        assertThat(summary.getOccupiedCount()).isZero();
         assertThat(summary.getCapacity()).isEqualTo(8);
+    }
+
+    @Test
+    void listMyActivitiesShouldReturnRegistrationCounts() {
+        User user = saveUser("user-a");
+        Activity activity = saveApprovedActivity(user.getUserId(), "计数摘要");
+        saveUser("registered-user");
+        saveUser("checked-in-user");
+        saveUser("waiting-confirmation-user");
+        saveUser("waiting-user");
+        saveRegistration(activity.getActivityId(), "registered-user", RegistrationStatus.registered);
+        saveRegistration(activity.getActivityId(), "checked-in-user", RegistrationStatus.checkedIn);
+        saveRegistration(activity.getActivityId(), "waiting-confirmation-user", RegistrationStatus.waitingConfirmation);
+        saveRegistration(activity.getActivityId(), "waiting-user", RegistrationStatus.waiting);
+
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityQueryService.listMyActivities(user.getUserId(), null, 1, 20);
+
+        ActivityDtos.ActivitySummary summary = result.getItems().getFirst();
+        assertThat(summary.getRegisteredCount()).isEqualTo(2);
+        assertThat(summary.getOccupiedCount()).isEqualTo(3);
     }
 
     @Test
@@ -480,6 +546,10 @@ class ActivityQueryServiceTests {
 
     // ========== 辅助方法 ==========
 
+    private ActivityRegistration saveRegistration(String activityId, String userId, RegistrationStatus status) {
+        return saveRegistration(activityId, userId, status, null, Instant.now(), null);
+    }
+
     private ActivityRegistration saveRegistration(
             String activityId,
             String userId,
@@ -538,6 +608,10 @@ class ActivityQueryServiceTests {
     }
 
     private Activity saveApprovedActivity(String organizerId, String title) {
+        return saveApprovedActivity(organizerId, title, 8);
+    }
+
+    private Activity saveApprovedActivity(String organizerId, String title, int capacity) {
         return activityRepository.save(Activity.builder()
                 .activityId(UUID.randomUUID().toString())
                 .organizerId(organizerId)
@@ -552,7 +626,7 @@ class ActivityQueryServiceTests {
                 .address("海淀区某街道")
                 .placeName("活动中心")
                 .safetyNotice("注意安全")
-                .capacity(8)
+                .capacity(capacity)
                 .registrationDeadline(Instant.parse("2026-07-01T12:00:00Z"))
                 .reviewStatus(ActivityReviewStatus.approved)
                 .runtimeStatus(ActivityRuntimeStatus.notStarted)

@@ -333,6 +333,11 @@ public class ActivityDraftService {
                 reviewRecordDtos,
                 countByStatus(activity.getActivityId(), RegistrationStatus.registered, RegistrationStatus.checkedIn),
                 countByStatus(
+                        activity.getActivityId(),
+                        RegistrationStatus.registered,
+                        RegistrationStatus.checkedIn,
+                        RegistrationStatus.waitingConfirmation),
+                countByStatus(
                         activity.getActivityId(), RegistrationStatus.waiting, RegistrationStatus.waitingConfirmation));
     }
 

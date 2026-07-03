@@ -18,6 +18,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -98,10 +99,10 @@ public class ReportServiceImpl implements ReportService {
      */
     @Override
     public PageResult<SocialDtos.Report> listReports(
-            ReportStatus status,
-            String reporterUserId,
-            ReportTargetType targetType,
-            String targetId,
+            @Nullable ReportStatus status,
+            @Nullable String reporterUserId,
+            @Nullable ReportTargetType targetType,
+            @Nullable String targetId,
             int page,
             int pageSize) {
         Specification<Report> spec = buildAdminSpec(status, reporterUserId, targetType, targetId);

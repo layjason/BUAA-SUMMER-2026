@@ -10,9 +10,12 @@ import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
+import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCountService;
+import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCounts;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,11 +40,14 @@ class ActivitySearchServiceTests {
     @Mock
     private ActivityRepository activityRepository;
 
+    @Mock
+    private ActivityRegistrationCountService activityRegistrationCountService;
+
     private ActivitySearchService service;
 
     @BeforeEach
     void setUp() {
-        service = new ActivitySearchService(activityRepository);
+        service = new ActivitySearchService(activityRepository, activityRegistrationCountService);
     }
 
     /**
@@ -59,6 +65,8 @@ class ActivitySearchServiceTests {
         Page<Activity> page = new PageImpl<>(List.of(all.get(0)), PageRequest.of(0, 1), 2);
         when(activityRepository.findAll(anySpecification(), any(Pageable.class)))
                 .thenReturn(page);
+        when(activityRegistrationCountService.countByActivityIds(List.of("activity-1")))
+                .thenReturn(Map.of("activity-1", new ActivityRegistrationCounts(2, 3, 1)));
 
         PageResult<ActivityDtos.ActivitySummary> result = service.search(new ActivitySearchService.SearchCriteria(
                 "桌游",
@@ -81,7 +89,8 @@ class ActivitySearchServiceTests {
         assertThat(summary.getActivityId()).isEqualTo("activity-1");
         assertThat(summary.getTitle()).isEqualTo("桌游夜");
         assertThat(summary.getLocation().getPoint().getLongitude()).isEqualTo(116.397);
-        assertThat(summary.getRegisteredCount()).isZero();
+        assertThat(summary.getRegisteredCount()).isEqualTo(2);
+        assertThat(summary.getOccupiedCount()).isEqualTo(3);
         assertThat(summary.getFeeAmount()).isEqualByComparingTo("5.00");
     }
 
@@ -99,6 +108,10 @@ class ActivitySearchServiceTests {
         Page<Activity> page = new PageImpl<>(all, PageRequest.of(0, 20), 2);
         when(activityRepository.findAll(anySpecification(), any(Pageable.class)))
                 .thenReturn(page);
+        when(activityRegistrationCountService.countByActivityIds(List.of("near", "far")))
+                .thenReturn(Map.of(
+                        "near", new ActivityRegistrationCounts(1, 1, 0),
+                        "far", new ActivityRegistrationCounts(2, 2, 0)));
 
         PageResult<ActivityDtos.ActivitySummary> result = service.search(new ActivitySearchService.SearchCriteria(
                 null, null, null, null, null, null, null, 39.908, 116.397, 1000, 1, 20));
@@ -124,6 +137,10 @@ class ActivitySearchServiceTests {
         Page<Activity> page = new PageImpl<>(all, PageRequest.of(0, 20), 2);
         when(activityRepository.findAll(anySpecification(), any(Pageable.class)))
                 .thenReturn(page);
+        when(activityRegistrationCountService.countByActivityIds(List.of("with-point", "without-point")))
+                .thenReturn(Map.of(
+                        "with-point", ActivityRegistrationCounts.zero(),
+                        "without-point", ActivityRegistrationCounts.zero()));
 
         List<ActivityDtos.ActivityMapPoint> points = service.mapPoints(new ActivitySearchService.SearchCriteria(
                 null, null, null, null, null, null, null, null, null, null, 1, 20));
@@ -149,6 +166,9 @@ class ActivitySearchServiceTests {
         Page<Activity> page = new PageImpl<>(all.subList(0, 20), PageRequest.of(0, 20), 25);
         when(activityRepository.findAll(anySpecification(), any(Pageable.class)))
                 .thenReturn(page);
+        when(activityRegistrationCountService.countByActivityIds(
+                        all.subList(0, 20).stream().map(Activity::getActivityId).toList()))
+                .thenReturn(Map.of());
 
         PageResult<ActivityDtos.ActivitySummary> result = service.search(new ActivitySearchService.SearchCriteria(
                 null, null, null, null, null, null, null, null, null, null, 0, 0));

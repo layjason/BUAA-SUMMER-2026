@@ -37,6 +37,8 @@ import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamModerationRecordRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCountService;
+import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCounts;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
@@ -93,6 +95,9 @@ class AdminServiceTest {
     private ReportService reportService;
 
     @Mock
+    private ActivityRegistrationCountService activityRegistrationCountService;
+
+    @Mock
     private MediaAccessService mediaAccessService;
 
     private AdminService adminService;
@@ -119,6 +124,7 @@ class AdminServiceTest {
                 teamModerationRecordRepository,
                 reportRepository,
                 reportService,
+                activityRegistrationCountService,
                 mediaAccessService);
     }
 
@@ -427,6 +433,8 @@ class AdminServiceTest {
             when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
             when(activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activityId))
                     .thenReturn(List.of());
+            when(activityRegistrationCountService.countByActivityId(activityId))
+                    .thenReturn(ActivityRegistrationCounts.zero());
 
             var result = adminService.getActivity(activityId);
 
@@ -459,6 +467,8 @@ class AdminServiceTest {
             when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
             when(activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activityId))
                     .thenReturn(List.of());
+            when(activityRegistrationCountService.countByActivityId(activityId))
+                    .thenReturn(ActivityRegistrationCounts.zero());
 
             AdminDtos.ActivityModerationRequest request = new AdminDtos.ActivityModerationRequest();
             request.setReason("违规内容");
@@ -499,6 +509,8 @@ class AdminServiceTest {
             when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
             when(activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activityId))
                     .thenReturn(List.of());
+            when(activityRegistrationCountService.countByActivityId(activityId))
+                    .thenReturn(ActivityRegistrationCounts.zero());
 
             var result = adminService.restoreActivity(activityId, adminId);
 
@@ -637,6 +649,8 @@ class AdminServiceTest {
             when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
             when(activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activityId))
                     .thenReturn(List.of());
+            when(activityRegistrationCountService.countByActivityId(activityId))
+                    .thenReturn(ActivityRegistrationCounts.zero());
 
             AdminDtos.ReviewDecisionRequest request = new AdminDtos.ReviewDecisionRequest();
             request.setResult(ReviewStatus.approved);
