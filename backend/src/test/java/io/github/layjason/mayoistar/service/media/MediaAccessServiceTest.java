@@ -299,6 +299,23 @@ class MediaAccessServiceTest {
         assertThat(copied.getSizeBytes()).isEqualTo(source.getSizeBytes());
     }
 
+    @Test
+    @DisplayName("softDelete(UUID)：无鉴权重载设置 deletedAt 并递增 accessVersion")
+    void shouldSoftDeleteWithoutAuth() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile mediaFile =
+                buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.teamMember, "team-1");
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
+        when(mediaFileRepository.save(any(MediaFile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        mediaAccessService.softDelete(mediaId);
+
+        ArgumentCaptor<MediaFile> captor = ArgumentCaptor.forClass(MediaFile.class);
+        verify(mediaFileRepository).save(captor.capture());
+        assertThat(captor.getValue().getDeletedAt()).isNotNull();
+        assertThat(captor.getValue().getAccessVersion()).isEqualTo(2L);
+    }
+
     private MediaFile buildMediaFile(
             UUID mediaId, MediaVisibility visibility, MediaAccessPolicy policy, String accessScopeId) {
         return MediaFile.builder()

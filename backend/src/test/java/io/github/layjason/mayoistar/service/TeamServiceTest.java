@@ -491,6 +491,40 @@ class TeamServiceTest {
         }
 
         @Test
+        @DisplayName("队长软删除群文件——deletedAt 非空，accessVersion 递增，列表不再返回")
+        void deleteTeamFileSoftDeletes() {
+            MediaFile file = persistMediaFile(
+                    UUID.randomUUID(), tomori.getUserId(), MediaUsage.teamFile, MediaAccessPolicy.owner);
+            var uploaded = teamService.uploadTeamFile(teamId, tomori.getUserId(), file.getMediaId());
+
+            teamService.deleteTeamFiles(teamId, tomori.getUserId(), List.of(uploaded.getMediaId()));
+
+            var deleted = mediaFileRepository.findById(uploaded.getMediaId()).orElseThrow();
+            assertThat(deleted.getDeletedAt()).isNotNull();
+            assertThat(deleted.getAccessVersion()).isGreaterThan(2L);
+
+            var listResult = teamService.listTeamFiles(teamId, tomori.getUserId(), 1, 20);
+            assertThat(listResult.getItems()).noneMatch(f -> f.getMediaId().equals(uploaded.getMediaId()));
+        }
+
+        @Test
+        @DisplayName("队长软删除相册图片——deletedAt 非空，列表不再返回")
+        void deleteTeamAlbumImageSoftDeletes() {
+            MediaFile file = persistMediaFile(
+                    UUID.randomUUID(), tomori.getUserId(), MediaUsage.chatImage, MediaAccessPolicy.owner);
+            var uploaded = teamService.uploadTeamAlbumImage(teamId, tomori.getUserId(), file.getMediaId());
+
+            teamService.deleteTeamAlbumImages(teamId, tomori.getUserId(), List.of(uploaded.getMediaId()));
+
+            var deleted = mediaFileRepository.findById(uploaded.getMediaId()).orElseThrow();
+            assertThat(deleted.getDeletedAt()).isNotNull();
+            assertThat(deleted.getAccessVersion()).isGreaterThan(2L);
+
+            var listResult = teamService.listTeamAlbumImages(teamId, tomori.getUserId(), 1, 20);
+            assertThat(listResult.getItems()).noneMatch(f -> f.getMediaId().equals(uploaded.getMediaId()));
+        }
+
+        @Test
         @DisplayName("燈上传相册图片——访问策略更新为 teamMember，usage 更新为 teamAlbum")
         void uploadTeamAlbumImageUpdatesAccessPolicy() {
             MediaFile file = persistMediaFile(

@@ -2,6 +2,9 @@
 
 ## 更新日志
 
+- Version: 4 20260703 224845
+  - 补充聊天图片上传后 URL 生命周期说明，明确上传 URL 在发送消息后因策略升级而失效
+  - 群文件/相册删除统一使用软删除，递增 accessVersion 使旧 URL 立即失效
 - Version: 3 20260703 030026
   - 明确签名 URL 的确定性：同资源同状态签发的 URL 完全相同；优化 CDN 适配、业务查询阶段和客户端契约的表述
 - Version: 2 20260703 150000
@@ -63,7 +66,13 @@ mediaId + v + policy + scope
 
 ### 上传阶段
 
-上传阶段只生成稳定的 `mediaId` 和媒体元数据。
+上传阶段生成稳定的 `mediaId` 和媒体元数据，初始访问策略为 `owner`，仅上传者可访问。
+
+- **聊天图片**（`POST /chat/media/images`）：返回的 `signedUrl` 仅在上传者预览时有效，策略为 `owner`。上传不等于发送消息。发送消息时（`POST /chat/conversations/{conversationId}/messages`），`ChatService.sendMessage()` 将策略升级为 `conversationMember` 并递增 `accessVersion`，上传时返回的 `signedUrl` 立即因版本不匹配而失效。客户端应在消息发送后从**消息列表/详情接口**返回的 `ChatMessage.image.signedUrl` 获取新的会话签名 URL。
+
+- **群文件**（`POST /chat/teams/{teamId}/files`）：上传 + 关联小队一步完成，策略在 `TeamService.uploadTeamFile()` 中即时升级为 `teamMember`。返回的 `signedUrl` 即为小队签名 URL，小队所有成员均可访问。
+
+- **小队相册**（`POST /chat/teams/{teamId}/album-images`）：同群文件，上传后策略即时升级为 `teamMember`。
 
 上传完成后，后端可返回 `mediaId` 和当前 `signedUrl`。
 

@@ -772,7 +772,7 @@ public class TeamService {
 
         List<CommonDtos.MediaFile> items = mediaIds.stream()
                 .map(fileMap::get)
-                .filter(f -> f != null && f.getUsage() == MediaUsage.teamFile)
+                .filter(f -> f != null && f.getDeletedAt() == null && f.getUsage() == MediaUsage.teamFile)
                 .map(this::toMediaFileDto)
                 .collect(Collectors.toList());
 
@@ -781,11 +781,12 @@ public class TeamService {
     }
 
     /**
-     * 批量删除群文件，仅队长和管理员可操作。
+     * 批量软删除群文件，仅队长和管理员可操作。
      *
      * <p>前置条件：{@code userId} 是队长或管理员，指定文件均属于该小队。
      *
-     * <p>后置条件：关联记录和媒体文件均已删除。
+     * <p>后置条件：关联记录已删除，媒体文件标记为软删除，旧签名 URL 因 accessVersion
+     * 递增而失效。
      */
     public void deleteTeamFiles(String teamId, String userId, List<UUID> mediaIds) {
         requireTeamAdmin(teamId, userId);
@@ -797,8 +798,10 @@ public class TeamService {
 
         teamMediaFileRepository.deleteAll(teamMedias);
         List<MediaFile> files = mediaFileRepository.findByMediaIdIn(mediaIds);
-        mediaFileRepository.deleteAll(files);
-        log.info("群文件已删除: teamId={}, count={}", teamId, mediaIds.size());
+        for (MediaFile file : files) {
+            mediaAccessService.softDelete(file.getMediaId());
+        }
+        log.info("群文件已软删除: teamId={}, count={}", teamId, mediaIds.size());
     }
 
     /**
@@ -857,7 +860,7 @@ public class TeamService {
 
         List<CommonDtos.MediaFile> items = mediaIds.stream()
                 .map(fileMap::get)
-                .filter(f -> f != null && f.getUsage() == MediaUsage.teamAlbum)
+                .filter(f -> f != null && f.getDeletedAt() == null && f.getUsage() == MediaUsage.teamAlbum)
                 .map(this::toMediaFileDto)
                 .collect(Collectors.toList());
 
@@ -866,11 +869,12 @@ public class TeamService {
     }
 
     /**
-     * 批量删除小队相册图片，仅队长和管理员可操作。
+     * 批量软删除小队相册图片，仅队长和管理员可操作。
      *
      * <p>前置条件：{@code userId} 是队长或管理员，指定图片均属于该小队相册。
      *
-     * <p>后置条件：关联记录和媒体文件均已删除。
+     * <p>后置条件：关联记录已删除，媒体文件标记为软删除，旧签名 URL 因 accessVersion
+     * 递增而失效。
      */
     public void deleteTeamAlbumImages(String teamId, String userId, List<UUID> mediaIds) {
         requireTeamAdmin(teamId, userId);
@@ -882,8 +886,10 @@ public class TeamService {
 
         teamMediaFileRepository.deleteAll(teamMedias);
         List<MediaFile> files = mediaFileRepository.findByMediaIdIn(mediaIds);
-        mediaFileRepository.deleteAll(files);
-        log.info("小队相册图片已删除: teamId={}, count={}", teamId, mediaIds.size());
+        for (MediaFile file : files) {
+            mediaAccessService.softDelete(file.getMediaId());
+        }
+        log.info("小队相册图片已软删除: teamId={}, count={}", teamId, mediaIds.size());
     }
 
     // ========================================

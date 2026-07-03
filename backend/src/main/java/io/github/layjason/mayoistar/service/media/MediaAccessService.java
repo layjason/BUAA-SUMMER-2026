@@ -164,6 +164,27 @@ public class MediaAccessService {
     }
 
     /**
+     * 软删除媒体文件（不含权限校验），递增访问版本使旧签名 URL 立即失效。
+     *
+     * <p>前置条件：调用方需自行确保删除权限（如已通过团队管理权限检查）。
+     *
+     * <p>后置条件：deletedAt 非空，accessVersion 递增，缓存中的旧快照失效。
+     *
+     * @param mediaId 媒体标识
+     */
+    @Transactional
+    public void softDelete(UUID mediaId) {
+        MediaFile mediaFile = mediaFileRepository
+                .findById(mediaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found"));
+        mediaFile.setDeletedAt(clock.instant());
+        mediaFile.setAccessVersion(mediaFile.getAccessVersion() + 1);
+        mediaFileRepository.save(mediaFile);
+        mediaAccessCache.put(toDescriptor(mediaFile));
+        log.info("媒体文件已软删除: mediaId={}, accessVersion={}", mediaId, mediaFile.getAccessVersion());
+    }
+
+    /**
      * 更新媒体文件的访问策略和作用域，递增访问版本使旧签名 URL 失效，并刷新缓存。
      *
      * <p>前置条件：mediaId 对应有效的媒体文件，且 {@code callerUserId} 为该文件的上传者。
