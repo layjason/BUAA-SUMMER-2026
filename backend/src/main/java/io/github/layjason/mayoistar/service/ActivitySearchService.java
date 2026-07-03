@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -108,6 +109,7 @@ public class ActivitySearchService {
         return "%\"" + type.trim().toLowerCase() + "\"%";
     }
 
+    @Nullable
     private Instant parseInstant(String value) {
         if (!StringUtils.hasText(value)) {
             return null;
@@ -214,6 +216,7 @@ public class ActivitySearchService {
         }
 
         @Override
+        @Nullable
         public List<String> activityTypes() {
             return activityTypes == null ? null : List.copyOf(activityTypes);
         }

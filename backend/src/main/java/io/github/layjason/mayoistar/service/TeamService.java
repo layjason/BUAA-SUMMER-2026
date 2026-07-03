@@ -1080,6 +1080,7 @@ public class TeamService {
         return dto;
     }
 
+    @Nullable
     private Instant parseInstant(String dateString) {
         if (dateString == null) return null;
         try {
