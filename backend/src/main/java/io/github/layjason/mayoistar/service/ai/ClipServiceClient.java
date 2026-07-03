@@ -32,15 +32,15 @@ public class ClipServiceClient {
     /**
      * 构造 CLIP 服务客户端。
      *
-     * <p>前置条件：AiProperties 中 clip.endpoint 为有效的 HTTP URL。
+     * <p>前置条件：AiProperties 中 clip.endpoint 为有效的 HTTP URL；RestClient.Builder 已由 Spring Boot 装配 Jackson converter。
      *
-     * <p>后置条件：创建已配置 JSON 编解码的 RestClient 实例。
+     * <p>后置条件：创建可正确序列化 JSON 请求体的 RestClient 实例。
      *
      * @param properties AI 配置属性
+     * @param builder    RestClient.Builder（由 ClipClientConfig 注册为 bean，经 Spring Boot 自动装配）
      */
-    public ClipServiceClient(AiProperties properties) {
-        this.restClient =
-                RestClient.builder().baseUrl(properties.getClip().getEndpoint()).build();
+    public ClipServiceClient(AiProperties properties, RestClient.Builder builder) {
+        this.restClient = builder.baseUrl(properties.getClip().getEndpoint()).build();
     }
 
     /**
