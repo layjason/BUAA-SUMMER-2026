@@ -7,6 +7,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       rustfs:
         condition: service_healthy
     environment:
@@ -17,6 +19,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       SERVER_PORT: 8080
+      MAYOISTAR_REDIS_HOST: redis
+      MAYOISTAR_REDIS_PORT: 6379
+      MAYOISTAR_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       MAYOISTAR_S3_ENDPOINT: http://rustfs:9000
       MAYOISTAR_S3_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-rustfsadmin}
       MAYOISTAR_S3_SECRET_KEY: ${RUSTFS_SECRET_KEY:-rustfsadmin}
@@ -34,7 +39,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      test:
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,29 +51,59 @@ services:
     networks:
       - mayoistar
 
+  redis:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    command: >
+      redis-server
+      --appendonly yes
+      --tcp-keepalive 60
+      --timeout 0
+      ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - mayoistar
+
   rustfs:
     image: rustfs/rustfs:latest
     environment:
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-rustfsadmin}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-rustfsadmin}
       RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS: "*"
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
       - rustfs-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9000 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      test:
+        [
+          "CMD",
+          "sh",
+          "-ec",
+          'host="$${RUSTFS_HEALTHCHECK_HOST:-127.0.0.1}"; curl -fsS "http://$${host}:9000/health" && curl -fsS "http://$${host}:9001/rustfs/console/health"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
     networks:
       - mayoistar
 
 volumes:
   postgres-data:
+  redis-data:
   rustfs-data:
 
 networks:

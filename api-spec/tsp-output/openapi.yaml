@@ -11624,6 +11624,13 @@ components:
         url:
           type: string
           description: 访问地址。
+        signedUrl:
+          type: string
+          description: 签名访问地址，客户端不得作为永久地址保存。
+        visibility:
+          allOf:
+            - $ref: '#/components/schemas/MediaVisibility'
+          description: 媒体可见性。
         uploadedAt:
           allOf:
             - $ref: '#/components/schemas/DateTimeString'
@@ -11650,6 +11657,12 @@ components:
         - summaryImage
         - activityReviewImage
       description: 媒体用途。
+    MediaVisibility:
+      type: string
+      enum:
+        - publicVisible
+        - privateVisible
+      description: 媒体可见性。
     ReviewDecisionRequest:
       type: object
       required:

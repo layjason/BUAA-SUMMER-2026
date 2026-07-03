@@ -16,6 +16,11 @@ CREATE TABLE media_files (
     usage           VARCHAR(50)  NOT NULL,
     storage_path    VARCHAR(500) NOT NULL,
     url             VARCHAR(500),
+    visibility      VARCHAR(30)  NOT NULL DEFAULT 'privateVisible',
+    access_policy   VARCHAR(50)  NOT NULL DEFAULT 'owner',
+    access_scope_id VARCHAR(100),
+    access_version  BIGINT       NOT NULL DEFAULT 1,
+    deleted_at      TIMESTAMP WITH TIME ZONE,
     uploaded_by     VARCHAR(36)  NOT NULL,
     uploaded_at     TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT pk_media_files PRIMARY KEY (media_id)
@@ -23,6 +28,8 @@ CREATE TABLE media_files (
 
 CREATE INDEX idx_media_files_uploaded_by ON media_files (uploaded_by);
 CREATE INDEX idx_media_files_usage       ON media_files (usage);
+CREATE INDEX idx_media_files_access_scope ON media_files (access_policy, access_scope_id);
+CREATE INDEX idx_media_files_deleted_at ON media_files (deleted_at);
 
 COMMENT ON TABLE media_files IS '媒体文件元数据，记录上传文件的存储信息和用途。业务对象通过 media_id 引用媒体文件，不直接存储文件内容或存储凭据。';
 
@@ -32,7 +39,12 @@ COMMENT ON COLUMN media_files.content_type IS 'MIME 类型，如 image/png、ima
 COMMENT ON COLUMN media_files.size_bytes IS '文件字节数';
 COMMENT ON COLUMN media_files.usage IS '用途分类。avatar / merchantLicense / activityImage / chatImage / teamFile / teamAlbum / summaryImage / activityReviewImage';
 COMMENT ON COLUMN media_files.storage_path IS '存储服务中的路径';
-COMMENT ON COLUMN media_files.url IS '可访问的公开链接。私有文件可为空，通过鉴权接口获取';
+COMMENT ON COLUMN media_files.url IS '历史访问地址字段。新实现中客户端应使用 signedUrl，不应长期依赖该字段';
+COMMENT ON COLUMN media_files.visibility IS '媒体可见性。publicVisible / privateVisible';
+COMMENT ON COLUMN media_files.access_policy IS '媒体访问策略。publicAccess / owner / conversationMember / teamMember / activityOwner / adminOnly';
+COMMENT ON COLUMN media_files.access_scope_id IS '访问策略作用域标识，例如 conversationId、teamId、activityId 或 ownerId';
+COMMENT ON COLUMN media_files.access_version IS '访问控制版本。软删除、权限策略变化或可见性变化时递增，用于使旧签名 URL 失效';
+COMMENT ON COLUMN media_files.deleted_at IS '软删除时间。非空时资源不可访问';
 COMMENT ON COLUMN media_files.uploaded_by IS '上传者用户 ID，关联 users 表';
 COMMENT ON COLUMN media_files.uploaded_at IS '上传时间，UTC 时区';
 
@@ -1016,6 +1028,9 @@ ALTER TABLE security_tokens ADD CONSTRAINT ck_security_tokens_token_type CHECK (
 
 -- common
 ALTER TABLE media_files ADD CONSTRAINT ck_media_files_usage CHECK (usage IN ('avatar', 'merchantLicense', 'activityImage', 'chatImage', 'teamFile', 'teamAlbum', 'summaryImage', 'activityReviewImage'));
+ALTER TABLE media_files ADD CONSTRAINT ck_media_files_visibility CHECK (visibility IN ('publicVisible', 'privateVisible'));
+ALTER TABLE media_files ADD CONSTRAINT ck_media_files_access_policy CHECK (access_policy IN ('publicAccess', 'owner', 'conversationMember', 'teamMember', 'activityOwner', 'adminOnly'));
+ALTER TABLE media_files ADD CONSTRAINT ck_media_files_access_version CHECK (access_version >= 1);
 
 -- activities
 ALTER TABLE activities ADD CONSTRAINT ck_activities_review_status CHECK (review_status IN ('draft', 'pending', 'approved', 'rejected', 'changeRequired'));

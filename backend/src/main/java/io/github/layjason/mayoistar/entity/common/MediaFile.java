@@ -59,6 +59,26 @@ public class MediaFile {
     @Column(length = 500)
     private String url;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private MediaVisibility visibility = MediaVisibility.privateVisible;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "access_policy", nullable = false, length = 50)
+    @Builder.Default
+    private MediaAccessPolicy accessPolicy = MediaAccessPolicy.owner;
+
+    @Column(name = "access_scope_id", length = 100)
+    private String accessScopeId;
+
+    @Column(name = "access_version", nullable = false)
+    @Builder.Default
+    private Long accessVersion = 1L;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     @Column(name = "uploaded_by", length = 36, nullable = false)
     private String uploadedBy;
 

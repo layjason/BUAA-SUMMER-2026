@@ -20,6 +20,7 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
 import io.github.layjason.mayoistar.repository.QualificationRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -52,6 +53,9 @@ class MerchantProfileServiceTest {
     @Mock
     private MediaFileUploadService mediaFileUploadService;
 
+    @Mock
+    private MediaAccessService mediaAccessService;
+
     private MerchantProfileService merchantProfileService;
 
     private final String userId = UUID.randomUUID().toString();
@@ -63,7 +67,8 @@ class MerchantProfileServiceTest {
                 merchantProfileRepository,
                 qualificationRepository,
                 mediaFileRepository,
-                mediaFileUploadService);
+                mediaFileUploadService,
+                mediaAccessService);
     }
 
     @Nested

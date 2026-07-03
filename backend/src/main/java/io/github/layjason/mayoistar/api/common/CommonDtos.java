@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.api.common;
 
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
@@ -58,6 +59,11 @@ public final class CommonDtos {
 
         @Nullable
         private String url;
+
+        @Nullable
+        private String signedUrl;
+
+        private MediaVisibility visibility;
 
         @NotNull
         private String uploadedAt;

@@ -14,10 +14,13 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import io.github.layjason.mayoistar.service.storage.FileStorageService;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -43,11 +46,28 @@ class MediaFileUploadServiceTest {
     @Mock
     private MediaFileRepository mediaFileRepository;
 
+    @Mock
+    private MediaAccessService mediaAccessService;
+
     private MediaFileUploadService mediaFileUploadService;
 
     @BeforeEach
     void setUp() {
-        mediaFileUploadService = new MediaFileUploadService(fileStorageService, mediaFileRepository);
+        mediaFileUploadService =
+                new MediaFileUploadService(fileStorageService, mediaFileRepository, mediaAccessService);
+        lenient().when(mediaAccessService.toSignedDto(any(MediaFile.class))).thenAnswer(invocation -> {
+            MediaFile mediaFile = invocation.getArgument(0);
+            CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
+            dto.setMediaId(mediaFile.getMediaId());
+            dto.setFileName(mediaFile.getFileName());
+            dto.setContentType(mediaFile.getContentType());
+            dto.setSizeBytes(mediaFile.getSizeBytes());
+            dto.setUsage(mediaFile.getUsage());
+            dto.setVisibility(mediaFile.getVisibility());
+            dto.setSignedUrl("/media/" + mediaFile.getMediaId() + "?sig=test");
+            dto.setUploadedAt(mediaFile.getUploadedAt().toString());
+            return dto;
+        });
     }
 
     /**
@@ -149,8 +169,8 @@ class MediaFileUploadServiceTest {
     class MetadataPersistence {
 
         @Test
-        @DisplayName("上传后正确保存 MediaFile 并设置后端媒体访问路径")
-        void shouldSaveMediaFileWithBackendMediaAccessPath() {
+        @DisplayName("上传后正确保存 MediaFile 并设置签名访问元数据")
+        void shouldSaveMediaFileWithSignedAccessMetadata() {
             MultipartFile file = mockFile("image/png", 500L, "avatar.png");
 
             when(fileStorageService.store(anyString(), any(InputStream.class), eq("image/png"), eq(500L)))
@@ -158,17 +178,38 @@ class MediaFileUploadServiceTest {
 
             CommonDtos.MediaFile result = mediaFileUploadService.upload("user1", file, MediaUsage.avatar);
 
-            assertThat(result.getUrl()).isEqualTo("/media/" + result.getMediaId());
+            assertThat(result.getUrl()).isNull();
+            assertThat(result.getSignedUrl()).startsWith("/media/");
             assertThat(result.getFileName()).isEqualTo("avatar.png");
             assertThat(result.getSizeBytes()).isEqualTo(500L);
             assertThat(result.getUsage()).isEqualTo(MediaUsage.avatar);
+            assertThat(result.getVisibility()).isEqualTo(MediaVisibility.publicVisible);
 
             ArgumentCaptor<MediaFile> captor = ArgumentCaptor.forClass(MediaFile.class);
             verify(mediaFileRepository).save(captor.capture());
-            assertThat(captor.getValue().getUrl())
-                    .isEqualTo("/media/" + captor.getValue().getMediaId());
+            assertThat(captor.getValue().getUrl()).isNull();
+            assertThat(captor.getValue().getVisibility()).isEqualTo(MediaVisibility.publicVisible);
+            assertThat(captor.getValue().getAccessPolicy()).isEqualTo(MediaAccessPolicy.publicAccess);
+            assertThat(captor.getValue().getAccessVersion()).isEqualTo(1L);
             assertThat(captor.getValue().getUploadedBy()).isEqualTo("user1");
             verify(fileStorageService, never()).getPublicUrl(anyString());
+        }
+
+        @Test
+        @DisplayName("私有用途上传后设置 owner 策略")
+        void shouldSavePrivateMediaWithOwnerPolicy() {
+            MultipartFile file = mockFile("image/png", 500L, "chat.png");
+
+            when(fileStorageService.store(anyString(), any(InputStream.class), eq("image/png"), eq(500L)))
+                    .thenReturn("chat/user1/mock-id_chat.png");
+
+            CommonDtos.MediaFile result = mediaFileUploadService.upload("user1", file, MediaUsage.chatImage);
+
+            assertThat(result.getVisibility()).isEqualTo(MediaVisibility.privateVisible);
+            ArgumentCaptor<MediaFile> captor = ArgumentCaptor.forClass(MediaFile.class);
+            verify(mediaFileRepository).save(captor.capture());
+            assertThat(captor.getValue().getAccessPolicy()).isEqualTo(MediaAccessPolicy.owner);
+            assertThat(captor.getValue().getAccessScopeId()).isEqualTo("user1");
         }
     }
 

@@ -30,6 +30,7 @@ import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import io.github.layjason.mayoistar.repository.TeamAnnouncementReadRepository;
 import io.github.layjason.mayoistar.repository.TeamAnnouncementRepository;
 import io.github.layjason.mayoistar.repository.TeamMemberRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -68,6 +69,7 @@ public class ChatService {
     private final TeamAnnouncementRepository teamAnnouncementRepository;
     private final TeamAnnouncementReadRepository teamAnnouncementReadRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final MediaAccessService mediaAccessService;
 
     // ========================================
     // Send Message
@@ -625,15 +627,7 @@ public class ChatService {
     }
 
     private CommonDtos.MediaFile toMediaFileDto(io.github.layjason.mayoistar.entity.common.MediaFile entity) {
-        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
-        dto.setMediaId(entity.getMediaId());
-        dto.setFileName(entity.getFileName());
-        dto.setContentType(entity.getContentType());
-        dto.setSizeBytes(entity.getSizeBytes());
-        dto.setUsage(entity.getUsage());
-        dto.setUrl(entity.getUrl());
-        dto.setUploadedAt(entity.getUploadedAt().toString());
-        return dto;
+        return mediaAccessService.toSignedDto(entity);
     }
 
     /**

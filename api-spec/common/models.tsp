@@ -154,6 +154,15 @@ enum MediaUsage {
   activityReviewImage,
 }
 
+@doc("媒体可见性。")
+enum MediaVisibility {
+  @doc("公开可见，仍需签名 URL 才能访问。")
+  publicVisible,
+
+  @doc("私有可见，访问时需要签名 URL、JWT 和对应 ACL 权限。")
+  privateVisible,
+}
+
 @doc("媒体文件元数据，文件已完成上传，业务接口可通过 mediaId 引用，不暴露存储凭据。")
 model MediaFile {
   @doc("媒体文件标识。")
@@ -173,6 +182,12 @@ model MediaFile {
 
   @doc("访问地址。")
   url?: string;
+
+  @doc("签名访问地址，客户端不得作为永久地址保存。")
+  signedUrl?: string;
+
+  @doc("媒体可见性。")
+  visibility?: MediaVisibility;
 
   @doc("上传时间。")
   uploadedAt: DateTimeString;

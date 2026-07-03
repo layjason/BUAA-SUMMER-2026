@@ -38,6 +38,7 @@ public class SecurityConfiguration {
         "/identity/nicknames/availability",
         "/identity/interest-tags",
         "/admin/auth/login",
+        "/media/**",
     };
 
     private static final String[] MERCHANT_ENDPOINTS = {

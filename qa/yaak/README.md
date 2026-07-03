@@ -1,5 +1,7 @@
 # MayoiStar Yaak 测试说明
 
+- Version: 8 20260703 005632
+  - 补充 Redis 依赖说明，启动命令与可达性检查增加 Redis 服务
 - Version: 7 20260702 180114
   - 修正未认证访问个人资料接口的自动化测试预期，未携带 token 应返回 401
 - Version: 6 20260702 174739
@@ -32,10 +34,12 @@
 
    ```bash
    docker compose --env-file .env -f docker-compose-local.yaml down -v
-   docker compose --env-file .env -f docker-compose-local.yaml up -d postgres mailhog rustfs
+   docker compose --env-file .env -f docker-compose-local.yaml up -d postgres redis mailhog rustfs
    ```
 
    身份接口中的头像/执照上传，以及聊天图片上传测试依赖 RustFS。默认 S3 API 地址为 `http://localhost:9000`，控制台地址为 `http://localhost:9001`。
+
+   Redis 用于媒体访问签名缓存与限流计数，后端需实际连接 Redis 实例。默认端口 `6379`，可通过 `.env` 中的 `DEV_REDIS_PORT` 和 `REDIS_PASSWORD` 配置。
 
 3. 在 Yaak 中导入集合与环境模板：
 

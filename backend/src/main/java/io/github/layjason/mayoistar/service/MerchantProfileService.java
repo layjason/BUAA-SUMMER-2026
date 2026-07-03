@@ -14,6 +14,7 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
 import io.github.layjason.mayoistar.repository.QualificationRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +40,7 @@ public class MerchantProfileService {
     private final QualificationRepository qualificationRepository;
     private final MediaFileRepository mediaFileRepository;
     private final MediaFileUploadService mediaFileUploadService;
+    private final MediaAccessService mediaAccessService;
 
     /**
      * @param userRepository             用户数据访问
@@ -52,12 +54,14 @@ public class MerchantProfileService {
             MerchantProfileRepository merchantProfileRepository,
             QualificationRepository qualificationRepository,
             MediaFileRepository mediaFileRepository,
-            MediaFileUploadService mediaFileUploadService) {
+            MediaFileUploadService mediaFileUploadService,
+            MediaAccessService mediaAccessService) {
         this.userRepository = userRepository;
         this.merchantProfileRepository = merchantProfileRepository;
         this.qualificationRepository = qualificationRepository;
         this.mediaFileRepository = mediaFileRepository;
         this.mediaFileUploadService = mediaFileUploadService;
+        this.mediaAccessService = mediaAccessService;
     }
 
     /**
@@ -243,14 +247,7 @@ public class MerchantProfileService {
         // 头像
         if (profile.getAvatarMediaId() != null) {
             mediaFileRepository.findById(profile.getAvatarMediaId()).ifPresent(avatar -> {
-                CommonDtos.MediaFile avatarDto = new CommonDtos.MediaFile();
-                avatarDto.setMediaId(avatar.getMediaId());
-                avatarDto.setFileName(avatar.getFileName());
-                avatarDto.setContentType(avatar.getContentType());
-                avatarDto.setSizeBytes(avatar.getSizeBytes());
-                avatarDto.setUsage(avatar.getUsage());
-                avatarDto.setUploadedAt(avatar.getUploadedAt().toString());
-                dto.setAvatar(avatarDto);
+                dto.setAvatar(mediaAccessService.toSignedDto(avatar));
             });
         }
 
@@ -277,7 +274,9 @@ public class MerchantProfileService {
                     mediaFileRepository
                             .findById(licenseId)
                             .ifPresentOrElse(
-                                    mf -> urls.add(mf.getUrl() != null ? mf.getUrl() : ""), () -> urls.add(""));
+                                    mf -> urls.add(
+                                            mediaAccessService.toSignedDto(mf).getSignedUrl()),
+                                    () -> urls.add(""));
                 }
                 detail.setLicenseImageUrls(urls);
             }

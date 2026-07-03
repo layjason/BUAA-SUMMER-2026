@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -109,6 +110,28 @@ public class GlobalExceptionHandler {
         body.setMessage(ex.getMessage());
         body.setData(new EmptyData());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    /**
+     * 处理带 HTTP 状态码的应用异常。
+     *
+     * <p>前置条件：Controller 或 Service 抛出 ResponseStatusException。
+     *
+     * <p>后置条件：返回异常指定的 HTTP 状态码，响应体使用同状态码 code 和异常 reason。
+     *
+     * @param ex HTTP 状态异常
+     * @return 错误响应
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse<EmptyData>> handleResponseStatusException(ResponseStatusException ex) {
+        int status = ex.getStatusCode().value();
+        String message = ex.getReason() != null ? ex.getReason() : ex.getMessage();
+        log.warn("HTTP 状态异常: status={}, message={}", status, message);
+        ApiErrorResponse<EmptyData> body = new ApiErrorResponse<>();
+        body.setCode(status);
+        body.setMessage(message);
+        body.setData(new EmptyData());
+        return ResponseEntity.status(ex.getStatusCode()).body(body);
     }
 
     /**

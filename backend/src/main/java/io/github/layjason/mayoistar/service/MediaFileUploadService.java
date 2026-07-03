@@ -1,10 +1,13 @@
 package io.github.layjason.mayoistar.service;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import io.github.layjason.mayoistar.service.storage.FileStorageService;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,6 +35,7 @@ public class MediaFileUploadService {
 
     private final FileStorageService fileStorageService;
     private final MediaFileRepository mediaFileRepository;
+    private final MediaAccessService mediaAccessService;
 
     /**
      * 每种媒体用途允许的 MIME 类型集合。
@@ -63,9 +67,13 @@ public class MediaFileUploadService {
      * @param fileStorageService  文件存储服务
      * @param mediaFileRepository 媒体文件数据访问
      */
-    public MediaFileUploadService(FileStorageService fileStorageService, MediaFileRepository mediaFileRepository) {
+    public MediaFileUploadService(
+            FileStorageService fileStorageService,
+            MediaFileRepository mediaFileRepository,
+            MediaAccessService mediaAccessService) {
         this.fileStorageService = fileStorageService;
         this.mediaFileRepository = mediaFileRepository;
+        this.mediaAccessService = mediaAccessService;
     }
 
     /**
@@ -108,7 +116,11 @@ public class MediaFileUploadService {
                 .sizeBytes(size)
                 .usage(usage)
                 .storagePath(key)
-                .url(buildMediaAccessPath(mediaId))
+                .url(null)
+                .visibility(defaultVisibility(usage))
+                .accessPolicy(defaultAccessPolicy(usage))
+                .accessScopeId(defaultAccessScope(userId, usage))
+                .accessVersion(1L)
                 .uploadedBy(userId)
                 .uploadedAt(now)
                 .build();
@@ -116,7 +128,7 @@ public class MediaFileUploadService {
 
         log.info("文件上传成功: mediaId={}, userId={}, usage={}, key={}", mediaId, userId, usage, sanitizeForLog(key));
 
-        return toDto(mediaFile);
+        return mediaAccessService.toSignedDto(mediaFile);
     }
 
     /**
@@ -189,25 +201,31 @@ public class MediaFileUploadService {
         result.setContentType(mediaFile.getContentType());
         result.setSizeBytes(mediaFile.getSizeBytes());
         result.setUsage(mediaFile.getUsage());
+        result.setVisibility(mediaFile.getVisibility());
         result.setUrl(mediaFile.getUrl());
         result.setUploadedAt(mediaFile.getUploadedAt().toString());
         return result;
     }
 
-    /**
-     * 生成后端统一媒体访问路径。
-     *
-     * <p>前置条件：mediaId 非空且对应即将持久化的媒体文件。
-     *
-     * <p>后置条件：返回可交给客户端直接访问的相对路径，由后端代理读取对象存储。
-     *
-     * <p>不变量：客户端不依赖对象存储公开读地址。
-     *
-     * @param mediaId 媒体文件唯一标识
-     * @return 后端媒体访问路径
-     */
-    private static String buildMediaAccessPath(UUID mediaId) {
-        return "/media/" + mediaId;
+    private static MediaVisibility defaultVisibility(MediaUsage usage) {
+        return switch (usage) {
+            case avatar, activityImage, summaryImage -> MediaVisibility.publicVisible;
+            case merchantLicense, chatImage, teamFile, teamAlbum, activityReviewImage -> MediaVisibility.privateVisible;
+        };
+    }
+
+    private static MediaAccessPolicy defaultAccessPolicy(MediaUsage usage) {
+        return switch (usage) {
+            case avatar, activityImage, summaryImage -> MediaAccessPolicy.publicAccess;
+            case merchantLicense, chatImage, teamFile, teamAlbum, activityReviewImage -> MediaAccessPolicy.owner;
+        };
+    }
+
+    private static String defaultAccessScope(String userId, MediaUsage usage) {
+        return switch (usage) {
+            case avatar, activityImage, summaryImage -> "";
+            case merchantLicense, chatImage, teamFile, teamAlbum, activityReviewImage -> userId;
+        };
     }
 
     private static String sanitizeForLog(String input) {
