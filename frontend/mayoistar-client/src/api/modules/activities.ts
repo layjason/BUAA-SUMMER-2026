@@ -44,9 +44,15 @@ export type SearchActivitiesParams = {
 }
 
 /** 获取活动信息流（首页 Feed） */
-export function getFeed(tab: ActivityFeedTab, page: number, pageSize: number) {
+export function getFeed(
+  tab: ActivityFeedTab,
+  page: number,
+  pageSize: number,
+  latitude?: number,
+  longitude?: number,
+) {
   return get('/activities/feed', {
-    query: { tab, page, pageSize },
+    query: { tab, page, pageSize, latitude, longitude },
   })
 }
 
