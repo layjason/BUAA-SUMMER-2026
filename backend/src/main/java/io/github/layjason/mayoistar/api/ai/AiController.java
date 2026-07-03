@@ -2,6 +2,7 @@ package io.github.layjason.mayoistar.api.ai;
 
 import io.github.layjason.mayoistar.api.common.ApiResponse;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
+import io.github.layjason.mayoistar.service.ai.ImageClassificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AiController {
 
     private final DefaultApiResponseFactory responseFactory;
+    private final ImageClassificationService imageClassificationService;
 
     @PostMapping("/activity-plans")
     public ResponseEntity<ApiResponse<AiDtos.ActivityPlanningResult>> generateActivityPlan(
@@ -26,6 +28,7 @@ public class AiController {
     @PostMapping("/image-classifications")
     public ResponseEntity<ApiResponse<AiDtos.ImageClassificationResult>> classifyImages(
             @Valid @RequestBody AiDtos.ImageClassificationRequest request) {
-        return responseFactory.imageClassificationResult();
+        AiDtos.ImageClassificationResult result = imageClassificationService.classifyImages(request.getMediaIds());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

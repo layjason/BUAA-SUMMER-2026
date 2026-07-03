@@ -1,5 +1,9 @@
 # MayoiStar Yaak 测试说明
 
+- Version: 10 20260703 153000
+  - 统一 AI 测试脚本的 yaak 调用方式与服务检查风格，修复按名称查找请求的 bug
+- Version: 9 20260703 150620
+  - 新增 AI 图片分类接口测试集合，包含 Postman 集合、环境模板、启动脚本和全量自动化测试脚本
 - Version: 8 20260703 005632
   - 补充 Redis 依赖说明，启动命令与可达性检查增加 Redis 服务
 - Version: 7 20260702 180114
@@ -214,4 +218,131 @@ bash qa/yaak/run-social-chat-tests.sh
 - 后端统一以 HTTP 200 返回业务响应，测试以响应体 `code` 判断成功或业务错误。
 - 需求中的“表情”在当前 TypeSpec 中没有独立 `MessageKind`，按 Unicode Emoji 文本消息测试。
 - 聊天图片上传请求会写入真实 `chatImageMediaId`，运行前请确认 RustFS 已启动。
+- 环境文件中的明文密码只用于 QA 种子账号，不得用于生产环境。
+
+## AI 图片分类测试
+
+### 文件
+
+- `MayoiStar.AI.postman_collection.json`：可导入 Yaak 的 Postman v2.1 集合（7 个请求，4 个分组）。
+- `MayoiStar.AI.local.postman_environment.json`：本地环境变量模板，不包含真实凭据。可在 Yaak 中导入作为环境变量起点。
+- `start-backend-with-clip.ps1` / `start-backend-with-clip.sh`：使用 CLIP 边车配置启动后端。
+- `run-ai-tests.ps1` / `run-ai-tests.sh`：全量测试脚本，自动执行全部 7 个请求，控制台输出完整请求/响应详情。
+- `test-avatar.png`：图片上传测试用占位图片（复用于 identity 和 social-chat 集合）。
+
+### 使用步骤
+
+1. 将 `backend/.env.mailhog.example` 复制为 `backend/.env`，按需修改数据库密码或端口。
+
+2. 启动 Docker 依赖：
+
+   ```bash
+   docker compose --env-file .env -f docker-compose-local.yaml down -v
+   docker compose --env-file .env -f docker-compose-local.yaml up -d postgres redis mailhog rustfs
+   ```
+
+   图片上传测试依赖 RustFS。默认 S3 API 地址为 `http://localhost:9000`，控制台地址为 `http://localhost:9001`。
+
+   Redis 用于媒体访问签名缓存与限流计数，后端需实际连接 Redis 实例。默认端口 `6379`，可通过 `.env` 中的 `DEV_REDIS_PORT` 和 `REDIS_PASSWORD` 配置。
+
+3. 启动 Python CLIP 边车服务：
+
+   ```bash
+   cd clip-service
+   python main.py
+   ```
+
+   或使用 Docker（需 GPU）：
+
+   ```bash
+   cd clip-service
+   docker compose up -d
+   ```
+
+   模型权重约 600MB，首次启动时自动下载。
+
+4. 在 Yaak 中导入集合与环境模板：
+
+   ```bash
+   yaak import qa/yaak/MayoiStar.AI.postman_collection.json
+   yaak workspace list
+   yaak import --workspace-id <WORKSPACE_ID> qa/yaak/MayoiStar.AI.local.postman_environment.json
+   ```
+
+   其中 `<WORKSPACE_ID>` 为第一条命令导入集合后对应的 workspace id，可通过 `yaak workspace list` 查看。
+
+5. 启动后端（PowerShell 或 Bash）：
+
+   ```powershell
+   .\qa\yaak\start-backend-with-clip.ps1
+   ```
+
+   ```bash
+   ./qa/yaak/start-backend-with-clip.sh
+   ```
+
+   脚本会自动检查 S3、Redis 和 CLIP 服务是否可达。
+
+6. 运行全量测试：
+
+   ```powershell
+   .\qa\yaak\run-ai-tests.ps1
+   ```
+
+   ```bash
+   ./qa/yaak/run-ai-tests.sh
+   ```
+
+   如需指定后端地址或工作区名称：
+
+   ```powershell
+   .\qa\yaak\run-ai-tests.ps1 -WorkspaceName "MayoiStar AI" -BaseUrl "http://localhost:8080"
+   ```
+
+   ```bash
+   WORKSPACE_NAME="MayoiStar AI" BASE_URL="http://localhost:8080" ./qa/yaak/run-ai-tests.sh
+   ```
+
+### Token 与动态值
+
+脚本自动处理以下流程：
+
+- **登录 token**：脚本解析登录响应 JSON，提取 `data.tokens.accessToken`，自动写入 `accessToken`
+- **图片上传 mediaId**：上传后自动提取 `data.mediaId`，写入 `testImageMediaId` 和 `testImageMediaId2`
+
+在 Yaak 中手动执行时，请自行把响应值写入环境变量（见下方手动变量映射）。
+
+### 变量映射
+
+| 响应字段 | 环境变量 |
+|----------|----------|
+| `data.tokens.accessToken` | `accessToken` |
+| `data.mediaId`（上传 1） | `testImageMediaId` |
+| `data.mediaId`（上传 2） | `testImageMediaId2` |
+
+### 覆盖的接口测试
+
+#### 00 登录
+
+- `POST /identity/auth/login`：个人用户登录 test_user
+
+#### 01 图片上传
+
+- `POST /activities/media/images`：上传活动图片（2 张，获取分类所需的 mediaId）
+
+#### 02 图片分类 - 正常流程
+
+- `POST /ai/image-classifications`：分类单张图片（验证 `status=succeeded`、`suggestedTags` 为 5 类之一、`confidence` 在 [0,1]）
+- `POST /ai/image-classifications`：分类多张图片（验证每张返回独立结果）
+
+#### 03 图片分类 - 异常与边界
+
+- `POST /ai/image-classifications`：空 `mediaIds` 列表（验证返回空 `items`）
+- `POST /ai/image-classifications`：不存在的 `mediaId`（验证返回 30003 或 30001）
+- `POST /ai/image-classifications`：未认证访问（验证返回 401）
+
+### 注意事项
+
+- AI 图片分类依赖 Python CLIP 边车服务，不启动时分类接口将返回 `AiServiceUnavailable`（30001）。
+- 后端统一以 HTTP 200 返回业务响应，测试以响应体 `code` 判断成功或业务错误。
 - 环境文件中的明文密码只用于 QA 种子账号，不得用于生产环境。
