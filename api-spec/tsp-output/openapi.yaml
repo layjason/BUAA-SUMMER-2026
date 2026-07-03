@@ -3815,6 +3815,189 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Chat.TeamAnnouncementRequest'
+    get:
+      operationId: ChatOperations_listAnnouncements
+      description: 查询群公告，调用方为小队成员，分页返回该小队的群公告列表。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Chat.TeamAnnouncement'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamMemberRequired'
+      tags:
+        - 即时通讯
+  /chat/teams/{teamId}/announcements/{announcementId}:
+    put:
+      operationId: ChatOperations_updateAnnouncement
+      description: 编辑群公告，调用方为队长或管理员，仅限修改公告内容。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - name: announcementId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Chat.TeamAnnouncement'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Chat.AnnouncementPermissionDenied'
+                  - $ref: '#/components/schemas/Errors.Chat.AnnouncementNotVisible'
+      tags:
+        - 即时通讯
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Chat.TeamAnnouncementRequest'
+    delete:
+      operationId: ChatOperations_deleteAnnouncement
+      description: 删除群公告，调用方为队长或管理员，公告删除后不可恢复。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - name: announcementId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/EmptyData'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Chat.AnnouncementPermissionDenied'
+                  - $ref: '#/components/schemas/Errors.Chat.AnnouncementNotVisible'
+      tags:
+        - 即时通讯
   /chat/teams/{teamId}/announcements/{announcementId}/read:
     post:
       operationId: ChatOperations_markAnnouncementRead
@@ -10066,7 +10249,7 @@ components:
                 - $ref: '#/components/schemas/EmptyData'
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
-      description: 50011：调用方无权发布群公告。
+      description: 50011：调用方无权执行该群公告操作。
     Errors.Chat.ConversationMemberRequired:
       type: object
       allOf:

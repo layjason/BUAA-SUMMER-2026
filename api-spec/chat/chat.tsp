@@ -421,6 +421,43 @@ interface ChatOperations {
       | QujuApi.Errors.Chat.AnnouncementPermissionDenied
   >;
 
+  @get
+  @route("/teams/{teamId}/announcements")
+  @doc("查询群公告，调用方为小队成员，分页返回该小队的群公告列表。")
+  listAnnouncements(@path teamId: EntityId, ...PageQuery): APIResult<
+    PageResult<TeamAnnouncement>,
+    QujuApi.Errors.Chat.TeamNotVisible | QujuApi.Errors.Chat.TeamMemberRequired
+  >;
+
+  @put
+  @route("/teams/{teamId}/announcements/{announcementId}")
+  @doc("编辑群公告，调用方为队长或管理员，仅限修改公告内容。")
+  updateAnnouncement(
+    @path teamId: EntityId,
+    @path announcementId: EntityId,
+    @body body: TeamAnnouncementRequest,
+  ): APIResult<
+    TeamAnnouncement,
+
+      | QujuApi.Errors.Chat.TeamNotVisible
+      | QujuApi.Errors.Chat.AnnouncementPermissionDenied
+      | QujuApi.Errors.Chat.AnnouncementNotVisible
+  >;
+
+  @delete
+  @route("/teams/{teamId}/announcements/{announcementId}")
+  @doc("删除群公告，调用方为队长或管理员，公告删除后不可恢复。")
+  deleteAnnouncement(
+    @path teamId: EntityId,
+    @path announcementId: EntityId,
+  ): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Chat.TeamNotVisible
+      | QujuApi.Errors.Chat.AnnouncementPermissionDenied
+      | QujuApi.Errors.Chat.AnnouncementNotVisible
+  >;
+
   @post
   @route("/teams/{teamId}/announcements/{announcementId}/read")
   @doc("标记群公告已读，调用方为小队成员且公告可见，更新当前用户对该公告的已读状态并返回最新公告。")
