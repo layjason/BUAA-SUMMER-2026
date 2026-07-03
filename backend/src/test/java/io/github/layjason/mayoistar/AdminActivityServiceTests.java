@@ -8,9 +8,12 @@ import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
 import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityImage;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
@@ -324,6 +327,24 @@ class AdminActivityServiceTests {
     }
 
     @Test
+    void listActivitiesShouldReturnCoverImage() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "带封面活动");
+        MediaFile laterImage = saveMediaFile(UUID.randomUUID(), organizer.getUserId(), "later.png");
+        MediaFile coverImage = saveMediaFile(UUID.randomUUID(), organizer.getUserId(), "cover.png");
+        saveActivityImage(activity.getActivityId(), laterImage.getMediaId(), 2);
+        saveActivityImage(activity.getActivityId(), coverImage.getMediaId(), 1);
+
+        PageResult<ActivityDtos.ActivitySummary> result =
+                adminActivityService.listActivities(null, null, null, null, 1, 20);
+
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().getFirst().getCoverImage()).isNotNull();
+        assertThat(result.getItems().getFirst().getCoverImage().getMediaId()).isEqualTo(coverImage.getMediaId());
+        assertThat(result.getItems().getFirst().getCoverImage().getFileName()).isEqualTo("cover.png");
+    }
+
+    @Test
     void listActivitiesShouldFilterByKeyword() {
         User organizer = saveUser("user-a");
         saveApprovedActivity(organizer.getUserId(), "桌游之夜");
@@ -424,5 +445,28 @@ class AdminActivityServiceTests {
                 .registrationDeadline(Instant.parse("2026-07-01T12:00:00Z"))
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now());
+    }
+
+    private MediaFile saveMediaFile(UUID mediaId, String userId, String fileName) {
+        return mediaFileRepository.save(MediaFile.builder()
+                .mediaId(mediaId)
+                .fileName(fileName)
+                .contentType("image/png")
+                .sizeBytes(1L)
+                .usage(MediaUsage.activityImage)
+                .storagePath("/tmp/" + mediaId)
+                .url("https://example.com/" + mediaId)
+                .uploadedBy(userId)
+                .uploadedAt(Instant.now())
+                .build());
+    }
+
+    private ActivityImage saveActivityImage(String activityId, UUID mediaId, int sortOrder) {
+        return activityImageRepository.save(ActivityImage.builder()
+                .imageId(UUID.randomUUID().toString())
+                .activityId(activityId)
+                .mediaId(mediaId)
+                .sortOrder(sortOrder)
+                .build());
     }
 }

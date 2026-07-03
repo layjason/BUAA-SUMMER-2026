@@ -19,7 +19,25 @@ import org.springframework.data.repository.query.Param;
  */
 public interface ActivityRegistrationRepository extends JpaRepository<ActivityRegistration, String> {
 
+    interface ActivityRegistrationStatusCount {
+        String getActivityId();
+
+        RegistrationStatus getStatus();
+
+        long getTotal();
+    }
+
     Optional<ActivityRegistration> findByActivityIdAndUserId(String activityId, String userId);
+
+    @Query("""
+            select registration.activityId as activityId, registration.status as status, count(registration) as total
+            from ActivityRegistration registration
+            where registration.activityId in :activityIds and registration.status in :statuses
+            group by registration.activityId, registration.status
+            """)
+    List<ActivityRegistrationStatusCount> countByActivityIdsAndStatuses(
+            @Param("activityIds") Collection<String> activityIds,
+            @Param("statuses") Collection<RegistrationStatus> statuses);
 
     @EntityGraph(attributePaths = "activity")
     Page<ActivityRegistration> findByUserIdOrderByRegisteredAtDesc(String userId, Pageable pageable);
