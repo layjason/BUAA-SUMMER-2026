@@ -588,6 +588,26 @@ model ActivityReview {
   createdAt: DateTimeString;
 }
 
+@doc("活动评价列表项，在评价基础上补充评价用户展示昵称。")
+model ActivityReviewListItem {
+  ...ActivityReview;
+
+  @doc("评价用户展示昵称。")
+  nickname: string;
+}
+
+@doc("当前登录用户对指定活动的评价查询结果。")
+model MyActivityReviewResult {
+  @doc("评价内容，当前用户未评价时为空。")
+  review?: ActivityReview;
+}
+
+@doc("当前登录用户对指定活动发布的总结查询结果。")
+model MyActivitySummaryResult {
+  @doc("总结内容，当前用户未发布时为空。")
+  summary?: ActivitySummaryPost;
+}
+
 @route("/activities")
 @tag("活动")
 interface ActivityOperations {
@@ -821,9 +841,25 @@ interface ActivityOperations {
   @doc("导出签到数据，调用方为活动发起人或管理员，返回二进制表格文件，该接口允许不使用 APIResponse 包装。")
   exportCheckIns(@path activityId: EntityId): bytes;
 
+  @get
+  @route("/{activityId}/summaries")
+  @doc("获取活动图文总结列表，活动存在且调用方可见，分页返回已发布的活动总结，用于活动详情页展示回顾内容。")
+  listSummaries(@path activityId: EntityId, ...PageQuery): APIResult<
+    PageResult<ActivitySummaryPost>,
+    QujuApi.Errors.Activities.ActivityNotVisible
+  >;
+
+  @get
+  @route("/{activityId}/summaries/mine")
+  @doc("获取当前登录用户对指定活动发布的总结，调用方已登录，未发布时 summary 为空。")
+  getMySummary(@path activityId: EntityId): APIResult<
+    MyActivitySummaryResult,
+    QujuApi.Errors.Activities.ActivityNotVisible
+  >;
+
   @post
   @route("/{activityId}/summaries")
-  @doc("发布活动图文总结，活动已结束且调用方为发起人，发布总结，AI 图片标签必须经人工确认。")
+  @doc("发布活动图文总结，活动已结束且调用方为发起人，每个活动仅允许发布一篇总结，AI 图片标签必须经人工确认。")
   createSummary(
     @path activityId: EntityId,
     @body body: ActivitySummaryPostRequest,
@@ -834,6 +870,23 @@ interface ActivityOperations {
       | QujuApi.Errors.Activities.ActivityPermissionDenied
       | QujuApi.Errors.Activities.ActivityNotEnded
       | QujuApi.Errors.Activities.MediaFileUnavailable
+      | QujuApi.Errors.Activities.DuplicateSummary
+  >;
+
+  @get
+  @route("/{activityId}/reviews")
+  @doc("获取活动评价列表，活动存在且调用方可见，分页返回参与者评价，用于活动详情页展示评价摘要。")
+  listReviews(@path activityId: EntityId, ...PageQuery): APIResult<
+    PageResult<ActivityReviewListItem>,
+    QujuApi.Errors.Activities.ActivityNotVisible
+  >;
+
+  @get
+  @route("/{activityId}/reviews/mine")
+  @doc("获取当前登录用户对指定活动的评价，调用方已登录，未评价时 review 为空。")
+  getMyReview(@path activityId: EntityId): APIResult<
+    MyActivityReviewResult,
+    QujuApi.Errors.Activities.ActivityNotVisible
   >;
 
   @post
