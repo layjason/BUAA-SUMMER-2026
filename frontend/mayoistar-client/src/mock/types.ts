@@ -51,6 +51,8 @@ export interface MockActivity {
     suggestedReviewStatus: 'pending' | 'approved' | 'rejected' | 'changeRequired'
     reasons: string[]
   }
+  /** 是否要求签到时校验位置；未设置时 mock 默认视为 false */
+  requireLocationCheck?: boolean
 }
 
 export interface MockDraft {
@@ -77,6 +79,8 @@ export interface MockDraft {
   capacity: number
   minAge: number
   tags: string[]
+  /** 是否要求签到时校验位置；未设置时 mock 默认视为 false */
+  requireLocationCheck?: boolean
   reviewStatus: 'draft' | 'rejected' | 'changeRequired'
   sourceType: 'manual' | 'template' | 'clone' | 'ai'
   createdAt: string

@@ -346,6 +346,11 @@ export function getFeed(
   )
 }
 
+/** 读取活动是否要求签到位置校验；mock 未配置时默认 false */
+function readRequireLocationCheck(activity: { requireLocationCheck?: boolean }): boolean {
+  return activity.requireLocationCheck ?? false
+}
+
 /** 活动转为信息流摘要 */
 function activityToFeedItem(db: ReturnType<typeof getMockDb>, a: MockActivity): ActivitySummary {
   return {
@@ -362,6 +367,7 @@ function activityToFeedItem(db: ReturnType<typeof getMockDb>, a: MockActivity): 
     tags: a.tags,
     location: toLocationInfo(a.location),
     coverImage: mediaFilesFromActivity(a)[0],
+    requireLocationCheck: readRequireLocationCheck(a),
   }
 }
 
@@ -421,6 +427,7 @@ export function getActivityDetail(activityId: number): ActivityDetail {
         ]
       : [],
     aiContentReview: a.aiContentReview ?? undefined,
+    requireLocationCheck: readRequireLocationCheck(a),
   }
 }
 
@@ -1619,6 +1626,7 @@ export function getMyRegistrations(
       location: toLocationInfo(act.location),
       coverImage: mediaFilesFromActivity(act)[0],
       waitingRank: waitEntry?.position,
+      requireLocationCheck: readRequireLocationCheck(act),
     })
   }
 
