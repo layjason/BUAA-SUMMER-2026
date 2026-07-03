@@ -78,6 +78,7 @@
     "@dcloudio/uni-stacktracey": "3.0.0-5000720260410001",
     "@dcloudio/vite-plugin-uni": "3.0.0-5000720260410001",
     "@stoplight/prism-cli": "^5.0.0",
+    "@types/node": "20.11.30",
     "@vue/eslint-config-typescript": "^14.9.0",
     "@vue/runtime-core": "^3.5.39",
     "@vue/test-utils": "^2.4.0",

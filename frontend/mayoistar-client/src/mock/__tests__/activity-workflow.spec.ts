@@ -10,8 +10,10 @@ import {
   getMyActivities,
   getMyActivityReview,
   getParticipationState,
+  getMerchantProfile,
   listActivityReviews,
   listActivitySummaries,
+  submitMerchantQualification,
   submitActivity,
 } from '@/mock/workflow'
 
@@ -204,5 +206,22 @@ describe('活动 mock workflow 契约对齐', () => {
         }),
       ]),
     )
+  })
+
+  it('商家资质提交后应进入审核中状态', () => {
+    const before = getMerchantProfile(10002)
+    expect(before.qualificationStatus).toBe('not_submitted')
+
+    const result = submitMerchantQualification(10002, {
+      licenseMediaIds: ['media_license_1'],
+    })
+    expect(result).toEqual({})
+
+    const after = getMerchantProfile(10002)
+    expect(after.qualificationStatus).toBe('pending')
+    expect(after.qualification).toMatchObject({
+      status: 'pending',
+      licenseImageUrls: expect.arrayContaining([expect.stringContaining('media_license_1')]),
+    })
   })
 })

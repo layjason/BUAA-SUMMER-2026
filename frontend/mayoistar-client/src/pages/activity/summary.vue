@@ -35,7 +35,15 @@
               mediaId ? mediaId.slice(0, 8) + '...' : '—'
             }}</text>
             <view class="classification-tags">
-              <text v-for="tag in tags" :key="tag" class="tag-chip">{{ tag }}</text>
+              <text
+                v-for="tag in tags"
+                :key="tag"
+                class="tag-chip"
+                :class="{ 'tag-chip--active': isImageTagConfirmed(mediaId, tag) }"
+                @click="toggleConfirmedImageTag(mediaId, tag)"
+              >
+                {{ tag }}
+              </text>
             </view>
           </view>
         </view>
@@ -107,6 +115,7 @@ const submitting = ref(false)
 const formError = ref('')
 // AI 图片分类结果：mediaId -> tags
 const imageClassifications = ref<Map<string, string[]>>(new Map())
+const confirmedImageTagMap = ref<Map<string, Set<string>>>(new Map())
 
 /**
  * 添加图片并调用 AI 分类
@@ -136,6 +145,7 @@ async function handleAddImage(): Promise<void> {
         if (classification.status === 'succeeded' && classification.items) {
           for (const item of classification.items) {
             imageClassifications.value.set(item.mediaId, item.suggestedTags)
+            confirmedImageTagMap.value.set(item.mediaId, new Set(item.suggestedTags))
           }
         }
       } catch {
@@ -159,6 +169,38 @@ function removeImage(index: number): void {
   imageIds.value.splice(index, 1)
   imagePreviews.value.splice(index, 1)
   imageClassifications.value.delete(removedId)
+  confirmedImageTagMap.value.delete(removedId)
+}
+
+/** 判断图片标签是否已被人工确认
+ *
+ * @param mediaId 图片媒体文件标识
+ * @param tag 待判断标签
+ * @returns true 表示提交时会包含该标签
+ */
+function isImageTagConfirmed(mediaId: string, tag: string): boolean {
+  return confirmedImageTagMap.value.get(mediaId)?.has(tag) ?? false
+}
+
+/** 切换图片标签确认状态
+ *
+ * 前置条件：mediaId 和 tag 来自 AI 分类结果。
+ * 后置条件：confirmedImageTagMap 反映用户人工确认后的标签集合。
+ * 副作用：仅更新本地提交状态，不立即调用 API。
+ *
+ * @param mediaId 图片媒体文件标识
+ * @param tag 被确认或取消的标签
+ */
+function toggleConfirmedImageTag(mediaId: string, tag: string): void {
+  const next = new Map(confirmedImageTagMap.value)
+  const tags = new Set(next.get(mediaId) ?? [])
+  if (tags.has(tag)) {
+    tags.delete(tag)
+  } else {
+    tags.add(tag)
+  }
+  next.set(mediaId, tags)
+  confirmedImageTagMap.value = next
 }
 
 /**
@@ -183,7 +225,7 @@ async function handleSubmit(): Promise<void> {
     // 构建 confirmedImageTags：优先使用 AI 分类结果，否则空标签
     const confirmedImageTags = imageIds.value.map((id) => ({
       mediaId: id,
-      tags: imageClassifications.value.get(id) ?? [],
+      tags: [...(confirmedImageTagMap.value.get(id) ?? new Set<string>())],
     }))
 
     await createActivitySummary(activityId.value, {

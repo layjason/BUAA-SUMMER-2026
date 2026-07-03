@@ -133,6 +133,7 @@ const loadError = ref(false)
 const noMoreData = ref(false)
 const currentPage = ref(1)
 const pageSize = 10
+const defaultNearbyLocation = { longitude: 116.46, latitude: 39.908, distanceMeters: 10000 }
 
 interface ActivityItem {
   activityId: string
@@ -158,13 +159,28 @@ function getStatusText(status: string): string {
   return runtimeStatusText(status, t)
 }
 
+/** 构建信息流查询参数
+ *
+ * 前置条件：activeTab 已表示当前首页 Tab。
+ * 后置条件：返回 OpenAPI 允许的 Feed 查询字段；附近 Tab 附带默认位置与距离。
+ * 不变量：不向 query 添加 OpenAPI 未定义字段。
+ *
+ * @param page 要加载的页码
+ * @returns 首页 Feed 查询参数
+ */
+function buildFeedParams(page: number) {
+  const base = { page, pageSize }
+  if (activeTab.value !== 'nearby') return base
+  return { ...base, ...defaultNearbyLocation }
+}
+
 async function loadFeed(): Promise<void> {
   loading.value = true
   errorMsg.value = ''
   noMoreData.value = false
   currentPage.value = 1
   try {
-    const result = await getFeed(activeTab.value, 1, pageSize)
+    const result = await getFeed(activeTab.value, buildFeedParams(1))
     items.value = (result.items ?? []) as ActivityItem[]
     noMoreData.value = (result.totalPages ?? 1) <= 1
   } catch (error) {
@@ -184,7 +200,7 @@ async function onRefresh(): Promise<void> {
   noMoreData.value = false
   currentPage.value = 1
   try {
-    const result = await getFeed(activeTab.value, 1, pageSize)
+    const result = await getFeed(activeTab.value, buildFeedParams(1))
     items.value = (result.items ?? []) as ActivityItem[]
     noMoreData.value = (result.totalPages ?? 1) <= 1
   } catch {
@@ -200,7 +216,7 @@ async function loadMore(): Promise<void> {
   loadError.value = false
   const nextPage = currentPage.value + 1
   try {
-    const result = await getFeed(activeTab.value, nextPage, pageSize)
+    const result = await getFeed(activeTab.value, buildFeedParams(nextPage))
     const newItems = (result.items ?? []) as ActivityItem[]
     if (newItems.length === 0) {
       noMoreData.value = true

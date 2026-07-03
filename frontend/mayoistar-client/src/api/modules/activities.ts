@@ -41,12 +41,23 @@ export type SearchActivitiesParams = {
   startAtTo?: string
   minFee?: number
   maxFee?: number
+  longitude?: number
+  latitude?: number
+  distanceMeters?: number
 }
 
-/** 获取活动信息流（首页 Feed） */
-export function getFeed(tab: ActivityFeedTab, page: number, pageSize: number) {
+/** 首页信息流查询参数（与 OpenAPI ActivityOperations_getFeed 对齐） */
+export type FeedActivitiesParams = SearchActivitiesParams
+
+/** 获取活动信息流（首页 Feed）
+ *
+ * 前置条件：tab 必须为 OpenAPI 定义的 feed tab；params 只包含 OpenAPI 已声明的查询字段。
+ * 后置条件：返回分页活动摘要，不修改客户端状态。
+ * 不变量：附近 Tab 的经纬度和距离筛选通过 query 传递，不在 mock 中私加业务字段。
+ */
+export function getFeed(tab: ActivityFeedTab, params: FeedActivitiesParams) {
   return get('/activities/feed', {
-    query: { tab, page, pageSize },
+    query: { tab, ...params },
   })
 }
 

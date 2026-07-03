@@ -103,6 +103,34 @@
                 {{ t('editProfile.rejectReason') }}: {{ qualification.rejectReason }}
               </text>
             </view>
+            <view v-if="canSubmitQualification" class="qualification-upload">
+              <view class="license-grid">
+                <view
+                  v-for="(url, index) in licensePreviewUrls"
+                  :key="url"
+                  class="license-preview"
+                  @click="removeLicenseImage(index)"
+                >
+                  <image class="license-image" :src="url" mode="aspectFill" />
+                  <text class="license-remove">×</text>
+                </view>
+                <view class="license-add" @click="chooseLicenseImages">
+                  <text class="license-add-icon">+</text>
+                  <text class="license-add-text">营业凭证</text>
+                </view>
+              </view>
+              <button
+                class="qualification-submit"
+                :loading="qualificationSubmitting"
+                :disabled="qualificationSubmitting || licenseMediaIds.length === 0"
+                @click="handleSubmitQualification"
+              >
+                提交商家资质审核
+              </button>
+              <text class="qualification-hint">
+                提交后状态将变为审核中，审核通过后获得商家身份展示。
+              </text>
+            </view>
           </view>
 
           <FormError :message="formError" />
@@ -126,7 +154,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import {
+  checkNicknameAvailability,
+  getInterestTags,
+  getMerchantProfile,
+  getMyProfile,
+  submitMerchantQualification,
+  updateMerchantProfile,
+  updateMyProfile,
+  uploadAvatar,
+} from '@/api/modules/profile'
 import { getErrorMessage } from '@/utils/error'
 import { FormInput, FormError, SubmitButton } from '@/components'
 
@@ -180,6 +218,7 @@ const nicknameError = ref('')
 const merchantNameError = ref('')
 const formError = ref('')
 const saving = ref(false)
+const qualificationSubmitting = ref(false)
 
 /** 昵称唯一性检查已有结果 */
 const nicknameChecked = ref(false)
@@ -191,6 +230,15 @@ const qualification = ref<{
   status: string
   rejectReason?: string
 } | null>(null)
+
+const licenseMediaIds = ref<string[]>([])
+const licensePreviewUrls = ref<string[]>([])
+
+/** 是否允许提交或重新提交商家资质 */
+const canSubmitQualification = computed(() => {
+  const status = qualification.value?.status ?? 'not_submitted'
+  return status === 'not_submitted' || status === 'rejected'
+})
 
 /** 资质状态文本映射 */
 const qualificationStatusText = computed(() => {
@@ -237,9 +285,7 @@ function checkNickname(): void {
 
   nicknameTimer = setTimeout(async () => {
     try {
-      const result = await api.get('/identity/nicknames/availability', {
-        query: { nickname: value },
-      })
+      const result = await checkNicknameAvailability(value)
       if (formNickname.value.trim() !== value) return
 
       nicknameAvailable.value = result.available
@@ -291,10 +337,7 @@ async function handleAvatarClick(): Promise<void> {
 
     // 上传头像
     try {
-      const result = (await api.upload('/identity/media/avatar', tempPath)) as {
-        mediaId: string
-        url: string
-      }
+      const result = await uploadAvatar(tempPath)
       avatarMediaId.value = result.mediaId
       avatarUrl.value = result.url
     } catch {
@@ -302,6 +345,70 @@ async function handleAvatarClick(): Promise<void> {
     }
   } catch {
     /* 用户取消选择 */
+  }
+}
+
+/** 选择并上传营业执照或营业凭证图片
+ *
+ * 前置条件：当前用户为商家且资质处于未提交或驳回状态。
+ * 后置条件：上传成功的 mediaId 会进入 licenseMediaIds，图片 URL 用于页面预览。
+ * 副作用：调用媒体上传接口，失败时写入 formError。
+ */
+async function chooseLicenseImages(): Promise<void> {
+  if (!canSubmitQualification.value) return
+  try {
+    const res = await uni.chooseImage({
+      count: Math.max(1, 3 - licenseMediaIds.value.length),
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+    })
+    for (const filePath of res.tempFilePaths) {
+      const result = await uploadAvatar(filePath)
+      licenseMediaIds.value.push(result.mediaId)
+      licensePreviewUrls.value.push(result.url ?? filePath)
+    }
+  } catch {
+    formError.value = '营业凭证上传失败或已取消'
+  }
+}
+
+/** 移除待提交的营业凭证图片
+ *
+ * @param index 图片在待提交列表中的索引
+ */
+function removeLicenseImage(index: number): void {
+  licenseMediaIds.value.splice(index, 1)
+  licensePreviewUrls.value.splice(index, 1)
+}
+
+/** 提交商家资质审核
+ *
+ * 前置条件：已选择至少一张营业执照或营业凭证图片。
+ * 后置条件：提交成功后重新加载商家资料，状态进入审核中。
+ * 副作用：调用商家资质提交接口并展示 toast。
+ */
+async function handleSubmitQualification(): Promise<void> {
+  if (qualificationSubmitting.value) return
+  if (licenseMediaIds.value.length === 0) {
+    formError.value = '请先上传营业执照或营业凭证'
+    return
+  }
+  qualificationSubmitting.value = true
+  formError.value = ''
+  try {
+    await submitMerchantQualification([...licenseMediaIds.value])
+    licenseMediaIds.value = []
+    licensePreviewUrls.value = []
+    uni.showToast({ title: '资质已提交审核', icon: 'success' })
+    await loadProfile()
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      formError.value = getErrorMessage(error.code)
+    } else {
+      formError.value = getErrorMessage(0, '资质提交失败')
+    }
+  } finally {
+    qualificationSubmitting.value = false
   }
 }
 
@@ -326,7 +433,7 @@ function onBirthdayChange(e: { detail: { value: string } }): void {
 async function loadProfile(): Promise<void> {
   try {
     if (isMerchant.value) {
-      const profile = await api.get('/identity/me/merchant-profile')
+      const profile = await getMerchantProfile()
       formNickname.value = profile.nickname
       formMerchantName.value = profile.merchantName
       if (profile.avatar?.url) avatarUrl.value = profile.avatar.url
@@ -340,7 +447,7 @@ async function loadProfile(): Promise<void> {
         }
       }
     } else {
-      const profile = await api.get('/identity/me/profile')
+      const profile = await getMyProfile()
       formNickname.value = profile.nickname
       if (profile.avatar?.url) avatarUrl.value = profile.avatar.url
       if (profile.gender) formGender.value = profile.gender as typeof formGender.value
@@ -364,7 +471,7 @@ async function loadProfile(): Promise<void> {
  */
 async function loadTags(): Promise<void> {
   try {
-    const tags = await api.get('/identity/interest-tags')
+    const tags = await getInterestTags()
     availableTags.value = tags
   } catch {
     /* 标签加载失败不影响主流程 */
@@ -404,24 +511,20 @@ async function handleSave(): Promise<void> {
 
   try {
     if (isMerchant.value) {
-      await api.patch('/identity/me/merchant-profile', {
-        body: {
-          nickname: nickname,
-          merchantName: formMerchantName.value.trim(),
-          avatarMediaId: avatarMediaId.value || undefined,
-          interestedActivityFields: [...selectedTags.value],
-        },
+      await updateMerchantProfile({
+        nickname: nickname,
+        merchantName: formMerchantName.value.trim(),
+        avatarMediaId: avatarMediaId.value || undefined,
+        interestedActivityFields: [...selectedTags.value],
       })
     } else {
-      await api.patch('/identity/me/profile', {
-        body: {
-          nickname,
-          avatarMediaId: avatarMediaId.value || undefined,
-          gender: formGender.value || undefined,
-          birthday: formBirthday.value || undefined,
-          signature: formSignature.value.trim() || undefined,
-          interestTags: [...selectedTags.value],
-        },
+      await updateMyProfile({
+        nickname,
+        avatarMediaId: avatarMediaId.value || undefined,
+        gender: formGender.value || undefined,
+        birthday: formBirthday.value || undefined,
+        signature: formSignature.value.trim() || undefined,
+        interestTags: [...selectedTags.value],
       })
     }
     uni.showToast({ title: t('editProfile.saveSuccess'), icon: 'success' })
@@ -625,6 +728,86 @@ async function handleSave(): Promise<void> {
   font-size: 26rpx;
   color: #ee0a24;
   margin-top: 8rpx;
+}
+
+.qualification-upload {
+  margin-top: 20rpx;
+}
+
+.license-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.license-preview,
+.license-add {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+  position: relative;
+}
+
+.license-image {
+  width: 100%;
+  height: 100%;
+}
+
+.license-remove {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 28rpx;
+  text-align: center;
+  line-height: 36rpx;
+}
+
+.license-add {
+  border: 2rpx dashed #c8c9cc;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+
+.license-add-icon {
+  font-size: 44rpx;
+  color: #1989fa;
+}
+
+.license-add-text {
+  font-size: 24rpx;
+  color: #646566;
+}
+
+.qualification-submit {
+  width: 100%;
+  height: 76rpx;
+  border-radius: 38rpx;
+  background: #1989fa;
+  color: #fff;
+  font-size: 28rpx;
+  line-height: 76rpx;
+}
+
+.qualification-submit[disabled] {
+  opacity: 0.5;
+}
+
+.qualification-hint {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #969799;
 }
 </style>
 

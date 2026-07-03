@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetMockDb } from '@/mock/database'
-import { searchActivities } from '@/mock/workflow'
+import { getFeed, searchActivities } from '@/mock/workflow'
 
 vi.stubGlobal('uni', {
   getStorageSync: vi.fn(() => ''),
@@ -45,5 +45,20 @@ describe('searchActivities 筛选', () => {
 
     expect(result.items.length).toBeGreaterThan(0)
     expect(result.items.every((item) => (item.feeAmount as number) === 0)).toBe(true)
+  })
+
+  it('附近 Feed 应支持 OpenAPI 经纬度与距离参数', () => {
+    const result = getFeed('nearby', 1, 50, {
+      longitude: 116.46,
+      latitude: 39.908,
+      distanceMeters: 3000,
+    })
+
+    expect(result.items.length).toBeGreaterThan(0)
+    expect(
+      result.items.every(
+        (item) => item.location.point.longitude > 116 && item.location.point.latitude > 39,
+      ),
+    ).toBe(true)
   })
 })

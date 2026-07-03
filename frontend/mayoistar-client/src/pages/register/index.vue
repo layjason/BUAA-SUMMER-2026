@@ -29,7 +29,7 @@
             :error="emailError"
           />
 
-          <view v-if="registerType === 'personal'" class="form-item">
+          <view class="form-item">
             <text class="label">{{ t('register.nickname') }}</text>
             <view class="input-wrapper">
               <input
@@ -91,7 +91,9 @@ import { ref, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import { registerMerchant, registerPersonal } from '@/api/modules/auth'
+import { checkNicknameAvailability } from '@/api/modules/profile'
 import { getErrorMessage } from '@/utils/error'
 import { PageHeader, FormInput, FormError, SubmitButton } from '@/components'
 
@@ -178,9 +180,7 @@ function onNicknameInput(): void {
   nicknameChecking.value = true
   nicknameTimer = setTimeout(async () => {
     try {
-      const result = await api.get('/identity/nicknames/availability', {
-        query: { nickname: value },
-      })
+      const result = await checkNicknameAvailability(value)
       if (nickname.value.trim() !== value) return
 
       nicknameAvailable.value = result.available
@@ -229,7 +229,6 @@ function validateEmail(): boolean {
  */
 function validateNickname(): boolean {
   nicknameError.value = ''
-  if (registerType.value !== 'personal') return true
   if (!nickname.value.trim()) {
     nicknameError.value = t('register.nicknameRequired')
     return false
@@ -320,21 +319,9 @@ async function handleRegister() {
 
   try {
     if (registerType.value === 'personal') {
-      await api.post('/identity/auth/register/personal', {
-        body: {
-          email: email.value.trim(),
-          nickname: nickname.value.trim(),
-          password: password.value,
-        },
-      })
+      await registerPersonal(email.value.trim(), password.value, nickname.value.trim())
     } else {
-      await api.post('/identity/auth/register/merchant', {
-        body: {
-          email: email.value.trim(),
-          nickname: nickname.value.trim(),
-          password: password.value,
-        },
-      })
+      await registerMerchant(email.value.trim(), password.value, nickname.value.trim())
     }
 
     authStore.pendingActivationEmail = email.value.trim()

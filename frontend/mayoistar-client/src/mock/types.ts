@@ -13,6 +13,13 @@ export interface MockUser {
   signature: string
   interestTagIds: number[]
   createdAt: string
+  merchantName?: string
+  interestedActivityFields?: string[]
+  qualificationStatus?: 'not_submitted' | 'pending' | 'approved' | 'rejected'
+  qualificationLicenseMediaIds?: string[]
+  qualificationSubmittedAt?: string
+  qualificationReviewedAt?: string
+  qualificationRejectReason?: string
 }
 
 export interface MockActivity {
