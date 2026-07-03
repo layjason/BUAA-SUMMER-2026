@@ -41,7 +41,7 @@ model ConversationSummary {
   @doc("会话标题。")
   title: string;
 
-  @doc("会话头像。")
+  @doc("会话头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("最后一条消息的摘要文本。")
@@ -92,7 +92,7 @@ model ChatMessage {
   @doc("文本消息内容。")
   text?: string;
 
-  @doc("图片消息媒体文件。")
+  @doc("图片消息媒体文件。签名 URL 为会话成员可见，会话内稳定；被移出会话后访问失效。")
   image?: MediaFile;
 
   @doc("位置共享消息地点。")
@@ -263,7 +263,7 @@ model VotePollRequest {
 interface ChatOperations {
   @post
   @route("/media/images")
-  @doc("上传聊天图片，请求为 multipart/form-data，返回可发送的图片 mediaId，上传不等于发送消息。")
+  @doc("上传聊天图片，请求为 multipart/form-data，返回可发送的图片 mediaId，上传不等于发送消息。返回的 signedUrl 为 owner 预览地址，发送消息后策略升级为 conversationMember 并因 accessVersion 递增而失效，客户端应在发送后从消息接口获取新的会话签名 URL。")
   uploadChatImage(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
     QujuApi.Errors.Chat.ImageFormatInvalid | QujuApi.Errors.Chat.ImageTooLarge
@@ -271,7 +271,7 @@ interface ChatOperations {
 
   @post
   @route("/teams/{teamId}/files")
-  @doc("上传群文件，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队的文件 mediaId。")
+  @doc("上传群文件，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队的文件 mediaId。返回的 signedUrl 已是 teamMember 终态地址，小队成员均可访问。")
   uploadTeamFile(
     @path teamId: EntityId,
     @multipartBody body: MediaUploadRequest,
@@ -282,7 +282,7 @@ interface ChatOperations {
 
   @post
   @route("/teams/{teamId}/album-images")
-  @doc("上传小队相册图片，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队相册的图片 mediaId。")
+  @doc("上传小队相册图片，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队相册的图片 mediaId。返回的 signedUrl 已是 teamMember 终态地址，小队成员均可访问。")
   uploadTeamAlbumImage(
     @path teamId: EntityId,
     @multipartBody body: MediaUploadRequest,

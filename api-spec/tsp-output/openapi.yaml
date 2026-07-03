@@ -365,7 +365,7 @@ paths:
   /activities/media/images:
     post:
       operationId: ActivityOperations_uploadActivityImage
-      description: 上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。
+      description: 上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。返回的 signedUrl 为 owner 预览地址，绑定草稿后升级为 activityOwner、审核发布后升级为 publicAccess 并因 accessVersion 递增而失效，客户端应从活动接口获取当前 URL。
       parameters: []
       responses:
         '200':
@@ -412,7 +412,7 @@ paths:
   /activities/media/review-images:
     post:
       operationId: ActivityOperations_uploadActivityReviewImage
-      description: 上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。
+      description: 上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。返回的 signedUrl 为 owner 私有地址，仅上传者本人与管理员可访问，对外消费路径待实现。
       parameters: []
       responses:
         '200':
@@ -3391,7 +3391,7 @@ paths:
   /chat/media/images:
     post:
       operationId: ChatOperations_uploadChatImage
-      description: 上传聊天图片，请求为 multipart/form-data，返回可发送的图片 mediaId，上传不等于发送消息。
+      description: 上传聊天图片，请求为 multipart/form-data，返回可发送的图片 mediaId，上传不等于发送消息。返回的 signedUrl 为 owner 预览地址，发送消息后策略升级为 conversationMember 并因 accessVersion 递增而失效，客户端应在发送后从消息接口获取新的会话签名 URL。
       parameters: []
       responses:
         '200':
@@ -3586,7 +3586,7 @@ paths:
   /chat/teams/{teamId}/album-images:
     post:
       operationId: ChatOperations_uploadTeamAlbumImage
-      description: 上传小队相册图片，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队相册的图片 mediaId。
+      description: 上传小队相册图片，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队相册的图片 mediaId。返回的 signedUrl 已是 teamMember 终态地址，小队成员均可访问。
       parameters:
         - name: teamId
           in: path
@@ -3870,7 +3870,7 @@ paths:
   /chat/teams/{teamId}/files:
     post:
       operationId: ChatOperations_uploadTeamFile
-      description: 上传群文件，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队的文件 mediaId。
+      description: 上传群文件，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队的文件 mediaId。返回的 signedUrl 已是 teamMember 终态地址，小队成员均可访问。
       parameters:
         - name: teamId
           in: path
@@ -4943,7 +4943,7 @@ paths:
   /identity/media/avatar:
     post:
       operationId: IdentityOperations_uploadAvatar
-      description: 上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。
+      description: 上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。返回的 signedUrl 为公开稳定地址，可直接使用并公共缓存。
       parameters: []
       responses:
         '200':
@@ -4990,7 +4990,7 @@ paths:
   /identity/media/license:
     post:
       operationId: IdentityOperations_uploadMerchantLicense
-      description: 上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于后续资质提交的 mediaId，不得返回存储凭据。
+      description: 上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于后续资质提交的 mediaId，不得返回存储凭据。返回的 signedUrl 为 owner 私有地址，仅上传者本人与管理员可访问，属敏感资料，客户端不应持久缓存。
       parameters: []
       responses:
         '200':
@@ -7212,7 +7212,7 @@ components:
         coverImage:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 活动封面图片。
+          description: 活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。
         feeAmount:
           type: number
           format: double
@@ -7261,7 +7261,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MediaFile'
-          description: 活动图片列表。
+          description: 活动图片列表。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。
         waitingCount:
           type: integer
           format: int32
@@ -7345,7 +7345,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MediaFile'
-          description: 活动图片列表。
+          description: 活动图片列表。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。
         reviewStatus:
           allOf:
             - $ref: '#/components/schemas/Activities.ActivityReviewStatus'
@@ -7503,7 +7503,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 参与者头像。
+          description: 参与者头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         registrationStatus:
           allOf:
             - $ref: '#/components/schemas/Activities.RegistrationStatus'
@@ -7716,7 +7716,7 @@ components:
         coverImage:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 活动封面图片。
+          description: 活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。
         feeAmount:
           type: number
           format: double
@@ -7774,7 +7774,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MediaFile'
-          description: 活动总结图片列表。
+          description: 活动总结图片列表。签名 URL 用途为 summaryImage，对外消费路径待实现。
         imageTags:
           type: array
           items:
@@ -7850,7 +7850,7 @@ components:
         defaultCoverImage:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 模板默认活动封面图片。
+          description: 模板默认活动封面图片。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
       description: 活动模板。
     Activities.ActivityUpsertRequest:
       type: object
@@ -8069,7 +8069,7 @@ components:
         coverImage:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 活动封面图片。
+          description: 活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。
         feeAmount:
           type: number
           format: double
@@ -8325,7 +8325,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 小队头像媒体文件。
+          description: 小队头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         status:
           allOf:
             - $ref: '#/components/schemas/Social.TeamStatus'
@@ -8704,7 +8704,7 @@ components:
         image:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 图片消息媒体文件。
+          description: 图片消息媒体文件。签名 URL 为会话成员可见，会话内稳定；被移出会话后访问失效。
         location:
           allOf:
             - $ref: '#/components/schemas/LocationInfo'
@@ -8792,7 +8792,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 会话头像。
+          description: 会话头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         lastMessagePreview:
           type: string
           description: 最后一条消息的摘要文本。
@@ -11664,7 +11664,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 商家头像媒体文件。
+          description: 商家头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         interestedActivityFields:
           type: array
           items:
@@ -11758,7 +11758,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 用户头像媒体文件。
+          description: 用户头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         gender:
           allOf:
             - $ref: '#/components/schemas/Identity.Gender'
@@ -12006,7 +12006,7 @@ components:
           description: 媒体用途。
         signedUrl:
           type: string
-          description: 签名访问地址，客户端不得作为永久地址保存。
+          description: 签名访问地址，是资源当前状态的派生地址而非永久地址：accessVersion 变化后立即失效，客户端不得长期保存。生命周期随 usage 而定（头像、已发布活动图片为公开稳定可缓存；聊天图片、群文件、相册为私有成员可见；未发布活动图片仅组织者可见并随活动状态翻转；商家资质为私有仅本人与管理员）。详见 docs/media-access-control.md 的「URL 生命周期与缓存策略」。
         visibility:
           allOf:
             - $ref: '#/components/schemas/MediaVisibility'
@@ -12108,7 +12108,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 被屏蔽用户头像。
+          description: 被屏蔽用户头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         blockedAt:
           allOf:
             - $ref: '#/components/schemas/DateTimeString'
@@ -12132,7 +12132,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 用户头像。
+          description: 用户头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         followedAt:
           allOf:
             - $ref: '#/components/schemas/DateTimeString'
@@ -12181,7 +12181,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 好友头像。
+          description: 好友头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         remark:
           type: string
           description: 当前用户为该好友设置的备注。
@@ -12489,7 +12489,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 成员头像。
+          description: 成员头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         role:
           allOf:
             - $ref: '#/components/schemas/Social.TeamMemberRole'
@@ -12588,7 +12588,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 小队头像媒体文件。
+          description: 小队头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         status:
           allOf:
             - $ref: '#/components/schemas/Social.TeamStatus'

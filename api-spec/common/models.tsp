@@ -180,7 +180,7 @@ model MediaFile {
   @doc("媒体用途。")
   usage: MediaUsage;
 
-  @doc("签名访问地址，客户端不得作为永久地址保存。")
+  @doc("签名访问地址，是资源当前状态的派生地址而非永久地址：accessVersion 变化后立即失效，客户端不得长期保存。生命周期随 usage 而定（头像、已发布活动图片为公开稳定可缓存；聊天图片、群文件、相册为私有成员可见；未发布活动图片仅组织者可见并随活动状态翻转；商家资质为私有仅本人与管理员）。详见 docs/media-access-control.md 的「URL 生命周期与缓存策略」。")
   signedUrl?: string;
 
   @doc("媒体可见性。")
