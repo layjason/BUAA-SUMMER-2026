@@ -85,7 +85,15 @@
 import { ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import {
+  cloneActivity,
+  createDraftFromTemplate,
+  getMyActivities,
+  getTemplates as fetchTemplates,
+  type ActivitySummary,
+  type ActivityTemplate,
+} from '@/api/modules/activities'
 import { BottomActionBar } from '@/components'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
@@ -98,28 +106,9 @@ const loadingActivities = ref(true)
 const actioning = ref(false)
 let redirectTimer: ReturnType<typeof setTimeout> | null = null
 
-interface ActivityTemplate {
-  templateId: string
-  name: string
-  activityType: string
-  defaultTags: string[]
-  defaultIntroduction: string
-  defaultSafetyNotice: string
-  defaultCapacity: number
-  defaultCoverImage: { url: string; mediaId: string } | null
-}
-
 const templates = ref<ActivityTemplate[]>([])
 
-interface MyActivity {
-  activityId: string
-  title: string
-  startAt: string
-  location: { city: string }
-  runtimeStatus: string
-}
-
-const myActivities = ref<MyActivity[]>([])
+const myActivities = ref<ActivitySummary[]>([])
 
 function getStatusText(status: string): string {
   return getRuntimeStatusText(status, t)
@@ -127,8 +116,8 @@ function getStatusText(status: string): string {
 
 async function loadTemplates(): Promise<void> {
   try {
-    const result = await api.get('/activities/templates')
-    templates.value = (result.items ?? []) as ActivityTemplate[]
+    const result = await fetchTemplates()
+    templates.value = result.items ?? []
   } catch {
     /* 加载失败不影响 */
   } finally {
@@ -138,8 +127,8 @@ async function loadTemplates(): Promise<void> {
 
 async function loadMyActivities(): Promise<void> {
   try {
-    const result = await api.get('/activities/mine')
-    myActivities.value = (result.items ?? []) as MyActivity[]
+    const result = await getMyActivities()
+    myActivities.value = result.items ?? []
   } catch {
     /* 加载失败不影响 */
   } finally {
@@ -152,11 +141,11 @@ async function selectTemplate(tpl: ActivityTemplate): Promise<void> {
   actioning.value = true
   try {
     uni.showLoading({ title: t('activityTemplates.creating') })
-    const draft = (await api.post('/activities/templates/{templateId}/drafts', {
-      path: { templateId: tpl.templateId },
-    })) as { activityId: string }
+    const draft = await createDraftFromTemplate(tpl.templateId)
     uni.hideLoading()
-    uni.redirectTo({ url: '/pages/activity/edit?activityId=' + draft.activityId })
+    uni.redirectTo({
+      url: '/pages/activity/edit?activityId=' + draft.activityId,
+    })
   } catch (error) {
     uni.hideLoading()
     if (error instanceof BusinessError) {
@@ -169,18 +158,18 @@ async function selectTemplate(tpl: ActivityTemplate): Promise<void> {
   }
 }
 
-async function selectClone(item: MyActivity): Promise<void> {
+async function selectClone(item: ActivitySummary): Promise<void> {
   if (actioning.value) return
   actioning.value = true
   try {
     uni.showLoading({ title: t('activityClone.cloning') })
-    const result = (await api.post('/activities/{activityId}/clone', {
-      path: { activityId: item.activityId },
-    })) as { activityId: string }
+    const result = await cloneActivity(item.activityId)
     uni.hideLoading()
     uni.showToast({ title: t('activityClone.success'), icon: 'success' })
     redirectTimer = setTimeout(() => {
-      uni.redirectTo({ url: '/pages/activity/edit?activityId=' + result.activityId })
+      uni.redirectTo({
+        url: '/pages/activity/edit?activityId=' + result.activityId,
+      })
     }, 800)
   } catch (error) {
     uni.hideLoading()

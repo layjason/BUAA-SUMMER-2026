@@ -19,6 +19,21 @@
           </view>
         </view>
 
+        <!-- 评价标签 -->
+        <view class="form-item">
+          <text class="label">评价标签</text>
+          <view class="tag-options">
+            <text
+              v-for="tag in availableTags"
+              :key="tag"
+              class="tag-option"
+              :class="{ 'tag-selected': selectedTags.includes(tag) }"
+              @click="toggleTag(tag)"
+              >{{ tag }}</text
+            >
+          </view>
+        </view>
+
         <view class="form-item">
           <text class="label">{{ t('activityReview.content') }}</text>
           <textarea
@@ -49,17 +64,19 @@
         </view>
 
         <FormError :message="formError" />
-
-        <button
-          class="submit-btn"
-          :loading="submitting"
-          :disabled="rating === 0"
-          @click="handleSubmit"
-        >
-          {{ rating === 0 ? '请先打分' : t('activityReview.submit') }}
-        </button>
       </view>
     </scroll-view>
+
+    <BottomActionBar>
+      <button
+        class="bar-btn bar-btn-primary"
+        :loading="submitting"
+        :disabled="rating === 0"
+        @click="handleSubmit"
+      >
+        {{ rating === 0 ? '请先打分' : t('activityReview.submit') }}
+      </button>
+    </BottomActionBar>
   </view>
 </template>
 
@@ -74,9 +91,16 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+
+import {
+  createActivityReview,
+  getMyActivityReview,
+  uploadReviewImages,
+  type MyActivityReviewResult,
+} from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
-import { FormError } from '@/components'
+import { FormError, BottomActionBar } from '@/components'
 
 const { t } = useI18n()
 
@@ -87,6 +111,20 @@ const submitting = ref(false)
 const formError = ref('')
 const imageUrls = ref<string[]>([])
 const uploadingImage = ref(false)
+
+// 预设评价标签
+const availableTags = ['组织有序', '氛围很好', '收获满满', '场地不错', '时间合理', '物超所值']
+const selectedTags = ref<string[]>([])
+
+/** 切换标签选中状态 */
+function toggleTag(tag: string): void {
+  const idx = selectedTags.value.indexOf(tag)
+  if (idx >= 0) {
+    selectedTags.value.splice(idx, 1)
+  } else {
+    selectedTags.value.push(tag)
+  }
+}
 
 /**
  * 添加评价图片
@@ -102,19 +140,16 @@ async function handleAddReviewImage(): Promise<void> {
       sourceType: ['album', 'camera'],
     })
     uploadingImage.value = true
-    for (const tempPath of res.tempFilePaths) {
-      try {
-        const result = (await api.upload('/activities/media/review-images', tempPath)) as {
-          url?: string
-          mediaId: string
-        }
-        const imageUrl = result.url || tempPath
+    try {
+      const results = await uploadReviewImages(res.tempFilePaths as string[])
+      for (const r of results) {
+        const imageUrl = r.url || ''
         imageUrls.value.push(imageUrl)
         if (content.value) content.value += '\n'
         content.value += `![评价图片](${imageUrl})`
-      } catch {
-        formError.value = '图片上传失败'
       }
+    } catch {
+      formError.value = '图片上传失败'
     }
   } catch {
     /* 用户取消选择 */
@@ -140,13 +175,10 @@ async function handleSubmit(): Promise<void> {
   submitting.value = true
 
   try {
-    await api.post('/activities/{activityId}/reviews', {
-      path: { activityId: activityId.value },
-      body: {
-        rating: rating.value,
-        content: content.value.trim() || undefined,
-        tags: [],
-      },
+    await createActivityReview(activityId.value, {
+      rating: rating.value,
+      content: content.value.trim() || undefined,
+      tags: selectedTags.value,
     })
     uni.showToast({ title: t('activityReview.success'), icon: 'success' })
     setTimeout(() => uni.navigateBack(), 1500)
@@ -166,7 +198,19 @@ onLoad((query) => {
   if (!activityId.value) {
     uni.showToast({ title: '缺少活动标识', icon: 'none' })
     setTimeout(() => uni.navigateBack(), 1000)
+    return
   }
+  void (async () => {
+    try {
+      const result: MyActivityReviewResult = await getMyActivityReview(activityId.value)
+      if (result.review) {
+        uni.showToast({ title: t('activityDetail.alreadyReviewed'), icon: 'none' })
+        setTimeout(() => uni.navigateBack(), 1000)
+      }
+    } catch {
+      /* 查询失败不阻塞填写 */
+    }
+  })()
 })
 </script>
 
@@ -186,7 +230,7 @@ onLoad((query) => {
 }
 
 .form-container {
-  padding: 32rpx 32rpx calc(80rpx + env(safe-area-inset-bottom));
+  padding: 32rpx 32rpx calc(240rpx + env(safe-area-inset-bottom));
 }
 
 .title {
@@ -239,17 +283,28 @@ onLoad((query) => {
 }
 
 .submit-btn {
-  width: 100%;
-  height: 88rpx;
-  line-height: 88rpx;
-  text-align: center;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #fff;
-  background-color: #1989fa;
-  border-radius: 12rpx;
-  border: none;
-  margin-top: 16rpx;
+  display: none;
+}
+
+/* ---- 评价标签 ---- */
+.tag-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.tag-option {
+  font-size: 24rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 8rpx;
+  background-color: #f2f3f5;
+  color: #646566;
+}
+
+.tag-selected {
+  background-color: #e8f7f0;
+  color: #5ec8a7;
+  font-weight: 500;
 }
 
 /* ---- 评价图片 ---- */

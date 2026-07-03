@@ -45,6 +45,12 @@ export interface MockActivity {
   reviewStatus: 'draft' | 'pending' | 'approved' | 'rejected' | 'changeRequired'
   isTakenDown: boolean
   createdAt: string
+  aiContentReview?: {
+    status: 'succeeded'
+    riskLevel: 'low' | 'medium' | 'high' | 'uncertain'
+    suggestedReviewStatus: 'pending' | 'approved' | 'rejected' | 'changeRequired'
+    reasons: string[]
+  }
 }
 
 export interface MockDraft {
@@ -107,6 +113,7 @@ export interface MockReview {
   userId: number
   rating: number
   content: string
+  tags: string[]
   createdAt: string
 }
 
@@ -117,6 +124,7 @@ export interface MockSummary {
   title: string
   content: string
   images: string[]
+  imageTags: Array<{ mediaId: string; tags: string[] }>
   createdAt: string
 }
 

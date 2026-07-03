@@ -108,6 +108,10 @@
       "style": { "navigationBarTitleText": "选择模板", "disableScroll": true }
     },
     {
+      "path": "pages/activity/ai-draft",
+      "style": { "navigationBarTitleText": "AI 生成活动", "disableScroll": true }
+    },
+    {
       "path": "pages/discover/search",
       "style": { "navigationBarTitleText": "搜索活动", "disableScroll": true }
     },
