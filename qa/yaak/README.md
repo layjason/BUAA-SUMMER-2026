@@ -1,5 +1,7 @@
 # MayoiStar Yaak 测试说明
 
+- Version: 12 20260703 163000
+  - 新增 Postman 集合和环境模板文件，run-media-auth-tests.ps1 重写为 workspace 模式
 - Version: 11 20260703 160000
   - 新增媒体下载鉴权测试套件，覆盖私聊图片、群聊图片、退出群聊、商家资质、管理员全资源访问、签名完整性等场景
 - Version: 10 20260703 153000
@@ -353,21 +355,33 @@ bash qa/yaak/run-social-chat-tests.sh
 
 ### 文件
 
+- `MayoiStar.MediaAuth.postman_collection.json`：Yaak 可导入的 Postman v2.1 集合（约 30 个请求，6 个分组）。
+- `MayoiStar.MediaAuth.local.postman_environment.json`：本地 QA 环境变量模板，预置种子账号及测试所需全部变量。
 - `start-backend-media.ps1`：启动后端并检查媒体鉴权测试所需的所有依赖（S3、Redis、MailHog、测试素材文件）。
-- `run-media-auth-tests.ps1`：全量测试脚本，自动创建 Yaak 工作空间并执行全部媒体下载鉴权测试用例。
+- `run-media-auth-tests.ps1`：全量测试脚本，使用已导入的 Yaak 集合自动执行全部测试用例。
 - `test-avatar.png` / `test-license.png`：文件上传接口测试用占位图片（复用 identity 集合的素材）。
 
 ### 使用步骤
 
 1. 确保 Docker 依赖已启动（postgres、redis、mailhog、rustfs），并已执行 V2 种子数据迁移。
 
-2. 启动后端：
+2. 在 Yaak 中导入集合与环境模板：
+
+   ```bash
+   yaak import qa/yaak/MayoiStar.MediaAuth.postman_collection.json
+   yaak workspace list
+   yaak import --workspace-id <WORKSPACE_ID> qa/yaak/MayoiStar.MediaAuth.local.postman_environment.json
+   ```
+
+   其中 `<WORKSPACE_ID>` 为第一条命令导入集合后对应的 workspace id。
+
+3. 启动后端：
 
    ```powershell
    .\qa\yaak\start-backend-media.ps1
    ```
 
-3. 运行全量测试：
+4. 运行全量测试：
 
    ```powershell
    .\qa\yaak\run-media-auth-tests.ps1
@@ -463,6 +477,29 @@ bash qa/yaak/run-social-chat-tests.sh
 - **激活 token**：通过 MailHog API 获取商家和非成员用户的激活 token
 - **媒体签名 URL**：从上传响应中提取 `data.url`（或 `data.signedUrl`），用于后续下载测试
 - **签名篡改 URL**：在测试阶段 06 中，自动解析 `privateImageSignedUrl` 中的 `sig` 参数并构造篡改版本和缺失签名版本
+
+### 变量映射
+
+在 Yaak 中手动执行时，请自行把响应值写入环境变量：
+
+| 响应字段 | 环境变量 |
+|----------|----------|
+| `data.tokens.accessToken`（test_user 登录） | `userAccessToken` |
+| `data.tokens.accessToken`（test_peer 登录） | `peerAccessToken` |
+| `data.tokens.accessToken`（admin 登录） | `adminAccessToken` |
+| `data.tokens.accessToken`（商家登录） | `merchantAccessToken` |
+| `data.userId` | `merchantUserId` |
+| `data.requestId` | `friendRequestId` |
+| `data.items[0].conversationId` | `privateConversationId` |
+| `data.teamId` | `teamId` |
+| `data.chatId` | `teamConversationId` |
+| `data.mediaId`（私聊上传） | `privateImageMediaId` |
+| `data.url`（私聊上传） | `privateImageSignedUrl` |
+| `data.mediaId`（群聊上传） | `teamImageMediaId` |
+| `data.url`（群聊上传） | `teamImageSignedUrl` |
+| `data.mediaId`（执照上传） | `licenseMediaId` |
+| `data.url`（执照上传） | `licenseSignedUrl` |
+| `data.url`（头像上传） | `avatarSignedUrl` |
 
 ### 注意事项
 

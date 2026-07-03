@@ -1,11 +1,13 @@
 ﻿param(
-    [string] $BaseUrl = "http://localhost:8080",
+    [string] $WorkspaceName = "MayoiStar Media Download Authorization",
     [string] $MailHogApiBase = "http://127.0.0.1:8025",
+    [string] $BaseUrl = "http://localhost:8080",
     [int] $MailTimeoutSeconds = 30
 )
 
 # ============================================================================
-# 绉嶅瓙璐﹀彿淇℃伅锛堟潵鑷?V2__seed_qa_accounts.sql锛?# ============================================================================
+# 种子账号信息（来自 V2__seed_qa_accounts.sql）
+# ============================================================================
 $TestUserEmail = "test_user@mayoistar.qa"
 $TestUserPassword = "4g9Pf6KNpw4rxe3NL7hij9l2"
 $TestPeerEmail = "test_peer@mayoistar.qa"
@@ -17,23 +19,33 @@ $TestPeerId = "22222222-2222-2222-2222-222222222222"
 $AdminUserId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 
 $ErrorActionPreference = "Stop"
-$YaakDataDir = "$env:TEMP\mayoistar-media-auth-yaak"
 $script:testResults = [System.Collections.ArrayList]::new()
 $stamp = Get-Date -Format "yyyyMMddHHmmss"
 $MerchantEmail = "yaak-media-merchant.$stamp@example.com"
 $MerchantPassword = "Password123!"
 $MerchantName = "MayoiStar Media Test Merchant"
 $MerchantNickname = "media-merchant-$stamp"
+$OutsiderEmail = "yaak-media-outsider.$stamp@example.com"
+$OutsiderNickname = "media-outsider-$stamp"
+$TeamName = "媒体鉴权测试小队-$stamp"
 
-# 妫€鏌ュ熀纭€渚濊禆
+$ScriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
+$TestAvatarPath = Join-Path $ScriptDir "test-avatar.png"
+$TestLicensePath = Join-Path $ScriptDir "test-license.png"
+
+# 检查基础依赖
 if (-not (Get-Command yaak -ErrorAction SilentlyContinue)) {
-    throw "yaak CLI 鏈壘鍒帮紝璇峰厛瀹夎 yaak銆?
+    throw "yaak CLI 未找到，请先安装 yaak。"
 }
-if (-not (Get-Command jq -ErrorAction SilentlyContinue)) {
-    Write-Warning "jq 鏈壘鍒帮紝灏嗕娇鐢?PowerShell JSON 澶勭悊銆?
+if (-not (Test-Path $TestAvatarPath)) {
+    throw "测试图片文件未找到: $TestAvatarPath"
+}
+if (-not (Test-Path $TestLicensePath)) {
+    throw "测试执照文件未找到: $TestLicensePath"
 }
 
-# 瑙ｆ瀽 yaak 鍙墽琛屾枃浠惰矾寰?$YaakExecutable = (Get-Command yaak -ErrorAction Stop).Source
+# 解析 yaak 可执行文件路径
+$YaakExecutable = (Get-Command yaak -ErrorAction Stop).Source
 $YaakNodeExecutable = $null
 $YaakCliScript = $null
 if ($YaakExecutable -like "*.ps1") {
@@ -43,14 +55,8 @@ if ($YaakExecutable -like "*.ps1") {
     $YaakCliScript = Join-Path $yaakBaseDir "node_modules\@yaakapp\cli\bin\cli.js"
 }
 
-$ScriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
-$TestAvatarPath = Join-Path $ScriptDir "test-avatar.png"
-$TestLicensePath = Join-Path $ScriptDir "test-license.png"
-
-New-Item -ItemType Directory -Force -Path $YaakDataDir | Out-Null
-
 # ============================================================================
-# 杈呭姪鍑芥暟
+# 辅助函数（与 run-mailhog-smoke.ps1 一致）
 # ============================================================================
 
 function Write-Log ($Message, $Color = "Cyan") {
@@ -63,7 +69,18 @@ function Write-Skip {
     Write-Host "  [skip] $Reason" -ForegroundColor Yellow
 }
 
-# yaak CLI 璋冪敤鍩虹璁炬柦锛堜笌 run-mailhog-smoke.ps1 涓€鑷达級
+# 从 JSON 响应中提取字段值（空值返回空字符串）
+# 前置条件：$Response 是合法 JSON；后置条件：若字段存在则返回其字符串值，否则返回空字符串
+function Get-JsonField {
+    param($Response, [string] $Field)
+    try {
+        $value = $Response.$Field
+        if ($null -eq $value) { return "" }
+        return [string] $value
+    }
+    catch { return "" }
+}
+
 function ConvertTo-WindowsProcessArgument {
     param([string] $Argument)
     if ($null -eq $Argument) { return '""' }
@@ -95,11 +112,10 @@ function Invoke-YaakLines {
     $processArguments = @()
     if ($script:YaakCliScript) {
         $processInfo.FileName = $script:YaakNodeExecutable
-        $processArguments += @($script:YaakCliScript, "--data-dir", $YaakDataDir)
+        $processArguments += @($script:YaakCliScript)
     }
     else {
         $processInfo.FileName = $script:YaakExecutable
-        $processArguments += @("--data-dir", $YaakDataDir)
     }
     $processArguments += $Arguments
     $processInfo.UseShellExecute = $false
@@ -175,6 +191,26 @@ function Get-YaakIdByName {
     return ([regex]::Match($line, "^(?<id>\S+)")).Groups["id"].Value
 }
 
+function Get-YaakWorkspaceId {
+    param([string] $Name)
+    $workspaces = Invoke-YaakLines -Arguments @("workspace", "list")
+    return Get-YaakIdByName -Lines $workspaces -Name $Name
+}
+
+function Get-YaakEnvironmentId {
+    param([string] $WorkspaceId)
+    $environments = Invoke-YaakLines -Arguments @("environment", "list", $WorkspaceId)
+    $line = $environments | Select-Object -First 1
+    if (-not $line) { throw "No Yaak environment found in workspace $WorkspaceId." }
+    return ([regex]::Match($line, "^(?<id>\S+)")).Groups["id"].Value
+}
+
+function Get-YaakRequestId {
+    param([string] $WorkspaceId, [string] $Name)
+    $requests = Invoke-YaakLines -Arguments @("request", "list", $WorkspaceId)
+    return Get-YaakIdByName -Lines $requests -Name $Name
+}
+
 function Set-YaakEnvironmentVariables {
     param([string] $EnvironmentId, [hashtable] $Variables)
     $environmentJson = Invoke-YaakString -Arguments @("environment", "show", $EnvironmentId)
@@ -193,32 +229,20 @@ function Set-YaakEnvironmentVariables {
     Invoke-YaakLines -Arguments @("environment", "update", "--json=$payload") | Out-Null
 }
 
-# 浠?JSON 鍝嶅簲涓彁鍙栧瓧娈靛€硷紙绌哄€艰繑鍥炵┖瀛楃涓诧級
-# 鍓嶇疆鏉′欢锛?Response 鏄悎娉?JSON锛涘悗缃潯浠讹細鑻ュ瓧娈靛瓨鍦ㄥ垯杩斿洖鍏跺瓧绗︿覆鍊硷紝鍚﹀垯杩斿洖绌哄瓧绗︿覆
-function Get-JsonField {
-    param($Response, [string] $Field)
-    try {
-        $value = $Response.$Field
-        if ($null -eq $value) { return "" }
-        return [string] $value
-    }
-    catch { return "" }
-}
-
-# 鍙戦€?yaak 璇锋眰骞舵牎楠?HTTP 鐘舵€佺爜
-# 鍓嶇疆鏉′欢锛?Name 瀵瑰簲鐨勮姹傚凡瀛樺湪浜庡綋鍓?workspace锛涘悗缃潯浠讹細杩斿洖瑙ｆ瀽鍚庣殑 JSON 鍝嶅簲瀵硅薄锛屽苟璁板綍娴嬭瘯缁撴灉
+# 发送请求，显示详情，比对预期 code，返回响应 JSON
+# 前置条件：$script:WorkspaceId、$script:EnvironmentId 已设置
 function Send-YaakRequestJson {
     param(
         [string] $Name,
         [int[]] $ExpectedCodes = @(200)
     )
-    $requestId = Get-YaakIdByName -Lines (Invoke-YaakLines -Arguments @("request", "list", $script:WorkspaceId)) -Name $Name
+    $requestId = Get-YaakRequestId -WorkspaceId $script:WorkspaceId -Name $Name
     $showJson = Invoke-YaakString -Arguments @("request", "show", $requestId)
     $req = $showJson | ConvertFrom-Json
 
-    Write-Host "`n$('鈺? * 60)"
+    Write-Host "`n$('═' * 60)"
     Write-Host "  $Name"
-    Write-Host "$('鈹€' * 60)"
+    Write-Host "$('─' * 60)"
     Write-Host "  $($req.method) $($req.url)"
 
     if ($req.headers) {
@@ -250,8 +274,8 @@ function Send-YaakRequestJson {
     $httpStatus = Get-HttpStatusCodeFromYaakOutput -RawOutput $rawOutput
     $respBody = Get-ResponseJsonFromYaakOutput -RawOutput $rawOutput
 
-    Write-Host "$('鈹€' * 60)"
-    Write-Host "  鈫?$($httpStatus.Line)"
+    Write-Host "$('─' * 60)"
+    Write-Host "  ← $($httpStatus.Line)"
     Write-Host "  $respBody"
 
     if ([string]::IsNullOrWhiteSpace($respBody)) {
@@ -266,13 +290,13 @@ function Send-YaakRequestJson {
 
     if ($passed) {
         Write-Host "  " -NoNewline
-        Write-Host "鉁?PASS" -ForegroundColor Green -NoNewline
+        Write-Host "✓ PASS" -ForegroundColor Green -NoNewline
         Write-Host " (code=$actualCode)"
     }
     else {
         $expectedStr = $ExpectedCodes -join ','
         Write-Host "  " -NoNewline
-        Write-Host "鉁?FAIL" -ForegroundColor Red -NoNewline
+        Write-Host "✗ FAIL" -ForegroundColor Red -NoNewline
         Write-Host " (expected=$expectedStr, actual=$actualCode, message=$($resp.message))"
     }
 
@@ -298,8 +322,9 @@ function Decode-MailHogBody {
     return [System.Net.WebUtility]::HtmlDecode($normalized)
 }
 
-# 浠?MailHog 鑾峰彇閭欢涓殑 token
-# 鍓嶇疆鏉′欢锛歁ailHog API 鍙闂紱鍚庣疆鏉′欢锛氳繑鍥炲尮閰嶆敹浠朵汉鍜岀敤閫旂殑 token 瀛楃涓?function Get-MailHogToken {
+# 从 MailHog 获取邮件中的 token
+# 前置条件：MailHog API 可访问；后置条件：返回匹配收件人和用途的 token 字符串
+function Get-MailHogToken {
     param([string] $Recipient, [string] $TokenPurpose)
     $deadline = (Get-Date).AddSeconds($MailTimeoutSeconds)
     do {
@@ -314,7 +339,7 @@ function Decode-MailHogBody {
             $match = [regex]::Match($body, '[?&]token=([^\"''&<>\s]+)')
             if ($match.Success) {
                 $token = [System.Uri]::UnescapeDataString($match.Groups[1].Value)
-                Write-Host "  [MailHog] 鑾峰彇鍒?$TokenPurpose token"
+                Write-Host "  [MailHog] 获取到 $TokenPurpose token"
                 return $token
             }
         }
@@ -327,345 +352,128 @@ function Write-TestSummary {
     $passed = $script:testResults | Where-Object { $_.Passed }
     $failed = $script:testResults | Where-Object { -not $_.Passed }
     Write-Host "`n$('#' * 60)"
-    Write-Host "#  娴嬭瘯缁撴灉姹囨€?- 濯掍綋涓嬭浇閴存潈"
+    Write-Host "#  测试结果汇总 - 媒体下载鉴权"
     Write-Host "$('#' * 60)"
     Write-Host ""
-    Write-Host "  閫氳繃: $($passed.Count) / $($script:testResults.Count)" -ForegroundColor Green
+    Write-Host "  通过: $($passed.Count) / $($script:testResults.Count)" -ForegroundColor Green
     if ($failed.Count -gt 0) {
-        Write-Host "  澶辫触: $($failed.Count)" -ForegroundColor Red
+        Write-Host "  失败: $($failed.Count)" -ForegroundColor Red
         Write-Host ""
-        Write-Host "  澶辫触鐨勬祴璇?"
+        Write-Host "  失败的测试:"
         foreach ($f in $failed) {
             Write-Host "    " -NoNewline
-            Write-Host "鉁?$($f.Name)" -ForegroundColor Red -NoNewline
+            Write-Host "✗ $($f.Name)" -ForegroundColor Red -NoNewline
             Write-Host " (expected=$($f.Expected -join '|'), actual=$($f.Actual))"
         }
     }
     if ($passed.Count -gt 0 -and $passed.Count -eq $script:testResults.Count) {
-        Write-Host "  鍏ㄩ儴閫氳繃!" -ForegroundColor Green
+        Write-Host "  全部通过!" -ForegroundColor Green
     }
-}
-
-# 鍒涘缓 yaak workspace
-function New-YaakWorkspace {
-    param([string] $Name)
-    $output = Invoke-YaakString -Arguments @("workspace", "create", "--json", "{`"name`":`"$Name`"}")
-    if ($output -match 'Created workspace (\S+)') { return $Matches[1] }
-    throw "Failed to create workspace: $output"
-}
-
-# 鍒涘缓 yaak environment
-function New-YaakEnvironment {
-    param([string] $WorkspaceId, [string] $Name, [hashtable] $Variables)
-    $vars = @()
-    foreach ($key in $Variables.Keys) {
-        $vars += @{ name = $key; value = [string] $Variables[$key]; enabled = $true }
-    }
-    $payload = @{ workspaceId = $WorkspaceId; name = $Name; variables = $vars } | ConvertTo-Json -Depth 4 -Compress
-    $output = Invoke-YaakString -Arguments @("environment", "create", "--json", $payload)
-    if ($output -match '^(\S+)\s+-') { return $Matches[1] }
-    throw "Failed to create environment: $output"
-}
-
-# 鍒涘缓 yaak folder
-function New-YaakFolder {
-    param([string] $WorkspaceId, [string] $Name)
-    $output = Invoke-YaakString -Arguments @("folder", "create", $WorkspaceId, "--name", $Name)
-    if ($output -match '^(\S+)\s+-') { return $Matches[1] }
-    throw "Failed to create folder '$Name': $output"
-}
-
-# 鍒涘缓 yaak JSON 璇锋眰
-# 鍓嶇疆鏉′欢锛歸orkspace/folder 宸插垱寤猴紱鍚庣疆鏉′欢锛氳繑鍥炲垱寤虹殑璇锋眰 ID
-function New-YaakJsonRequest {
-    param(
-        [string] $WorkspaceId,
-        [string] $FolderId,
-        [string] $Name,
-        [string] $Method,
-        [string] $Url,
-        [string] $TokenVar,
-        [string] $Body
-    )
-    $headers = @(@{ name = "Content-Type"; value = "application/json" })
-    $authType = $null
-    $auth = @{}
-    if ($TokenVar) {
-        $authType = "bearer"
-        $auth = @{ token = "`${[ $TokenVar ]}"; prefix = "Bearer" }
-    }
-    $request = [ordered]@{
-        workspaceId        = $WorkspaceId
-        folderId           = $FolderId
-        name               = $Name
-        method             = $Method
-        url                = $Url
-        headers            = $headers
-        authenticationType = $authType
-        authentication     = $auth
-    }
-    if ($Body) {
-        $request.bodyType = "application/json"
-        $request.body = @{ text = $Body }
-    }
-    $json = $request | ConvertTo-Json -Depth 4 -Compress
-    $output = Invoke-YaakString -Arguments @("request", "create", $WorkspaceId, "--json", $json)
-    if ($output -match '^(\S+)\s+-') { return $Matches[1] }
-    throw "Failed to create request '$Name': $output"
-}
-
-# 鍒涘缓 yaak multipart 璇锋眰锛堢敤浜庢枃浠朵笂浼狅級
-# 鍓嶇疆鏉′欢锛?FilePath 鎸囧悜瀛樺湪鐨勬湰鍦版枃浠讹紱鍚庣疆鏉′欢锛氳繑鍥炲垱寤虹殑璇锋眰 ID
-function New-YaakMultipartRequest {
-    param(
-        [string] $WorkspaceId,
-        [string] $FolderId,
-        [string] $Name,
-        [string] $Method,
-        [string] $Url,
-        [string] $TokenVar,
-        [string] $FilePath
-    )
-    $authType = $null
-    $auth = @{}
-    if ($TokenVar) {
-        $authType = "bearer"
-        $auth = @{ token = "`${[ $TokenVar ]}"; prefix = "Bearer" }
-    }
-    $request = [ordered]@{
-        workspaceId        = $WorkspaceId
-        folderId           = $FolderId
-        name               = $Name
-        method             = $Method
-        url                = $Url
-        headers            = @()
-        authenticationType = $authType
-        authentication     = $auth
-        bodyType           = "multipart/form-data"
-        body               = @{
-            form = @(
-                @{ name = "file"; file = $FilePath; enabled = $true }
-            )
-        }
-    }
-    $json = $request | ConvertTo-Json -Depth 4 -Compress
-    $output = Invoke-YaakString -Arguments @("request", "create", $WorkspaceId, "--json", $json)
-    if ($output -match '^(\S+)\s+-') { return $Matches[1] }
-    throw "Failed to create multipart request '$Name': $output"
-}
-
-# 鍒涘缓涓嶉渶瑕佽璇佺殑 yaak JSON 璇锋眰锛堢敤浜庡尶鍚嶅拰绛惧悕绡℃敼娴嬭瘯锛?function New-YaakNoAuthJsonRequest {
-    param(
-        [string] $WorkspaceId,
-        [string] $FolderId,
-        [string] $Name,
-        [string] $Method,
-        [string] $Url,
-        [string] $Body
-    )
-    $headers = @()
-    if ($Body) { $headers = @(@{ name = "Content-Type"; value = "application/json" }) }
-    $request = [ordered]@{
-        workspaceId        = $WorkspaceId
-        folderId           = $FolderId
-        name               = $Name
-        method             = $Method
-        url                = $Url
-        headers            = $headers
-        authenticationType = $null
-        authentication     = @{}
-    }
-    if ($Body) {
-        $request.bodyType = "application/json"
-        $request.body = @{ text = $Body }
-    }
-    $json = $request | ConvertTo-Json -Depth 4 -Compress
-    $output = Invoke-YaakString -Arguments @("request", "create", $WorkspaceId, "--json", $json)
-    if ($output -match '^(\S+)\s+-') { return $Matches[1] }
-    throw "Failed to create request '$Name': $output"
 }
 
 # ============================================================================
-# 鍒涘缓宸ヤ綔绌洪棿涓庣幆澧?# ============================================================================
-
-Write-Log ">>> 鍒涘缓 Yaak 宸ヤ綔绌洪棿..." "Magenta"
-$script:WorkspaceId = New-YaakWorkspace -Name "MayoiStar Media Auth Tests"
-
-Write-Log ">>> 鍒涘缓 Yaak 鐜..." "Magenta"
-$script:EnvironmentId = New-YaakEnvironment -WorkspaceId $script:WorkspaceId -Name "Local" -Variables @{
-    baseUrl                   = $BaseUrl
-    testUserEmail             = $TestUserEmail
-    testUserPassword          = $TestUserPassword
-    testPeerEmail             = $TestPeerEmail
-    testPeerPassword          = $TestPeerPassword
-    adminUsername             = $AdminUsername
-    adminPassword             = $AdminPassword
-    testUserId                = $TestUserId
-    testPeerId                = $TestPeerId
-    adminUserId               = $AdminUserId
-    merchantEmail             = $MerchantEmail
-    merchantPassword          = $MerchantPassword
-    merchantNickname          = $MerchantNickname
-    merchantName              = $MerchantName
-    avatarFile                = $TestAvatarPath
-    licenseFile               = $TestLicensePath
-    userAccessToken           = ""
-    peerAccessToken           = ""
-    adminAccessToken          = ""
-    merchantAccessToken       = ""
-    merchantUserId            = ""
-    activationToken           = ""
-    merchantActivationToken   = ""
-    privateConversationId     = ""
-    teamConversationId        = ""
-    teamId                    = ""
-    privateImageMediaId       = ""
-    privateImageSignedUrl     = ""
-    teamImageMediaId          = ""
-    teamImageSignedUrl        = ""
-    licenseMediaId            = ""
-    licenseSignedUrl          = ""
-    avatarMediaId             = ""
-    avatarSignedUrl           = ""
-}
-
-Write-Log ">>> 鍒涘缓鏂囦欢澶?.." "Magenta"
-$loginFolder = New-YaakFolder -WorkspaceId $script:WorkspaceId -Name "00 鐧诲綍涓庢敞鍐?
-$privateFolder = New-YaakFolder -WorkspaceId $script:WorkspaceId -Name "01 绉佽亰鍥剧墖閴存潈"
-$groupFolder = New-YaakFolder -WorkspaceId $script:WorkspaceId -Name "02 缇よ亰鍥剧墖閴存潈"
-$leaveFolder = New-YaakFolder -WorkspaceId $script:WorkspaceId -Name "03 閫€鍑虹兢鑱婂悗涓嶅彲璁块棶"
-$merchantFolder = New-YaakFolder -WorkspaceId $script:WorkspaceId -Name "04 鍟嗗璧勮川閴存潈"
-$adminFolder = New-YaakFolder -WorkspaceId $script:WorkspaceId -Name "05 绠＄悊鍛樺叏璧勬簮璁块棶"
-$sigFolder = New-YaakFolder -WorkspaceId $script:WorkspaceId -Name "06 绛惧悕瀹屾暣鎬?
-
+# 获取 Yaak 工作空间与环境
 # ============================================================================
-# 鍒涘缓璇锋眰
-# ============================================================================
-Write-Log ">>> 鍒涘缓璇锋眰瀹氫箟..." "Magenta"
 
-# --- 00 鐧诲綍 ---
-New-YaakJsonRequest $script:WorkspaceId $loginFolder "00.01 鐧诲綍 test_user" "POST" "${BaseUrl}/identity/auth/login" "" '{"email":"${[ testUserEmail ]}","password":"${[ testUserPassword ]}"}'
-New-YaakJsonRequest $script:WorkspaceId $loginFolder "00.02 鐧诲綍 test_peer" "POST" "${BaseUrl}/identity/auth/login" "" '{"email":"${[ testPeerEmail ]}","password":"${[ testPeerPassword ]}"}'
-New-YaakJsonRequest $script:WorkspaceId $loginFolder "00.03 鐧诲綍 admin" "POST" "${BaseUrl}/admin/auth/login" "" '{"username":"${[ adminUsername ]}","password":"${[ adminPassword ]}"}'
-New-YaakJsonRequest $script:WorkspaceId $loginFolder "00.04 娉ㄥ唽鍟嗗" "POST" "${BaseUrl}/identity/auth/register/merchant" "" '{"email":"${[ merchantEmail ]}","password":"${[ merchantPassword ]}","nickname":"${[ merchantNickname ]}","name":"${[ merchantName ]}"}'
-New-YaakJsonRequest $script:WorkspaceId $loginFolder "00.05 婵€娲诲晢瀹? "POST" "${BaseUrl}/identity/auth/activate" "" '{"token":"${[ merchantActivationToken ]}"}'
-New-YaakJsonRequest $script:WorkspaceId $loginFolder "00.06 鐧诲綍鍟嗗" "POST" "${BaseUrl}/identity/auth/login" "" '{"email":"${[ merchantEmail ]}","password":"${[ merchantPassword ]}"}'
-New-YaakJsonRequest $script:WorkspaceId $loginFolder "00.07 test_user 鍙戦€佸ソ鍙嬬敵璇? "POST" "${BaseUrl}/social/friend-requests" "userAccessToken" '{"targetUserId":"${[ testPeerId ]}","source":"profile","message":"濯掍綋閴存潈娴嬭瘯 - 娣诲姞濂藉弸"}'
-New-YaakJsonRequest $script:WorkspaceId $loginFolder "00.08 test_peer 鍚屾剰濂藉弸鐢宠" "POST" "${BaseUrl}"'/social/friend-requests/${[ friendRequestId ]}/decision' "peerAccessToken" '{"accepted":true}'
-New-YaakJsonRequest $script:WorkspaceId $loginFolder "00.09 鑾峰彇绉佽亰浼氳瘽鍒楄〃" "GET" "${BaseUrl}/chat/conversations?page=1&pageSize=20" "userAccessToken"
+Write-Log ">>> 正在连接 Yaak 工作空间..." "Magenta"
+$script:WorkspaceId = Get-YaakWorkspaceId -Name $WorkspaceName
+$script:EnvironmentId = Get-YaakEnvironmentId -WorkspaceId $script:WorkspaceId
+Write-Log "Workspace: $script:WorkspaceId"
+Write-Log "Environment: $script:EnvironmentId"
 
-# --- 01 绉佽亰鍥剧墖閴存潈 ---
-New-YaakMultipartRequest $script:WorkspaceId $privateFolder "01.01 涓婁紶绉佽亰鍥剧墖" "POST" "${BaseUrl}/chat/media/images" "userAccessToken" $TestAvatarPath
-New-YaakJsonRequest $script:WorkspaceId $privateFolder "01.02 鍙戦€佺鑱婂浘鐗囨秷鎭? "POST" "${BaseUrl}"'/chat/conversations/${[ privateConversationId ]}/messages' "userAccessToken" '{"kind":"image","imageMediaId":"${[ privateImageMediaId ]}"}'
-New-YaakJsonRequest $script:WorkspaceId $privateFolder "01.03 绉佽亰鎴愬憳 test_peer 涓嬭浇鍥剧墖" "GET" ("${BaseUrl}" + '${[ privateImageSignedUrl ]}') "peerAccessToken"
-New-YaakJsonRequest $script:WorkspaceId $privateFolder "01.04 绠＄悊鍛樹笅杞界鑱婂浘鐗? "GET" ("${BaseUrl}" + '${[ privateImageSignedUrl ]}') "adminAccessToken"
-New-YaakNoAuthJsonRequest $script:WorkspaceId $privateFolder "01.05 鍖垮悕涓嬭浇绉佽亰鍥剧墖" "GET" ("${BaseUrl}" + '${[ privateImageSignedUrl ]}')
-New-YaakJsonRequest $script:WorkspaceId $privateFolder "01.06 闈炴垚鍛樺晢瀹剁敤鎴蜂笅杞界鑱婂浘鐗? "GET" ("${BaseUrl}" + '${[ privateImageSignedUrl ]}') "merchantAccessToken"
-
-# --- 02 缇よ亰鍥剧墖閴存潈 ---
-$ts = Get-Date -Format "yyyyMMddHHmmss"
-New-YaakJsonRequest $script:WorkspaceId $groupFolder "02.01 鍒涘缓缇よ亰灏忛槦" "POST" "${BaseUrl}/social/teams" "userAccessToken" ('{"name":"濯掍綋閴存潈娴嬭瘯灏忛槦-' + $ts + '","tags":["娴嬭瘯","濯掍綋閴存潈"],"joinMode":"publicJoin","capacity":20,"description":"濯掍綋涓嬭浇閴存潈娴嬭瘯鐢ㄥ皬闃?}')
-# 缇よ亰鍥剧墖涓婁紶涓庡彂閫侊紙浣跨敤 test-avatar.png锛?New-YaakMultipartRequest $script:WorkspaceId $groupFolder "02.03 涓婁紶缇よ亰鍥剧墖" "POST" "${BaseUrl}/chat/media/images" "userAccessToken" $TestAvatarPath
-New-YaakJsonRequest $script:WorkspaceId $groupFolder "02.04 鍙戦€佺兢鑱婂浘鐗囨秷鎭? "POST" "${BaseUrl}"'/chat/conversations/${[ teamConversationId ]}/messages' "userAccessToken" '{"kind":"image","imageMediaId":"${[ teamImageMediaId ]}"}'
-
-# test_peer 鍔犲叆灏忛槦
-New-YaakJsonRequest $script:WorkspaceId $groupFolder "02.05 test_peer 鍔犲叆灏忛槦" "POST" "${BaseUrl}"'/social/teams/${[ teamId ]}/join' "peerAccessToken" '{"message":"鐢宠鍔犲叆"}'
-New-YaakJsonRequest $script:WorkspaceId $groupFolder "02.06 缇ゆ垚鍛?test_peer 涓嬭浇鍥剧墖" "GET" ("${BaseUrl}" + '${[ teamImageSignedUrl ]}') "peerAccessToken"
-New-YaakJsonRequest $script:WorkspaceId $groupFolder "02.07 绠＄悊鍛樹笅杞界兢鑱婂浘鐗? "GET" ("${BaseUrl}" + '${[ teamImageSignedUrl ]}') "adminAccessToken"
-
-# 娉ㄥ唽涓€涓澶栫敤鎴风敤浜庨潪鎴愬憳娴嬭瘯
-$outsiderEmail = "yaak-media-outsider.$stamp@example.com"
-$outsiderNickname = "media-outsider-$stamp"
-Set-YaakEnvironmentVariables $script:EnvironmentId @{
-    outsiderEmail = $outsiderEmail
-    outsiderPassword = $MerchantPassword
-    outsiderNickname = $outsiderNickname
-    outsiderAccessToken = ""
+# 设置初始环境变量
+Write-Log ">>> 设置初始环境变量..." "Magenta"
+Set-YaakEnvironmentVariables -EnvironmentId $script:EnvironmentId -Variables @{
+    baseUrl              = $BaseUrl
+    testUserEmail        = $TestUserEmail
+    testUserPassword     = $TestUserPassword
+    testPeerEmail        = $TestPeerEmail
+    testPeerPassword     = $TestPeerPassword
+    adminUsername        = $AdminUsername
+    adminPassword        = $AdminPassword
+    testUserId           = $TestUserId
+    testPeerId           = $TestPeerId
+    adminUserId          = $AdminUserId
+    merchantEmail        = $MerchantEmail
+    merchantPassword     = $MerchantPassword
+    merchantNickname     = $MerchantNickname
+    merchantName         = $MerchantName
+    teamName             = $TeamName
+    outsiderEmail        = $OutsiderEmail
+    outsiderPassword     = $MerchantPassword
+    outsiderNickname     = $OutsiderNickname
+    avatarFile           = $TestAvatarPath
+    licenseFile          = $TestLicensePath
+    merchantActivationToken = ""
     outsiderActivationToken = ""
+    userAccessToken      = ""
+    peerAccessToken      = ""
+    adminAccessToken     = ""
+    merchantAccessToken  = ""
+    outsiderAccessToken  = ""
+    merchantUserId       = ""
+    friendRequestId      = ""
+    privateConversationId = ""
+    teamId               = ""
+    teamConversationId   = ""
+    privateImageMediaId  = ""
+    privateImageSignedUrl = ""
+    teamImageMediaId     = ""
+    teamImageSignedUrl   = ""
+    licenseMediaId       = ""
+    licenseSignedUrl     = ""
+    avatarSignedUrl      = ""
+    tamperedSignedUrl    = ""
+    missingSigUrl        = ""
 }
-New-YaakJsonRequest $script:WorkspaceId $groupFolder "02.08 娉ㄥ唽闈炴垚鍛樼敤鎴? "POST" "${BaseUrl}/identity/auth/register/personal" "" '{"email":"${[ outsiderEmail ]}","password":"${[ outsiderPassword ]}","nickname":"${[ outsiderNickname ]}"}'
-New-YaakJsonRequest $script:WorkspaceId $groupFolder "02.09 婵€娲婚潪鎴愬憳鐢ㄦ埛" "POST" "${BaseUrl}/identity/auth/activate" "" '{"token":"${[ outsiderActivationToken ]}"}'
-New-YaakJsonRequest $script:WorkspaceId $groupFolder "02.10 鐧诲綍闈炴垚鍛樼敤鎴? "POST" "${BaseUrl}/identity/auth/login" "" '{"email":"${[ outsiderEmail ]}","password":"${[ outsiderPassword ]}"}'
-New-YaakJsonRequest $script:WorkspaceId $groupFolder "02.11 闈炴垚鍛樼敤鎴蜂笅杞界兢鑱婂浘鐗? "GET" ("${BaseUrl}" + '${[ teamImageSignedUrl ]}') "outsiderAccessToken"
-
-# --- 03 閫€鍑虹兢鑱婂悗涓嶅彲璁块棶 ---
-New-YaakJsonRequest $script:WorkspaceId $leaveFolder "03.01 test_peer 閫€鍑哄皬闃? "POST" "${BaseUrl}"'/social/teams/${[ teamId ]}/leave' "peerAccessToken"
-New-YaakJsonRequest $script:WorkspaceId $leaveFolder "03.02 宸查€€鍑虹敤鎴?test_peer 涓嬭浇鍥剧墖" "GET" ("${BaseUrl}" + '${[ teamImageSignedUrl ]}') "peerAccessToken"
-New-YaakJsonRequest $script:WorkspaceId $leaveFolder "03.03 浠嶅湪缇や腑 test_user 涓嬭浇鍥剧墖" "GET" ("${BaseUrl}" + '${[ teamImageSignedUrl ]}') "userAccessToken"
-New-YaakJsonRequest $script:WorkspaceId $leaveFolder "03.04 绠＄悊鍛樹笅杞藉凡閫€鍑虹兢鑱婂浘鐗? "GET" ("${BaseUrl}" + '${[ teamImageSignedUrl ]}') "adminAccessToken"
-
-# --- 04 鍟嗗璧勮川閴存潈 ---
-New-YaakMultipartRequest $script:WorkspaceId $merchantFolder "04.01 鍟嗗涓婁紶鎵х収" "POST" "${BaseUrl}/identity/media/license" "merchantAccessToken" $TestLicensePath
-New-YaakJsonRequest $script:WorkspaceId $merchantFolder "04.02 鍟嗗鏈汉涓嬭浇鎵х収" "GET" ("${BaseUrl}" + '${[ licenseSignedUrl ]}') "merchantAccessToken"
-New-YaakJsonRequest $script:WorkspaceId $merchantFolder "04.03 绠＄悊鍛樹笅杞藉晢瀹舵墽鐓? "GET" ("${BaseUrl}" + '${[ licenseSignedUrl ]}') "adminAccessToken"
-New-YaakJsonRequest $script:WorkspaceId $merchantFolder "04.04 test_user 闈炴墍鏈夎€呬笅杞藉晢瀹舵墽鐓? "GET" ("${BaseUrl}" + '${[ licenseSignedUrl ]}') "userAccessToken"
-New-YaakNoAuthJsonRequest $script:WorkspaceId $merchantFolder "04.05 鍖垮悕涓嬭浇鍟嗗鎵х収" "GET" ("${BaseUrl}" + '${[ licenseSignedUrl ]}')
-
-# --- 05 绠＄悊鍛樺叏璧勬簮璁块棶 ---
-New-YaakJsonRequest $script:WorkspaceId $adminFolder "05.01 绠＄悊鍛樹笅杞界鑱婂浘鐗? "GET" ("${BaseUrl}" + '${[ privateImageSignedUrl ]}') "adminAccessToken"
-New-YaakJsonRequest $script:WorkspaceId $adminFolder "05.02 绠＄悊鍛樹笅杞界兢鑱婂浘鐗? "GET" ("${BaseUrl}" + '${[ teamImageSignedUrl ]}') "adminAccessToken"
-New-YaakJsonRequest $script:WorkspaceId $adminFolder "05.03 绠＄悊鍛樹笅杞藉晢瀹舵墽鐓? "GET" ("${BaseUrl}" + '${[ licenseSignedUrl ]}') "adminAccessToken"
-
-# 涓婁紶澶村儚鑾峰彇鍏紑璧勬簮鐢ㄤ簬娴嬭瘯
-New-YaakMultipartRequest $script:WorkspaceId $adminFolder "05.04 涓婁紶娴嬭瘯澶村儚" "POST" "${BaseUrl}/identity/media/avatar" "userAccessToken" $TestAvatarPath
-New-YaakJsonRequest $script:WorkspaceId $adminFolder "05.05 绠＄悊鍛樹笅杞藉叕寮€澶村儚" "GET" ("${BaseUrl}" + '${[ avatarSignedUrl ]}') "adminAccessToken"
-
-# --- 06 绛惧悕瀹屾暣鎬?---
-# 杩欎簺璇锋眰浣跨敤瀹屾暣鐨勭粷瀵?URL 妯℃澘骞跺湪杩愯鏃跺姩鎬佽缃?New-YaakJsonRequest $script:WorkspaceId $sigFolder "06.01 鏈夋晥绛惧悕涓嬭浇" "GET" ("${BaseUrl}" + '${[ privateImageSignedUrl ]}') "peerAccessToken"
-# 绡℃敼绛惧悕锛氬皢 signature 鏈€鍚庝竴浣嶄慨鏀?New-YaakJsonRequest $script:WorkspaceId $sigFolder "06.02 绡℃敼绛惧悕涓嬭浇" "GET" ("${BaseUrl}" + '${[ tamperedSignedUrl ]}') "peerAccessToken"
-# 缂哄皯 sig 鍙傛暟
-New-YaakJsonRequest $script:WorkspaceId $sigFolder "06.03 缂哄皯绛惧悕鍙傛暟涓嬭浇" "GET" ("${BaseUrl}" + '${[ missingSigUrl ]}') "peerAccessToken"
-# 涓嶅瓨鍦ㄧ殑 mediaId
-New-YaakJsonRequest $script:WorkspaceId $sigFolder "06.04 涓嶅瓨鍦ㄥ獟浣揑D涓嬭浇" "GET" "${BaseUrl}/media/00000000-0000-0000-0000-000000000000?v=1&policy=publicAccess&scope=&sig=invalid" "userAccessToken"
-
-Write-Log ">>> 璇锋眰鍒涘缓瀹屾垚锛屽紑濮嬫墽琛屾祴璇?.." "Yellow"
 
 # ============================================================================
-# 娴嬭瘯鎵ц
+# 00: 登录与准备
 # ============================================================================
-
-# 鈹€鈹€ 00: 鐧诲綍涓庡噯澶?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 Write-Host "`n$('#' * 60)"
-Write-Host "#  00 鐧诲綍涓庡噯澶?
+Write-Host "#  00 登录与准备"
 Write-Host "$('#' * 60)"
 
-Write-Log "姝ｅ湪鐧诲綍 test_user..." "Cyan"
-$resp = Send-YaakRequestJson "00.01 鐧诲綍 test_user"
+Write-Log "正在登录 test_user..." "Cyan"
+$resp = Send-YaakRequestJson "00.01 登录 test_user"
 if ($resp.code -eq 200) {
     Set-YaakEnvironmentVariables $script:EnvironmentId @{
         userAccessToken = $resp.data.tokens.accessToken
         testUserId      = [string] $resp.data.userId
     }
-    Write-Host "  [env] userAccessToken, testUserId 宸蹭繚瀛?
+    Write-Host "  [env] userAccessToken 已保存"
 }
 
-Write-Log "姝ｅ湪鐧诲綍 test_peer..." "Cyan"
-$resp = Send-YaakRequestJson "00.02 鐧诲綍 test_peer"
+Write-Log "正在登录 test_peer..." "Cyan"
+$resp = Send-YaakRequestJson "00.02 登录 test_peer"
 if ($resp.code -eq 200) {
     Set-YaakEnvironmentVariables $script:EnvironmentId @{
         peerAccessToken = $resp.data.tokens.accessToken
         testPeerId      = [string] $resp.data.userId
     }
-    Write-Host "  [env] peerAccessToken 宸蹭繚瀛?
+    Write-Host "  [env] peerAccessToken 已保存"
 }
 
-Write-Log "姝ｅ湪鐧诲綍 admin..." "Cyan"
-$resp = Send-YaakRequestJson "00.03 鐧诲綍 admin"
+Write-Log "正在登录 admin..." "Cyan"
+$resp = Send-YaakRequestJson "00.03 登录 admin"
 if ($resp.code -eq 200) {
     Set-YaakEnvironmentVariables $script:EnvironmentId @{ adminAccessToken = $resp.data.tokens.accessToken }
-    Write-Host "  [env] adminAccessToken 宸蹭繚瀛?
+    Write-Host "  [env] adminAccessToken 已保存"
 }
 
-# 娉ㄥ唽涓庢縺娲诲晢瀹?Write-Log "姝ｅ湪娉ㄥ唽鍟嗗..." "Cyan"
-Send-YaakRequest "00.04 娉ㄥ唽鍟嗗"
-$merchantToken = Get-MailHogToken -Recipient $MerchantEmail -TokenPurpose "鍟嗗婵€娲?
+# 注册与激活商家
+Write-Log "正在注册商家..." "Cyan"
+Send-YaakRequest "00.04 注册商家"
+
+Write-Log "正在获取商家激活 token..." "Cyan"
+$merchantToken = Get-MailHogToken -Recipient $MerchantEmail -TokenPurpose "商家激活"
 Set-YaakEnvironmentVariables $script:EnvironmentId @{ merchantActivationToken = $merchantToken }
 
-Write-Log "姝ｅ湪婵€娲诲晢瀹?.." "Cyan"
-Send-YaakRequest "00.05 婵€娲诲晢瀹?
+Write-Log "正在激活商家..." "Cyan"
+Send-YaakRequest "00.05 激活商家"
 
-Write-Log "姝ｅ湪鐧诲綍鍟嗗..." "Cyan"
-$resp = Send-YaakRequestJson "00.06 鐧诲綍鍟嗗"
+Write-Log "正在登录商家..." "Cyan"
+$resp = Send-YaakRequestJson "00.06 登录商家"
 $merchantLoginOk = $false
 if ($resp.code -eq 200) {
     Set-YaakEnvironmentVariables $script:EnvironmentId @{
@@ -673,21 +481,22 @@ if ($resp.code -eq 200) {
         merchantUserId      = [string] $resp.data.userId
     }
     $merchantLoginOk = $true
-    Write-Host "  [env] merchantAccessToken, merchantUserId 宸蹭繚瀛?
+    Write-Host "  [env] merchantAccessToken 已保存"
 }
 
-# 寤虹珛绉佽亰濂藉弸鍏崇郴
-Write-Log "姝ｅ湪寤虹珛绉佽亰濂藉弸鍏崇郴..." "Cyan"
-$resp = Send-YaakRequestJson "00.07 test_user 鍙戦€佸ソ鍙嬬敵璇?
+# 建立私聊好友关系
+Write-Log "正在建立私聊好友关系..." "Cyan"
+$resp = Send-YaakRequestJson "00.07 test_user 发送好友申请"
 if ($resp.code -eq 200) {
     $friendRequestId = Get-JsonField -Response $resp.data -Field "requestId"
     Set-YaakEnvironmentVariables $script:EnvironmentId @{ friendRequestId = $friendRequestId }
-    Send-YaakRequest "00.08 test_peer 鍚屾剰濂藉弸鐢宠"
+    Write-Log "正在同意好友申请..." "Cyan"
+    Send-YaakRequest "00.08 test_peer 同意好友申请"
 }
 
-# 鑾峰彇绉佽亰浼氳瘽 ID
-Write-Log "姝ｅ湪鑾峰彇绉佽亰浼氳瘽..." "Cyan"
-$resp = Send-YaakRequestJson "00.09 鑾峰彇绉佽亰浼氳瘽鍒楄〃"
+# 获取私聊会话 ID
+Write-Log "正在获取私聊会话..." "Cyan"
+$resp = Send-YaakRequestJson "00.09 获取私聊会话列表"
 if ($resp.code -eq 200) {
     $convId = ""
     if ($resp.data.items) {
@@ -698,13 +507,15 @@ if ($resp.code -eq 200) {
     Write-Host "  [env] privateConversationId = $convId"
 }
 
-# 鈹€鈹€ 01: 绉佽亰鍥剧墖閴存潈 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# ============================================================================
+# 01: 私聊图片鉴权
+# ============================================================================
 Write-Host "`n$('#' * 60)"
-Write-Host "#  01 绉佽亰鍥剧墖閴存潈"
+Write-Host "#  01 私聊图片鉴权"
 Write-Host "$('#' * 60)"
 
-Write-Log "姝ｅ湪涓婁紶绉佽亰鍥剧墖..." "Cyan"
-$resp = Send-YaakRequestJson "01.01 涓婁紶绉佽亰鍥剧墖"
+Write-Log "正在上传私聊图片..." "Cyan"
+$resp = Send-YaakRequestJson "01.01 上传私聊图片"
 if ($resp.code -eq 200) {
     $mediaId = Get-JsonField -Response $resp.data -Field "mediaId"
     $signedUrl = Get-JsonField -Response $resp.data -Field "url"
@@ -713,51 +524,53 @@ if ($resp.code -eq 200) {
         privateImageMediaId   = $mediaId
         privateImageSignedUrl = $signedUrl
     }
-    Write-Host "  [env] privateImageMediaId=$mediaId, signedUrl=$signedUrl"
+    Write-Host "  [env] privateImageMediaId=$mediaId"
 }
 
-Write-Log "姝ｅ湪鍙戦€佺鑱婂浘鐗囨秷鎭紙瑙﹀彂绛栫暐鍗囩骇涓?conversationMember锛?.." "Cyan"
-Send-YaakRequest "01.02 鍙戦€佺鑱婂浘鐗囨秷鎭?
+Write-Log "正在发送私聊图片消息（触发策略升级为 conversationMember）..." "Cyan"
+Send-YaakRequest "01.02 发送私聊图片消息"
 
-Write-Log "1.1 绉佽亰鎴愬憳 test_peer 涓嬭浇鍥剧墖 鈫?200" "Cyan"
-Send-YaakRequest "01.03 绉佽亰鎴愬憳 test_peer 涓嬭浇鍥剧墖" @(200)
+Write-Log "1.1 私聊成员 test_peer 下载图片 → 200" "Cyan"
+Send-YaakRequest "01.03 私聊成员 test_peer 下载图片" @(200)
 
-Write-Log "1.2 绠＄悊鍛樹笅杞界鑱婂浘鐗?鈫?200" "Cyan"
-Send-YaakRequest "01.04 绠＄悊鍛樹笅杞界鑱婂浘鐗? @(200)
+Write-Log "1.2 管理员下载私聊图片 → 200" "Cyan"
+Send-YaakRequest "01.04 管理员下载私聊图片" @(200)
 
-Write-Log "1.3 鍖垮悕涓嬭浇绉佽亰鍥剧墖 鈫?401" "Cyan"
-Send-YaakRequest "01.05 鍖垮悕涓嬭浇绉佽亰鍥剧墖" @(401)
+Write-Log "1.3 匿名下载私聊图片 → 401" "Cyan"
+Send-YaakRequest "01.05 匿名下载私聊图片" @(401)
 
 if ($merchantLoginOk) {
-    Write-Log "1.4 闈炴垚鍛樺晢瀹剁敤鎴蜂笅杞界鑱婂浘鐗?鈫?403" "Cyan"
-    Send-YaakRequest "01.06 闈炴垚鍛樺晢瀹剁敤鎴蜂笅杞界鑱婂浘鐗? @(403)
+    Write-Log "1.4 非成员商家下载私聊图片 → 403" "Cyan"
+    Send-YaakRequest "01.06 非成员商家下载私聊图片" @(403)
 }
 else {
-    Write-Skip "鍟嗗鏈垚鍔熺櫥褰曪紝璺宠繃闈炴垚鍛樹笅杞界鑱婂浘鐗囩敤渚嬨€?
+    Write-Skip "商家未成功登录，跳过非成员下载私聊图片用例。"
 }
 
-# 鈹€鈹€ 02: 缇よ亰鍥剧墖閴存潈 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# ============================================================================
+# 02: 群聊图片鉴权
+# ============================================================================
 Write-Host "`n$('#' * 60)"
-Write-Host "#  02 缇よ亰鍥剧墖閴存潈"
+Write-Host "#  02 群聊图片鉴权"
 Write-Host "$('#' * 60)"
 
-Write-Log "姝ｅ湪鍒涘缓缇よ亰灏忛槦..." "Cyan"
-$resp = Send-YaakRequestJson "02.01 鍒涘缓缇よ亰灏忛槦"
+Write-Log "正在创建群聊小队..." "Cyan"
+$resp = Send-YaakRequestJson "02.01 创建群聊小队"
 if ($resp.code -eq 200) {
     $teamId = Get-JsonField -Response $resp.data -Field "teamId"
     $chatId = Get-JsonField -Response $resp.data -Field "chatId"
     Set-YaakEnvironmentVariables $script:EnvironmentId @{
-        teamId              = $teamId
-        teamConversationId  = $chatId
+        teamId             = $teamId
+        teamConversationId = $chatId
     }
     Write-Host "  [env] teamId=$teamId, teamConversationId=$chatId"
 }
 
-Write-Log "姝ｅ湪 test_peer 鍔犲叆灏忛槦..." "Cyan"
-Send-YaakRequest "02.05 test_peer 鍔犲叆灏忛槦"
+Write-Log "正在 test_peer 加入小队..." "Cyan"
+Send-YaakRequest "02.02 test_peer 加入小队"
 
-Write-Log "姝ｅ湪涓婁紶缇よ亰鍥剧墖..." "Cyan"
-$resp = Send-YaakRequestJson "02.03 涓婁紶缇よ亰鍥剧墖"
+Write-Log "正在上传群聊图片..." "Cyan"
+$resp = Send-YaakRequestJson "02.03 上传群聊图片"
 if ($resp.code -eq 200) {
     $mediaId = Get-JsonField -Response $resp.data -Field "mediaId"
     $signedUrl = Get-JsonField -Response $resp.data -Field "url"
@@ -766,61 +579,69 @@ if ($resp.code -eq 200) {
         teamImageMediaId   = $mediaId
         teamImageSignedUrl = $signedUrl
     }
-    Write-Host "  [env] teamImageMediaId=$mediaId, signedUrl=$signedUrl"
+    Write-Host "  [env] teamImageMediaId=$mediaId"
 }
 
-Write-Log "姝ｅ湪鍙戦€佺兢鑱婂浘鐗囨秷鎭紙瑙﹀彂绛栫暐鍗囩骇涓?conversationMember锛?.." "Cyan"
-Send-YaakRequest "02.04 鍙戦€佺兢鑱婂浘鐗囨秷鎭?
+Write-Log "正在发送群聊图片消息（触发策略升级为 conversationMember）..." "Cyan"
+Send-YaakRequest "02.04 发送群聊图片消息"
 
-Write-Log "2.1 缇ゆ垚鍛?test_peer 涓嬭浇缇よ亰鍥剧墖 鈫?200" "Cyan"
-Send-YaakRequest "02.06 缇ゆ垚鍛?test_peer 涓嬭浇鍥剧墖" @(200)
+Write-Log "2.1 群成员 test_peer 下载群聊图片 → 200" "Cyan"
+Send-YaakRequest "02.05 群成员 test_peer 下载图片" @(200)
 
-Write-Log "2.2 绠＄悊鍛樹笅杞界兢鑱婂浘鐗?鈫?200" "Cyan"
-Send-YaakRequest "02.07 绠＄悊鍛樹笅杞界兢鑱婂浘鐗? @(200)
+Write-Log "2.2 管理员下载群聊图片 → 200" "Cyan"
+Send-YaakRequest "02.06 管理员下载群聊图片" @(200)
 
-# 娉ㄥ唽闈炴垚鍛樼敤鎴峰苟娴嬭瘯
-Write-Log "姝ｅ湪娉ㄥ唽闈炴垚鍛樼敤鎴?.." "Cyan"
-Send-YaakRequest "02.08 娉ㄥ唽闈炴垚鍛樼敤鎴?
-$outsiderToken = Get-MailHogToken -Recipient $outsiderEmail -TokenPurpose "闈炴垚鍛樼敤鎴锋縺娲?
+# 注册非成员用户并测试
+Write-Log "正在注册非成员用户..." "Cyan"
+Send-YaakRequest "02.07 注册非成员用户"
+
+Write-Log "正在获取非成员用户激活 token..." "Cyan"
+$outsiderToken = Get-MailHogToken -Recipient $OutsiderEmail -TokenPurpose "非成员用户激活"
 Set-YaakEnvironmentVariables $script:EnvironmentId @{ outsiderActivationToken = $outsiderToken }
 
-Send-YaakRequest "02.09 婵€娲婚潪鎴愬憳鐢ㄦ埛"
-$resp = Send-YaakRequestJson "02.10 鐧诲綍闈炴垚鍛樼敤鎴?
+Send-YaakRequest "02.08 激活非成员用户"
+
+Write-Log "正在登录非成员用户..." "Cyan"
+$resp = Send-YaakRequestJson "02.09 登录非成员用户"
 if ($resp.code -eq 200) {
     Set-YaakEnvironmentVariables $script:EnvironmentId @{ outsiderAccessToken = $resp.data.tokens.accessToken }
 }
 
-Write-Log "2.3 闈炴垚鍛樼敤鎴蜂笅杞界兢鑱婂浘鐗?鈫?403" "Cyan"
-Send-YaakRequest "02.11 闈炴垚鍛樼敤鎴蜂笅杞界兢鑱婂浘鐗? @(403)
+Write-Log "2.3 非成员用户下载群聊图片 → 403" "Cyan"
+Send-YaakRequest "02.10 非成员用户下载群聊图片" @(403)
 
-# 鈹€鈹€ 03: 閫€鍑虹兢鑱婂悗涓嶅彲璁块棶 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# ============================================================================
+# 03: 退出群聊后不可访问
+# ============================================================================
 Write-Host "`n$('#' * 60)"
-Write-Host "#  03 閫€鍑虹兢鑱婂悗涓嶅彲璁块棶"
+Write-Host "#  03 退出群聊后不可访问"
 Write-Host "$('#' * 60)"
 
-Write-Log "test_peer 閫€鍑哄皬闃?.." "Cyan"
-Send-YaakRequest "03.01 test_peer 閫€鍑哄皬闃?
+Write-Log "test_peer 退出小队..." "Cyan"
+Send-YaakRequest "03.01 test_peer 退出小队"
 
-Write-Log "3.1 宸查€€鍑虹殑 test_peer 涓嬭浇缇よ亰鍥剧墖 鈫?403" "Cyan"
-Send-YaakRequest "03.02 宸查€€鍑虹敤鎴?test_peer 涓嬭浇鍥剧墖" @(403)
+Write-Log "3.1 已退出的 test_peer 下载群聊图片 → 403" "Cyan"
+Send-YaakRequest "03.02 已退出用户 test_peer 下载图片" @(403)
 
-Write-Log "3.2 浠嶅湪缇や腑 test_user 涓嬭浇缇よ亰鍥剧墖 鈫?200" "Cyan"
-Send-YaakRequest "03.03 浠嶅湪缇や腑 test_user 涓嬭浇鍥剧墖" @(200)
+Write-Log "3.2 仍在群中 test_user 下载群聊图片 → 200" "Cyan"
+Send-YaakRequest "03.03 仍在群中 test_user 下载图片" @(200)
 
-Write-Log "3.3 绠＄悊鍛樹笅杞藉凡閫€鍑虹兢鑱婄殑鍥剧墖 鈫?200" "Cyan"
-Send-YaakRequest "03.04 绠＄悊鍛樹笅杞藉凡閫€鍑虹兢鑱婂浘鐗? @(200)
+Write-Log "3.3 管理员下载已退出群聊图片 → 200" "Cyan"
+Send-YaakRequest "03.04 管理员下载已退出群聊图片" @(200)
 
-# 鈹€鈹€ 04: 鍟嗗璧勮川閴存潈 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# ============================================================================
+# 04: 商家资质鉴权
+# ============================================================================
 Write-Host "`n$('#' * 60)"
-Write-Host "#  04 鍟嗗璧勮川閴存潈"
+Write-Host "#  04 商家资质鉴权"
 Write-Host "$('#' * 60)"
 
 if (-not $merchantLoginOk) {
-    Write-Skip "鍟嗗鏈垚鍔熺櫥褰曪紝璺宠繃鍏ㄩ儴鍟嗗璧勮川閴存潈鐢ㄤ緥銆?
+    Write-Skip "商家未成功登录，跳过全部商家资质鉴权用例。"
 }
 else {
-    Write-Log "鍟嗗涓婁紶鎵х収..." "Cyan"
-    $resp = Send-YaakRequestJson "04.01 鍟嗗涓婁紶鎵х収"
+    Write-Log "商家上传执照..." "Cyan"
+    $resp = Send-YaakRequestJson "04.01 商家上传执照"
     if ($resp.code -eq 200) {
         $mediaId = Get-JsonField -Response $resp.data -Field "mediaId"
         $signedUrl = Get-JsonField -Response $resp.data -Field "url"
@@ -829,64 +650,69 @@ else {
             licenseMediaId  = $mediaId
             licenseSignedUrl = $signedUrl
         }
-        Write-Host "  [env] licenseMediaId=$mediaId, signedUrl=$signedUrl"
+        Write-Host "  [env] licenseMediaId=$mediaId"
     }
 
-    Write-Log "4.1 鍟嗗鏈汉涓嬭浇鎵х収 鈫?200" "Cyan"
-    Send-YaakRequest "04.02 鍟嗗鏈汉涓嬭浇鎵х収" @(200)
+    Write-Log "4.1 商家本人下载执照 → 200" "Cyan"
+    Send-YaakRequest "04.02 商家本人下载执照" @(200)
 
-    Write-Log "4.2 绠＄悊鍛樹笅杞藉晢瀹舵墽鐓?鈫?200" "Cyan"
-    Send-YaakRequest "04.03 绠＄悊鍛樹笅杞藉晢瀹舵墽鐓? @(200)
+    Write-Log "4.2 管理员下载商家执照 → 200" "Cyan"
+    Send-YaakRequest "04.03 管理员下载商家执照" @(200)
 
-    Write-Log "4.3 test_user 闈炴墍鏈夎€呬笅杞藉晢瀹舵墽鐓?鈫?403" "Cyan"
-    Send-YaakRequest "04.04 test_user 闈炴墍鏈夎€呬笅杞藉晢瀹舵墽鐓? @(403)
+    Write-Log "4.3 test_user 非所有者下载商家执照 → 403" "Cyan"
+    Send-YaakRequest "04.04 test_user 非所有者下载执照" @(403)
 
-    Write-Log "4.4 鍖垮悕涓嬭浇鍟嗗鎵х収 鈫?401" "Cyan"
-    Send-YaakRequest "04.05 鍖垮悕涓嬭浇鍟嗗鎵х収" @(401)
+    Write-Log "4.4 匿名下载商家执照 → 401" "Cyan"
+    Send-YaakRequest "04.05 匿名下载商家执照" @(401)
 }
 
-# 鈹€鈹€ 05: 绠＄悊鍛樺叏璧勬簮璁块棶 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# ============================================================================
+# 05: 管理员全资源访问
+# ============================================================================
 Write-Host "`n$('#' * 60)"
-Write-Host "#  05 绠＄悊鍛樺叏璧勬簮璁块棶"
+Write-Host "#  05 管理员全资源访问"
 Write-Host "$('#' * 60)"
 
-Write-Log "5.1 绠＄悊鍛樹笅杞界鑱婂浘鐗?鈫?200" "Cyan"
-Send-YaakRequest "05.01 绠＄悊鍛樹笅杞界鑱婂浘鐗? @(200)
-
-Write-Log "5.2 绠＄悊鍛樹笅杞界兢鑱婂浘鐗?鈫?200" "Cyan"
-Send-YaakRequest "05.02 绠＄悊鍛樹笅杞界兢鑱婂浘鐗? @(200)
-
-Write-Log "5.3 绠＄悊鍛樹笅杞藉晢瀹舵墽鐓?鈫?200" "Cyan"
-Send-YaakRequest "05.03 绠＄悊鍛樹笅杞藉晢瀹舵墽鐓? @(200)
-
-Write-Log "涓婁紶娴嬭瘯澶村儚..." "Cyan"
-$resp = Send-YaakRequestJson "05.04 涓婁紶娴嬭瘯澶村儚"
+Write-Log "上传测试头像..." "Cyan"
+$resp = Send-YaakRequestJson "05.01 上传测试头像"
 if ($resp.code -eq 200) {
     $signedUrl = Get-JsonField -Response $resp.data -Field "url"
     if (-not $signedUrl) { $signedUrl = Get-JsonField -Response $resp.data -Field "signedUrl" }
-    $mediaId = Get-JsonField -Response $resp.data -Field "mediaId"
-    Set-YaakEnvironmentVariables $script:EnvironmentId @{
-        avatarSignedUrl = $signedUrl
-        avatarMediaId   = $mediaId
-    }
-    Write-Host "  [env] avatarSignedUrl=$signedUrl"
+    Set-YaakEnvironmentVariables $script:EnvironmentId @{ avatarSignedUrl = $signedUrl }
+    Write-Host "  [env] avatarSignedUrl 已保存"
 }
 
-Write-Log "5.4 绠＄悊鍛樹笅杞藉叕寮€澶村儚 鈫?200" "Cyan"
-Send-YaakRequest "05.05 绠＄悊鍛樹笅杞藉叕寮€澶村儚" @(200)
+Write-Log "5.1 管理员下载私聊图片 → 200" "Cyan"
+Send-YaakRequest "05.02 管理员下载私聊图片" @(200)
 
-# 鈹€鈹€ 06: 绛惧悕瀹屾暣鎬?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+Write-Log "5.2 管理员下载群聊图片 → 200" "Cyan"
+Send-YaakRequest "05.03 管理员下载群聊图片" @(200)
+
+Write-Log "5.3 管理员下载商家执照 → 200" "Cyan"
+Send-YaakRequest "05.04 管理员下载商家执照" @(200)
+
+Write-Log "5.4 管理员下载公开头像 → 200" "Cyan"
+Send-YaakRequest "05.05 管理员下载公开头像" @(200)
+
+# ============================================================================
+# 06: 签名完整性
+# ============================================================================
 Write-Host "`n$('#' * 60)"
-Write-Host "#  06 绛惧悕瀹屾暣鎬?
+Write-Host "#  06 签名完整性"
 Write-Host "$('#' * 60)"
 
-# 鏋勯€犵鏀圭鍚嶅拰缂哄け绛惧悕鐨?URL
-$privateUrl = (Invoke-YaakString -Arguments @("environment", "show", $script:EnvironmentId) | ConvertFrom-Json).variables | Where-Object { $_.name -eq "privateImageSignedUrl" } | Select-Object -First 1
-$signedUrlValue = if ($privateUrl) { $privateUrl.value } else { "" }
+# 构造篡改签名和缺失签名的 URL
+$envShow = Invoke-YaakString -Arguments @("environment", "show", $script:EnvironmentId)
+$envObj = $envShow | ConvertFrom-Json
+$privateUrlVar = $envObj.variables | Where-Object { $_.name -eq "privateImageSignedUrl" } | Select-Object -First 1
+$signedUrlValue = if ($privateUrlVar) { $privateUrlVar.value } else { "" }
 
 if ($signedUrlValue -and $signedUrlValue -match '&sig=([^&]+)') {
     $origSig = $Matches[1]
-    # 绡℃敼绛惧悕锛氫慨鏀规渶鍚庝竴浣?    $tamperedSig = if ($origSig.Length -gt 1) { $origSig.Substring(0, $origSig.Length - 1) + (([int][char]($origSig[-1]) + 1) % 10) } else { "invalid" }
+    $tamperedSig = if ($origSig.Length -gt 1) {
+        $origSig.Substring(0, $origSig.Length - 1) + (([int][char]($origSig[-1]) + 1) % 10).ToString()
+    }
+    else { "invalid" }
     $tamperedUrl = $signedUrlValue -replace [regex]::Escape("&sig=$origSig"), "&sig=$tamperedSig"
     $missingSigUrl = $signedUrlValue -replace '&sig=[^&]+', ''
 
@@ -894,23 +720,25 @@ if ($signedUrlValue -and $signedUrlValue -match '&sig=([^&]+)') {
         tamperedSignedUrl = $tamperedUrl
         missingSigUrl     = $missingSigUrl
     }
-    Write-Host "  [env] 宸叉瀯閫犵鏀圭鍚?URL 鍜屾棤绛惧悕 URL"
+    Write-Host "  [env] 已构造篡改签名 URL 和无签名 URL"
 }
 else {
-    Write-Skip "鏃犳硶瑙ｆ瀽 signedUrl锛岃烦杩囩鍚嶅畬鏁存€ф祴璇曘€?
+    Write-Skip "无法解析 signedUrl，跳过签名完整性测试。"
 }
 
-Write-Log "6.1 鏈夋晥绛惧悕涓嬭浇 鈫?200" "Cyan"
-Send-YaakRequest "06.01 鏈夋晥绛惧悕涓嬭浇" @(200)
+Write-Log "6.1 有效签名下载 → 200" "Cyan"
+Send-YaakRequest "06.01 有效签名下载" @(200)
 
-Write-Log "6.2 绡℃敼绛惧悕涓嬭浇 鈫?403" "Cyan"
-Send-YaakRequest "06.02 绡℃敼绛惧悕涓嬭浇" @(403)
+Write-Log "6.2 篡改签名下载 → 403" "Cyan"
+Send-YaakRequest "06.02 篡改签名下载" @(403)
 
-Write-Log "6.3 缂哄皯绛惧悕鍙傛暟涓嬭浇 鈫?403" "Cyan"
-Send-YaakRequest "06.03 缂哄皯绛惧悕鍙傛暟涓嬭浇" @(403)
+Write-Log "6.3 缺少签名参数下载 → 403" "Cyan"
+Send-YaakRequest "06.03 缺少签名参数下载" @(403)
 
-Write-Log "6.4 涓嶅瓨鍦ㄥ獟浣揑D涓嬭浇 鈫?404" "Cyan"
-Send-YaakRequest "06.04 涓嶅瓨鍦ㄥ獟浣揑D涓嬭浇" @(404)
+Write-Log "6.4 不存在媒体ID下载 → 404" "Cyan"
+Send-YaakRequest "06.04 不存在媒体ID下载" @(404)
 
-# 鈹€鈹€ 姹囨€?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# ============================================================================
+# 汇总
+# ============================================================================
 Write-TestSummary
