@@ -118,6 +118,26 @@ class ActivityQueryServiceTests {
     }
 
     @Test
+    void getActivityShouldExposeOccupiedCountWhenWaitingConfirmationFillsCapacity() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "待确认占座活动", 7);
+        for (int index = 1; index <= 6; index++) {
+            String userId = "registered-user-" + index;
+            saveUser(userId);
+            saveRegistration(activity.getActivityId(), userId, RegistrationStatus.registered);
+        }
+        saveUser("waiting-confirmation-user");
+        saveRegistration(activity.getActivityId(), "waiting-confirmation-user", RegistrationStatus.waitingConfirmation);
+
+        ActivityDtos.ActivityDetail detail =
+                activityQueryService.getActivity(Optional.empty(), activity.getActivityId());
+
+        assertThat(detail.getRegisteredCount()).isEqualTo(6);
+        assertThat(detail.getOccupiedCount()).isEqualTo(7);
+        assertThat(detail.getCapacity()).isEqualTo(7);
+    }
+
+    @Test
     void getActivityShouldReturnDetailForOwnDraft() {
         User organizer = saveUser("user-a");
         Activity activity = saveDraftActivity(organizer.getUserId(), "我的草稿");
@@ -445,6 +465,10 @@ class ActivityQueryServiceTests {
     }
 
     private Activity saveApprovedActivity(String organizerId, String title) {
+        return saveApprovedActivity(organizerId, title, 8);
+    }
+
+    private Activity saveApprovedActivity(String organizerId, String title, int capacity) {
         return activityRepository.save(Activity.builder()
                 .activityId(UUID.randomUUID().toString())
                 .organizerId(organizerId)
@@ -459,7 +483,7 @@ class ActivityQueryServiceTests {
                 .address("海淀区某街道")
                 .placeName("活动中心")
                 .safetyNotice("注意安全")
-                .capacity(8)
+                .capacity(capacity)
                 .registrationDeadline(Instant.parse("2026-07-01T12:00:00Z"))
                 .reviewStatus(ActivityReviewStatus.approved)
                 .runtimeStatus(ActivityRuntimeStatus.notStarted)
