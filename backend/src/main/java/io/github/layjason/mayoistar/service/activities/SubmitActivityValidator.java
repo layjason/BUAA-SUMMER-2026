@@ -58,7 +58,8 @@ public class SubmitActivityValidator {
             }
             case pending -> throw new BusinessException(ErrorCodes.ACTIVITY_STATE_NOT_SUBMITTABLE, "当前活动已在审核中，不能重复提交");
             case approved -> throw new BusinessException(ErrorCodes.ACTIVITY_STATE_NOT_SUBMITTABLE, "当前活动已审核通过，不能重复提交");
-            case rejected -> throw new BusinessException(ErrorCodes.ACTIVITY_STATE_NOT_SUBMITTABLE, "当前活动已被驳回，请创建新活动后重新提交");
+            case rejected ->
+                throw new BusinessException(ErrorCodes.ACTIVITY_STATE_NOT_SUBMITTABLE, "当前活动已被驳回，请创建新活动后重新提交");
         }
     }
 

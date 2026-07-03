@@ -79,7 +79,8 @@ public class ActivityQueryService {
     public ActivityDtos.ActivityDetail getActivity(Optional<String> userId, String activityId) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible"));
+                .orElseThrow(() ->
+                        new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible"));
         checkVisibility(userId, activity);
 
         ActivityDtos.ActivityDetail detail = loadActivityDetail(activity);

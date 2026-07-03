@@ -248,7 +248,8 @@ public class ActivityDraftService {
     private Activity findActivityForSubmit(String organizerId, String activityId) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible"));
+                .orElseThrow(() ->
+                        new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible"));
         if (!activity.getOrganizerId().equals(organizerId)) {
             throw new BusinessException(ErrorCodes.ACTIVITY_PERMISSION_DENIED, "无权操作其他用户的活动");
         }
@@ -334,7 +335,8 @@ public class ActivityDraftService {
     private Activity findOwnedDraft(String organizerId, String activityId) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible"));
+                .orElseThrow(() ->
+                        new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible"));
         if (!activity.getOrganizerId().equals(organizerId)) {
             throw new BusinessException(ErrorCodes.ACTIVITY_PERMISSION_DENIED, "无权访问其他用户的活动草稿");
         }

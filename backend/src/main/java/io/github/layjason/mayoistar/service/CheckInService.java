@@ -79,7 +79,8 @@ public class CheckInService {
     public ActivityDtos.CheckInQrCode generateCheckInQrCode(@NonNull String userId, @NonNull String activityId) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity " + activityId + " is not visible"));
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity " + activityId + " is not visible"));
 
         if (!Objects.equals(activity.getOrganizerId(), userId)) {
             throw new BusinessException(ErrorCodes.ACTIVITY_PERMISSION_DENIED, "无权生成签到二维码");
@@ -143,7 +144,8 @@ public class CheckInService {
         // 检查活动是否可见
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity " + activityId + " is not visible"));
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity " + activityId + " is not visible"));
 
         // 查找报名记录（加悲观写锁，防止并发重复签到）
         ActivityRegistration registration = registrationRepository
@@ -202,7 +204,8 @@ public class CheckInService {
             @NonNull String userId, @NonNull String activityId, @Nullable Integer page, @Nullable Integer pageSize) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity " + activityId + " is not visible"));
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity " + activityId + " is not visible"));
 
         if (!Objects.equals(activity.getOrganizerId(), userId)) {
             throw new BusinessException(ErrorCodes.ACTIVITY_PERMISSION_DENIED, "无权查看签到列表");
@@ -241,7 +244,8 @@ public class CheckInService {
     public byte[] exportCheckIns(@NonNull String userId, @NonNull String activityId) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity " + activityId + " is not visible"));
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity " + activityId + " is not visible"));
 
         if (!Objects.equals(activity.getOrganizerId(), userId)) {
             throw new BusinessException(ErrorCodes.ACTIVITY_PERMISSION_DENIED, "无权导出签到数据");
