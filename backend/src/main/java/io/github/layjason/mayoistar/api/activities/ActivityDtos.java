@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 public final class ActivityDtos {
 
@@ -154,6 +155,16 @@ public final class ActivityDtos {
         private ActivityRuntimeStatus runtimeStatus;
         private Integer registeredCount;
         private Integer capacity;
+    }
+
+    @Data
+    @EqualsAndHashCode(callSuper = true)
+    public static class RegisteredActivitySummary extends ActivitySummary {
+        private String registrationId;
+        private RegistrationStatus registrationStatus;
+        private String registeredAt;
+        private Integer waitingRank;
+        private String confirmationDeadline;
     }
 
     @Data
