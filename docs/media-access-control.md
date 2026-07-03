@@ -70,6 +70,8 @@ mediaId + v + policy + scope
 
 - **聊天图片**（`POST /chat/media/images`）：返回的 `signedUrl` 仅在上传者预览时有效，策略为 `owner`。上传不等于发送消息。发送消息时（`POST /chat/conversations/{conversationId}/messages`），`ChatService.sendMessage()` 将策略升级为 `conversationMember` 并递增 `accessVersion`，上传时返回的 `signedUrl` 立即因版本不匹配而失效。客户端应在消息发送后从**消息列表/详情接口**返回的 `ChatMessage.image.signedUrl` 获取新的会话签名 URL。
 
+  注意：同一个 `mediaId` 仅能发送到一个会话，`sendMessage` 会将图片的访问策略绑定至该会话。若需将同一图片发送到多个会话，应先分别上传得到不同的 `mediaId`，或使用消息转发功能（转发会通过 `copyForScope` 创建独立的媒体副本）。
+
 - **群文件**（`POST /chat/teams/{teamId}/files`）：上传 + 关联小队一步完成，策略在 `TeamService.uploadTeamFile()` 中即时升级为 `teamMember`。返回的 `signedUrl` 即为小队签名 URL，小队所有成员均可访问。
 
 - **小队相册**（`POST /chat/teams/{teamId}/album-images`）：同群文件，上传后策略即时升级为 `teamMember`。

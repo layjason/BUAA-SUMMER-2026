@@ -126,6 +126,10 @@ public class ChatService {
                         mediaFile.getUploadedBy());
                 throw new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
             }
+            if (mediaFile.getDeletedAt() != null) {
+                log.warn("消息引用的媒体文件已删除: mediaId={}", request.getImageMediaId());
+                throw new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
+            }
         }
 
         ChatMessage message = ChatMessage.builder()
@@ -788,7 +792,8 @@ public class ChatService {
     }
 
     /**
-     * 校验消息中引用的媒体等外部资源是否存在。
+     * 校验消息中引用的媒体等外部资源是否存在（不含图片，图片的完整校验由
+     * {@link #sendMessage} 统一处理）。
      *
      * <p>前置条件：request 已通过 Controller 层的 {@code @ValidMessageContent} 跨字段校验。
      *
@@ -796,11 +801,7 @@ public class ChatService {
      *
      * <p>不变量：消息内容格式校验由 Controller 层负责，本方法仅校验需要访问数据库的依赖。
      */
-    private void validateMessageContent(ChatDtos.SendMessageRequest request) {
-        if (request.getKind() == MessageKind.image && !mediaFileRepository.existsById(request.getImageMediaId())) {
-            throw new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
-        }
-    }
+    private void validateMessageContent(ChatDtos.SendMessageRequest request) {}
 
     /**
      * 初始化消息的已读状态。发送者标记为已读，其余成员标记为未读。

@@ -183,6 +183,10 @@ public class MediaAccessService {
         MediaFile mediaFile = mediaFileRepository
                 .findById(mediaId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found"));
+        if (mediaFile.getDeletedAt() != null) {
+            log.debug("媒体文件已删除，跳过重复操作: mediaId={}", mediaId);
+            return;
+        }
         mediaFile.setDeletedAt(clock.instant());
         mediaFile.setAccessVersion(mediaFile.getAccessVersion() + 1);
         mediaFileRepository.save(mediaFile);
@@ -210,6 +214,9 @@ public class MediaAccessService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file not found"));
         if (!mediaFile.getUploadedBy().equals(callerUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Permission is denied");
+        }
+        if (mediaFile.getDeletedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found");
         }
         mediaFile.setAccessPolicy(policy);
         mediaFile.setAccessScopeId(scope);
@@ -239,6 +246,9 @@ public class MediaAccessService {
      */
     @Transactional
     public MediaFile copyForScope(MediaFile source, String uploadedBy, MediaAccessPolicy policy, String scope) {
+        if (source.getDeletedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Source media file has been deleted");
+        }
         MediaFile copy = MediaFile.builder()
                 .mediaId(UUID.randomUUID())
                 .fileName(source.getFileName())

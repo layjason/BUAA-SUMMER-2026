@@ -322,6 +322,50 @@ class MediaAccessServiceTest {
     }
 
     @Test
+    @DisplayName("softDelete(UUID)：对已删除文件重复调用跳过操作")
+    void shouldIdempotentSoftDelete() {
+        UUID mediaId = UUID.randomUUID();
+        Instant deletedAt = Instant.parse("2026-07-03T00:00:00Z");
+        MediaFile mediaFile =
+                buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.teamMember, "team-1");
+        mediaFile.setDeletedAt(deletedAt);
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
+
+        mediaAccessService.softDelete(mediaId);
+
+        assertThat(mediaFile.getDeletedAt()).isEqualTo(deletedAt);
+    }
+
+    @Test
+    @DisplayName("updateAccessPolicy：对已删除文件操作应返回 404")
+    void shouldRejectUpdateAccessPolicyOnDeletedFile() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile mediaFile = buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.owner, "user1");
+        mediaFile.setDeletedAt(Instant.parse("2026-07-03T00:00:00Z"));
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
+
+        assertThatThrownBy(() -> mediaAccessService.updateAccessPolicy(
+                        mediaId, MediaAccessPolicy.conversationMember, "conv-x", "user1"))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode.value")
+                .isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName("copyForScope：源文件已删除应返回 404")
+    void shouldRejectCopyForScopeWhenSourceDeleted() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile source = buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.owner, "user1");
+        source.setDeletedAt(Instant.parse("2026-07-03T00:00:00Z"));
+
+        assertThatThrownBy(() -> mediaAccessService.copyForScope(
+                        source, "user2", MediaAccessPolicy.conversationMember, "conv-target"))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode.value")
+                .isEqualTo(404);
+    }
+
+    @Test
     @DisplayName("toSignedDto：已删除文件仅返回 mediaId，不泄露元数据")
     void shouldReturnMinimalDtoForDeletedFile() {
         UUID mediaId = UUID.randomUUID();

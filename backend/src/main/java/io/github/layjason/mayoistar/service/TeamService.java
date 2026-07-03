@@ -799,7 +799,9 @@ public class TeamService {
         teamMediaFileRepository.deleteAll(teamMedias);
         List<MediaFile> files = mediaFileRepository.findByMediaIdIn(mediaIds);
         for (MediaFile file : files) {
-            mediaAccessService.softDelete(file.getMediaId());
+            if (file.getDeletedAt() == null) {
+                mediaAccessService.softDelete(file.getMediaId());
+            }
         }
         log.info("群文件已软删除: teamId={}, count={}", teamId, mediaIds.size());
     }
@@ -887,7 +889,9 @@ public class TeamService {
         teamMediaFileRepository.deleteAll(teamMedias);
         List<MediaFile> files = mediaFileRepository.findByMediaIdIn(mediaIds);
         for (MediaFile file : files) {
-            mediaAccessService.softDelete(file.getMediaId());
+            if (file.getDeletedAt() == null) {
+                mediaAccessService.softDelete(file.getMediaId());
+            }
         }
         log.info("小队相册图片已软删除: teamId={}, count={}", teamId, mediaIds.size());
     }

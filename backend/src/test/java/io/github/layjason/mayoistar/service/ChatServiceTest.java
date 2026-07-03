@@ -252,6 +252,33 @@ class ChatServiceTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("发送图片消息 - 引用已删除的图片应抛 MEDIA_REFERENCE_INVALID")
+    void sendMessage_imageDeletedThrows() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile mediaFile = MediaFile.builder()
+                .mediaId(mediaId)
+                .fileName("deleted.png")
+                .contentType("image/png")
+                .sizeBytes(1024L)
+                .usage(MediaUsage.chatImage)
+                .storagePath("/test/deleted.png")
+                .uploadedBy(tomori.getUserId())
+                .uploadedAt(Instant.now())
+                .deletedAt(Instant.now())
+                .build();
+        entityManager.persist(mediaFile);
+        entityManager.flush();
+
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.image);
+        request.setImageMediaId(mediaId);
+
+        assertThatThrownBy(() -> chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Media reference is invalid");
+    }
+
+    @Test
     @DisplayName("发送位置消息 - 成功创建")
     void sendMessage_location() {
         CommonDtos.GeoPoint point = new CommonDtos.GeoPoint();
