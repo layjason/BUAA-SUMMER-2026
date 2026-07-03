@@ -3,9 +3,12 @@ package io.github.layjason.mayoistar.exception;
 import io.github.layjason.mayoistar.api.common.ApiErrorResponse;
 import io.github.layjason.mayoistar.api.common.EmptyData;
 import jakarta.validation.ConstraintViolationException;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -110,6 +113,32 @@ public class GlobalExceptionHandler {
         body.setMessage(ex.getMessage());
         body.setData(new EmptyData());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    /**
+     * 处理不支持的 HTTP 方法异常。
+     *
+     * <p>前置条件：客户端使用未注册的 HTTP 方法访问已存在的路径。
+     *
+     * <p>后置条件：返回 code=405、message 包含请求方法和支持方法的 API 错误响应，HTTP 405。
+     *
+     * @param ex HTTP 方法不支持异常
+     * @return 错误响应
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiErrorResponse<EmptyData>> handleHttpRequestMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex) {
+        String supportedMethods = ex.getSupportedHttpMethods() != null
+                        && !ex.getSupportedHttpMethods().isEmpty()
+                ? ex.getSupportedHttpMethods().stream().map(HttpMethod::name).collect(Collectors.joining(", "))
+                : "未知";
+        String message = "HTTP 方法 " + ex.getMethod() + " 不受支持，支持以下方法: " + supportedMethods;
+        log.warn("HTTP 方法不支持: {}", message);
+        ApiErrorResponse<EmptyData> body = new ApiErrorResponse<>();
+        body.setCode(405);
+        body.setMessage(message);
+        body.setData(new EmptyData());
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(body);
     }
 
     /**

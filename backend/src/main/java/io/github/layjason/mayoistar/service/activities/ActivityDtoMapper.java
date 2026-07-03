@@ -119,6 +119,7 @@ public class ActivityDtoMapper {
         // registeredCount 由报名模块补充，当前暂为 0
         dto.setRegisteredCount(0);
         dto.setCapacity(activity.getCapacity());
+        dto.setRequireLocationCheck(activity.getRequireLocationCheck());
     }
 
     /**
@@ -180,6 +181,7 @@ public class ActivityDtoMapper {
         dto.setFeeDescription(activity.getFeeDescription());
         dto.setMinAge(activity.getMinAge());
         dto.setReviewRecords(reviewRecords);
+        dto.setRequireLocationCheck(activity.getRequireLocationCheck());
         return dto;
     }
 

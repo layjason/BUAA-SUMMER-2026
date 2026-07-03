@@ -65,3 +65,7 @@ mayoistar:
       timeout-seconds: 60
     rate-limit:
       max-requests-per-minute: 20
+  check-in:
+    signing-secret: ${MAYOISTAR_CHECKIN_SIGNING_SECRET:${MAYOISTAR_JWT_SECRET:dev-checkin-signing-secret-change-me}}
+    token-expire-seconds: 900
+    location-check-meters: 500

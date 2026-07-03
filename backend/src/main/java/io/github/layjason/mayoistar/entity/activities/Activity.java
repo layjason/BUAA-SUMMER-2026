@@ -123,6 +123,10 @@ public class Activity {
     @Builder.Default
     private Boolean manualReviewRequired = false;
 
+    @Column(name = "require_location_check", nullable = false)
+    @Builder.Default
+    private Boolean requireLocationCheck = false;
+
     @Column(name = "created_at", nullable = false)
     @Builder.Default
     private Instant createdAt = Instant.now();
