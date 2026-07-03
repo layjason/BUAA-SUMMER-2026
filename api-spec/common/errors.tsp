@@ -358,7 +358,7 @@ namespace QujuApi.Errors.Chat {
       "Forward target conversation is unavailable"
     > {}
 
-  @doc("50011：调用方无权发布群公告。")
+  @doc("50011：调用方无权执行该群公告操作。")
   model AnnouncementPermissionDenied
     extends APIErrorResponse<50011, "Announcement operation is not allowed"> {}
 
