@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.layjason.mayoistar.api.common.ApiErrorResponse;
 import io.github.layjason.mayoistar.api.common.EmptyData;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -95,6 +97,54 @@ class GlobalExceptionHandlerTests {
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getCode()).isEqualTo(40100);
             assertThat(response.getBody().getMessage()).isEqualTo("Test business error");
+        }
+    }
+
+    @Nested
+    @DisplayName("HTTP 方法不支持处理")
+    class HttpRequestMethodNotSupportedTests {
+
+        /**
+         * 验证不支持的 HTTP 方法时返回 HTTP 405。
+         *
+         * <p>前置条件：HttpRequestMethodNotSupportedException 被抛出，请求方法为 POST，支持 GET, HEAD。
+         *
+         * <p>后置条件：HTTP 状态码为 405，响应体为 code=405 的 ApiErrorResponse，message 包含请求和支持的方法。
+         */
+        @Test
+        @DisplayName("应返回 HTTP 405 和 code=405 的错误响应")
+        void shouldReturn405WhenMethodNotSupported() {
+            HttpRequestMethodNotSupportedException ex =
+                    new HttpRequestMethodNotSupportedException("POST", List.of("GET", "HEAD"));
+
+            ResponseEntity<ApiErrorResponse<EmptyData>> response = handler.handleHttpRequestMethodNotSupported(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getCode()).isEqualTo(405);
+            assertThat(response.getBody().getMessage()).contains("POST");
+            assertThat(response.getBody().getMessage()).contains("GET");
+        }
+
+        /**
+         * 验证不支持的 HTTP 方法异常中 supportedHttpMethods 为空时不抛出异常。
+         *
+         * <p>前置条件：HttpRequestMethodNotSupportedException 由单参构造器创建，getSupportedHttpMethods() 返回空集合。
+         *
+         * <p>后置条件：HTTP 状态码为 405，响应体 message 包含 "未知" 作为支持方法列表。
+         */
+        @Test
+        @DisplayName("应正确处理 supportedHttpMethods 为空的情况")
+        void shouldHandleEmptySupportedMethods() {
+            HttpRequestMethodNotSupportedException ex = new HttpRequestMethodNotSupportedException("POST");
+
+            ResponseEntity<ApiErrorResponse<EmptyData>> response = handler.handleHttpRequestMethodNotSupported(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getCode()).isEqualTo(405);
+            assertThat(response.getBody().getMessage()).contains("POST");
+            assertThat(response.getBody().getMessage()).contains("未知");
         }
     }
 }
