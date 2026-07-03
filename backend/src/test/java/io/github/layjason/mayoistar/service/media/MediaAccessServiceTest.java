@@ -74,7 +74,7 @@ class MediaAccessServiceTest {
         Map<String, String> params = queryParams(signed.signedUrl());
 
         InputStream result = mediaAccessService.openSignedContent(
-                mediaId,
+                mediaAccessService.loadDescriptor(mediaId),
                 Long.parseLong(params.get("v")),
                 MediaAccessPolicy.valueOf(params.get("policy")),
                 params.get("scope"),
@@ -94,7 +94,7 @@ class MediaAccessServiceTest {
         Map<String, String> params = queryParams(signed.signedUrl());
 
         assertThatThrownBy(() -> mediaAccessService.openSignedContent(
-                        mediaId,
+                        mediaAccessService.loadDescriptor(mediaId),
                         Long.parseLong(params.get("v")),
                         MediaAccessPolicy.valueOf(params.get("policy")),
                         params.get("scope"),
@@ -125,7 +125,7 @@ class MediaAccessServiceTest {
         auth.setAuthenticated(true);
 
         InputStream result = mediaAccessService.openSignedContent(
-                mediaId,
+                mediaAccessService.loadDescriptor(mediaId),
                 Long.parseLong(params.get("v")),
                 MediaAccessPolicy.valueOf(params.get("policy")),
                 params.get("scope"),
@@ -153,7 +153,7 @@ class MediaAccessServiceTest {
         auth.setAuthenticated(true);
 
         assertThatThrownBy(() -> mediaAccessService.openSignedContent(
-                        mediaId,
+                        mediaAccessService.loadDescriptor(mediaId),
                         Long.parseLong(params.get("v")),
                         MediaAccessPolicy.valueOf(params.get("policy")),
                         params.get("scope"),
@@ -225,7 +225,7 @@ class MediaAccessServiceTest {
         auth.setAuthenticated(true);
 
         assertThatThrownBy(() -> mediaAccessService.openSignedContent(
-                        mediaId,
+                        mediaAccessService.loadDescriptor(mediaId),
                         Long.parseLong(oldParams.get("v")),
                         MediaAccessPolicy.valueOf(oldParams.get("policy")),
                         oldParams.get("scope"),
@@ -238,7 +238,7 @@ class MediaAccessServiceTest {
         SignedMediaAccess newSigned = mediaAccessService.sign(mediaFile);
         Map<String, String> newParams = queryParams(newSigned.signedUrl());
         InputStream result = mediaAccessService.openSignedContent(
-                mediaId,
+                mediaAccessService.loadDescriptor(mediaId),
                 Long.parseLong(newParams.get("v")),
                 MediaAccessPolicy.valueOf(newParams.get("policy")),
                 newParams.get("scope"),
@@ -257,7 +257,7 @@ class MediaAccessServiceTest {
         when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
 
         assertThatThrownBy(() -> mediaAccessService.openSignedContent(
-                        mediaId, 1L, MediaAccessPolicy.publicAccess, "", null, null))
+                        mediaAccessService.loadDescriptor(mediaId), 1L, MediaAccessPolicy.publicAccess, "", null, null))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting("statusCode.value")
                 .isEqualTo(403);
@@ -270,7 +270,12 @@ class MediaAccessServiceTest {
         when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> mediaAccessService.openSignedContent(
-                        mediaId, 1L, MediaAccessPolicy.publicAccess, "", "invalid", null))
+                        mediaAccessService.loadDescriptor(mediaId),
+                        1L,
+                        MediaAccessPolicy.publicAccess,
+                        "",
+                        "invalid",
+                        null))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting("statusCode.value")
                 .isEqualTo(404);
@@ -314,6 +319,24 @@ class MediaAccessServiceTest {
         verify(mediaFileRepository).save(captor.capture());
         assertThat(captor.getValue().getDeletedAt()).isNotNull();
         assertThat(captor.getValue().getAccessVersion()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("toSignedDto：已删除文件仅返回 mediaId，不泄露元数据")
+    void shouldReturnMinimalDtoForDeletedFile() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile mediaFile =
+                buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.teamMember, "team-1");
+        mediaFile.setDeletedAt(Instant.parse("2026-07-03T00:00:00Z"));
+
+        var dto = mediaAccessService.toSignedDto(mediaFile);
+
+        assertThat(dto.getMediaId()).isEqualTo(mediaId);
+        assertThat(dto.getFileName()).isNull();
+        assertThat(dto.getContentType()).isNull();
+        assertThat(dto.getSizeBytes()).isNull();
+        assertThat(dto.getUsage()).isNull();
+        assertThat(dto.getSignedUrl()).isNull();
     }
 
     private MediaFile buildMediaFile(

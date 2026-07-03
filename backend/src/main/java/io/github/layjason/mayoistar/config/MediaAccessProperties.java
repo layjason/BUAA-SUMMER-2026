@@ -9,12 +9,12 @@ import org.springframework.validation.annotation.Validated;
  *
  * <p>类职责：绑定媒体签名 URL 的密钥。
  *
- * <p>不变量：签名密钥必须由部署环境覆盖，默认值仅用于本地开发和测试。
+ * <p>不变量：签名密钥由 YAML 配置或环境变量提供，禁止在代码中硬编码默认值。
  */
 @Data
 @Validated
 @ConfigurationProperties("mayoistar.media.access")
 public class MediaAccessProperties {
 
-    private String signingSecret = "dev-media-signing-secret-change-me";
+    private String signingSecret;
 }

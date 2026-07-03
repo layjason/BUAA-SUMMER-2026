@@ -47,7 +47,7 @@ class MediaControllerTest {
         InputStream inputStream = new ByteArrayInputStream("image-data".getBytes());
 
         when(mediaAccessService.loadDescriptor(mediaId)).thenReturn(descriptor);
-        when(mediaAccessService.openSignedContent(mediaId, 1L, MediaAccessPolicy.publicAccess, "", "sig", null))
+        when(mediaAccessService.openSignedContent(descriptor, 1L, MediaAccessPolicy.publicAccess, "", "sig", null))
                 .thenReturn(inputStream);
 
         ResponseEntity<?> response =
@@ -61,7 +61,7 @@ class MediaControllerTest {
         assertThat(response.getHeaders().getContentDisposition())
                 .isEqualTo(ContentDisposition.inline().filename("avatar.png").build());
         verify(mediaAccessService).loadDescriptor(mediaId);
-        verify(mediaAccessService).openSignedContent(mediaId, 1L, MediaAccessPolicy.publicAccess, "", "sig", null);
+        verify(mediaAccessService).openSignedContent(descriptor, 1L, MediaAccessPolicy.publicAccess, "", "sig", null);
         verifyNoMoreInteractions(mediaAccessService);
     }
 
@@ -73,7 +73,7 @@ class MediaControllerTest {
         InputStream inputStream = new ByteArrayInputStream("image-data".getBytes());
 
         when(mediaAccessService.loadDescriptor(mediaId)).thenReturn(descriptor);
-        when(mediaAccessService.openSignedContent(mediaId, 1L, MediaAccessPolicy.publicAccess, "", null, null))
+        when(mediaAccessService.openSignedContent(descriptor, 1L, MediaAccessPolicy.publicAccess, "", null, null))
                 .thenReturn(inputStream);
 
         ResponseEntity<?> response =
@@ -81,7 +81,7 @@ class MediaControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(mediaAccessService).loadDescriptor(mediaId);
-        verify(mediaAccessService).openSignedContent(mediaId, 1L, MediaAccessPolicy.publicAccess, "", null, null);
+        verify(mediaAccessService).openSignedContent(descriptor, 1L, MediaAccessPolicy.publicAccess, "", null, null);
         verifyNoMoreInteractions(mediaAccessService);
     }
 

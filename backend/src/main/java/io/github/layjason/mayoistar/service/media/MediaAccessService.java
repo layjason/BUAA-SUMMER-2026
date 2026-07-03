@@ -73,13 +73,16 @@ public class MediaAccessService {
     /**
      * 校验签名 URL 并读取媒体文件。
      *
-     * <p>前置条件：请求参数来自签名 URL，mediaId 非空。
+     * <p>前置条件：descriptor 已通过 {@link #loadDescriptor(UUID)} 加载且非空。
      *
      * <p>后置条件：若签名和权限均有效，返回对象存储输入流；否则抛出对应 HTTP 异常。
      *
      * <p>不变量：私有资源必须存在有效认证；管理员仍必须提供有效签名 URL。
      *
-     * @param mediaId        媒体标识
+     * <p>调用方应在调用本方法前加载描述符，并使用同一描述符设置响应头，避免重复加载
+     * 导致 TOCTOU 竞态。
+     *
+     * @param descriptor     已加载的媒体访问描述符
      * @param accessVersion  URL 中的访问版本
      * @param policy         URL 中的访问策略
      * @param scope          URL 中的访问作用域
@@ -88,17 +91,16 @@ public class MediaAccessService {
      * @return 文件输入流
      */
     public InputStream openSignedContent(
-            UUID mediaId,
+            MediaAccessDescriptor descriptor,
             long accessVersion,
             MediaAccessPolicy policy,
             @Nullable String scope,
             @Nullable String signature,
             @Nullable Authentication authentication) {
-        MediaAccessDescriptor descriptor = loadDescriptor(mediaId);
         if (descriptor.deletedAt() != null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found");
         }
-        if (!verifySignature(mediaId, accessVersion, policy, normalizeScope(scope), signature)) {
+        if (!verifySignature(descriptor.mediaId(), accessVersion, policy, normalizeScope(scope), signature)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Permission is denied");
         }
         if (descriptor.accessVersion() != accessVersion
@@ -127,16 +129,17 @@ public class MediaAccessService {
     public CommonDtos.MediaFile toSignedDto(MediaFile mediaFile) {
         CommonDtos.MediaFile result = new CommonDtos.MediaFile();
         result.setMediaId(mediaFile.getMediaId());
+        if (mediaFile.getDeletedAt() != null) {
+            return result;
+        }
         result.setFileName(mediaFile.getFileName());
         result.setContentType(mediaFile.getContentType());
         result.setSizeBytes(mediaFile.getSizeBytes());
         result.setUsage(mediaFile.getUsage());
         result.setVisibility(mediaFile.getVisibility());
         result.setUploadedAt(mediaFile.getUploadedAt().toString());
-        if (mediaFile.getDeletedAt() == null) {
-            SignedMediaAccess signed = sign(mediaFile);
-            result.setSignedUrl(signed.signedUrl());
-        }
+        SignedMediaAccess signed = sign(mediaFile);
+        result.setSignedUrl(signed.signedUrl());
         return result;
     }
 
@@ -166,9 +169,12 @@ public class MediaAccessService {
     /**
      * 软删除媒体文件（不含权限校验），递增访问版本使旧签名 URL 立即失效。
      *
-     * <p>前置条件：调用方需自行确保删除权限（如已通过团队管理权限检查）。
+     * <p>重要：本方法不执行权限校验，调用方必须在调用前完成独立的权限检查（如团队管理权限、
+     * 管理员身份等）。误用可能导致越权删除。
      *
-     * <p>后置条件：deletedAt 非空，accessVersion 递增，缓存中的旧快照失效。
+     * <p>前置条件：调用方需自行确保删除权限。
+     *
+     * <p>后置条件：deletedAt 非空，accessVersion 递增，旧签名 URL 因版本不匹配而失效。
      *
      * @param mediaId 媒体标识
      */
