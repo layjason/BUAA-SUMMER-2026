@@ -26,6 +26,7 @@ import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.chat.Conversation;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.chat.ConversationMember;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.User;
@@ -713,16 +714,17 @@ public class TeamService {
     // ========================================
 
     /**
-     * 上传群文件，将文件关联到小队。
+     * 上传群文件，将文件关联到小队，并将访问策略从默认 owner 提升为 teamMember。
      *
      * <p>前置条件：{@code userId} 是小队成员，文件实体已保存。
      *
-     * <p>后置条件：小队-媒体关联已建立。
+     * <p>后置条件：小队-媒体关联已建立，访问策略更新为 teamMember，小队所有成员均可通过签名 URL
+     * 访问该文件。
      *
      * @param teamId  小队 ID
      * @param userId  上传者 ID
      * @param mediaId 已保存的媒体文件 ID
-     * @return 更新后的媒体文件 DTO
+     * @return 更新后的媒体文件 DTO（含 teamMember 策略签名 URL）
      * @throws BusinessException 非小队成员
      */
     public CommonDtos.MediaFile uploadTeamFile(String teamId, String userId, UUID mediaId) {
@@ -738,6 +740,8 @@ public class TeamService {
                 .mediaId(mediaId)
                 .build();
         teamMediaFileRepository.save(teamMedia);
+
+        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.teamMember, teamId);
 
         log.info("群文件已上传: teamId={}, mediaId={}, uploadedBy={}", teamId, mediaId, userId);
         return toMediaFileDto(file);
@@ -793,11 +797,12 @@ public class TeamService {
     }
 
     /**
-     * 上传小队相册图片。
+     * 上传小队相册图片，将访问策略从默认 owner 提升为 teamMember。
      *
      * <p>前置条件：{@code userId} 是小队成员，图片实体已保存。
      *
-     * <p>后置条件：小队-媒体关联已建立，usage 更新为 teamAlbum。
+     * <p>后置条件：小队-媒体关联已建立，usage 更新为 teamAlbum，访问策略更新为
+     * teamMember，小队所有成员均可访问。
      */
     public CommonDtos.MediaFile uploadTeamAlbumImage(String teamId, String userId, UUID mediaId) {
         requireTeamMember(teamId, userId);
@@ -814,6 +819,8 @@ public class TeamService {
                 .mediaId(mediaId)
                 .build();
         teamMediaFileRepository.save(teamMedia);
+
+        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.teamMember, teamId);
 
         log.info("小队相册图片已上传: teamId={}, mediaId={}, uploadedBy={}", teamId, mediaId, userId);
         return toMediaFileDto(file);

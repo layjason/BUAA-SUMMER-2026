@@ -180,15 +180,17 @@ class MediaAccessServiceTest {
         verify(mediaFileRepository).save(captor.capture());
         assertThat(captor.getValue().getAccessPolicy()).isEqualTo(MediaAccessPolicy.conversationMember);
         assertThat(captor.getValue().getAccessScopeId()).isEqualTo(conversationId);
+        assertThat(captor.getValue().getAccessVersion()).isEqualTo(2L);
 
-        // 验证新签名 URL 包含更新的策略
+        // 验证新签名 URL 包含更新的策略和递增后的版本
         SignedMediaAccess signed = mediaAccessService.sign(mediaFile);
         assertThat(signed.signedUrl()).contains("policy=conversationMember");
         assertThat(signed.signedUrl()).contains("scope=" + conversationId);
+        assertThat(signed.signedUrl()).contains("v=2");
     }
 
     @Test
-    @DisplayName("策略更新后旧签名 URL 返回 403，新签名 URL 可访问")
+    @DisplayName("策略更新后旧签名 URL 因 accessVersion 不匹配返回 403，新签名 URL 可访问")
     void shouldRejectOldSignedUrlAfterPolicyUpdate() {
         UUID mediaId = UUID.randomUUID();
         String conversationId = "conv-refresh";

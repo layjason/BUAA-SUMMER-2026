@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
 import io.github.layjason.mayoistar.config.TestStorageConfiguration;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
+import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
@@ -14,6 +17,7 @@ import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.TeamJoinRequestRepository;
 import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
@@ -51,6 +55,9 @@ class TeamServiceTest {
 
     @Autowired
     private TeamJoinRequestRepository teamJoinRequestRepository;
+
+    @Autowired
+    private MediaFileRepository mediaFileRepository;
 
     @Nested
     @DisplayName("小队创建")
@@ -424,6 +431,89 @@ class TeamServiceTest {
             assertThat(result.getItems().get(0).getNickname()).isEqualTo("燈");
             assertThat(result.getItems().get(0).getPoints()).isEqualTo(0);
         }
+    }
+
+    @Nested
+    @DisplayName("群文件与相册上传")
+    class TeamFileAndAlbumUpload {
+
+        private User tomori;
+        private User raana;
+        private String teamId;
+
+        @BeforeEach
+        void setUp() {
+            tomori = createUser("tomori5@mygo.band", "燈");
+            raana = createUser("raana3@mygo.band", "楽奈");
+
+            SocialDtos.TeamCreateRequest req = createRequest("CRYCHIC ファイル共有", TeamJoinMode.publicJoin);
+            teamId = teamService.createTeam(tomori.getUserId(), req).getTeamId();
+        }
+
+        @Test
+        @DisplayName("燈上传群文件——访问策略更新为 teamMember，签名 URL 包含 group 签名")
+        void uploadTeamFileUpdatesAccessPolicy() {
+            MediaFile file = persistMediaFile(
+                    UUID.randomUUID(), tomori.getUserId(), MediaUsage.teamFile, MediaAccessPolicy.owner);
+
+            var result = teamService.uploadTeamFile(teamId, tomori.getUserId(), file.getMediaId());
+
+            assertThat(result).isNotNull();
+            assertThat(result.getSignedUrl()).contains("policy=teamMember");
+            assertThat(result.getSignedUrl()).contains("scope=" + teamId);
+
+            var updated = mediaFileRepository.findById(file.getMediaId()).orElseThrow();
+            assertThat(updated.getAccessPolicy()).isEqualTo(MediaAccessPolicy.teamMember);
+            assertThat(updated.getAccessScopeId()).isEqualTo(teamId);
+            assertThat(updated.getAccessVersion()).isEqualTo(2L);
+        }
+
+        @Test
+        @DisplayName("非成员上传群文件应拒绝")
+        void nonMemberUploadTeamFileRejected() {
+            MediaFile file = persistMediaFile(
+                    UUID.randomUUID(), raana.getUserId(), MediaUsage.teamFile, MediaAccessPolicy.owner);
+
+            assertThatThrownBy(() -> teamService.uploadTeamFile(teamId, raana.getUserId(), file.getMediaId()))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("membership is required");
+        }
+
+        @Test
+        @DisplayName("燈上传相册图片——访问策略更新为 teamMember，usage 更新为 teamAlbum")
+        void uploadTeamAlbumImageUpdatesAccessPolicy() {
+            MediaFile file = persistMediaFile(
+                    UUID.randomUUID(), tomori.getUserId(), MediaUsage.chatImage, MediaAccessPolicy.owner);
+
+            var result = teamService.uploadTeamAlbumImage(teamId, tomori.getUserId(), file.getMediaId());
+
+            assertThat(result).isNotNull();
+            assertThat(result.getSignedUrl()).contains("policy=teamMember");
+            assertThat(result.getSignedUrl()).contains("scope=" + teamId);
+
+            var updated = mediaFileRepository.findById(file.getMediaId()).orElseThrow();
+            assertThat(updated.getUsage()).isEqualTo(MediaUsage.teamAlbum);
+            assertThat(updated.getAccessPolicy()).isEqualTo(MediaAccessPolicy.teamMember);
+            assertThat(updated.getAccessScopeId()).isEqualTo(teamId);
+            assertThat(updated.getAccessVersion()).isEqualTo(2L);
+        }
+    }
+
+    private MediaFile persistMediaFile(UUID mediaId, String userId, MediaUsage usage, MediaAccessPolicy policy) {
+        MediaFile file = MediaFile.builder()
+                .mediaId(mediaId)
+                .fileName("test.txt")
+                .contentType("text/plain")
+                .sizeBytes(100L)
+                .usage(usage)
+                .storagePath("test/" + mediaId + "_test.txt")
+                .accessPolicy(policy)
+                .accessScopeId(userId)
+                .accessVersion(1L)
+                .uploadedBy(userId)
+                .uploadedAt(Instant.now())
+                .build();
+        return mediaFileRepository.save(file);
     }
 
     private User createUser(String email, String nickname) {

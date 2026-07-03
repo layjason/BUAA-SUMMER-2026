@@ -164,11 +164,12 @@ public class MediaAccessService {
     }
 
     /**
-     * 更新媒体文件的访问策略和作用域，并刷新缓存。
+     * 更新媒体文件的访问策略和作用域，递增访问版本使旧签名 URL 失效，并刷新缓存。
      *
      * <p>前置条件：mediaId 对应有效的媒体文件。
      *
-     * <p>后置条件：accessPolicy 和 accessScopeId 已更新，缓存中的快照已刷新。
+     * <p>后置条件：accessPolicy 和 accessScopeId 已更新，accessVersion 递增，旧签名 URL
+     * 因版本不匹配而失效，缓存中的快照已刷新。
      *
      * @param mediaId 媒体标识
      * @param policy  新的访问策略
@@ -181,9 +182,15 @@ public class MediaAccessService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file not found"));
         mediaFile.setAccessPolicy(policy);
         mediaFile.setAccessScopeId(scope);
+        mediaFile.setAccessVersion(mediaFile.getAccessVersion() + 1);
         mediaFileRepository.save(mediaFile);
         mediaAccessCache.put(toDescriptor(mediaFile));
-        log.info("媒体访问策略已更新: mediaId={}, policy={}, scope={}", mediaId, policy, scope);
+        log.info(
+                "媒体访问策略已更新: mediaId={}, policy={}, scope={}, accessVersion={}",
+                mediaId,
+                policy,
+                scope,
+                mediaFile.getAccessVersion());
     }
 
     /**
