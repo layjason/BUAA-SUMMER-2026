@@ -127,6 +127,7 @@ public class ActivityDraftMapper {
      * @param imageSortOrderProvider 图片排序函数
      * @param reviewRecords 审核记录 DTO 列表
      * @param registeredCount 已报名人数
+     * @param occupiedCount 已占用名额数
      * @param waitingCount 候补人数
      * @return 活动详情 DTO
      */
@@ -137,6 +138,7 @@ public class ActivityDraftMapper {
             Function<UUID, Integer> imageSortOrderProvider,
             List<ActivityDtos.ReviewRecord> reviewRecords,
             int registeredCount,
+            int occupiedCount,
             int waitingCount) {
         ActivityDtos.ActivityDetail dto = new ActivityDtos.ActivityDetail();
         dto.setActivityId(activity.getActivityId());
@@ -156,6 +158,7 @@ public class ActivityDraftMapper {
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setRuntimeStatus(activity.getRuntimeStatus());
         dto.setRegisteredCount(registeredCount);
+        dto.setOccupiedCount(occupiedCount);
         dto.setCapacity(activity.getCapacity());
         dto.setIntroduction(activity.getIntroduction());
         dto.setSafetyNotice(activity.getSafetyNotice());

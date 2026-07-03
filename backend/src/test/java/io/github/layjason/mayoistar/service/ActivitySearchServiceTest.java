@@ -10,6 +10,7 @@ import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCountService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -27,7 +28,7 @@ import org.springframework.test.context.ActiveProfiles;
 @DataJpaTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = Replace.NONE)
-@Import(ActivitySearchService.class)
+@Import({ActivitySearchService.class, ActivityRegistrationCountService.class})
 class ActivitySearchServiceTest {
 
     @Autowired

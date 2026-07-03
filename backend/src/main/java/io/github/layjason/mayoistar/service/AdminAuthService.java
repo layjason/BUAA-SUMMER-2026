@@ -78,6 +78,9 @@ public class AdminAuthService {
         tokenPair.setAccessToken(accessToken);
         tokenPair.setRefreshToken(refreshToken);
         var claims = jwtService.parseToken(accessToken);
+        if (claims == null) {
+            throw new IllegalStateException("刚生成的管理员令牌无法解析");
+        }
         tokenPair.setExpiresAt(jwtService.getExpiresAt(claims));
 
         AdminDtos.AdminLoginResponse result = new AdminDtos.AdminLoginResponse();

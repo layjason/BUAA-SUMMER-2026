@@ -44,9 +44,11 @@ public class ActivityDtoMapper {
      * @return ActivitySummary 分页结果
      */
     public PageResult<ActivityDtos.ActivitySummary> toActivitySummaryPage(
-            Page<Activity> activityPage, Function<String, CommonDtos.MediaFile> coverImageProvider) {
+            Page<Activity> activityPage,
+            Function<String, CommonDtos.MediaFile> coverImageProvider,
+            Function<String, ActivityRegistrationCounts> countsProvider) {
         List<ActivityDtos.ActivitySummary> items = activityPage.getContent().stream()
-                .map(activity -> toActivitySummary(activity, coverImageProvider))
+                .map(activity -> toActivitySummary(activity, coverImageProvider, countsProvider))
                 .toList();
         return new PageResult<>(
                 items,
@@ -61,7 +63,7 @@ public class ActivityDtoMapper {
      *
      * <p>前置条件：activity 非空。
      *
-     * <p>后置条件：返回包含基本摘要字段的 DTO，registeredCount 暂为 0（由报名模块补充）。
+     * <p>后置条件：返回包含基本摘要字段和报名计数的 DTO。
      *
      * <p>不变量：不修改传入实体。
      *
@@ -70,9 +72,11 @@ public class ActivityDtoMapper {
      * @return ActivitySummary DTO
      */
     public ActivityDtos.ActivitySummary toActivitySummary(
-            Activity activity, Function<String, CommonDtos.MediaFile> coverImageProvider) {
+            Activity activity,
+            Function<String, CommonDtos.MediaFile> coverImageProvider,
+            Function<String, ActivityRegistrationCounts> countsProvider) {
         ActivityDtos.ActivitySummary dto = new ActivityDtos.ActivitySummary();
-        fillActivitySummary(dto, activity, coverImageProvider);
+        fillActivitySummary(dto, activity, coverImageProvider, countsProvider.apply(activity.getActivityId()));
         return dto;
     }
 
@@ -90,10 +94,12 @@ public class ActivityDtoMapper {
      * @return 当前用户报名活动摘要 DTO
      */
     public ActivityDtos.RegisteredActivitySummary toRegisteredActivitySummary(
-            ActivityRegistration registration, Function<String, CommonDtos.MediaFile> coverImageProvider) {
+            ActivityRegistration registration,
+            Function<String, CommonDtos.MediaFile> coverImageProvider,
+            ActivityRegistrationCounts counts) {
         Activity activity = registration.getActivity();
         ActivityDtos.RegisteredActivitySummary dto = new ActivityDtos.RegisteredActivitySummary();
-        fillActivitySummary(dto, activity, coverImageProvider);
+        fillActivitySummary(dto, activity, coverImageProvider, counts);
         dto.setRegistrationId(registration.getRegistrationId());
         dto.setRegistrationStatus(registration.getStatus());
         dto.setRegisteredAt(formatInstant(registration.getRegisteredAt()));
@@ -105,7 +111,8 @@ public class ActivityDtoMapper {
     private void fillActivitySummary(
             ActivityDtos.ActivitySummary dto,
             Activity activity,
-            Function<String, CommonDtos.MediaFile> coverImageProvider) {
+            Function<String, CommonDtos.MediaFile> coverImageProvider,
+            ActivityRegistrationCounts counts) {
         dto.setActivityId(activity.getActivityId());
         dto.setTitle(activity.getTitle());
         dto.setTags(activity.getTags() == null ? List.of() : List.copyOf(activity.getTags()));
@@ -116,8 +123,8 @@ public class ActivityDtoMapper {
         dto.setFeeAmount(activity.getFeeAmount());
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setRuntimeStatus(activity.getRuntimeStatus());
-        // registeredCount 由报名模块补充，当前暂为 0
-        dto.setRegisteredCount(0);
+        dto.setRegisteredCount(counts.registeredCount());
+        dto.setOccupiedCount(counts.occupiedCount());
         dto.setCapacity(activity.getCapacity());
         dto.setRequireLocationCheck(activity.getRequireLocationCheck());
     }
@@ -127,7 +134,7 @@ public class ActivityDtoMapper {
      *
      * <p>前置条件：activity 非空，organizerName 非空。
      *
-     * <p>后置条件：返回包含完整详情字段的 DTO，registeredCount 和 waitingCount 暂为 0（由报名模块补充）。
+     * <p>后置条件：返回包含完整详情字段和报名计数的 DTO。
      *
      * <p>不变量：不修改传入实体。
      *
@@ -143,7 +150,8 @@ public class ActivityDtoMapper {
             String organizerName,
             List<MediaFile> mediaFiles,
             Function<UUID, Integer> imageSortOrderProvider,
-            List<ActivityDtos.ReviewRecord> reviewRecords) {
+            List<ActivityDtos.ReviewRecord> reviewRecords,
+            ActivityRegistrationCounts counts) {
         ActivityDtos.ActivityDetail dto = new ActivityDtos.ActivityDetail();
         dto.setActivityId(activity.getActivityId());
         dto.setTitle(activity.getTitle());
@@ -161,8 +169,8 @@ public class ActivityDtoMapper {
         dto.setFeeAmount(activity.getFeeAmount());
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setRuntimeStatus(activity.getRuntimeStatus());
-        // registeredCount 由报名模块补充，当前暂为 0
-        dto.setRegisteredCount(0);
+        dto.setRegisteredCount(counts.registeredCount());
+        dto.setOccupiedCount(counts.occupiedCount());
         dto.setCapacity(activity.getCapacity());
         dto.setIntroduction(activity.getIntroduction());
         dto.setSafetyNotice(activity.getSafetyNotice());
@@ -175,8 +183,7 @@ public class ActivityDtoMapper {
                         imageSortOrderProvider.apply(right.getMediaId())))
                 .map(this::toMediaFile)
                 .toList());
-        // waitingCount 由报名模块补充，当前暂为 0
-        dto.setWaitingCount(0);
+        dto.setWaitingCount(counts.waitingCount());
         dto.setManualReviewRequired(activity.getManualReviewRequired());
         dto.setFeeDescription(activity.getFeeDescription());
         dto.setMinAge(activity.getMinAge());

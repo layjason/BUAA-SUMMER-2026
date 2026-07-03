@@ -229,6 +229,9 @@ public class AuthService {
         tokenPair.setAccessToken(accessToken);
         tokenPair.setRefreshToken(refreshToken);
         var claims = jwtService.parseToken(accessToken);
+        if (claims == null) {
+            throw new IllegalStateException("刚生成的访问令牌无法解析");
+        }
         tokenPair.setExpiresAt(jwtService.getExpiresAt(claims));
 
         IdentityDtos.LoginResult result = new IdentityDtos.LoginResult();
@@ -478,6 +481,9 @@ public class AuthService {
         tokenPair.setAccessToken(newAccessToken);
         tokenPair.setRefreshToken(newRefreshToken);
         var accessClaims = jwtService.parseToken(newAccessToken);
+        if (accessClaims == null) {
+            throw new IllegalStateException("刚生成的刷新令牌无法解析");
+        }
         tokenPair.setExpiresAt(jwtService.getExpiresAt(accessClaims));
 
         log.info("令牌刷新成功: userId={}", userId);

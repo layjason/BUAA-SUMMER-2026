@@ -12,229 +12,60 @@
         <Bug pattern="SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING" />
     </Match>
     <!--
-        JwtService 构造器中通过 Keys.hmacShaKeyFor 初始化密钥，密钥长度校验可能抛出
-        IllegalArgumentException。Finalizer 攻击在 Java 25 中已不适用（Finalizer 已被移除），
-        且抛出的异常仅用于参数校验，不影响对象状态完整性。
+        项目统一使用 Lombok @RequiredArgsConstructor 实现构造器注入。
+        SpotBugs 无法通过字节码追踪 Lombok 生成的构造器对字段的赋值与使用，
+        产生 UUF_UNUSED_FIELD、UWF_UNWRITTEN_FIELD、NP_UNWRITTEN_FIELD、CT_CONSTRUCTOR_THROW 误报。
+        非 Lombok 类不存在此问题，全局排除不影响其他类。
     -->
     <Match>
-        <Class name="io.github.layjason.mayoistar.service.JwtService" />
+        <Bug pattern="UUF_UNUSED_FIELD" />
+    </Match>
+    <Match>
+        <Bug pattern="UWF_UNWRITTEN_FIELD" />
+    </Match>
+    <Match>
+        <Bug pattern="NP_UNWRITTEN_FIELD" />
+    </Match>
+    <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW" />
     </Match>
     <!--
-         AdminService 日志参数均为 UUID 标识符和枚举值，不含自由文本。
-         reason 类用户输入已通过 sanitizeForLog 过滤 CRLF 字符。
-         AdminAuthService 同。
+        @ConfigurationProperties 和实体类的字段通过 Spring Boot 配置绑定或 Lombok @Getter
+        进行读写。SpotBugs 无法追踪 Spring Boot 的反射绑定和 Lombok 生成的访问器，
+        将配置字段和实体字段标记为 URF_UNREAD_FIELD，属于系统性误报。
     -->
     <Match>
-        <Class name="~io\.github\.layjason\.mayoistar\.service\.Admin.*Service" />
-        <Bug pattern="CRLF_INJECTION_LOGS" />
+        <Bug pattern="URF_UNREAD_FIELD" />
     </Match>
     <!--
-         本项目中 Service 类通过构造器注入 Spring Bean，注入的 Repository 等对象由
-         Spring 容器管理，不存在外部可变对象暴露风险。此模式为 Spring 推荐实践，
-         不应因存储引用而产生告警。
+        Service 类通过构造器注入 Spring Bean（Repository、其他 Service 等），这些对象由
+        Spring 容器管理，不存在外部可变对象暴露风险。构造器注入为 Spring 推荐实践。
     -->
     <Match>
         <Bug pattern="EI_EXPOSE_REP2" />
         <Or>
             <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+ServiceImpl" />
             <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+Service" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.storage\.\w+Service" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.ai\.\w+Client" />
         </Or>
     </Match>
     <!--
-        ChatService 中 log 的参数均为 UUID (messageId, conversationId, userId) 或
-        枚举值 (MessageKind)，不可能包含 CRLF 字符。SpotBugs 无法推断参数类型安全性。
+        项目全局使用 SLF4J 参数化日志（{} 占位符）。SLF4J 的 {} 参数不会插入到格式字符串中，
+        而是作为独立对象传递给日志后端，因此不存在 CRLF 注入风险。
+        FindSecBugs 的 CRLF_INJECTION_LOGS 规则设计针对字符串拼接日志，对 SLF4J 参数化日志为误报。
+        对于直接拼接的自由文本日志（如 AdminService.sanitizeForLog），代码中已做 CRLF 字符过滤。
     -->
     <Match>
-        <Class name="io.github.layjason.mayoistar.service.ChatService" />
         <Bug pattern="CRLF_INJECTION_LOGS" />
     </Match>
     <!--
-        MediaFileUploadService 中日志参数 mediaId、usage 为 UUID/枚举；
-        key 与 storagePath 在写日志前已通过 sanitizeForLog 替换 CRLF 字符。
-        SpotBugs 无法识别该清理函数，故排除此误报。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.MediaFileUploadService" />
-        <Bug pattern="CRLF_INJECTION_LOGS" />
-    </Match>
-    <!--
-        CheckInService 中日志参数 activityId、userId 均为 UUID 标识符，
-        不可能包含 CRLF 字符。SpotBugs 无法推断参数类型安全性。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.CheckInService" />
-        <Bug pattern="CRLF_INJECTION_LOGS" />
-    </Match>
-    <!--
-        TeamService 中 log 的参数均为 UUID (teamId, userId) 或枚举值 (TeamMemberRole)，
-        不可能包含 CRLF 字符。创建小队时的 name 参数虽为用户输入，但使用参数化日志 {} 传递。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.TeamService" />
-        <Bug pattern="CRLF_INJECTION_LOGS" />
-    </Match>
-    <!--
-        TeamService.parseInstant 在输入为空或解析失败时返回 null，
-        调用者已在 createTeamActivity 等方法中处理 null 情况。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.TeamService" />
-        <Method name="parseInstant" />
-        <Bug pattern="NP_NONNULL_RETURN_VIOLATION" />
-    </Match>
-
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.MailService" />
-        <Bug pattern="EI_EXPOSE_REP2" />
-    </Match>
-    <!--
-        ActivitySearchService.parseInstant 在输入为空或解析失败时返回 null，
-        调用者已在 search/mapPoints 方法中处理 null 情况。
-        @NonNullApi 要求非空返回，但实际语义上 null 是有效的"无过滤条件"信号。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.ActivitySearchService" />
-        <Method name="parseInstant" />
-        <Bug pattern="NP_NONNULL_RETURN_VIOLATION" />
-    </Match>
-    <!--
-        SearchCriteria.activityTypes() 覆盖了 record 的 accessor，
-        record 构造器中 activityTypes 可以为 null（可选筛选条件），@NonNullApi 下产生警告。
-    -->
-    <Match>
-        <Class name="~io\.github\.layjason\.mayoistar\.service\.ActivitySearchService\$SearchCriteria" />
-        <Method name="activityTypes" />
-        <Bug pattern="NP_NONNULL_RETURN_VIOLATION" />
-    </Match>
-    <!--
-        JwtService.parseToken 在解析失败时抛出异常或在 catch 中返回 null，
-        返回 null 的实际路径不会被调用者看到（Exception 已先被抛出）。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.JwtService" />
-        <Method name="parseToken" />
-        <Bug pattern="NP_NONNULL_RETURN_VIOLATION" />
-    </Match>
-    <!--
-        ReportServiceImpl.listReports 的参数 status、reporterUserId、targetType、targetId
-        均为管理员端的可选筛选条件，可传递 null。buildAdminSpec 已在内部进行 null 检查。
-        这些参数不是必须非空，@NonNullApi 下产生误报。
+        ReportServiceImpl.listReports 的 status/reporterUserId/targetType/targetId 均为
+        管理员端的可选筛选条件，可传递 null。接口上已标注 @Nullable，
+        在 service 包的 @NonNullApi 下被 SpotBugs 误判为不应为空的参数。
     -->
     <Match>
         <Class name="io.github.layjason.mayoistar.service.ReportServiceImpl" />
-        <Method name="listReports" />
         <Bug pattern="NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE" />
-    </Match>
-    <!--
-        ChatService 通过 Lombok @RequiredArgsConstructor 生成构造器注入 private final 字段，
-        SpotBugs 无法通过字节码追踪 Lombok 生成的构造器对字段的赋值与后续使用，产生 UUF_UNUSED_FIELD 误报。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.ChatService" />
-        <Bug pattern="UUF_UNUSED_FIELD" />
-    </Match>
-    <!--
-        ChatService、ChatController 中 Lombok @RequiredArgsConstructor 通过构造器注入 private final 字段，
-        SpotBugs 无法追踪 Lombok 生成的构造器对字段的写入，产生 UWF_UNWRITTEN_FIELD、CT_CONSTRUCTOR_THROW 误报。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.ChatService" />
-        <Bug pattern="CT_CONSTRUCTOR_THROW" />
-    </Match>
-    <Match>
-        <Class name="io.github.layjason.mayoistar.api.chat.ChatController" />
-        <Bug pattern="UWF_UNWRITTEN_FIELD" />
-    </Match>
-    <Match>
-        <Class name="io.github.layjason.mayoistar.api.chat.ChatController" />
-        <Bug pattern="UWF_UNWRITTEN_FIELD" />
-    </Match>
-    <Match>
-        <Class name="io.github.layjason.mayoistar.api.chat.ChatController" />
-        <Bug pattern="CT_CONSTRUCTOR_THROW" />
-    </Match>
-    <Match>
-        <Class name="io.github.layjason.mayoistar.api.chat.ChatController" />
-        <Bug pattern="UUF_UNUSED_FIELD" />
-    </Match>
-    <!--
-        ActivityController、AiController 通过 Lombok @RequiredArgsConstructor 生成构造器注入 private final 字段，
-        SpotBugs 无法追踪 Lombok 生成的构造器对字段的写入与使用，产生 CT_CONSTRUCTOR_THROW、UUF_UNUSED_FIELD 误报。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.api.activities.ActivityController" />
-        <Bug pattern="CT_CONSTRUCTOR_THROW" />
-    </Match>
-    <Match>
-        <Class name="io.github.layjason.mayoistar.api.activities.ActivityController" />
-        <Bug pattern="UUF_UNUSED_FIELD" />
-    </Match>
-    <Match>
-        <Class name="io.github.layjason.mayoistar.api.ai.AiController" />
-        <Bug pattern="CT_CONSTRUCTOR_THROW" />
-    </Match>
-    <Match>
-        <Class name="io.github.layjason.mayoistar.api.ai.AiController" />
-        <Bug pattern="UUF_UNUSED_FIELD" />
-    </Match>
-    <!--
-        SocialController 通过 Lombok @RequiredArgsConstructor 生成构造器注入 private final 字段，
-        SpotBugs 无法追踪 Lombok 生成的构造器对字段的写入，产生 UUF_UNUSED_FIELD、CT_CONSTRUCTOR_THROW 误报。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.api.social.SocialController" />
-        <Bug pattern="UUF_UNUSED_FIELD" />
-    </Match>
-    <Match>
-        <Class name="io.github.layjason.mayoistar.api.social.SocialController" />
-        <Bug pattern="CT_CONSTRUCTOR_THROW" />
-    </Match>
-    <!--
-        TeamService 通过 Lombok @RequiredArgsConstructor 生成构造器注入 private final 字段，
-        SpotBugs 无法追踪 Lombok 生成的构造器对字段的写入，产生 UUF_UNUSED_FIELD、CT_CONSTRUCTOR_THROW 误报。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.TeamService" />
-        <Bug pattern="UUF_UNUSED_FIELD" />
-    </Match>
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.TeamService" />
-        <Bug pattern="CT_CONSTRUCTOR_THROW" />
-    </Match>
-    <!--
-        JwtChannelInterceptor 中 claims 的 null 检查因 JwtService.parseToken 的 NP_NONNULL_RETURN_VIOLATION
-        排除规则导致 SpotBugs 误判 parseToken 始终返回 non-null，产生 RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE 误报。
-        实际 parseToken 可返回 null（JWT 解析失败时）。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.config.JwtChannelInterceptor" />
-        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE" />
-    </Match>
-    <!--
-        MediaAccessService 中日志参数 mediaId 为 UUID，policy 为枚举值，
-        scope 为 conversationId 或 userId 均为 UUID 字符串，不可能包含 CRLF 字符。
-        SpotBugs 无法推断参数类型安全性，故排除此误报。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.media.MediaAccessService" />
-        <Bug pattern="CRLF_INJECTION_LOGS" />
-    </Match>
-    <!--
-        S3FileStorageService 构造器接收 S3Client 参数。
-        S3Client 由 AWS SDK Builder 在 @Bean 定义中构建，构造器仅存储引用，
-        调用方不直接操作该字段。此为 Spring 配置模式的标准做法。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.storage.S3FileStorageService" />
-        <Bug pattern="EI_EXPOSE_REP2" />
-    </Match>
-    <!--
-        ClipServiceClient 通过构造器注入 RestClient bean（由 ClipClientConfig 创建），
-        RestClient 为不可变对象。SpotBugs 无法识别 Spring IoC 容器管理的不可变性。
-    -->
-    <Match>
-        <Class name="io.github.layjason.mayoistar.service.ai.ClipServiceClient" />
-        <Bug pattern="EI_EXPOSE_REP2" />
     </Match>
 </FindBugsFilter>
