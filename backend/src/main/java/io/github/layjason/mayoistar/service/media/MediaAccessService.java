@@ -165,6 +165,68 @@ public class MediaAccessService {
     }
 
     /**
+     * 更新媒体文件的访问策略和作用域，并刷新缓存。
+     *
+     * <p>前置条件：mediaId 对应有效的媒体文件。
+     *
+     * <p>后置条件：accessPolicy 和 accessScopeId 已更新，缓存中的快照已刷新。
+     *
+     * @param mediaId 媒体标识
+     * @param policy  新的访问策略
+     * @param scope   新的访问作用域
+     */
+    @Transactional
+    public void updateAccessPolicy(UUID mediaId, MediaAccessPolicy policy, String scope) {
+        MediaFile mediaFile = mediaFileRepository
+                .findById(mediaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file not found"));
+        mediaFile.setAccessPolicy(policy);
+        mediaFile.setAccessScopeId(scope);
+        mediaFileRepository.save(mediaFile);
+        mediaAccessCache.put(toDescriptor(mediaFile));
+        log.info("媒体访问策略已更新: mediaId={}, policy={}, scope={}", mediaId, policy, scope);
+    }
+
+    /**
+     * 为新的访问作用域创建媒体文件副本，底层存储不复制，仅创建新的元数据记录。
+     *
+     * <p>前置条件：source 非空且未被软删除。
+     *
+     * <p>后置条件：新的 MediaFile 已持久化，缓存中已有对应快照。
+     *
+     * @param source     原始媒体文件实体
+     * @param uploadedBy 新记录的上传者（转发者）
+     * @param policy     新的访问策略
+     * @param scope      新的访问作用域
+     * @return 新创建的 MediaFile 实体
+     */
+    @Transactional
+    public MediaFile copyForScope(MediaFile source, String uploadedBy, MediaAccessPolicy policy, String scope) {
+        MediaFile copy = MediaFile.builder()
+                .mediaId(UUID.randomUUID())
+                .fileName(source.getFileName())
+                .contentType(source.getContentType())
+                .sizeBytes(source.getSizeBytes())
+                .usage(source.getUsage())
+                .storagePath(source.getStoragePath())
+                .visibility(source.getVisibility())
+                .accessPolicy(policy)
+                .accessScopeId(scope)
+                .accessVersion(1L)
+                .uploadedBy(uploadedBy)
+                .build();
+        mediaFileRepository.save(copy);
+        mediaAccessCache.put(toDescriptor(copy));
+        log.info(
+                "媒体文件副本已创建: originalMediaId={}, newMediaId={}, policy={}, scope={}",
+                source.getMediaId(),
+                copy.getMediaId(),
+                policy,
+                scope);
+        return copy;
+    }
+
+    /**
      * 从缓存或数据库加载媒体访问描述符。
      *
      * <p>前置条件：mediaId 非空。
