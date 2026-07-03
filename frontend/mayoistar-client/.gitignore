@@ -12,6 +12,7 @@ node_modules
 dist
 *.local
 unpackage
+.hbuilderx
 
 # Editor directories and files
 .idea
