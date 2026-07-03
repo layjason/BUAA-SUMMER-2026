@@ -46,7 +46,7 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
     public SecurityErrorHandler(
             ObjectMapper objectMapper,
             @Nullable @Qualifier("requestMappingHandlerMapping") HandlerMapping handlerMapping) {
-        this.objectMapper = objectMapper;
+        this.objectMapper = objectMapper.copy();
         this.handlerMapping = handlerMapping;
     }
 
