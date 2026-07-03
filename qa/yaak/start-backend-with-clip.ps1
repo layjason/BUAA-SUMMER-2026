@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $resolvedBackendDir = (Resolve-Path $BackendDir).Path
-$clipDir = (Resolve-Path (Join-Path $PSScriptRoot "..\..\clip-service")).Path
+# 移除了不再需要的 $clipDir 定义，以保持与模板一致的简洁性
 $envFile = Join-Path $resolvedBackendDir ".env.mailhog.example"
 if (-not (Test-Path $envFile)) {
     throw "Cannot find MailHog environment template: $envFile"
@@ -50,7 +50,7 @@ catch {
     Write-Warning "Redis is not reachable at ${redisHost}:${redisPort}. Backend will fail to start because Redis is required for media access cache and rate limiting."
 }
 
-# 检查 CLIP 边车服务
+# 检查 CLIP 边车服务 (已按目标风格重写)
 $clipEndpoint = if ($env:MAYOISTAR_CLIP_ENDPOINT) { $env:MAYOISTAR_CLIP_ENDPOINT } else { "http://localhost:8000" }
 if ($clipEndpoint -match '://([^:]+):(\d+)$') {
     $clipHost = $Matches[1]
@@ -60,17 +60,14 @@ else {
     $clipHost = "localhost"
     $clipPort = "8000"
 }
-Write-Host "Checking CLIP service (${clipHost}:${clipPort})..."
+
 try {
     $tcp = New-Object System.Net.Sockets.TcpClient
     $tcp.Connect($clipHost, [int]$clipPort)
     $tcp.Close()
-    Write-Host "CLIP service is ready" -ForegroundColor Green
 }
 catch {
-    Write-Warning "CLIP service is not running at ${clipHost}:${clipPort}."
-    Write-Warning "  Start it with: cd $clipDir ; python main.py"
-    Write-Warning "  Or with Docker: cd $clipDir ; docker compose up -d"
+    Write-Warning "CLIP service is not reachable at ${clipHost}:${clipPort}. AI-based media search features will be unavailable."
 }
 
 Set-Location $resolvedBackendDir

@@ -225,7 +225,7 @@ bash qa/yaak/run-social-chat-tests.sh
 - `MayoiStar.AI.postman_collection.json`：可导入 Yaak 的 Postman v2.1 集合（7 个请求，4 个分组）。
 - `MayoiStar.AI.local.postman_environment.json`：本地环境变量模板，不包含真实凭据。可在 Yaak 中导入作为环境变量起点。
 - `start-backend-with-clip.ps1` / `start-backend-with-clip.sh`：使用 CLIP 边车配置启动后端。
-- `run-ai-tests.sh`：全量测试脚本，自动执行全部 7 个请求，控制台输出完整请求/响应详情。
+- `run-ai-tests.ps1` / `run-ai-tests.sh`：全量测试脚本，自动执行全部 7 个请求，控制台输出完整请求/响应详情。
 - `test-avatar.png`：图片上传测试用占位图片（复用于 identity 和 social-chat 集合）。
 
 ### 使用步骤
@@ -283,11 +283,19 @@ bash qa/yaak/run-social-chat-tests.sh
 
 6. 运行全量测试：
 
+   ```powershell
+   .\qa\yaak\run-ai-tests.ps1
+   ```
+
    ```bash
    ./qa/yaak/run-ai-tests.sh
    ```
 
    如需指定后端地址或工作区名称：
+
+   ```powershell
+   .\qa\yaak\run-ai-tests.ps1 -WorkspaceName "MayoiStar AI" -BaseUrl "http://localhost:8080"
+   ```
 
    ```bash
    WORKSPACE_NAME="MayoiStar AI" BASE_URL="http://localhost:8080" ./qa/yaak/run-ai-tests.sh
