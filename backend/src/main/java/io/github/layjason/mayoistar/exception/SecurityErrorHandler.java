@@ -6,34 +6,60 @@ import io.github.layjason.mayoistar.api.common.EmptyData;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.lang.Nullable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerExecutionChain;
+import org.springframework.web.servlet.HandlerMapping;
 
 /**
  * Spring Security 认证/授权失败的统一错误处理器。
  *
  * <p>类职责：将 Spring Security 过滤器链中抛出的认证失败和授权失败转换为符合 API 约定的错误响应。
  *
- * <p>不变量：所有安全错误响应均返回恰当的 HTTP 状态码（401/403），响应体使用 ApiErrorResponse 格式。
+ * <p>不变量：
+ * <ul>
+ *   <li>若请求未携带有效认证凭据但对应路径存在已注册的 Controller 处理器，返回 HTTP 401。</li>
+ *   <li>若请求未携带有效认证凭据且对应路径无任何已注册的 Controller 处理器，返回 HTTP 404 以区分"资源不存在"和"未认证"。</li>
+ *   <li>所有安全错误响应均使用 ApiErrorResponse 格式。</li>
+ * </ul>
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
 
     private final ObjectMapper objectMapper;
+    private final HandlerMapping handlerMapping;
+
+    /**
+     * 构造安全错误处理器。
+     *
+     * @param objectMapper          JSON 序列化器
+     * @param handlerMapping        请求处理器映射，用于判断请求路径是否存在对应的 Controller；
+     *                              可能为 null（如在纯单元测试、HandlerMapping 未正确加载等降级场景下）
+     */
+    public SecurityErrorHandler(
+            ObjectMapper objectMapper,
+            @Nullable @Qualifier("requestMappingHandlerMapping") HandlerMapping handlerMapping) {
+        this.objectMapper = objectMapper;
+        this.handlerMapping = handlerMapping;
+    }
 
     /**
      * 处理未认证请求。
      *
      * <p>前置条件：请求未携带有效认证凭据，Spring Security 过滤器链触发 AuthenticationException。
      *
-     * <p>后置条件：返回 HTTP 401，响应体为 code=401、message="Authentication is required" 的 ApiErrorResponse。
+     * <p>后置条件：
+     * <ul>
+     *   <li>若请求路径无已注册的 Controller 处理器，返回 HTTP 404。</li>
+     *   <li>若请求路径存在已注册的 Controller 处理器，返回 HTTP 401。</li>
+     * </ul>
      *
      * @param request       HTTP 请求
      * @param response      HTTP 响应
@@ -45,6 +71,23 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
             HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
             throws IOException {
         log.warn("未认证访问: {} {}，异常: {}", request.getMethod(), request.getRequestURI(), authException.getMessage());
+
+        if (handlerMapping != null) {
+            HandlerExecutionChain handlerChain;
+            try {
+                handlerChain = handlerMapping.getHandler(request);
+            } catch (Exception e) {
+                log.debug("获取请求处理器时发生异常: {}", e.getMessage());
+                writeErrorResponse(response, 401, "Authentication is required");
+                return;
+            }
+            if (handlerChain == null) {
+                log.warn("资源未找到，返回404: {} {}", request.getMethod(), request.getRequestURI());
+                writeErrorResponse(response, 404, "Resource not found");
+                return;
+            }
+        }
+
         writeErrorResponse(response, 401, "Authentication is required");
     }
 
