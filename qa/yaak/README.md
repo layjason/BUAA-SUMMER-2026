@@ -1,5 +1,7 @@
 # MayoiStar Yaak 测试说明
 
+- Version: 11 20260703 160000
+  - 新增媒体下载鉴权测试套件，覆盖私聊图片、群聊图片、退出群聊、商家资质、管理员全资源访问、签名完整性等场景
 - Version: 10 20260703 153000
   - 统一 AI 测试脚本的 yaak 调用方式与服务检查风格，修复按名称查找请求的 bug
 - Version: 9 20260703 150620
@@ -19,7 +21,7 @@
   - README 补充第二个 JSON（环境模板）的导入说明
   - 修复测试管理员创建方式说明（V2 SQL 迁移）
 
-本目录提供 MayoiStar 身份接口、好友社群（2 人）与一对一聊天 API 的 Yaak 调试和自动化测试资产。
+本目录提供 MayoiStar 身份接口、好友社群（2 人）与一对一聊天 API、媒体下载鉴权的 Yaak 调试和自动化测试资产。
 
 ## 身份接口测试
 
@@ -346,3 +348,126 @@ bash qa/yaak/run-social-chat-tests.sh
 - AI 图片分类依赖 Python CLIP 边车服务，不启动时分类接口将返回 `AiServiceUnavailable`（30001）。
 - 后端统一以 HTTP 200 返回业务响应，测试以响应体 `code` 判断成功或业务错误。
 - 环境文件中的明文密码只用于 QA 种子账号，不得用于生产环境。
+
+## 媒体下载鉴权测试
+
+### 文件
+
+- `start-backend-media.ps1`：启动后端并检查媒体鉴权测试所需的所有依赖（S3、Redis、MailHog、测试素材文件）。
+- `run-media-auth-tests.ps1`：全量测试脚本，自动创建 Yaak 工作空间并执行全部媒体下载鉴权测试用例。
+- `test-avatar.png` / `test-license.png`：文件上传接口测试用占位图片（复用 identity 集合的素材）。
+
+### 使用步骤
+
+1. 确保 Docker 依赖已启动（postgres、redis、mailhog、rustfs），并已执行 V2 种子数据迁移。
+
+2. 启动后端：
+
+   ```powershell
+   .\qa\yaak\start-backend-media.ps1
+   ```
+
+3. 运行全量测试：
+
+   ```powershell
+   .\qa\yaak\run-media-auth-tests.ps1
+   ```
+
+   如需指定后端地址或 MailHog 地址：
+
+   ```powershell
+   .\qa\yaak\run-media-auth-tests.ps1 -BaseUrl "http://localhost:8080" -MailHogApiBase "http://127.0.0.1:8025" -MailTimeoutSeconds 30
+   ```
+
+### 覆盖的测试场景
+
+测试通过上传不同上下文中的媒体文件，提取其签名 URL，再以不同身份访问该 URL 来验证 `GET /media/{mediaId}` 的鉴权逻辑。
+
+#### 00 登录与准备
+
+- 使用种子账号登录 test_user、test_peer、admin
+- 注册并激活一个新的商家用户
+- test_user 与 test_peer 建立好友关系
+- 获取私聊会话 ID
+
+#### 01 私聊图片鉴权（conversationMember 策略）
+
+- 1.1 会话成员 test_peer 下载图片 → `200`
+- 1.2 管理员下载私聊图片 → `200`（管理员绕过鉴权）
+- 1.3 匿名用户下载私聊图片 → `401`
+- 1.4 非成员商家用户下载私聊图片 → `403`
+
+#### 02 群聊图片鉴权（conversationMember 策略）
+
+- 创建小队（自动生成群聊会话）
+- test_peer 加入小队
+- 在群聊中上传并发送图片（策略从 `owner` 升级为 `conversationMember`）
+- 2.1 群成员 test_peer 下载图片 → `200`
+- 2.2 管理员下载群聊图片 → `200`
+- 2.3 非成员用户下载群聊图片 → `403`
+
+#### 03 退出群聊后不可访问
+
+- test_peer 退出小队（API: `POST /social/teams/{teamId}/leave`）
+- 3.1 已退出的 test_peer 下载群聊图片 → `403`
+- 3.2 仍在群中的 test_user 下载图片 → `200`
+- 3.3 管理员下载已退出群聊的图片 → `200`
+
+#### 04 商家资质鉴权（owner 策略）
+
+- 商家上传执照（策略为 `owner`，scope 为商家 userId）
+- 4.1 商家本人下载执照 → `200`
+- 4.2 管理员下载商家执照 → `200`
+- 4.3 test_user 非所有者下载商家执照 → `403`
+- 4.4 匿名下载商家执照 → `401`
+
+#### 05 管理员全资源访问
+
+- 管理员以 `ROLE_admin` 角色绕过所有媒体访问策略检查
+- 5.1 管理员下载私聊图片 → `200`
+- 5.2 管理员下载群聊图片 → `200`
+- 5.3 管理员下载商家执照 → `200`
+- 5.4 管理员下载公开头像 → `200`
+
+#### 06 签名完整性
+
+- 媒体下载 URL 使用 HMAC-SHA256 签名保护，签名包含 `mediaId`、`accessVersion`、`policy`、`scope`
+- 6.1 有效签名下载 → `200`
+- 6.2 篡改签名（修改最后一位字符）→ `403`
+- 6.3 缺少 `sig` 查询参数 → `403`
+- 6.4 不存在的 mediaId → `404`
+
+### 鉴权逻辑说明
+
+| 访问策略 | 允许访问者 | 拒绝访问者 |
+|---------|-----------|-----------|
+| `publicAccess` | 任何人（需同时满足 `publicVisible`） | — |
+| `owner` | 上传者 | 非上传者、匿名 |
+| `conversationMember` | 当前会话成员 | 非成员、已退出成员、匿名 |
+| `teamMember` | 当前小队成员 | 非成员、匿名 |
+| `activityOwner` | 活动组织者 | 非组织者、匿名 |
+| `adminOnly` | 仅管理员 | 所有非管理员（管理员通过 `isAdmin()` 在策略检查前直接放行） |
+
+**特殊规则**：
+- 管理员（`ROLE_admin`）绕过所有策略检查，可访问任意媒体资源
+- 未认证用户访问非公开资源返回 `401`
+- 已认证但无权限的用户返回 `403`
+- 媒体被软删除后返回 `404`（无 REST 端点触发，需通过 Service 层测试）
+- 签名无效或版本不匹配返回 `403`
+
+### Token 与动态值
+
+脚本自动处理以下流程：
+
+- **登录 token**：解析登录响应 JSON，提取 `data.tokens.accessToken`，自动写入各用户的 access token
+- **激活 token**：通过 MailHog API 获取商家和非成员用户的激活 token
+- **媒体签名 URL**：从上传响应中提取 `data.url`（或 `data.signedUrl`），用于后续下载测试
+- **签名篡改 URL**：在测试阶段 06 中，自动解析 `privateImageSignedUrl` 中的 `sig` 参数并构造篡改版本和缺失签名版本
+
+### 注意事项
+
+- 测试依赖 V2 种子数据中的 test_user、test_peer、admin 账号
+- 商家用户和非成员用户由脚本自动注册并激活，需要 MailHog 可用
+- 所有下载测试使用标准 HTTP 状态码（200/401/403/404），非业务 `code` 字段
+- 媒体签名 URL 通过 HMAC-SHA256 保护，签名的生成和校验使用服务端密钥 `mayoistar.media.access.signing-secret`
+- 聊天图片上传后策略从 `owner` 升级为 `conversationMember`，发生在发送消息时（`ChatService.sendMessage()` 中调用 `mediaAccessService.updateAccessPolicy()`）
