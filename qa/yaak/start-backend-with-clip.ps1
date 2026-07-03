@@ -59,7 +59,6 @@ if ($env:MAYOISTAR_S3_ENDPOINT -match ':(\d+)') {
     $s3Port = $Matches[1]
 }
 
-# 使用 ${} 包裹变量名以避免冒号引起的歧义
 if (Test-Port $s3Host $s3Port) {
     Write-Log "S3 服务探测成功 (${s3Host}:${s3Port})" "Green"
 }
@@ -79,14 +78,21 @@ else {
     Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] Redis 端口 ${redisPort} 未响应。后端启动后可能报错。"
 }
 
-# 5. 检查 MailHog (SMTP)
-Write-Log "正在检查 MailHog 服务..."
-$smtpPort = if ($env:DEV_MAILHOG_SMTP_PORT) { $env:DEV_MAILHOG_SMTP_PORT } else { "1025" }
-if (Test-Port "127.0.0.1" $smtpPort) {
-    Write-Log "MailHog SMTP 探测成功 (127.0.0.1:${smtpPort})" "Green"
+# 5. 检查 CLIP 边车服务 (适配 MAYOISTAR_CLIP_ENDPOINT)
+Write-Log "正在检查 CLIP 边车服务..."
+$clipHost = "127.0.0.1"
+$clipPort = 8000
+# 尝试从 endpoint 字符串解析端口：http://localhost:8000
+if ($env:MAYOISTAR_CLIP_ENDPOINT -match '://([^:]+):(\d+)$') {
+    $clipHost = if ($Matches[1] -eq "localhost") { "127.0.0.1" } else { $Matches[1] }
+    $clipPort = $Matches[2]
+}
+
+if (Test-Port $clipHost $clipPort) {
+    Write-Log "CLIP 边车服务探测成功 (${clipHost}:${clipPort})" "Green"
 }
 else {
-    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] MailHog 未启动，邮件发送功能将失效。"
+    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] CLIP 边车服务端口 ${clipPort} 未响应。AI 图片分类功能将不可用。"
 }
 
 # 6. 运行后端

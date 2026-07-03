@@ -8,6 +8,71 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public final class ErrorCodes {
 
+    /* ========== 活动 ========== */
+
+    /** 媒体用途不合法 */
+    public static final int INVALID_MEDIA_USAGE = 20000;
+
+    /** 活动模板不存在 */
+    public static final int TEMPLATE_NOT_FOUND = 20001;
+
+    /** 活动不存在或不可见 */
+    public static final int ACTIVITY_NOT_VISIBLE = 20002;
+
+    /** 无权操作该活动 */
+    public static final int ACTIVITY_PERMISSION_DENIED = 20003;
+
+    /** 活动时间安排不合法 */
+    public static final int INVALID_ACTIVITY_SCHEDULE = 20004;
+
+    /** 活动状态不允许当前操作 */
+    public static final int ACTIVITY_STATE_NOT_SUBMITTABLE = 20005;
+
+    /** 报名已关闭 */
+    public static final int REGISTRATION_CLOSED = 20006;
+
+    /** 重复报名 */
+    public static final int DUPLICATE_REGISTRATION = 20007;
+
+    /** 信誉分不足，无法报名 */
+    public static final int REPUTATION_INSUFFICIENT = 20008;
+
+    /** 不满足年龄要求 */
+    public static final int AGE_REQUIREMENT_NOT_MET = 20009;
+
+    /** 未接受安全须知 */
+    public static final int SAFETY_NOTICE_NOT_ACCEPTED = 20010;
+
+    /** 报名记录不存在 */
+    public static final int REGISTRATION_NOT_FOUND = 20011;
+
+    /** 候补确认不可用 */
+    public static final int WAITING_CONFIRMATION_UNAVAILABLE = 20012;
+
+    /** 签到二维码无效或已过期 */
+    public static final int CHECK_IN_QR_CODE_INVALID = 20013;
+
+    /** 签到位置不在活动地点附近 */
+    public static final int CHECK_IN_LOCATION_INVALID = 20014;
+
+    /** 活动尚未结束 */
+    public static final int ACTIVITY_NOT_ENDED = 20015;
+
+    /** 已评价过该活动 */
+    public static final int DUPLICATE_REVIEW = 20016;
+
+    /** 媒体文件不可用 */
+    public static final int MEDIA_FILE_UNAVAILABLE = 20017;
+
+    /** 图片格式不支持 */
+    public static final int IMAGE_FORMAT_INVALID = 20018;
+
+    /** 图片大小超出限制 */
+    public static final int IMAGE_TOO_LARGE = 20019;
+
+    /** 活动要求位置签到，但用户未提供位置信息 */
+    public static final int CHECK_IN_LOCATION_REQUIRED = 20021;
+
     /* ========== 社交 ========== */
 
     /** 目标用户不存在或不可见 */
@@ -109,6 +174,20 @@ public final class ErrorCodes {
 
     /** 消息引用的媒体文件不存在 */
     public static final int MEDIA_REFERENCE_INVALID = 50018;
+
+    /* ========== AI ========== */
+
+    /** AI 调用频率超过限制 */
+    public static final int AI_RATE_LIMITED = 30000;
+
+    /** AI 服务暂不可用 */
+    public static final int AI_SERVICE_UNAVAILABLE = 30001;
+
+    /** AI 输出不可用或无法解析 */
+    public static final int AI_OUTPUT_UNAVAILABLE = 30002;
+
+    /** 图片媒体文件不存在或不支持 AI 分类 */
+    public static final int IMAGE_MEDIA_UNAVAILABLE = 30003;
 
     /** 小队媒体文件不存在 */
     public static final int TEAM_MEDIA_NOT_FOUND = 50003;

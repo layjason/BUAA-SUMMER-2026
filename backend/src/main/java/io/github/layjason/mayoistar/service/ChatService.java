@@ -25,6 +25,7 @@ import io.github.layjason.mayoistar.entity.chat.PollVote;
 import io.github.layjason.mayoistar.entity.chat.TeamAnnouncement;
 import io.github.layjason.mayoistar.entity.chat.TeamAnnouncementRead;
 import io.github.layjason.mayoistar.entity.chat.TeamPoll;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ChatMessageRepository;
@@ -132,16 +133,23 @@ public class ChatService {
             message.setLocationPlaceName(loc.getPlaceName());
         }
 
-        chatMessageRepository.save(message);
+        // 保存消息并获取托管实体引用，确保后续懒加载代理可用
+        ChatMessage savedMessage = chatMessageRepository.save(message);
         log.info(
                 "消息已发送: messageId={}, conversationId={}, kind={}",
-                message.getMessageId(),
+                savedMessage.getMessageId(),
                 conversationId,
                 request.getKind());
 
-        initializeReadStatus(message.getMessageId(), conversationId, senderId);
+        // 图片消息需将访问策略从默认 owner 提升为 conversationMember，使会话所有成员可查看
+        if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
+            mediaAccessService.updateAccessPolicy(
+                    request.getImageMediaId(), MediaAccessPolicy.conversationMember, conversationId);
+        }
 
-        ChatDtos.ChatMessage result = toChatMessageDto(message, MessageReadStatus.read);
+        initializeReadStatus(savedMessage.getMessageId(), conversationId, senderId);
+
+        ChatDtos.ChatMessage result = toChatMessageDto(savedMessage, MessageReadStatus.read);
         notificationService.notifyMessageCreated(result, getRecipientUserIds(conversationId, senderId));
         return result;
     }
@@ -392,6 +400,11 @@ public class ChatService {
             return new BusinessException(MESSAGE_NOT_VISIBLE, "Message " + originalMessageId + " is not visible");
         });
 
+        // 原始消息含图片时，预先加载原始 MediaFile 用于后续为各目标会话创建独立副本
+        var originalImage = original.getImageMediaId() != null
+                ? mediaFileRepository.findById(original.getImageMediaId()).orElse(null)
+                : null;
+
         List<ChatDtos.ChatMessage> result = new ArrayList<>();
 
         for (String targetId : targetConversationIds) {
@@ -400,13 +413,23 @@ public class ChatService {
                 throw new BusinessException(FORWARD_TARGET_UNAVAILABLE, "Forward target conversation is unavailable");
             }
 
+            // 为图片消息创建目标会话独立的 MediaFile 副本，各会话权限互不干扰
+            UUID targetImageMediaId;
+            if (originalImage != null) {
+                var copiedImage = mediaAccessService.copyForScope(
+                        originalImage, senderId, MediaAccessPolicy.conversationMember, targetId);
+                targetImageMediaId = copiedImage.getMediaId();
+            } else {
+                targetImageMediaId = original.getImageMediaId();
+            }
+
             ChatMessage forwarded = ChatMessage.builder()
                     .messageId(UUID.randomUUID().toString())
                     .conversationId(targetId)
                     .senderId(senderId)
                     .kind(original.getKind())
                     .text(original.getText())
-                    .imageMediaId(original.getImageMediaId())
+                    .imageMediaId(targetImageMediaId)
                     .locationLon(original.getLocationLon())
                     .locationLat(original.getLocationLat())
                     .locationCity(original.getLocationCity())
@@ -418,9 +441,10 @@ public class ChatService {
                     .sentAt(Instant.now())
                     .build();
 
-            chatMessageRepository.save(forwarded);
-            initializeReadStatus(forwarded.getMessageId(), targetId, senderId);
-            ChatDtos.ChatMessage forwardedDto = toChatMessageDto(forwarded, MessageReadStatus.read);
+            // 保存消息并获取托管实体引用，确保后续懒加载代理可用
+            ChatMessage savedForwarded = chatMessageRepository.save(forwarded);
+            initializeReadStatus(savedForwarded.getMessageId(), targetId, senderId);
+            ChatDtos.ChatMessage forwardedDto = toChatMessageDto(savedForwarded, MessageReadStatus.read);
             result.add(forwardedDto);
             notificationService.notifyMessageForwarded(forwardedDto, getRecipientUserIds(targetId, senderId));
             log.info("消息已转发: original={}, target={}", originalMessageId, targetId);
