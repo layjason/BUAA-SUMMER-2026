@@ -203,6 +203,15 @@
         <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE" />
     </Match>
     <!--
+        MediaAccessService 中日志参数 mediaId 为 UUID，policy 为枚举值，
+        scope 为 conversationId 或 userId 均为 UUID 字符串，不可能包含 CRLF 字符。
+        SpotBugs 无法推断参数类型安全性，故排除此误报。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.media.MediaAccessService" />
+        <Bug pattern="CRLF_INJECTION_LOGS" />
+    </Match>
+    <!--
         S3FileStorageService 构造器接收 S3Client 参数。
         S3Client 由 AWS SDK Builder 在 @Bean 定义中构建，构造器仅存储引用，
         调用方不直接操作该字段。此为 Spring 配置模式的标准做法。

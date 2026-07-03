@@ -13,8 +13,10 @@ import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.chat.ConversationMember;
 import io.github.layjason.mayoistar.entity.chat.MessageKind;
 import io.github.layjason.mayoistar.entity.chat.MessageReadStatus;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
@@ -22,6 +24,7 @@ import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ChatMessageRepository;
 import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
 import io.github.layjason.mayoistar.repository.ConversationRepository;
+import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -59,6 +62,9 @@ class ChatServiceTest extends AbstractIntegrationTest {
 
     @Autowired
     private ConversationRepository conversationRepository;
+
+    @Autowired
+    private MediaFileRepository mediaFileRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -144,7 +150,7 @@ class ChatServiceTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("发送图片消息 - 成功创建消息并初始化已读状态")
+    @DisplayName("发送图片消息 - 成功创建消息并初始化已读状态，访问策略更新为 conversationMember")
     void sendMessage_image() {
         UUID mediaId = UUID.randomUUID();
         MediaFile mediaFile = MediaFile.builder()
@@ -173,6 +179,23 @@ class ChatServiceTest extends AbstractIntegrationTest {
         assertThat(result.getReadStatus()).isEqualTo("read");
         assertThat(messageReadRepository.findByMessageIdInAndUserId(List.of(result.getMessageId()), anon.getUserId()))
                 .allMatch(mr -> mr.getStatus() == MessageReadStatus.unread);
+
+        // 验证 accessPolicy 已从默认 owner 更新为 conversationMember
+        entityManager.flush();
+        entityManager.clear();
+
+        var updatedMediaFile = mediaFileRepository.findById(mediaId).orElseThrow();
+        assertThat(updatedMediaFile.getAccessPolicy()).isEqualTo(MediaAccessPolicy.conversationMember);
+        assertThat(updatedMediaFile.getAccessScopeId()).isEqualTo(conversation.getConversationId());
+
+        // 通过 listMessages 验证消息中签出的 URL 使用 conversationMember 策略
+        var messagesPage = chatService.listMessages(conversation.getConversationId(), tomori.getUserId(), 1, 20);
+        var sentMessageDto = messagesPage.getItems().stream()
+                .filter(m -> m.getMessageId().equals(result.getMessageId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(sentMessageDto.getImage()).isNotNull();
+        assertThat(sentMessageDto.getImage().getSignedUrl()).contains("policy=conversationMember");
     }
 
     @Test
@@ -497,6 +520,82 @@ class ChatServiceTest extends AbstractIntegrationTest {
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getRecalled()).isFalse();
         assertThat(result.getFirst().getText()).isEqualTo("Secret");
+    }
+
+    @Test
+    @DisplayName("转发图片消息 - 为目标会话创建独立 MediaFile 副本，accessPolicy 为 conversationMember")
+    void forwardMessage_image() {
+        // 创建目标会话
+        Conversation targetConv = Conversation.builder()
+                .conversationId(UUID.randomUUID().toString())
+                .kind(ConversationKind.friend)
+                .title("燈 & 楽奈")
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        conversationRepository.save(targetConv);
+        conversationMemberRepository.save(ConversationMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .conversationId(targetConv.getConversationId())
+                .userId(tomori.getUserId())
+                .joinedAt(Instant.now())
+                .build());
+
+        // 发送原图片消息
+        UUID originalMediaId = UUID.randomUUID();
+        MediaFile mediaFile = MediaFile.builder()
+                .mediaId(originalMediaId)
+                .fileName("forward-me.png")
+                .contentType("image/png")
+                .sizeBytes(512L)
+                .usage(MediaUsage.chatImage)
+                .storagePath("/test/forward-me.png")
+                .visibility(MediaVisibility.privateVisible)
+                .accessPolicy(MediaAccessPolicy.conversationMember)
+                .accessScopeId(conversation.getConversationId())
+                .uploadedBy(tomori.getUserId())
+                .uploadedAt(Instant.now())
+                .build();
+        entityManager.persist(mediaFile);
+        entityManager.flush();
+
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.image);
+        request.setImageMediaId(originalMediaId);
+
+        ChatDtos.ChatMessage original =
+                chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request);
+
+        // 转发到目标会话
+        List<ChatDtos.ChatMessage> result = chatService.forwardMessage(
+                original.getMessageId(), tomori.getUserId(), List.of(targetConv.getConversationId()));
+
+        assertThat(result).hasSize(1);
+        var forwardedDto = result.getFirst();
+        assertThat(forwardedDto.getConversationId()).isEqualTo(targetConv.getConversationId());
+
+        // 强制刷新并清除持久化上下文
+        entityManager.flush();
+        entityManager.clear();
+
+        // 直接从 DB 查询转发消息以绕过懒加载代理问题
+        var forwardedMessage =
+                chatMessageRepository.findById(forwardedDto.getMessageId()).orElseThrow();
+        assertThat(forwardedMessage.getImageMediaId()).isNotNull();
+        assertThat(forwardedMessage.getImageMediaId()).isNotEqualTo(originalMediaId);
+
+        // 验证新 MediaFile 的 accessPolicy 为 conversationMember，scope 为目标会话
+        var newMediaFile =
+                mediaFileRepository.findById(forwardedMessage.getImageMediaId()).orElseThrow();
+        assertThat(newMediaFile.getAccessPolicy()).isEqualTo(MediaAccessPolicy.conversationMember);
+        assertThat(newMediaFile.getAccessScopeId()).isEqualTo(targetConv.getConversationId());
+        assertThat(newMediaFile.getStoragePath()).isEqualTo(mediaFile.getStoragePath());
+        assertThat(newMediaFile.getUploadedBy()).isEqualTo(tomori.getUserId());
+
+        // 验证原 MediaFile 不变
+        var refreshedOriginal = mediaFileRepository.findById(originalMediaId).orElseThrow();
+        assertThat(refreshedOriginal.getAccessPolicy()).isEqualTo(MediaAccessPolicy.conversationMember);
+        assertThat(refreshedOriginal.getAccessScopeId()).isEqualTo(conversation.getConversationId());
     }
 
     // ========================================
