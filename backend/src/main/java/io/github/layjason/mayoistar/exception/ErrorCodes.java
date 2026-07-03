@@ -111,14 +111,14 @@ public final class ErrorCodes {
     public static final int MEDIA_REFERENCE_INVALID = 50018;
 
     /** 小队媒体文件不存在 */
-    public static final int TEAM_MEDIA_NOT_FOUND = 50019;
+    public static final int TEAM_MEDIA_NOT_FOUND = 50003;
 
     /** 调用方缺少小队媒体管理权限 */
-    public static final int TEAM_MEDIA_PERMISSION_DENIED = 50020;
+    public static final int TEAM_MEDIA_PERMISSION_DENIED = 50014;
 
     /** 投票选项数量不合法（至少两个） */
-    public static final int POLL_OPTIONS_INVALID = 50021;
+    public static final int POLL_OPTIONS_INVALID = 50012;
 
     /** 投票不存在、已截止或调用方不可投票 */
-    public static final int POLL_UNAVAILABLE = 50022;
+    public static final int POLL_UNAVAILABLE = 50013;
 }
