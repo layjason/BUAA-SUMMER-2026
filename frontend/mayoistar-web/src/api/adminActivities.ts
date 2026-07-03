@@ -1,5 +1,5 @@
 import { request, isMockMode, simulateLatency, buildPaginatedResult } from './client';
-import { mockDb } from './mockDb';
+import { mockDb, toActivitySummary } from './mockDb';
 import {
   ActivitySummary,
   ActivityDetail,
@@ -30,24 +30,7 @@ export async function listActivities(params: ListActivitiesParams): Promise<Admi
 
     const total = filtered.length;
     const start = (page - 1) * pageSize;
-    const items = filtered.slice(start, start + pageSize).map((act) => {
-      // Map Detail to Summary
-      const summary: ActivitySummary = {
-        activityId: act.activityId,
-        title: act.title,
-        tags: act.tags,
-        startAt: act.startAt,
-        endAt: act.endAt,
-        location: act.location,
-        coverImage: act.coverImage,
-        feeAmount: act.feeAmount,
-        reviewStatus: act.reviewStatus,
-        runtimeStatus: act.runtimeStatus,
-        registeredCount: act.registeredCount,
-        capacity: act.capacity,
-      };
-      return summary;
-    });
+    const items = filtered.slice(start, start + pageSize).map(toActivitySummary);
 
     return buildPaginatedResult(items, total, page, pageSize);
   }
