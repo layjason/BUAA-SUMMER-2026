@@ -366,7 +366,7 @@ namespace QujuApi.Errors.Chat {
   model PollOptionsInvalid
     extends APIErrorResponse<50012, "Poll options are invalid"> {}
 
-  @doc("50013：投票不存在、已截止或调用方不可参与。")
+  @doc("50013：投票已截止或调用方不可参与。")
   model PollUnavailable
     extends APIErrorResponse<50013, "Poll is unavailable"> {}
 

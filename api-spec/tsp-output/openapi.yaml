@@ -10542,7 +10542,7 @@ components:
                 - $ref: '#/components/schemas/EmptyData'
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
-      description: 50013：投票不存在、已截止或调用方不可参与。
+      description: 50013：投票已截止或调用方不可参与。
     Errors.Chat.TeamMediaNotFound:
       type: object
       allOf:
