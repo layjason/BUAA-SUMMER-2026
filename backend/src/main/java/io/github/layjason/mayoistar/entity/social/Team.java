@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -61,8 +62,8 @@ public class Team {
     @Column(columnDefinition = "text")
     private String description;
 
-    @Column(name = "avatar_media_id", length = 36)
-    private String avatarMediaId;
+    @Column(name = "avatar_media_id", columnDefinition = "UUID")
+    private UUID avatarMediaId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "avatar_media_id", insertable = false, updatable = false)

@@ -25,5 +25,27 @@ Get-Content $envFile | ForEach-Object {
 $env:SPRING_PROFILES_ACTIVE = "dev"
 $env:SPRING_CONFIG_IMPORT = "optional:file:.env.mailhog.example[.properties]"
 
+$storageHost = if ($env:MAYOISTAR_S3_HOST) { $env:MAYOISTAR_S3_HOST } else { "localhost" }
+$storagePort = if ($env:MAYOISTAR_S3_PORT) { $env:MAYOISTAR_S3_PORT } else { "9000" }
+try {
+    $tcp = New-Object System.Net.Sockets.TcpClient
+    $tcp.Connect($storageHost, [int]$storagePort)
+    $tcp.Close()
+}
+catch {
+    Write-Warning "RustFS/S3 endpoint is not reachable at ${storageHost}:${storagePort}. File upload QA cases require docker compose to start rustfs."
+}
+
+$redisHost = if ($env:MAYOISTAR_REDIS_HOST) { $env:MAYOISTAR_REDIS_HOST } else { "localhost" }
+$redisPort = if ($env:MAYOISTAR_REDIS_PORT) { $env:MAYOISTAR_REDIS_PORT } else { "6379" }
+try {
+    $tcp = New-Object System.Net.Sockets.TcpClient
+    $tcp.Connect($redisHost, [int]$redisPort)
+    $tcp.Close()
+}
+catch {
+    Write-Warning "Redis is not reachable at ${redisHost}:${redisPort}. Backend will fail to start because Redis is required for media access cache and rate limiting."
+}
+
 Set-Location $resolvedBackendDir
 mvn spring-boot:run

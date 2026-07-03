@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
+import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
@@ -20,11 +22,13 @@ import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
@@ -33,7 +37,10 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import({TestSecurityConfiguration.class, TestStorageConfiguration.class})
 class ActivityDraftControllerTests {
+
+    private static final UUID IMAGE_A_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Autowired
     private MockMvc mockMvc;
@@ -73,17 +80,17 @@ class ActivityDraftControllerTests {
     @Test
     void saveDraftShouldReturnPersistedDraftWhenHeaderPresent() throws Exception {
         saveUser("user-a");
-        saveMediaFile("image-a", "user-a");
+        saveMediaFile(IMAGE_A_ID, "user-a");
 
         mockMvc.perform(post("/activities/drafts")
                         .with(SecurityMockMvcRequestPostProcessors.user("user-a")
                                 .roles("personal"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createDraftRequestJson(List.of("image-a"), "桌游局")))
+                        .content(createDraftRequestJson(List.of(IMAGE_A_ID), "桌游局")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.activityId").isNotEmpty())
                 .andExpect(jsonPath("$.data.title").value("桌游局"))
-                .andExpect(jsonPath("$.data.images[0].mediaId").value("image-a"));
+                .andExpect(jsonPath("$.data.images[0].mediaId").value(IMAGE_A_ID.toString()));
     }
 
     @Test
@@ -138,7 +145,7 @@ class ActivityDraftControllerTests {
         mockMvc.perform(post("/activities/drafts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createDraftRequestJson(List.of(), "桌游局")))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -189,7 +196,7 @@ class ActivityDraftControllerTests {
 
     @Test
     void submitActivityShouldReturnForbiddenWhenNotAuthenticated() throws Exception {
-        mockMvc.perform(post("/activities/{activityId}/submit", "any-id")).andExpect(status().isForbidden());
+        mockMvc.perform(post("/activities/{activityId}/submit", "any-id")).andExpect(status().isUnauthorized());
     }
 
     private User saveUser(String userId) {
@@ -205,7 +212,7 @@ class ActivityDraftControllerTests {
                 .build());
     }
 
-    private MediaFile saveMediaFile(String mediaId, String userId) {
+    private MediaFile saveMediaFile(UUID mediaId, String userId) {
         return mediaFileRepository.save(MediaFile.builder()
                 .mediaId(mediaId)
                 .fileName("cover.png")
@@ -219,7 +226,7 @@ class ActivityDraftControllerTests {
                 .build());
     }
 
-    private String createDraftRequestJson(List<String> imageIds, String title) {
+    private String createDraftRequestJson(List<UUID> imageIds, String title) {
         String imageIdsJson = imageIds.stream()
                 .map(imageId -> "\"" + imageId + "\"")
                 .reduce((left, right) -> left + "," + right)

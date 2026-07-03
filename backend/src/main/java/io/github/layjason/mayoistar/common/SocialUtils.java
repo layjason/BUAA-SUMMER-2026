@@ -19,7 +19,7 @@ public class SocialUtils {
      *
      * <p>前置条件：entity 非空。
      *
-     * <p>后置条件：返回填充了所有非空字段的 DTO。
+     * <p>后置条件：返回填充了所有非空字段的 DTO，url 根据 mediaId 自动生成。
      *
      * @param entity 媒体文件实体
      * @return 媒体文件 DTO
@@ -32,6 +32,7 @@ public class SocialUtils {
         dto.setSizeBytes(entity.getSizeBytes());
         dto.setUsage(entity.getUsage());
         dto.setUrl(entity.getUrl());
+        dto.setVisibility(entity.getVisibility());
         dto.setUploadedAt(entity.getUploadedAt().toString());
         return dto;
     }

@@ -1124,7 +1124,7 @@ public class AdminService {
             if (qualification.getLicenseMediaIds() != null
                     && !qualification.getLicenseMediaIds().isEmpty()) {
                 List<String> urls = new ArrayList<>();
-                for (String licenseId : qualification.getLicenseMediaIds()) {
+                for (UUID licenseId : qualification.getLicenseMediaIds()) {
                     mediaFileRepository
                             .findById(licenseId)
                             .ifPresentOrElse(

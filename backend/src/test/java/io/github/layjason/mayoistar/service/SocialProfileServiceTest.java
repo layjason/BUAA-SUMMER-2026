@@ -11,6 +11,7 @@ import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,11 +38,15 @@ class SocialProfileServiceTest {
     @Mock
     private BlacklistRepository blacklistRepository;
 
+    @Mock
+    private MediaAccessService mediaAccessService;
+
     private SocialProfileService service;
 
     @BeforeEach
     void setUp() {
-        service = new SocialProfileServiceImpl(userRepository, personalProfileRepository, blacklistRepository);
+        service = new SocialProfileServiceImpl(
+                userRepository, personalProfileRepository, blacklistRepository, mediaAccessService);
     }
 
     @Test

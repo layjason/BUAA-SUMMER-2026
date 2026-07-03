@@ -1,7 +1,6 @@
 package io.github.layjason.mayoistar.service;
 
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
-import io.github.layjason.mayoistar.common.SocialUtils;
 import io.github.layjason.mayoistar.entity.identity.PersonalProfile;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.exception.BusinessException;
@@ -9,6 +8,7 @@ import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.BlacklistRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.util.Collections;
 import org.springframework.stereotype.Service;
 
@@ -25,14 +25,17 @@ public class SocialProfileServiceImpl implements SocialProfileService {
     private final UserRepository userRepository;
     private final PersonalProfileRepository personalProfileRepository;
     private final BlacklistRepository blacklistRepository;
+    private final MediaAccessService mediaAccessService;
 
     public SocialProfileServiceImpl(
             UserRepository userRepository,
             PersonalProfileRepository personalProfileRepository,
-            BlacklistRepository blacklistRepository) {
+            BlacklistRepository blacklistRepository,
+            MediaAccessService mediaAccessService) {
         this.userRepository = userRepository;
         this.personalProfileRepository = personalProfileRepository;
         this.blacklistRepository = blacklistRepository;
+        this.mediaAccessService = mediaAccessService;
     }
 
     /**
@@ -70,7 +73,7 @@ public class SocialProfileServiceImpl implements SocialProfileService {
         dto.setReputationScore(profile.getReputationScore() != null ? profile.getReputationScore() : 100);
         dto.setKind(user.getKind());
         if (profile.getAvatar() != null) {
-            dto.setAvatar(SocialUtils.toMediaFileDto(profile.getAvatar()));
+            dto.setAvatar(mediaAccessService.toSignedDto(profile.getAvatar()));
         }
         return dto;
     }

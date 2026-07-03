@@ -25,6 +25,7 @@ yaak environment show "$ENV_ID" | jq \
       elif .name == "friendRequestId"  then .value = "response(\"发送好友申请 - 个人主页\", \"$.data.requestId\")"
       elif .name == "conversationId"   then .value = "response(\"会话列表\", \"$.data.items[0].conversationId\")"
       elif .name == "messageId"        then .value = "response(\"发送文字消息\", \"$.data.messageId\")"
+      elif .name == "chatImageMediaId" then .value = "response(\"上传聊天图片\", \"$.data.mediaId\")"
       elif .name == "reportId"         then .value = "response(\"举报 test_peer\", \"$.data.reportId\")"
       else .
       end

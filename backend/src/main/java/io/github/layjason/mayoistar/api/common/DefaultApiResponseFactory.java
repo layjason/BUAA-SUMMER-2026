@@ -25,6 +25,7 @@ import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
@@ -87,7 +88,7 @@ public class DefaultApiResponseFactory {
      */
     public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> mediaFile(MediaUsage usage) {
         CommonDtos.MediaFile file = new CommonDtos.MediaFile();
-        file.setMediaId("media-placeholder");
+        file.setMediaId(UUID.randomUUID());
         file.setFileName("placeholder.png");
         file.setContentType("image/png");
         file.setSizeBytes(0L);

@@ -17,6 +17,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -67,7 +68,7 @@ public final class ActivityDtos {
         @Min(0)
         private Integer minAge;
 
-        private List<String> imageIds;
+        private List<UUID> imageIds;
     }
 
     @Data
@@ -87,7 +88,7 @@ public final class ActivityDtos {
         private BigDecimal feeAmount;
         private String feeDescription;
         private Integer minAge;
-        private List<String> imageIds;
+        private List<UUID> imageIds;
     }
 
     @Data
@@ -122,7 +123,7 @@ public final class ActivityDtos {
         private String content;
 
         @NotEmpty
-        private List<String> imageIds;
+        private List<UUID> imageIds;
 
         @NotEmpty
         private List<CommonDtos.ImageTagConfirmation> confirmedImageTags;

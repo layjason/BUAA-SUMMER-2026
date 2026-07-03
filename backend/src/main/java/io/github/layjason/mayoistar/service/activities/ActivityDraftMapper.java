@@ -6,10 +6,13 @@ import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Function;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +24,10 @@ import org.springframework.stereotype.Component;
  * <p>类不变量：映射过程不修改传入实体，不执行持久化操作。
  */
 @Component
+@RequiredArgsConstructor
 public class ActivityDraftMapper {
+
+    private final MediaAccessService mediaAccessService;
 
     public PageResult<ActivityDtos.ActivityDraftSummary> toDraftSummaryPage(Page<Activity> activityPage) {
         List<ActivityDtos.ActivityDraftSummary> items =
@@ -45,7 +51,7 @@ public class ActivityDraftMapper {
     }
 
     public ActivityDtos.ActivityDraftDetail toDraftDetail(
-            Activity activity, Collection<MediaFile> mediaFiles, Function<String, Integer> imageSortOrderProvider) {
+            Activity activity, Collection<MediaFile> mediaFiles, Function<UUID, Integer> imageSortOrderProvider) {
         ActivityDtos.ActivityDraftDetail dto = new ActivityDtos.ActivityDraftDetail();
         dto.setActivityId(activity.getActivityId());
         dto.setTitle(activity.getTitle());
@@ -102,15 +108,7 @@ public class ActivityDraftMapper {
     }
 
     private CommonDtos.MediaFile toMediaFile(MediaFile mediaFile) {
-        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
-        dto.setMediaId(mediaFile.getMediaId());
-        dto.setFileName(mediaFile.getFileName());
-        dto.setContentType(mediaFile.getContentType());
-        dto.setSizeBytes(mediaFile.getSizeBytes());
-        dto.setUsage(mediaFile.getUsage());
-        dto.setUrl(mediaFile.getUrl());
-        dto.setUploadedAt(formatInstant(mediaFile.getUploadedAt()));
-        return dto;
+        return mediaAccessService.toSignedDto(mediaFile);
     }
 
     /**
@@ -135,7 +133,7 @@ public class ActivityDraftMapper {
             Activity activity,
             String organizerName,
             Collection<MediaFile> mediaFiles,
-            Function<String, Integer> imageSortOrderProvider,
+            Function<UUID, Integer> imageSortOrderProvider,
             List<ActivityDtos.ReviewRecord> reviewRecords,
             int registeredCount,
             int waitingCount) {

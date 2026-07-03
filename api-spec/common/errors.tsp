@@ -180,6 +180,10 @@ namespace QujuApi.Errors.Activities {
   @doc("20019：上传图像超过活动服务允许的大小。")
   model ImageTooLarge
     extends APIErrorResponse<20019, "Image file is too large"> {}
+
+  @doc("20020：活动总结已存在，每个活动仅允许发布一篇总结。")
+  model DuplicateSummary
+    extends APIErrorResponse<20020, "Activity summary already exists"> {}
 }
 
 namespace QujuApi.Errors.Ai {

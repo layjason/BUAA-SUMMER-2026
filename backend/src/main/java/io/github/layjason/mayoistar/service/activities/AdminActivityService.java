@@ -292,7 +292,7 @@ public class AdminActivityService {
         List<ActivityImage> activityImages =
                 activityImageRepository.findByActivityIdOrderBySortOrderAsc(activity.getActivityId());
         List<MediaFile> mediaFiles = loadMediaFiles(activityImages);
-        Map<String, Integer> sortOrderByMediaId = new LinkedHashMap<>();
+        Map<UUID, Integer> sortOrderByMediaId = new LinkedHashMap<>();
         for (ActivityImage activityImage : activityImages) {
             sortOrderByMediaId.put(activityImage.getMediaId(), activityImage.getSortOrder());
         }
@@ -322,9 +322,9 @@ public class AdminActivityService {
         if (activityImages.isEmpty()) {
             return List.of();
         }
-        List<String> mediaIds =
+        List<UUID> mediaIds =
                 activityImages.stream().map(ActivityImage::getMediaId).toList();
-        Map<String, MediaFile> mediaFileMap = mediaFileRepository.findByMediaIdIn(mediaIds).stream()
+        Map<UUID, MediaFile> mediaFileMap = mediaFileRepository.findByMediaIdIn(mediaIds).stream()
                 .collect(Collectors.toMap(MediaFile::getMediaId, mediaFile -> mediaFile));
         return mediaIds.stream().map(mediaFileMap::get).filter(Objects::nonNull).toList();
     }

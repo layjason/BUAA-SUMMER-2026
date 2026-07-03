@@ -16,6 +16,7 @@ import io.github.layjason.mayoistar.repository.FollowRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,12 +50,20 @@ class FollowServiceTest {
     @Mock
     private PersonalProfileRepository personalProfileRepository;
 
+    @Mock
+    private MediaAccessService mediaAccessService;
+
     private FollowService service;
 
     @BeforeEach
     void setUp() {
         service = new FollowServiceImpl(
-                followRepository, friendshipRepository, blacklistRepository, userRepository, personalProfileRepository);
+                followRepository,
+                friendshipRepository,
+                blacklistRepository,
+                userRepository,
+                personalProfileRepository,
+                mediaAccessService);
     }
 
     @Test

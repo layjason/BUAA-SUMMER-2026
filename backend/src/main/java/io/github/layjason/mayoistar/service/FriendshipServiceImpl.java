@@ -2,7 +2,6 @@ package io.github.layjason.mayoistar.service;
 
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
-import io.github.layjason.mayoistar.common.SocialUtils;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.exception.BusinessException;
@@ -14,6 +13,7 @@ import io.github.layjason.mayoistar.repository.FriendshipRepository;
 import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +38,7 @@ public class FriendshipServiceImpl implements FriendshipService {
     private final ConversationMemberRepository conversationMemberRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final MessageReadRepository messageReadRepository;
+    private final MediaAccessService mediaAccessService;
 
     public FriendshipServiceImpl(
             FriendshipRepository friendshipRepository,
@@ -46,7 +47,8 @@ public class FriendshipServiceImpl implements FriendshipService {
             ConversationRepository conversationRepository,
             ConversationMemberRepository conversationMemberRepository,
             ChatMessageRepository chatMessageRepository,
-            MessageReadRepository messageReadRepository) {
+            MessageReadRepository messageReadRepository,
+            MediaAccessService mediaAccessService) {
         this.friendshipRepository = friendshipRepository;
         this.userRepository = userRepository;
         this.personalProfileRepository = personalProfileRepository;
@@ -54,6 +56,7 @@ public class FriendshipServiceImpl implements FriendshipService {
         this.conversationMemberRepository = conversationMemberRepository;
         this.chatMessageRepository = chatMessageRepository;
         this.messageReadRepository = messageReadRepository;
+        this.mediaAccessService = mediaAccessService;
     }
 
     /**
@@ -157,7 +160,7 @@ public class FriendshipServiceImpl implements FriendshipService {
             item.setNickname(user.getNickname());
             personalProfileRepository.findByUserId(user.getUserId()).ifPresent(profile -> {
                 if (profile.getAvatar() != null) {
-                    item.setAvatar(SocialUtils.toMediaFileDto(profile.getAvatar()));
+                    item.setAvatar(mediaAccessService.toSignedDto(profile.getAvatar()));
                 }
             });
         });

@@ -8,10 +8,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -21,11 +19,9 @@ import org.springframework.test.web.servlet.MockMvc;
  *
  * <p>不变量：不测试 Service 层业务逻辑，仅验证 HTTP 层面的角色访问控制。
  */
-@SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 @DisplayName("权限控制")
-class PermissionControlTests {
+class PermissionControlTests extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

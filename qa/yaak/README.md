@@ -1,5 +1,13 @@
 # MayoiStar Yaak 测试说明
 
+- Version: 8 20260703 005632
+  - 补充 Redis 依赖说明，启动命令与可达性检查增加 Redis 服务
+- Version: 7 20260702 180114
+  - 修正未认证访问个人资料接口的自动化测试预期，未携带 token 应返回 401
+- Version: 6 20260702 174739
+  - 修正 Yaak 环境模板导入命令，环境导入必须显式指定 workspace
+- Version: 5 20260702 172805
+  - 补充 RustFS 对象存储依赖，身份文件上传与聊天图片上传测试需先启动本地对象存储
 - Version: 4 20260701 114242
   - 合并身份接口与好友社群聊天接口的 Yaak 测试说明
 - Version: 3 20260701 111200
@@ -26,15 +34,22 @@
 
    ```bash
    docker compose --env-file .env -f docker-compose-local.yaml down -v
-   docker compose --env-file .env -f docker-compose-local.yaml up -d postgres mailhog
+   docker compose --env-file .env -f docker-compose-local.yaml up -d postgres redis mailhog rustfs
    ```
 
-3. 在 Yaak 中导入两个 JSON 文件：
+   身份接口中的头像/执照上传，以及聊天图片上传测试依赖 RustFS。默认 S3 API 地址为 `http://localhost:9000`，控制台地址为 `http://localhost:9001`。
+
+   Redis 用于媒体访问签名缓存与限流计数，后端需实际连接 Redis 实例。默认端口 `6379`，可通过 `.env` 中的 `DEV_REDIS_PORT` 和 `REDIS_PASSWORD` 配置。
+
+3. 在 Yaak 中导入集合与环境模板：
 
    ```bash
    yaak import qa/yaak/MayoiStar.Identity.postman_collection.json
-   yaak import qa/yaak/MayoiStar.Identity.local.postman_environment.json
+   yaak workspace list
+   yaak import --workspace-id <WORKSPACE_ID> qa/yaak/MayoiStar.Identity.local.postman_environment.json
    ```
+
+   其中 `<WORKSPACE_ID>` 为第一条命令导入集合后对应的 workspace id，可通过 `yaak workspace list` 查看。
 
 4. 启动后端（PowerShell 或 Bash）：
 
@@ -139,7 +154,7 @@
 - `MayoiStar.SocialChat.postman_collection.json`：可导入 Yaak 的 Postman v2.1 集合。
 - `MayoiStar.SocialChat.local.postman_environment.json`：本地 QA 环境变量，包含 V2 migration 中种子账号的明文测试密码。
 - `run-social-chat-tests.sh`：使用 Yaak CLI 创建临时 workspace，执行好友社群与聊天的完整集成测试（正向流程 + 边界用例）。
-- `fixtures/chat-image.txt`：聊天图片上传请求的占位文件。
+- `test-avatar.png`：聊天图片上传请求复用的 PNG 占位图片，可通过环境变量 `chatImageFile` 替换。
 
 ### 种子账号
 
@@ -167,6 +182,7 @@
    - `friendRequestId` ← 发送好友申请 - 个人主页
    - `conversationId` ← 会话列表
    - `messageId` ← 发送文字消息
+   - `chatImageMediaId` ← 上传聊天图片
    - `reportId` ← 举报 test_peer
 
 5. 按分组顺序依次执行请求，变量自动填充。
@@ -189,7 +205,7 @@ bash qa/yaak/run-social-chat-tests.sh
 
 脚本会创建新的 Yaak workspace，并依次调试：
 
-**正向流程**：登录、个人主页、好友申请与同意、好友列表与备注、关注/取消关注、关注/粉丝列表、好友申请列表（发送/收到）、聊天会话与消息（文字/Emoji/已读/转发/撤回）、举报与后台处理、删除好友、拉黑/取消拉黑。
+**正向流程**：登录、个人主页、好友申请与同意、好友列表与备注、关注/取消关注、关注/粉丝列表、好友申请列表（发送/收到）、聊天会话与消息（文字/Emoji/图片/已读/转发/撤回）、举报与后台处理、删除好友、拉黑/取消拉黑。
 
 **边界用例**：自我操作（关注/拉黑/申请/举报）、不存在用户（资料/举报）、重复操作（关注/申请/拉黑/取消关注/取消拉黑）、拒绝好友申请、已是好友时申请、按昵称搜索好友、分页验证。
 
@@ -197,5 +213,5 @@ bash qa/yaak/run-social-chat-tests.sh
 
 - 后端统一以 HTTP 200 返回业务响应，测试以响应体 `code` 判断成功或业务错误。
 - 需求中的“表情”在当前 TypeSpec 中没有独立 `MessageKind`，按 Unicode Emoji 文本消息测试。
-- 聊天图片上传请求保存在集合中；若后端仍返回占位 `media-placeholder` 且不持久化媒体文件，应作为实现问题记录，不在 QA 测试中绕过。
+- 聊天图片上传请求会写入真实 `chatImageMediaId`，运行前请确认 RustFS 已启动。
 - 环境文件中的明文密码只用于 QA 种子账号，不得用于生产环境。

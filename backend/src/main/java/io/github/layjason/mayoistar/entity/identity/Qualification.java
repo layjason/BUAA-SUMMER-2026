@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -58,7 +59,7 @@ public class Qualification {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "license_media_ids", columnDefinition = "jsonb")
-    private List<String> licenseMediaIds;
+    private List<UUID> licenseMediaIds;
 
     @Column(name = "submitted_at")
     private Instant submittedAt;

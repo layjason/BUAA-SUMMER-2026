@@ -1,0 +1,163 @@
+{
+  "easycom": {
+    "autoscan": true
+  },
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": { "navigationBarTitleText": "趣聚", "disableScroll": true }
+    },
+    {
+      "path": "pages/discover/index",
+      "style": { "navigationBarTitleText": "发现", "disableScroll": true }
+    },
+    {
+      "path": "pages/publish/index",
+      "style": { "navigationBarTitleText": "发布", "disableScroll": true }
+    },
+    {
+      "path": "pages/messages/index",
+      "style": { "navigationBarTitleText": "消息", "disableScroll": true }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": { "navigationBarTitleText": "我的", "disableScroll": true }
+    },
+    {
+      "path": "pages/login/index",
+      "style": { "navigationBarTitleText": "登录", "disableScroll": true }
+    },
+    {
+      "path": "pages/register/index",
+      "style": { "navigationBarTitleText": "注册", "disableScroll": true }
+    },
+    {
+      "path": "pages/activate/index",
+      "style": { "navigationBarTitleText": "账号激活", "disableScroll": true }
+    },
+    {
+      "path": "pages/forgot-password/index",
+      "style": { "navigationBarTitleText": "忘记密码", "disableScroll": true }
+    },
+    {
+      "path": "pages/reset-password/index",
+      "style": { "navigationBarTitleText": "重置密码", "disableScroll": true }
+    },
+    {
+      "path": "pages/profile/edit",
+      "style": { "navigationBarTitleText": "编辑资料", "disableScroll": true }
+    },
+    {
+      "path": "pages/profile/my-activities",
+      "style": { "navigationBarTitleText": "我创建的活动", "disableScroll": true }
+    },
+    {
+      "path": "pages/profile/my-registrations",
+      "style": { "navigationBarTitleText": "我的报名", "disableScroll": true }
+    },
+    {
+      "path": "pages/profile/my-friends",
+      "style": { "navigationBarTitleText": "我的好友", "disableScroll": true }
+    },
+    {
+      "path": "pages/profile/friend-requests",
+      "style": { "navigationBarTitleText": "好友申请", "disableScroll": true }
+    },
+    {
+      "path": "pages/profile/my-teams",
+      "style": { "navigationBarTitleText": "我的小队", "disableScroll": true }
+    },
+    {
+      "path": "pages/profile/blacklist",
+      "style": { "navigationBarTitleText": "黑名单", "disableScroll": true }
+    },
+    {
+      "path": "pages/profile/settings",
+      "style": { "navigationBarTitleText": "设置", "disableScroll": true }
+    },
+    {
+      "path": "pages/activity/detail",
+      "style": { "navigationBarTitleText": "活动详情", "disableScroll": true }
+    },
+    {
+      "path": "pages/activity/edit",
+      "style": { "navigationBarTitleText": "编辑活动", "disableScroll": true }
+    },
+    {
+      "path": "pages/activity/drafts",
+      "style": { "navigationBarTitleText": "我的草稿", "disableScroll": true }
+    },
+    {
+      "path": "pages/activity/review",
+      "style": { "navigationBarTitleText": "评价活动", "disableScroll": true }
+    },
+    {
+      "path": "pages/activity/summary",
+      "style": { "navigationBarTitleText": "发布活动总结", "disableScroll": true }
+    },
+    {
+      "path": "pages/activity/participants",
+      "style": { "navigationBarTitleText": "参与者列表", "disableScroll": true }
+    },
+    {
+      "path": "pages/activity/check-ins",
+      "style": { "navigationBarTitleText": "签到管理", "disableScroll": true }
+    },
+    {
+      "path": "pages/activity/templates",
+      "style": { "navigationBarTitleText": "选择模板", "disableScroll": true }
+    },
+    {
+      "path": "pages/discover/search",
+      "style": { "navigationBarTitleText": "搜索活动", "disableScroll": true }
+    },
+    {
+      "path": "pages/discover/map",
+      "style": { "navigationBarTitleText": "地图发现", "disableScroll": true }
+    }
+  ],
+  "tabBar": {
+    "color": "#A0A6B2",
+    "selectedColor": "#5EC8A7",
+    "backgroundColor": "rgba(255,255,255,0.92)",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/discover/index",
+        "text": "发现",
+        "iconPath": "static/tabbar/discover.png",
+        "selectedIconPath": "static/tabbar/discover-active.png"
+      },
+      {
+        "pagePath": "pages/publish/index",
+        "text": "发布",
+        "iconPath": "static/tabbar/publish.png",
+        "selectedIconPath": "static/tabbar/publish-active.png"
+      },
+      {
+        "pagePath": "pages/messages/index",
+        "text": "消息",
+        "iconPath": "static/tabbar/messages.png",
+        "selectedIconPath": "static/tabbar/messages-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "static/tabbar/profile.png",
+        "selectedIconPath": "static/tabbar/profile-active.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "趣聚",
+    "navigationBarBackgroundColor": "#F8FAFC",
+    "backgroundColor": "#F8FAFC"
+  }
+}

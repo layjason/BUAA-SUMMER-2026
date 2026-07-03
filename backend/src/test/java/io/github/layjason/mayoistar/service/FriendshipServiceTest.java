@@ -18,6 +18,7 @@ import io.github.layjason.mayoistar.repository.FriendshipRepository;
 import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -61,6 +62,9 @@ class FriendshipServiceTest {
     @Mock
     private PersonalProfileRepository personalProfileRepository;
 
+    @Mock
+    private MediaAccessService mediaAccessService;
+
     private FriendshipService service;
 
     @BeforeEach
@@ -72,7 +76,8 @@ class FriendshipServiceTest {
                 conversationRepository,
                 conversationMemberRepository,
                 chatMessageRepository,
-                messageReadRepository);
+                messageReadRepository,
+                mediaAccessService);
     }
 
     private User buildUser(String userId, String nickname) {

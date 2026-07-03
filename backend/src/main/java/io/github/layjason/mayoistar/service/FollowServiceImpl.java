@@ -2,7 +2,6 @@ package io.github.layjason.mayoistar.service;
 
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
-import io.github.layjason.mayoistar.common.SocialUtils;
 import io.github.layjason.mayoistar.entity.social.Follow;
 import io.github.layjason.mayoistar.entity.social.Friendship;
 import io.github.layjason.mayoistar.entity.social.FriendshipSource;
@@ -13,6 +12,7 @@ import io.github.layjason.mayoistar.repository.FollowRepository;
 import io.github.layjason.mayoistar.repository.FriendshipRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -38,18 +38,21 @@ public class FollowServiceImpl implements FollowService {
     private final BlacklistRepository blacklistRepository;
     private final UserRepository userRepository;
     private final PersonalProfileRepository personalProfileRepository;
+    private final MediaAccessService mediaAccessService;
 
     public FollowServiceImpl(
             FollowRepository followRepository,
             FriendshipRepository friendshipRepository,
             BlacklistRepository blacklistRepository,
             UserRepository userRepository,
-            PersonalProfileRepository personalProfileRepository) {
+            PersonalProfileRepository personalProfileRepository,
+            MediaAccessService mediaAccessService) {
         this.followRepository = followRepository;
         this.friendshipRepository = friendshipRepository;
         this.blacklistRepository = blacklistRepository;
         this.userRepository = userRepository;
         this.personalProfileRepository = personalProfileRepository;
+        this.mediaAccessService = mediaAccessService;
     }
 
     /**
@@ -231,7 +234,7 @@ public class FollowServiceImpl implements FollowService {
             item.setNickname(user.getNickname());
             personalProfileRepository.findByUserId(user.getUserId()).ifPresent(profile -> {
                 if (profile.getAvatar() != null) {
-                    item.setAvatar(SocialUtils.toMediaFileDto(profile.getAvatar()));
+                    item.setAvatar(mediaAccessService.toSignedDto(profile.getAvatar()));
                 }
             });
         });

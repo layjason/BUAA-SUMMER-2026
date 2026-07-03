@@ -20,6 +20,7 @@ import io.github.layjason.mayoistar.repository.FriendshipRepository;
 import io.github.layjason.mayoistar.repository.MessageReadRepository;
 import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -75,6 +76,9 @@ class BlacklistServiceTest {
     @Mock
     private MessageReadRepository messageReadRepository;
 
+    @Mock
+    private MediaAccessService mediaAccessService;
+
     private BlacklistService blacklistService;
 
     @BeforeEach
@@ -89,7 +93,8 @@ class BlacklistServiceTest {
                 conversationMemberRepository,
                 conversationRepository,
                 chatMessageRepository,
-                messageReadRepository);
+                messageReadRepository,
+                mediaAccessService);
     }
 
     @Nested

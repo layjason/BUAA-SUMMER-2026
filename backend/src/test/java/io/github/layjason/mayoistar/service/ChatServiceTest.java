@@ -3,6 +3,7 @@ package io.github.layjason.mayoistar.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.layjason.mayoistar.AbstractIntegrationTest;
 import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.validation.MessageContentValidator;
@@ -33,14 +34,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
-@SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class ChatServiceTest {
+class ChatServiceTest extends AbstractIntegrationTest {
 
     @Autowired
     private ChatService chatService;
@@ -149,7 +146,7 @@ class ChatServiceTest {
     @Test
     @DisplayName("发送图片消息 - 成功创建消息并初始化已读状态")
     void sendMessage_image() {
-        String mediaId = UUID.randomUUID().toString();
+        UUID mediaId = UUID.randomUUID();
         MediaFile mediaFile = MediaFile.builder()
                 .mediaId(mediaId)
                 .fileName("test.png")
@@ -195,7 +192,7 @@ class ChatServiceTest {
     void sendMessage_imageNonExistentMediaId() {
         ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
         request.setKind(MessageKind.image);
-        request.setImageMediaId(UUID.randomUUID().toString());
+        request.setImageMediaId(UUID.randomUUID());
 
         assertThatThrownBy(() -> chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request))
                 .isInstanceOf(BusinessException.class)
