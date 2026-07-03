@@ -18,6 +18,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.servlet.HandlerExecutionChain;
+import org.springframework.web.servlet.HandlerMapping;
 
 /**
  * SecurityErrorHandler 单元测试。
@@ -32,11 +34,13 @@ class SecurityErrorHandlerTest {
     private HttpServletRequest request;
     private HttpServletResponse response;
     private ByteArrayOutputStream responseOutputStream;
+    private HandlerMapping handlerMapping;
 
     @BeforeEach
     void setUp() throws IOException {
         objectMapper = new ObjectMapper();
-        handler = new SecurityErrorHandler(objectMapper);
+        handlerMapping = mock(HandlerMapping.class);
+        handler = new SecurityErrorHandler(objectMapper, handlerMapping);
         request = mock(HttpServletRequest.class);
         response = mock(HttpServletResponse.class);
         responseOutputStream = new ByteArrayOutputStream();
@@ -52,15 +56,16 @@ class SecurityErrorHandlerTest {
     class AuthenticationEntryPointTests {
 
         /**
-         * 验证未认证时返回 HTTP 401。
+         * 验证已存在 Controller 处理器的路径未认证时返回 HTTP 401。
          *
-         * <p>前置条件：AuthenticationException 被抛出。
+         * <p>前置条件：AuthenticationException 被抛出，且请求路径存在已注册的 Controller 处理器。
          *
          * <p>后置条件：HTTP 状态码为 401，响应体为 code=401 的 ApiErrorResponse。
          */
         @Test
-        @DisplayName("应返回 HTTP 401 和 code=401 的错误响应")
-        void shouldReturn401WhenNotAuthenticated() throws Exception {
+        @DisplayName("存在对应处理器时，应返回 HTTP 401")
+        void shouldReturn401WhenAuthenticatedAndHandlerExists() throws Exception {
+            when(handlerMapping.getHandler(request)).thenReturn(mock(HandlerExecutionChain.class));
             AuthenticationException authException = new AuthenticationException("test auth error") {};
 
             handler.commence(request, response, authException);
@@ -71,6 +76,73 @@ class SecurityErrorHandlerTest {
                     objectMapper.readValue(responseOutputStream.toString(), ApiErrorResponse.class);
             assertThat(body.getCode()).isEqualTo(401);
             assertThat(body.getMessage()).isEqualTo("Authentication is required");
+        }
+
+        /**
+         * 验证不存在 Controller 处理器的路径未认证时返回 HTTP 404。
+         *
+         * <p>前置条件：AuthenticationException 被抛出，且请求路径无已注册的 Controller 处理器。
+         *
+         * <p>后置条件：HTTP 状态码为 404，响应体为 code=404 的 ApiErrorResponse。
+         */
+        @Test
+        @DisplayName("无对应处理器时，应返回 HTTP 404")
+        void shouldReturn404WhenNoHandlerFound() throws Exception {
+            when(handlerMapping.getHandler(request)).thenReturn(null);
+            AuthenticationException authException = new AuthenticationException("test auth error") {};
+
+            handler.commence(request, response, authException);
+
+            assertThat(responseOutputStream.toString()).isNotEmpty();
+            @SuppressWarnings("unchecked")
+            ApiErrorResponse<EmptyData> body =
+                    objectMapper.readValue(responseOutputStream.toString(), ApiErrorResponse.class);
+            assertThat(body.getCode()).isEqualTo(404);
+            assertThat(body.getMessage()).isEqualTo("Resource not found");
+        }
+
+        /**
+         * 验证 handlerMapping 为 null 时（测试环境或降级场景）仍返回 HTTP 401。
+         *
+         * <p>前置条件：AuthenticationException 被抛出，且 handlerMapping 为 null。
+         *
+         * <p>后置条件：HTTP 状态码为 401。
+         */
+        @Test
+        @DisplayName("handlerMapping 为 null 时，应降级返回 HTTP 401")
+        void shouldReturn401WhenHandlerMappingIsNull() throws Exception {
+            SecurityErrorHandler nullHandlerMappingHandler = new SecurityErrorHandler(objectMapper, null);
+            AuthenticationException authException = new AuthenticationException("test auth error") {};
+
+            nullHandlerMappingHandler.commence(request, response, authException);
+
+            assertThat(responseOutputStream.toString()).isNotEmpty();
+            @SuppressWarnings("unchecked")
+            ApiErrorResponse<EmptyData> body =
+                    objectMapper.readValue(responseOutputStream.toString(), ApiErrorResponse.class);
+            assertThat(body.getCode()).isEqualTo(401);
+        }
+
+        /**
+         * 验证获取处理器抛出异常时降级返回 HTTP 401。
+         *
+         * <p>前置条件：AuthenticationException 被抛出，handlerMapping.getHandler 抛出异常。
+         *
+         * <p>后置条件：HTTP 状态码为 401。
+         */
+        @Test
+        @DisplayName("获取处理器异常时，应降级返回 HTTP 401")
+        void shouldReturn401WhenGetHandlerThrowsException() throws Exception {
+            when(handlerMapping.getHandler(request)).thenThrow(new RuntimeException("internal error"));
+            AuthenticationException authException = new AuthenticationException("test auth error") {};
+
+            handler.commence(request, response, authException);
+
+            assertThat(responseOutputStream.toString()).isNotEmpty();
+            @SuppressWarnings("unchecked")
+            ApiErrorResponse<EmptyData> body =
+                    objectMapper.readValue(responseOutputStream.toString(), ApiErrorResponse.class);
+            assertThat(body.getCode()).isEqualTo(401);
         }
     }
 
