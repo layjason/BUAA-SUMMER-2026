@@ -9,6 +9,7 @@ import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.service.ActivityRegistrationService;
 import io.github.layjason.mayoistar.service.ActivityRegistrationStateService;
 import io.github.layjason.mayoistar.service.ActivitySearchService;
+import io.github.layjason.mayoistar.service.CheckInService;
 import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
 import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
@@ -46,6 +47,7 @@ public class ActivityController {
 
     private final ActivityRegistrationService activityRegistrationService;
     private final ActivityRegistrationStateService activityRegistrationStateService;
+    private final CheckInService checkInService;
 
     @PostMapping("/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> saveDraft(
@@ -207,13 +209,16 @@ public class ActivityController {
     @PostMapping("/{activityId}/check-in-qrcode")
     public ResponseEntity<ApiResponse<ActivityDtos.CheckInQrCode>> createCheckInQrCode(
             @PathVariable String activityId) {
-        return responseFactory.checkInQrCode();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(checkInService.generateCheckInQrCode(userId, activityId)));
     }
 
     @PostMapping("/{activityId}/check-ins")
     public ResponseEntity<ApiResponse<ActivityDtos.CheckInRecord>> checkIn(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.CheckInRequest request) {
-        return responseFactory.checkInRecord();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(
+                ApiResponse.success(checkInService.checkIn(userId, activityId, request.getQrCodeToken(), request)));
     }
 
     @GetMapping("/{activityId}/check-ins")
@@ -221,14 +226,18 @@ public class ActivityController {
             @PathVariable String activityId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(checkInService.listCheckIns(userId, activityId, page, pageSize)));
     }
 
-    @GetMapping(value = "/{activityId}/check-ins/export", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    @GetMapping(value = "/{activityId}/check-ins/export", produces = "text/csv")
     public ResponseEntity<byte[]> exportCheckIns(@PathVariable String activityId) {
+        String userId = securityUtils.getCurrentUserId();
+        byte[] csvData = checkInService.exportCheckIns(userId, activityId);
         return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(new byte[] {0});
+                .contentType(new MediaType("text", "csv"))
+                .header("Content-Disposition", "attachment; filename=check-ins-" + activityId + ".csv")
+                .body(csvData);
     }
 
     @PostMapping("/{activityId}/clone")

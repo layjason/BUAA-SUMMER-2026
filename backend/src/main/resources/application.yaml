@@ -59,3 +59,7 @@ mayoistar:
   media:
     access:
       signing-secret: ${MAYOISTAR_MEDIA_SIGNING_SECRET:${MAYOISTAR_JWT_SECRET:dev-media-signing-secret-change-me}}
+  check-in:
+    signing-secret: ${MAYOISTAR_CHECKIN_SIGNING_SECRET:${MAYOISTAR_JWT_SECRET:dev-checkin-signing-secret-change-me}}
+    token-expire-seconds: 900
+    location-check-meters: 500
