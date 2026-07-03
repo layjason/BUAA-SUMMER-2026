@@ -1130,6 +1130,12 @@ public class AdminService {
                 profile.getInterestedActivityFields() != null ? profile.getInterestedActivityFields() : List.of());
         dto.setAccountStatus(user.getAccountStatus());
 
+        if (profile.getAvatarMediaId() != null) {
+            mediaFileRepository.findById(profile.getAvatarMediaId()).ifPresent(avatar -> {
+                dto.setAvatar(mediaAccessService.toSignedDto(avatar));
+            });
+        }
+
         if (qualification != null) {
             dto.setQualificationStatus(qualification.getStatus());
             IdentityDtos.QualificationDetail detail = new IdentityDtos.QualificationDetail();
