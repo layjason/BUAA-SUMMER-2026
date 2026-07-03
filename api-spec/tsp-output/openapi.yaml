@@ -4281,6 +4281,132 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Chat.TeamPollCreateRequest'
+    get:
+      operationId: ChatOperations_listPolls
+      description: 查看群投票列表，调用方为小队成员，可分页查看小队中已创建的投票。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Chat.TeamPoll'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamMemberRequired'
+      tags:
+        - 即时通讯
+  /chat/teams/{teamId}/polls/{pollId}:
+    get:
+      operationId: ChatOperations_getPoll
+      description: 查看群投票结果，调用方为小队成员，返回投票详情及各选项当前票数。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - name: pollId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Chat.TeamPoll'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamMemberRequired'
+                  - $ref: '#/components/schemas/Errors.Chat.PollNotFound'
+      tags:
+        - 即时通讯
   /chat/teams/{teamId}/polls/{pollId}/votes:
     post:
       operationId: ChatOperations_votePoll
@@ -10525,6 +10651,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 50008：调用方不是消息发送者。
+    Errors.Chat.PollNotFound:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 50019
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Poll does not exist
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 50019：投票不存在。
     Errors.Chat.PollOptionsInvalid:
       type: object
       allOf:
@@ -10574,7 +10725,7 @@ components:
                 - $ref: '#/components/schemas/EmptyData'
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
-      description: 50013：投票不存在、已截止或调用方不可参与。
+      description: 50013：投票已截止或调用方不可参与。
     Errors.Chat.TeamMediaNotFound:
       type: object
       allOf:

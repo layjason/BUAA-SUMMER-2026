@@ -366,7 +366,7 @@ namespace QujuApi.Errors.Chat {
   model PollOptionsInvalid
     extends APIErrorResponse<50012, "Poll options are invalid"> {}
 
-  @doc("50013：投票不存在、已截止或调用方不可参与。")
+  @doc("50013：投票已截止或调用方不可参与。")
   model PollUnavailable
     extends APIErrorResponse<50013, "Poll is unavailable"> {}
 
@@ -392,6 +392,9 @@ namespace QujuApi.Errors.Chat {
   @doc("50018：消息引用的媒体文件不存在。")
   model MediaReferenceInvalid
     extends APIErrorResponse<50018, "Referenced media does not exist"> {}
+
+  @doc("50019：投票不存在。")
+  model PollNotFound extends APIErrorResponse<50019, "Poll does not exist"> {}
 }
 
 namespace QujuApi.Errors.Admin {
