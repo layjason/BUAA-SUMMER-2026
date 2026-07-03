@@ -2,50 +2,97 @@ param(
     [string] $BackendDir = (Join-Path $PSScriptRoot "..\..\backend")
 )
 
+# 定义带时间的日志输出函数
+function Write-Log ($Message, $Color = "Cyan") {
+    $Timestamp = Get-Date -Format "HH:mm:ss"
+    Write-Host "[$Timestamp] $Message" -ForegroundColor $Color
+}
+
+# 定义快速 TCP 探测函数
+function Test-Port ($HostName, $Port, $TimeoutMs = 2000) {
+    $tcp = New-Object System.Net.Sockets.TcpClient
+    try {
+        # 强制将 localhost 替换为 127.0.0.1 避免 IPv6 解析坑
+        $target = if ($HostName -eq "localhost") { "127.0.0.1" } else { $HostName }
+        $connect = $tcp.BeginConnect($target, [int]$Port, $null, $null)
+        $wait = $connect.AsyncWaitHandle.WaitOne($TimeoutMs, $false)
+        if (-not $wait -or -not $tcp.Connected) { return $false }
+        $tcp.EndConnect($connect)
+        return $true
+    }
+    catch { return $false }
+    finally { $tcp.Close() }
+}
+
+$ScriptStartTime = Get-Date
+Write-Log ">>> 脚本启动：环境预检查开始..."
+
 $ErrorActionPreference = "Stop"
 
+# 1. 路径解析
 $resolvedBackendDir = (Resolve-Path $BackendDir).Path
 $envFile = Join-Path $resolvedBackendDir ".env.mailhog.example"
 if (-not (Test-Path $envFile)) {
-    throw "Cannot find MailHog environment template: $envFile"
+    throw "无法找到配置文件: $envFile"
 }
 
+# 2. 加载环境变量并解析
+Write-Log "正在从 $envFile 注入环境变量..."
 Get-Content $envFile | ForEach-Object {
     $line = $_.Trim()
-    if ($line -eq "" -or $line.StartsWith("#")) {
-        return
-    }
+    if ($line -eq "" -or $line.StartsWith("#")) { return }
     $parts = $line -split "=", 2
-    if ($parts.Count -ne 2) {
-        return
-    }
+    if ($parts.Count -ne 2) { return }
     [Environment]::SetEnvironmentVariable($parts[0], $parts[1], "Process")
 }
 
+# 注入 Spring 特有变量
 $env:SPRING_PROFILES_ACTIVE = "dev"
 $env:SPRING_CONFIG_IMPORT = "optional:file:.env.mailhog.example[.properties]"
 
-$storageHost = if ($env:MAYOISTAR_S3_HOST) { $env:MAYOISTAR_S3_HOST } else { "localhost" }
-$storagePort = if ($env:MAYOISTAR_S3_PORT) { $env:MAYOISTAR_S3_PORT } else { "9000" }
-try {
-    $tcp = New-Object System.Net.Sockets.TcpClient
-    $tcp.Connect($storageHost, [int]$storagePort)
-    $tcp.Close()
-}
-catch {
-    Write-Warning "RustFS/S3 endpoint is not reachable at ${storageHost}:${storagePort}. File upload QA cases require docker compose to start rustfs."
+# 3. 检查 S3 (适配 MAYOISTAR_S3_ENDPOINT)
+Write-Log "正在检查 S3 服务..."
+$s3Host = "127.0.0.1"
+$s3Port = 9000
+# 尝试从 endpoint 字符串解析端口：http://localhost:9000
+if ($env:MAYOISTAR_S3_ENDPOINT -match ':(\d+)') {
+    $s3Port = $Matches[1]
 }
 
-$redisHost = if ($env:MAYOISTAR_REDIS_HOST) { $env:MAYOISTAR_REDIS_HOST } else { "localhost" }
-$redisPort = if ($env:MAYOISTAR_REDIS_PORT) { $env:MAYOISTAR_REDIS_PORT } else { "6379" }
-try {
-    $tcp = New-Object System.Net.Sockets.TcpClient
-    $tcp.Connect($redisHost, [int]$redisPort)
-    $tcp.Close()
+# 使用 ${} 包裹变量名以避免冒号引起的歧义
+if (Test-Port $s3Host $s3Port) {
+    Write-Log "S3 服务探测成功 (${s3Host}:${s3Port})" "Green"
 }
-catch {
-    Write-Warning "Redis is not reachable at ${redisHost}:${redisPort}. Backend will fail to start because Redis is required for media access cache and rate limiting."
+else {
+    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] S3 端口 ${s3Port} 未响应。文件上传功能将不可用。"
 }
+
+# 4. 检查 Redis (适配 DEV_REDIS_PORT)
+Write-Log "正在检查 Redis 服务..."
+$redisHost = "127.0.0.1"
+$redisPort = if ($env:DEV_REDIS_PORT) { $env:DEV_REDIS_PORT } else { "6379" }
+
+if (Test-Port $redisHost $redisPort) {
+    Write-Log "Redis 服务探测成功 (${redisHost}:${redisPort})" "Green"
+}
+else {
+    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] Redis 端口 ${redisPort} 未响应。后端启动后可能报错。"
+}
+
+# 5. 检查 MailHog (SMTP)
+Write-Log "正在检查 MailHog 服务..."
+$smtpPort = if ($env:DEV_MAILHOG_SMTP_PORT) { $env:DEV_MAILHOG_SMTP_PORT } else { "1025" }
+if (Test-Port "127.0.0.1" $smtpPort) {
+    Write-Log "MailHog SMTP 探测成功 (127.0.0.1:${smtpPort})" "Green"
+}
+else {
+    Write-Warning "[$((Get-Date -Format 'HH:mm:ss'))] MailHog 未启动，邮件发送功能将失效。"
+}
+
+# 6. 运行后端
+$Duration = [Math]::Round(((Get-Date) - $ScriptStartTime).TotalSeconds, 2)
+Write-Log ">>> 所有预检查在 ${Duration} 秒内完成" "Yellow"
+Write-Log "正在执行 mvn spring-boot:run..." "Magenta"
 
 Set-Location $resolvedBackendDir
 mvn spring-boot:run
