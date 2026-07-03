@@ -1274,6 +1274,79 @@ paths:
       tags:
         - 活动
   /activities/{activityId}/reviews:
+    get:
+      operationId: ActivityOperations_listReviews
+      description: 获取活动评价列表，活动存在且调用方可见，分页返回参与者评价，用于活动详情页展示评价摘要。
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Activities.ActivityReviewListItem'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Activities.ActivityNotVisible'
+      tags:
+        - 活动
     post:
       operationId: ActivityOperations_reviewActivity
       description: 评价活动，调用方已参与且评价入口仍有效，保存评价，每个用户仅能评价一次。
@@ -1327,6 +1400,51 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Activities.ActivityReviewRequest'
+  /activities/{activityId}/reviews/mine:
+    get:
+      operationId: ActivityOperations_getMyReview
+      description: 获取当前登录用户对指定活动的评价，调用方已登录，未评价时 review 为空。
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Activities.MyActivityReviewResult'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Activities.ActivityNotVisible'
+      tags:
+        - 活动
   /activities/{activityId}/submit:
     post:
       operationId: ActivityOperations_submitActivity
@@ -1376,9 +1494,82 @@ paths:
       tags:
         - 活动
   /activities/{activityId}/summaries:
+    get:
+      operationId: ActivityOperations_listSummaries
+      description: 获取活动图文总结列表，活动存在且调用方可见，分页返回已发布的活动总结，用于活动详情页展示回顾内容。
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Activities.ActivitySummaryPost'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Activities.ActivityNotVisible'
+      tags:
+        - 活动
     post:
       operationId: ActivityOperations_createSummary
-      description: 发布活动图文总结，活动已结束且调用方为发起人，发布总结，AI 图片标签必须经人工确认。
+      description: 发布活动图文总结，活动已结束且调用方为发起人，每个活动仅允许发布一篇总结，AI 图片标签必须经人工确认。
       parameters:
         - name: activityId
           in: path
@@ -1421,6 +1612,7 @@ paths:
                   - $ref: '#/components/schemas/Errors.Activities.ActivityPermissionDenied'
                   - $ref: '#/components/schemas/Errors.Activities.ActivityNotEnded'
                   - $ref: '#/components/schemas/Errors.Activities.MediaFileUnavailable'
+                  - $ref: '#/components/schemas/Errors.Activities.DuplicateSummary'
       tags:
         - 活动
       requestBody:
@@ -1429,6 +1621,51 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Activities.ActivitySummaryPostRequest'
+  /activities/{activityId}/summaries/mine:
+    get:
+      operationId: ActivityOperations_getMySummary
+      description: 获取当前登录用户对指定活动发布的总结，调用方已登录，未发布时 summary 为空。
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Activities.MyActivitySummaryResult'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Activities.ActivityNotVisible'
+      tags:
+        - 活动
   /activities/{activityId}/waiting-confirmations:
     post:
       operationId: ActivityOperations_confirmWaitingSeat
@@ -7323,6 +7560,49 @@ components:
             - $ref: '#/components/schemas/DateTimeString'
           description: 评价创建时间。
       description: 活动评价。
+    Activities.ActivityReviewListItem:
+      type: object
+      required:
+        - reviewId
+        - activityId
+        - userId
+        - rating
+        - tags
+        - createdAt
+        - nickname
+      properties:
+        reviewId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 评价标识。
+        activityId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 活动标识。
+        userId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 评价用户标识。
+        rating:
+          type: integer
+          format: int32
+          description: 评分。
+        content:
+          type: string
+          description: 评价正文，使用 Markdown 格式；正文中的图片链接来自活动评价图片上传接口返回的媒体访问地址。
+        tags:
+          type: array
+          items:
+            type: string
+          description: 评价标签。
+        createdAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 评价创建时间。
+        nickname:
+          type: string
+          description: 评价用户展示昵称。
+      description: 活动评价列表项，在评价基础上补充评价用户展示昵称。
     Activities.ActivityReviewRequest:
       type: object
       required:
@@ -7675,6 +7955,22 @@ components:
             type: string
           description: 该图片最终确认的标签。
       description: 图片标签确认结果。
+    Activities.MyActivityReviewResult:
+      type: object
+      properties:
+        review:
+          allOf:
+            - $ref: '#/components/schemas/Activities.ActivityReview'
+          description: 评价内容，当前用户未评价时为空。
+      description: 当前登录用户对指定活动的评价查询结果。
+    Activities.MyActivitySummaryResult:
+      type: object
+      properties:
+        summary:
+          allOf:
+            - $ref: '#/components/schemas/Activities.ActivitySummaryPost'
+          description: 总结内容，当前用户未发布时为空。
+      description: 当前登录用户对指定活动发布的总结查询结果。
     Activities.RegisterActivityRequest:
       type: object
       required:
@@ -8952,6 +9248,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 20016：用户已经评价过该活动。
+    Errors.Activities.DuplicateSummary:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 20020
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Activity summary already exists
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 20020：活动总结已存在，每个活动仅允许发布一篇总结。
     Errors.Activities.ImageFormatInvalid:
       type: object
       allOf:
