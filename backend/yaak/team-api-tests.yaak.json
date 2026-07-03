@@ -1,0 +1,276 @@
+{
+  "name": "MayoiStar - 小队管理 API 测试",
+  "baseUrl": "http://localhost:8080",
+  "variables": {
+    "accessToken": "{{loginResponse.data.tokens.accessToken}}",
+    "teamId": "",
+    "requestId": "",
+    "pollId": ""
+  },
+  "requests": [
+    {
+      "name": "1. 注册测试用户",
+      "method": "POST",
+      "url": "/identity/register",
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "email": "tomori@mygo.band",
+        "password": "Haruka0314",
+        "nickname": "燈",
+        "kind": "personal"
+      },
+      "postscript": "保存返回的 accessToken 到环境变量"
+    },
+    {
+      "name": "2. 登录",
+      "method": "POST",
+      "url": "/identity/auth/login",
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "email": "tomori@mygo.band",
+        "password": "Haruka0314"
+      },
+      "postscript": "复制 data.tokens.accessToken 到环境变量 accessToken"
+    },
+    {
+      "name": "3. 创建公开小队",
+      "method": "POST",
+      "url": "/social/teams",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": {
+        "name": "MyGO!!!!!",
+        "tags": ["音楽", "バンド"],
+        "joinMode": "publicJoin",
+        "capacity": 20,
+        "description": "迷子でも、進み続ける。"
+      },
+      "postscript": "保存 data.teamId 到环境变量 teamId"
+    },
+    {
+      "name": "4. 搜索小队（按关键词）",
+      "method": "GET",
+      "url": "/social/teams?keyword=MyGO&page=1&pageSize=20",
+      "headers": { "Authorization": "Bearer {{accessToken}}" }
+    },
+    {
+      "name": "5. 搜索小队（按标签）",
+      "method": "GET",
+      "url": "/social/teams?tags=音楽&tags=バンド&page=1&pageSize=20",
+      "headers": { "Authorization": "Bearer {{accessToken}}" }
+    },
+    {
+      "name": "6. 获取小队详情",
+      "method": "GET",
+      "url": "/social/teams/{{teamId}}",
+      "headers": { "Authorization": "Bearer {{accessToken}}" }
+    },
+    {
+      "name": "7. 获取小队成员列表",
+      "method": "GET",
+      "url": "/social/teams/{{teamId}}/members?page=1&pageSize=20",
+      "headers": { "Authorization": "Bearer {{accessToken}}" }
+    },
+    {
+      "name": "8. 获取积分榜",
+      "method": "GET",
+      "url": "/social/teams/{{teamId}}/points?page=1&pageSize=20",
+      "headers": { "Authorization": "Bearer {{accessToken}}" }
+    },
+    {
+      "name": "9. 退出小队",
+      "method": "POST",
+      "url": "/social/teams/{{teamId}}/leave",
+      "headers": { "Authorization": "Bearer {{accessToken}}" },
+      "body": {}
+    },
+    {
+      "name": "10. 创建审核制小队",
+      "method": "POST",
+      "url": "/social/teams",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": {
+        "name": "CRYCHIC",
+        "tags": ["音楽", "再結成"],
+        "joinMode": "approvalRequired",
+        "capacity": 5,
+        "description": "もう一度、あの頃のように。"
+      }
+    },
+    {
+      "name": "11. 加入审核制小队",
+      "method": "POST",
+      "url": "/social/teams/{{teamId}}/join",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": { "message": "ギター、やる" },
+      "postscript": "保存 data.requestId"
+    },
+    {
+      "name": "12. 查看入队申请列表",
+      "method": "GET",
+      "url": "/social/teams/{{teamId}}/join-requests?status=pending&page=1&pageSize=20",
+      "headers": { "Authorization": "Bearer {{accessToken}}" }
+    },
+    {
+      "name": "13. 同意入队申请",
+      "method": "POST",
+      "url": "/social/teams/{{teamId}}/join-requests/{{requestId}}/decision",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": { "accepted": true }
+    },
+    {
+      "name": "14. 拒绝入队申请",
+      "method": "POST",
+      "url": "/social/teams/{{teamId}}/join-requests/{{requestId}}/decision",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": { "accepted": false }
+    },
+    {
+      "name": "15a. 调整成员为管理员",
+      "method": "PATCH",
+      "url": "/social/teams/{{teamId}}/members/{{memberId}}/role",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": { "role": "admin" }
+    },
+    {
+      "name": "15b. 转让队长",
+      "method": "PATCH",
+      "url": "/social/teams/{{teamId}}/members/{{memberId}}/role",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": { "role": "leader" }
+    },
+    {
+      "name": "16. 解散小队",
+      "method": "DELETE",
+      "url": "/social/teams/{{teamId}}",
+      "headers": { "Authorization": "Bearer {{accessToken}}" }
+    },
+    {
+      "name": "17. 发布群公告",
+      "method": "POST",
+      "url": "/chat/teams/{{teamId}}/announcements",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": { "content": "今週の練習は水曜日、18:00から。遅れないでください。" }
+    },
+    {
+      "name": "18. 标记公告已读",
+      "method": "POST",
+      "url": "/chat/teams/{{teamId}}/announcements/{{announcementId}}/read",
+      "headers": { "Authorization": "Bearer {{accessToken}}" },
+      "body": {}
+    },
+    {
+      "name": "19. 创建群投票",
+      "method": "POST",
+      "url": "/chat/teams/{{teamId}}/polls",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": {
+        "title": "合宿の行き先は？",
+        "options": ["軽井沢", "箱根", "熱海"],
+        "deadline": "2099-12-31T23:59:59Z"
+      },
+      "postscript": "保存 data.pollId 到环境变量"
+    },
+    {
+      "name": "20. 参与群投票",
+      "method": "POST",
+      "url": "/chat/teams/{{teamId}}/polls/{{pollId}}/votes",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": { "optionId": "{{optionId}}" }
+    },
+    {
+      "name": "21. 上传群文件",
+      "method": "POST",
+      "url": "/chat/teams/{{teamId}}/files",
+      "headers": { "Authorization": "Bearer {{accessToken}}" },
+      "body": {
+        "type": "multipart/form-data",
+        "fields": {
+          "file": "@test-file.txt"
+        }
+      }
+    },
+    {
+      "name": "22. 查看群文件",
+      "method": "GET",
+      "url": "/chat/teams/{{teamId}}/files?page=1&pageSize=20",
+      "headers": { "Authorization": "Bearer {{accessToken}}" }
+    },
+    {
+      "name": "23. 删除群文件",
+      "method": "DELETE",
+      "url": "/chat/teams/{{teamId}}/files",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": { "mediaIds": ["{{mediaId}}"] }
+    },
+    {
+      "name": "24. 创建队内活动",
+      "method": "POST",
+      "url": "/social/teams/{{teamId}}/activities",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{accessToken}}"
+      },
+      "body": {
+        "title": "MyGO!!!!! 1st Live 「迷子の叫び」",
+        "tags": ["ライブ", "音楽"],
+        "startAt": "2099-07-15T18:00:00Z",
+        "endAt": "2099-07-15T21:00:00Z",
+        "location": {
+          "point": { "longitude": 139.691, "latitude": 35.689 },
+          "city": "東京",
+          "address": "新宿区",
+          "placeName": "Zepp Shinjuku"
+        },
+        "introduction": "MyGO!!!!! 初めてのワンマンライブ！",
+        "safetyNotice": "熱中症に注意、水分補給を忘れずに",
+        "capacity": 100,
+        "registrationDeadline": "2099-07-14T12:00:00Z"
+      }
+    },
+    {
+      "name": "25. 查看队内活动列表",
+      "method": "GET",
+      "url": "/social/teams/{{teamId}}/activities?page=1&pageSize=20",
+      "headers": { "Authorization": "Bearer {{accessToken}}" }
+    },
+    {
+      "name": "26. 查看队内活动详情",
+      "method": "GET",
+      "url": "/social/teams/{{teamId}}/activities/{{activityId}}",
+      "headers": { "Authorization": "Bearer {{accessToken}}" }
+    }
+  ]
+}
