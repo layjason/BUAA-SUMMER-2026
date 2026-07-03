@@ -9,7 +9,9 @@ import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.exception.ErrorCodes;
@@ -19,9 +21,11 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +60,7 @@ public class ActivityDraftService {
     private final UserRepository userRepository;
     private final ActivityDraftMapper activityDraftMapper;
     private final SubmitActivityValidator submitActivityValidator;
+    private final MediaAccessService mediaAccessService;
 
     /**
      * 保存新的活动草稿。
@@ -106,7 +111,7 @@ public class ActivityDraftService {
                 .updatedAt(now)
                 .build();
         Activity savedActivity = activityRepository.save(activity);
-        replaceImages(savedActivity.getActivityId(), request.getImageIds());
+        replaceImages(organizerId, savedActivity.getActivityId(), request.getImageIds());
         log.info("已保存活动草稿，activityId={}, organizerId={}", savedActivity.getActivityId(), organizerId);
         return loadDraftDetail(savedActivity);
     }
@@ -206,7 +211,7 @@ public class ActivityDraftService {
         activity.setRegistrationDeadline(parseInstant(request.getRegistrationDeadline(), "报名截止时间"));
         activity.setUpdatedAt(Instant.now());
         Activity savedActivity = activityRepository.save(activity);
-        replaceImages(savedActivity.getActivityId(), request.getImageIds());
+        replaceImages(organizerId, savedActivity.getActivityId(), request.getImageIds());
         log.info("已更新活动草稿，activityId={}, organizerId={}", savedActivity.getActivityId(), organizerId);
         return loadDraftDetail(savedActivity);
     }
@@ -379,27 +384,74 @@ public class ActivityDraftService {
         return mediaIds.stream().map(mediaFileMap::get).filter(Objects::nonNull).toList();
     }
 
-    private void replaceImages(String activityId, Collection<UUID> imageIds) {
+    /**
+     * 用请求中的图片列表替换活动当前关联的图片，并维护媒体访问策略生命周期。
+     *
+     * <p>前置条件：{@code organizerId} 为活动组织者；imageIds 中的媒体均由组织者上传且用途为 activityImage。
+     *
+     * <p>后置条件：activity_images 关联表被新列表覆盖；新绑定的图片访问策略升级为
+     * {@code activityOwner}（scope=activityId，仅组织者可见）；从草稿移除的图片被软删除，
+     * 其旧签名 URL 因 accessVersion 递增而立即失效。
+     *
+     * <p>不变量：仅处理调用者本人拥有的 activityImage 媒体；重复绑定同一图片因幂等护栏不产生额外版本递增。
+     *
+     * @param organizerId 活动组织者（同时为图片上传者）
+     * @param activityId  活动 ID
+     * @param imageIds    新的图片媒体 ID 列表，可为空表示清空
+     */
+    private void replaceImages(String organizerId, String activityId, Collection<UUID> imageIds) {
+        List<UUID> previousMediaIds = activityImageRepository.findByActivityIdOrderBySortOrderAsc(activityId).stream()
+                .map(ActivityImage::getMediaId)
+                .toList();
         activityImageRepository.deleteByActivityId(activityId);
-        if (imageIds == null || imageIds.isEmpty()) {
-            return;
+
+        List<UUID> newMediaIds = imageIds == null ? List.of() : List.copyOf(imageIds);
+        if (!newMediaIds.isEmpty()) {
+            validateMediaFiles(organizerId, newMediaIds);
+            int index = 0;
+            for (UUID imageId : newMediaIds) {
+                activityImageRepository.save(ActivityImage.builder()
+                        .imageId(UUID.randomUUID().toString())
+                        .activityId(activityId)
+                        .mediaId(imageId)
+                        .sortOrder(index++)
+                        .build());
+                // 绑定草稿后升级为 activityOwner，仅活动组织者可见（幂等，重复绑定跳过）
+                mediaAccessService.updateAccessPolicy(
+                        imageId, MediaAccessPolicy.activityOwner, activityId, organizerId);
+            }
         }
-        validateMediaFiles(imageIds);
-        int index = 0;
-        for (UUID imageId : imageIds) {
-            activityImageRepository.save(ActivityImage.builder()
-                    .imageId(UUID.randomUUID().toString())
-                    .activityId(activityId)
-                    .mediaId(imageId)
-                    .sortOrder(index++)
-                    .build());
+
+        // 从草稿移除的图片软删除，回收存储并使旧签名 URL 立即失效
+        Set<UUID> retained = new HashSet<>(newMediaIds);
+        for (UUID removed : previousMediaIds) {
+            if (!retained.contains(removed)) {
+                mediaAccessService.softDelete(removed);
+            }
         }
     }
 
-    private void validateMediaFiles(Collection<UUID> mediaIds) {
+    /**
+     * 校验用于活动的媒体文件均可用：存在、未软删除、用途为 activityImage 且由组织者本人上传。
+     *
+     * <p>前置条件：mediaIds 非空。
+     *
+     * <p>后置条件：全部满足要求时正常返回；任一不满足则抛出 MEDIA_FILE_UNAVAILABLE。
+     *
+     * @param organizerId 活动组织者（校验图片归属）
+     * @param mediaIds    待校验的媒体 ID 集合
+     */
+    private void validateMediaFiles(String organizerId, Collection<UUID> mediaIds) {
         List<MediaFile> mediaFiles = mediaFileRepository.findByMediaIdIn(mediaIds);
         if (mediaFiles.size() != mediaIds.size()) {
             throw new BusinessException(ErrorCodes.MEDIA_FILE_UNAVAILABLE, "存在不可用的活动图片");
+        }
+        for (MediaFile mediaFile : mediaFiles) {
+            if (mediaFile.getDeletedAt() != null
+                    || mediaFile.getUsage() != MediaUsage.activityImage
+                    || !organizerId.equals(mediaFile.getUploadedBy())) {
+                throw new BusinessException(ErrorCodes.MEDIA_FILE_UNAVAILABLE, "存在不可用的活动图片");
+            }
         }
     }
 

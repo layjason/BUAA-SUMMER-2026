@@ -10,6 +10,7 @@ import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
@@ -91,6 +92,49 @@ class ActivityDraftServiceTests {
         assertThat(savedActivity.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.notStarted);
         assertThat(draftDetail.getImages()).hasSize(1);
         assertThat(draftDetail.getImages().getFirst().getMediaId()).isEqualTo(image.getMediaId());
+    }
+
+    @Test
+    void saveDraftShouldUpgradeImageToActivityOwner() {
+        User organizer = saveUser("user-a");
+        MediaFile image = saveMediaFile(IMAGE_A_ID, organizer.getUserId());
+
+        ActivityDtos.ActivityDraftDetail draftDetail =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of(image.getMediaId())));
+
+        MediaFile upgraded = mediaFileRepository.findById(image.getMediaId()).orElseThrow();
+        assertThat(upgraded.getAccessPolicy()).isEqualTo(MediaAccessPolicy.activityOwner);
+        assertThat(upgraded.getAccessScopeId()).isEqualTo(draftDetail.getActivityId());
+        assertThat(upgraded.getAccessVersion()).isEqualTo(2L);
+        assertThat(upgraded.getDeletedAt()).isNull();
+    }
+
+    @Test
+    void updateDraftShouldSoftDeleteRemovedImage() {
+        User organizer = saveUser("user-a");
+        MediaFile image = saveMediaFile(IMAGE_A_ID, organizer.getUserId());
+        ActivityDtos.ActivityDraftDetail created =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of(image.getMediaId())));
+
+        activityDraftService.updateDraft(organizer.getUserId(), created.getActivityId(), createDraftRequest(List.of()));
+
+        MediaFile removed = mediaFileRepository.findById(image.getMediaId()).orElseThrow();
+        assertThat(removed.getDeletedAt()).isNotNull();
+        assertThat(removed.getAccessVersion()).isEqualTo(3L);
+        assertThat(activityImageRepository.findByActivityIdOrderBySortOrderAsc(created.getActivityId()))
+                .isEmpty();
+    }
+
+    @Test
+    void saveDraftShouldRejectBindingOthersMedia() {
+        User organizer = saveUser("user-a");
+        saveUser("user-b");
+        MediaFile othersImage = saveMediaFile(IMAGE_A_ID, "user-b");
+
+        assertThatThrownBy(() -> activityDraftService.saveDraft(
+                        organizer.getUserId(), createDraftRequest(List.of(othersImage.getMediaId()))))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("存在不可用的活动图片");
     }
 
     @Test
