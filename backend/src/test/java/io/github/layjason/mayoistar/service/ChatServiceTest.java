@@ -317,6 +317,41 @@ class ChatServiceTest extends AbstractIntegrationTest {
         assertThat(result).isEmpty();
     }
 
+    @Test
+    @DisplayName("标记已读 - 图片消息标记已读不触发懒加载异常")
+    void markMessagesRead_imageMessage() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile mediaFile = MediaFile.builder()
+                .mediaId(mediaId)
+                .fileName("test.png")
+                .contentType("image/png")
+                .sizeBytes(1024L)
+                .usage(MediaUsage.chatImage)
+                .storagePath("/test/test.png")
+                .uploadedBy(tomori.getUserId())
+                .uploadedAt(Instant.now())
+                .build();
+        entityManager.persist(mediaFile);
+        entityManager.flush();
+
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.image);
+        request.setImageMediaId(mediaId);
+
+        ChatDtos.ChatMessage sent =
+                chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        List<ChatDtos.ChatMessage> result =
+                chatService.markMessagesRead(anon.getUserId(), List.of(sent.getMessageId()));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getReadStatus()).isEqualTo("read");
+        assertThat(result.getFirst().getImage()).isNotNull();
+    }
+
     // ========================================
     // recallMessage Tests
     // ========================================
