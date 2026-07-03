@@ -8,6 +8,8 @@ import static io.github.layjason.mayoistar.exception.ErrorCodes.MEDIA_REFERENCE_
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_NOT_VISIBLE;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_RECALL_EXPIRED;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_SENDER_REQUIRED;
+import static io.github.layjason.mayoistar.exception.ErrorCodes.POLL_OPTIONS_INVALID;
+import static io.github.layjason.mayoistar.exception.ErrorCodes.POLL_UNAVAILABLE;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_MEMBER_REQUIRED;
 
 import io.github.layjason.mayoistar.api.chat.ChatDtos;
@@ -18,8 +20,11 @@ import io.github.layjason.mayoistar.entity.chat.Conversation;
 import io.github.layjason.mayoistar.entity.chat.MessageKind;
 import io.github.layjason.mayoistar.entity.chat.MessageRead;
 import io.github.layjason.mayoistar.entity.chat.MessageReadStatus;
+import io.github.layjason.mayoistar.entity.chat.PollOption;
+import io.github.layjason.mayoistar.entity.chat.PollVote;
 import io.github.layjason.mayoistar.entity.chat.TeamAnnouncement;
 import io.github.layjason.mayoistar.entity.chat.TeamAnnouncementRead;
+import io.github.layjason.mayoistar.entity.chat.TeamPoll;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ChatMessageRepository;
@@ -27,9 +32,12 @@ import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
 import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MessageReadRepository;
+import io.github.layjason.mayoistar.repository.PollOptionRepository;
+import io.github.layjason.mayoistar.repository.PollVoteRepository;
 import io.github.layjason.mayoistar.repository.TeamAnnouncementReadRepository;
 import io.github.layjason.mayoistar.repository.TeamAnnouncementRepository;
 import io.github.layjason.mayoistar.repository.TeamMemberRepository;
+import io.github.layjason.mayoistar.repository.TeamPollRepository;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Duration;
 import java.time.Instant;
@@ -69,6 +77,9 @@ public class ChatService {
     private final TeamAnnouncementRepository teamAnnouncementRepository;
     private final TeamAnnouncementReadRepository teamAnnouncementReadRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final TeamPollRepository teamPollRepository;
+    private final PollOptionRepository pollOptionRepository;
+    private final PollVoteRepository pollVoteRepository;
     private final MediaAccessService mediaAccessService;
 
     // ========================================
@@ -517,8 +528,179 @@ public class ChatService {
     }
 
     // ========================================
-    // Private Helpers
+    // Team Polls
     // ========================================
+
+    /**
+     * 创建群投票，选项至少两个。
+     *
+     * <p>前置条件：{@code creatorId} 是 {@code teamId} 小队的成员。
+     *
+     * <p>后置条件：投票和选项已持久化。
+     *
+     * @param teamId    小队 ID
+     * @param creatorId 创建者 ID
+     * @param request   投票创建请求
+     * @return 已创建的投票
+     * @throws BusinessException 非小队成员或选项数量不足时抛出
+     */
+    public ChatDtos.TeamPoll createPoll(String teamId, String creatorId, ChatDtos.TeamPollCreateRequest request) {
+        if (!teamMemberRepository.findByTeamIdAndUserId(teamId, creatorId).isPresent()) {
+            log.warn("非小队成员尝试创建投票: teamId={}, userId={}", teamId, creatorId);
+            throw new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        }
+
+        if (request.getOptions() == null || request.getOptions().size() < 2) {
+            throw new BusinessException(POLL_OPTIONS_INVALID, "At least two poll options are required");
+        }
+
+        Instant now = Instant.now();
+        String pollId = UUID.randomUUID().toString();
+
+        Instant deadline = null;
+        if (request.getDeadline() != null) {
+            try {
+                deadline = Instant.parse(request.getDeadline());
+            } catch (Exception e) {
+                throw new BusinessException(POLL_UNAVAILABLE, "Invalid deadline format");
+            }
+        }
+
+        TeamPoll poll = TeamPoll.builder()
+                .pollId(pollId)
+                .teamId(teamId)
+                .title(request.getTitle())
+                .deadline(deadline)
+                .createdAt(now)
+                .build();
+        teamPollRepository.save(poll);
+
+        List<ChatDtos.TeamPollOption> optionDtos = new ArrayList<>();
+        for (String optionText : request.getOptions()) {
+            String optionId = UUID.randomUUID().toString();
+            PollOption option = PollOption.builder()
+                    .optionId(optionId)
+                    .pollId(pollId)
+                    .content(optionText)
+                    .build();
+            pollOptionRepository.save(option);
+
+            ChatDtos.TeamPollOption optDto = new ChatDtos.TeamPollOption();
+            optDto.setOptionId(optionId);
+            optDto.setContent(optionText);
+            optDto.setVoteCount(0);
+            optionDtos.add(optDto);
+        }
+
+        log.info(
+                "群投票创建成功: pollId={}, teamId={}, options={}",
+                pollId,
+                teamId,
+                request.getOptions().size());
+
+        ChatDtos.TeamPoll result = new ChatDtos.TeamPoll();
+        result.setPollId(pollId);
+        result.setTeamId(teamId);
+        result.setTitle(request.getTitle());
+        result.setOptions(optionDtos);
+        result.setDeadline(request.getDeadline());
+        result.setCreatedAt(now.toString());
+        return result;
+    }
+
+    /**
+     * 参与群投票，投票未截止方可投票，同一用户重复投票时覆盖前次选择。
+     *
+     * <p>前置条件：{@code userId} 是 {@code teamId} 小队的成员，投票未截止。
+     *
+     * <p>后置条件：投票已记录，返回更新后的投票结果。
+     *
+     * @param teamId  小队 ID
+     * @param pollId  投票 ID
+     * @param userId  投票用户 ID
+     * @param request 投票请求
+     * @return 更新后的投票结果
+     * @throws BusinessException 非成员、投票不存在或已截止
+     */
+    public ChatDtos.TeamPoll votePoll(String teamId, String pollId, String userId, ChatDtos.VotePollRequest request) {
+        if (!teamMemberRepository.findByTeamIdAndUserId(teamId, userId).isPresent()) {
+            log.warn("非小队成员尝试投票: teamId={}, userId={}", teamId, userId);
+            throw new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        }
+
+        TeamPoll poll = teamPollRepository.findByPollIdAndTeamId(pollId, teamId).orElseThrow(() -> {
+            log.warn("投票不存在: pollId={}, teamId={}", pollId, teamId);
+            return new BusinessException(POLL_UNAVAILABLE, "Poll is not available");
+        });
+
+        if (poll.getDeadline() != null && Instant.now().isAfter(poll.getDeadline())) {
+            log.warn("投票已截止: pollId={}", pollId);
+            throw new BusinessException(POLL_UNAVAILABLE, "Poll has ended");
+        }
+
+        PollOption targetOption = pollOptionRepository
+                .findById(request.getOptionId())
+                .orElseThrow(() -> new BusinessException(POLL_UNAVAILABLE, "Poll option not found"));
+
+        if (!targetOption.getPollId().equals(pollId)) {
+            throw new BusinessException(POLL_UNAVAILABLE, "Poll option does not belong to this poll");
+        }
+
+        Instant now = Instant.now();
+
+        var existingVote = pollVoteRepository.findByPollIdAndUserId(pollId, userId);
+        if (existingVote.isPresent()) {
+            existingVote.get().setOptionId(request.getOptionId());
+            existingVote.get().setVotedAt(now);
+            pollVoteRepository.save(existingVote.get());
+            log.info("用户修改投票选择: pollId={}, userId={}, newOptionId={}", pollId, userId, request.getOptionId());
+        } else {
+            PollVote vote = PollVote.builder()
+                    .voteId(UUID.randomUUID().toString())
+                    .pollId(pollId)
+                    .optionId(request.getOptionId())
+                    .userId(userId)
+                    .votedAt(now)
+                    .build();
+            pollVoteRepository.save(vote);
+            log.info("用户投票成功: pollId={}, userId={}, optionId={}", pollId, userId, request.getOptionId());
+        }
+
+        return toTeamPollDto(poll);
+    }
+
+    /**
+     * 将 TeamPoll 实体转换为 DTO，含各选项票数。
+     *
+     * <p>前置条件：{@code entity} 已持久化。
+     *
+     * <p>后置条件：返回包含选项和票数的完整投票 DTO。
+     */
+    private ChatDtos.TeamPoll toTeamPollDto(TeamPoll entity) {
+        List<PollVote> allVotes = pollVoteRepository.findByPollId(entity.getPollId());
+        List<PollOption> options = pollOptionRepository.findByPollId(entity.getPollId());
+        List<ChatDtos.TeamPollOption> optionDtos = options.stream()
+                .map(opt -> {
+                    ChatDtos.TeamPollOption dto = new ChatDtos.TeamPollOption();
+                    dto.setOptionId(opt.getOptionId());
+                    dto.setContent(opt.getContent());
+                    long voteCount = allVotes.stream()
+                            .filter(v -> v.getOptionId().equals(opt.getOptionId()))
+                            .count();
+                    dto.setVoteCount((int) voteCount);
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        ChatDtos.TeamPoll dto = new ChatDtos.TeamPoll();
+        dto.setPollId(entity.getPollId());
+        dto.setTeamId(entity.getTeamId());
+        dto.setTitle(entity.getTitle());
+        dto.setOptions(optionDtos);
+        dto.setDeadline(entity.getDeadline() != null ? entity.getDeadline().toString() : null);
+        dto.setCreatedAt(entity.getCreatedAt().toString());
+        return dto;
+    }
 
     /**
      * 获取会话中除指定用户外的所有成员 ID 列表。

@@ -8,12 +8,14 @@ import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.common.SecurityUtils;
 import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
+import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
 import io.github.layjason.mayoistar.service.BlacklistService;
 import io.github.layjason.mayoistar.service.FollowService;
 import io.github.layjason.mayoistar.service.FriendRequestService;
 import io.github.layjason.mayoistar.service.FriendshipService;
 import io.github.layjason.mayoistar.service.ReportService;
 import io.github.layjason.mayoistar.service.SocialProfileService;
+import io.github.layjason.mayoistar.service.TeamService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class SocialController {
     private final ReportService reportService;
     private final FollowService followService;
     private final SocialProfileService socialProfileService;
+    private final TeamService teamService;
     private final SecurityUtils securityUtils;
 
     /* ========== 黑名单 ========== */
@@ -147,65 +150,75 @@ public class SocialController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
-    /* ========== 小队（未实现，保持stub） ========== */
+    /* ========== 小队 ========== */
 
     @PostMapping("/teams")
     public ResponseEntity<ApiResponse<SocialDtos.TeamProfile>> createTeam(
             @Valid @RequestBody SocialDtos.TeamCreateRequest request) {
-        return responseFactory.teamProfile();
+        var result = teamService.createTeam(securityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/teams")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamProfile>>> searchTeams(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) List<String> tags,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = teamService.searchTeams(keyword, tags, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/teams/{teamId}")
     public ResponseEntity<ApiResponse<SocialDtos.TeamProfile>> getTeam(@PathVariable String teamId) {
-        return responseFactory.teamProfile();
+        var result = teamService.getTeam(teamId);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @DeleteMapping("/teams/{teamId}")
     public ResponseEntity<ApiResponse<EmptyData>> dissolveTeam(@PathVariable String teamId) {
-        return responseFactory.emptyData();
+        teamService.dissolveTeam(teamId, securityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
     }
 
     @PostMapping("/teams/{teamId}/activities")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> createTeamActivity(
             @PathVariable String teamId, @Valid @RequestBody ActivityDtos.ActivityUpsertRequest request) {
-        return responseFactory.activityDetail();
+        var result = teamService.createTeamActivity(teamId, securityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/teams/{teamId}/activities")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> listTeamActivities(
             @PathVariable String teamId,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = teamService.listTeamActivities(teamId, securityUtils.getCurrentUserId(), page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/teams/{teamId}/activities/{activityId}")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> getTeamActivity(
             @PathVariable String teamId, @PathVariable String activityId) {
-        return responseFactory.activityDetail();
+        var result = teamService.getTeamActivity(teamId, activityId, securityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/teams/{teamId}/join")
     public ResponseEntity<ApiResponse<SocialDtos.TeamJoinRequest>> joinTeam(
             @PathVariable String teamId, @Valid @RequestBody SocialDtos.JoinTeamRequest request) {
-        return responseFactory.teamJoinRequest();
+        var result = teamService.joinTeam(teamId, securityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/teams/{teamId}/join-requests")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamJoinRequest>>> listTeamJoinRequests(
             @PathVariable String teamId,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false) TeamJoinRequestStatus status,
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = teamService.listTeamJoinRequests(teamId, securityUtils.getCurrentUserId(), status, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/teams/{teamId}/join-requests/{requestId}/decision")
@@ -213,20 +226,24 @@ public class SocialController {
             @PathVariable String teamId,
             @PathVariable String requestId,
             @Valid @RequestBody SocialDtos.TeamJoinRequestDecision request) {
-        return responseFactory.teamJoinRequest();
+        var result = teamService.decideTeamJoinRequest(
+                teamId, requestId, securityUtils.getCurrentUserId(), request.getAccepted());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/teams/{teamId}/leave")
     public ResponseEntity<ApiResponse<EmptyData>> leaveTeam(@PathVariable String teamId) {
-        return responseFactory.emptyData();
+        teamService.leaveTeam(teamId, securityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
     }
 
     @GetMapping("/teams/{teamId}/members")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamMember>>> listTeamMembers(
             @PathVariable String teamId,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = teamService.listTeamMembers(teamId, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PatchMapping("/teams/{teamId}/members/{memberId}/role")
@@ -234,15 +251,18 @@ public class SocialController {
             @PathVariable String teamId,
             @PathVariable String memberId,
             @Valid @RequestBody SocialDtos.TeamMemberRoleUpdate request) {
-        return responseFactory.teamMember();
+        var result =
+                teamService.updateTeamMemberRole(teamId, memberId, securityUtils.getCurrentUserId(), request.getRole());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/teams/{teamId}/points")
     public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamPointRankItem>>> getTeamPointRanks(
             @PathVariable String teamId,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = teamService.getTeamPointRanks(teamId, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     /* ========== 关注与资料 ========== */
