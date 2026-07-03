@@ -2,9 +2,15 @@
 CLIP 图片分类 FastAPI 边车服务。
 
 职责：接收 base64 编码的图片列表，返回 CLIP 分类结果。
+
+环境变量：
+    CLIP_HOST  服务监听地址，默认 0.0.0.0
+    CLIP_PORT  服务监听端口，默认 8000
+    HF_HOME    Hugging Face 模型缓存目录
 """
 import base64
 import logging
+import os
 from io import BytesIO
 from typing import List
 
@@ -83,3 +89,11 @@ async def classify(request: ClassifyRequest):
         raise HTTPException(status_code=500, detail="Image classification failed")
 
     return ClassifyResponse(items=[ClassifyItem(**r) for r in results])
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    host = os.environ.get("CLIP_HOST", "0.0.0.0")
+    port = int(os.environ.get("CLIP_PORT", "8000"))
+    uvicorn.run(app, host=host, port=port)

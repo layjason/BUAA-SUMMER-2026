@@ -4,10 +4,29 @@
 
 ## 快速开始
 
+### 环境配置
+
+```bash
+cp .env.example .env
+# 按需编辑 .env 中的配置项
+```
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `CLIP_HOST` | `0.0.0.0` | 服务监听地址 |
+| `CLIP_PORT` | `8000` | 服务监听端口 |
+| `HF_HOME` | 系统默认 | Hugging Face 模型缓存目录 |
+
 ### CPU 运行
 
 ```bash
 pip install -r requirements.txt
+python main.py
+```
+
+或直接使用 uvicorn：
+
+```bash
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
