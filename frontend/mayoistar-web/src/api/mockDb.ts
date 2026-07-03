@@ -17,29 +17,6 @@ import {
 // Helper to generate IDs
 const generateId = (prefix: string) => `${prefix}_${Math.random().toString(36).substr(2, 9)}`;
 
-/**
- * 从 ActivityDetail 中提取 ActivitySummary 字段，保证类型安全。
- *
- * 前置条件：a 为有效的 ActivityDetail 对象。
- * 后置条件：返回仅包含 ActivitySummary 所需字段的新对象。
- */
-export const toActivitySummary = (a: ActivityDetail): ActivitySummary => ({
-  activityId: a.activityId,
-  title: a.title,
-  tags: a.tags,
-  startAt: a.startAt,
-  endAt: a.endAt,
-  location: a.location,
-  coverImage: a.coverImage,
-  feeAmount: a.feeAmount,
-  reviewStatus: a.reviewStatus,
-  runtimeStatus: a.runtimeStatus,
-  registeredCount: a.registeredCount,
-  occupiedCount: a.occupiedCount,
-  capacity: a.capacity,
-  requireLocationCheck: a.requireLocationCheck,
-});
-
 // Core static assets helpers
 const MOCK_IMAGES = {
   avatar1:
@@ -821,7 +798,24 @@ class MockDatabase {
    * 后置条件：返回该用户作为发起人的所有活动摘要。
    */
   public getUserActivities(userId: string): ActivitySummary[] {
-    return this.activities.filter((a) => a.organizerId === userId).map(toActivitySummary);
+    return this.activities
+      .filter((a) => a.organizerId === userId)
+      .map((a) => ({
+        activityId: a.activityId,
+        title: a.title,
+        tags: a.tags,
+        startAt: a.startAt,
+        endAt: a.endAt,
+        location: a.location,
+        coverImage: a.coverImage,
+        feeAmount: a.feeAmount,
+        reviewStatus: a.reviewStatus,
+        runtimeStatus: a.runtimeStatus,
+        registeredCount: a.registeredCount,
+        occupiedCount: a.occupiedCount,
+        capacity: a.capacity,
+        requireLocationCheck: a.requireLocationCheck,
+      }));
   }
 
   /**
@@ -879,7 +873,24 @@ class MockDatabase {
     // Mock: 返回队长创建的活动作为小队活动
     const team = this.teams.find((t) => t.teamId === teamId);
     if (!team) return [];
-    return this.activities.filter((a) => a.organizerId === team.leaderId).map(toActivitySummary);
+    return this.activities
+      .filter((a) => a.organizerId === team.leaderId)
+      .map((a) => ({
+        activityId: a.activityId,
+        title: a.title,
+        tags: a.tags,
+        startAt: a.startAt,
+        endAt: a.endAt,
+        location: a.location,
+        coverImage: a.coverImage,
+        feeAmount: a.feeAmount,
+        reviewStatus: a.reviewStatus,
+        runtimeStatus: a.runtimeStatus,
+        registeredCount: a.registeredCount,
+        occupiedCount: a.occupiedCount,
+        capacity: a.capacity,
+        requireLocationCheck: a.requireLocationCheck,
+      }));
   }
 
   /**
