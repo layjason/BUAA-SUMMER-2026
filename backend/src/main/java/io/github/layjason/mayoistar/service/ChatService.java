@@ -26,6 +26,7 @@ import io.github.layjason.mayoistar.entity.chat.TeamAnnouncement;
 import io.github.layjason.mayoistar.entity.chat.TeamAnnouncementRead;
 import io.github.layjason.mayoistar.entity.chat.TeamPoll;
 import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
+import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ChatMessageRepository;
@@ -109,6 +110,24 @@ public class ChatService {
 
         validateMessageContent(request);
 
+        // 图片消息需校验发送者为文件上传者，防止劫持他人上传的图片
+        if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
+            MediaFile mediaFile = mediaFileRepository
+                    .findById(request.getImageMediaId())
+                    .orElseThrow(() -> {
+                        log.warn("消息引用的媒体文件不存在: mediaId={}", request.getImageMediaId());
+                        return new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
+                    });
+            if (!mediaFile.getUploadedBy().equals(senderId)) {
+                log.warn(
+                        "发送者不是图片的上传者: mediaId={}, senderId={}, uploadedBy={}",
+                        request.getImageMediaId(),
+                        senderId,
+                        mediaFile.getUploadedBy());
+                throw new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
+            }
+        }
+
         ChatMessage message = ChatMessage.builder()
                 .messageId(UUID.randomUUID().toString())
                 .conversationId(conversationId)
@@ -144,7 +163,7 @@ public class ChatService {
         // 图片消息需将访问策略从默认 owner 提升为 conversationMember，使会话所有成员可查看
         if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
             mediaAccessService.updateAccessPolicy(
-                    request.getImageMediaId(), MediaAccessPolicy.conversationMember, conversationId);
+                    request.getImageMediaId(), MediaAccessPolicy.conversationMember, conversationId, senderId);
         }
 
         initializeReadStatus(savedMessage.getMessageId(), conversationId, senderId);
@@ -389,7 +408,7 @@ public class ChatService {
     /**
      * 转发消息到目标会话。原消息不变，各目标会话创建新消息。
      *
-     * <p>前置条件：原消息可见，目标会话当前用户可发言。
+     * <p>前置条件：原消息可见且转发者是原消息所在会话的成员，目标会话当前用户可发言。
      *
      * <p>后置条件：各目标会话中已创建新消息并初始化已读状态。
      *
@@ -405,6 +424,11 @@ public class ChatService {
             log.warn("原消息不存在: messageId={}", originalMessageId);
             return new BusinessException(MESSAGE_NOT_VISIBLE, "Message " + originalMessageId + " is not visible");
         });
+
+        if (!conversationMemberRepository.existsByConversationIdAndUserId(original.getConversationId(), senderId)) {
+            log.warn("转发者不是原消息所在会话的成员: conversationId={}, userId={}", original.getConversationId(), senderId);
+            throw new BusinessException(MESSAGE_NOT_VISIBLE, "Message is not visible");
+        }
 
         // 原始消息含图片时，预先加载原始 MediaFile 用于后续为各目标会话创建独立副本
         var originalImage = original.getImageMediaId() != null

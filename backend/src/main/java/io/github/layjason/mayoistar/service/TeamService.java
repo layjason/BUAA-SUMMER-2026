@@ -734,6 +734,11 @@ public class TeamService {
                 .findById(mediaId)
                 .orElseThrow(() -> new BusinessException(TEAM_MEDIA_NOT_FOUND, "Media file not found"));
 
+        if (!file.getUploadedBy().equals(userId)) {
+            log.warn("调用者不是文件上传者: mediaId={}, userId={}, uploadedBy={}", mediaId, userId, file.getUploadedBy());
+            throw new BusinessException(TEAM_MEDIA_NOT_FOUND, "Media file not found");
+        }
+
         TeamMediaFile teamMedia = TeamMediaFile.builder()
                 .id(UUID.randomUUID())
                 .teamId(teamId)
@@ -741,7 +746,7 @@ public class TeamService {
                 .build();
         teamMediaFileRepository.save(teamMedia);
 
-        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.teamMember, teamId);
+        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.teamMember, teamId, userId);
 
         log.info("群文件已上传: teamId={}, mediaId={}, uploadedBy={}", teamId, mediaId, userId);
         return toMediaFileDto(file);
@@ -810,6 +815,12 @@ public class TeamService {
         MediaFile file = mediaFileRepository
                 .findById(mediaId)
                 .orElseThrow(() -> new BusinessException(TEAM_MEDIA_NOT_FOUND, "Media file not found"));
+
+        if (!file.getUploadedBy().equals(userId)) {
+            log.warn("调用者不是文件上传者: mediaId={}, userId={}, uploadedBy={}", mediaId, userId, file.getUploadedBy());
+            throw new BusinessException(TEAM_MEDIA_NOT_FOUND, "Media file not found");
+        }
+
         file.setUsage(MediaUsage.teamAlbum);
         mediaFileRepository.save(file);
 
@@ -820,7 +831,7 @@ public class TeamService {
                 .build();
         teamMediaFileRepository.save(teamMedia);
 
-        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.teamMember, teamId);
+        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.teamMember, teamId, userId);
 
         log.info("小队相册图片已上传: teamId={}, mediaId={}, uploadedBy={}", teamId, mediaId, userId);
         return toMediaFileDto(file);

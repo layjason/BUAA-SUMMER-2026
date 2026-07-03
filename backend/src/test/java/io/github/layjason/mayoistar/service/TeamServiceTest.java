@@ -480,6 +480,17 @@ class TeamServiceTest {
         }
 
         @Test
+        @DisplayName("成员引用他人的文件上传应拒绝")
+        void uploadTeamFileNotOwnedByMemberRejected() {
+            MediaFile file = persistMediaFile(
+                    UUID.randomUUID(), raana.getUserId(), MediaUsage.teamFile, MediaAccessPolicy.owner);
+
+            assertThatThrownBy(() -> teamService.uploadTeamFile(teamId, tomori.getUserId(), file.getMediaId()))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("Media file not found");
+        }
+
+        @Test
         @DisplayName("燈上传相册图片——访问策略更新为 teamMember，usage 更新为 teamAlbum")
         void uploadTeamAlbumImageUpdatesAccessPolicy() {
             MediaFile file = persistMediaFile(

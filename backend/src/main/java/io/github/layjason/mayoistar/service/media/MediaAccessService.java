@@ -166,20 +166,24 @@ public class MediaAccessService {
     /**
      * 更新媒体文件的访问策略和作用域，递增访问版本使旧签名 URL 失效，并刷新缓存。
      *
-     * <p>前置条件：mediaId 对应有效的媒体文件。
+     * <p>前置条件：mediaId 对应有效的媒体文件，且 {@code callerUserId} 为该文件的上传者。
      *
      * <p>后置条件：accessPolicy 和 accessScopeId 已更新，accessVersion 递增，旧签名 URL
      * 因版本不匹配而失效，缓存中的快照已刷新。
      *
-     * @param mediaId 媒体标识
-     * @param policy  新的访问策略
-     * @param scope   新的访问作用域
+     * @param mediaId      媒体标识
+     * @param policy       新的访问策略
+     * @param scope        新的访问作用域
+     * @param callerUserId 调用者用户 ID，必须为文件上传者
      */
     @Transactional
-    public void updateAccessPolicy(UUID mediaId, MediaAccessPolicy policy, String scope) {
+    public void updateAccessPolicy(UUID mediaId, MediaAccessPolicy policy, String scope, String callerUserId) {
         MediaFile mediaFile = mediaFileRepository
                 .findById(mediaId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file not found"));
+        if (!mediaFile.getUploadedBy().equals(callerUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Permission is denied");
+        }
         mediaFile.setAccessPolicy(policy);
         mediaFile.setAccessScopeId(scope);
         mediaFile.setAccessVersion(mediaFile.getAccessVersion() + 1);

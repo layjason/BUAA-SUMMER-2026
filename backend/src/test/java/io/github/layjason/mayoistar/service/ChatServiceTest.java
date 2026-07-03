@@ -226,6 +226,32 @@ class ChatServiceTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("发送图片消息 - 发送者不是图片上传者应抛 MEDIA_REFERENCE_INVALID")
+    void sendMessage_imageNotOwnedBySender() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile mediaFile = MediaFile.builder()
+                .mediaId(mediaId)
+                .fileName("other.png")
+                .contentType("image/png")
+                .sizeBytes(1024L)
+                .usage(MediaUsage.chatImage)
+                .storagePath("/test/other.png")
+                .uploadedBy(anon.getUserId())
+                .uploadedAt(Instant.now())
+                .build();
+        entityManager.persist(mediaFile);
+        entityManager.flush();
+
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.image);
+        request.setImageMediaId(mediaId);
+
+        assertThatThrownBy(() -> chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Media reference is invalid");
+    }
+
+    @Test
     @DisplayName("发送位置消息 - 成功创建")
     void sendMessage_location() {
         CommonDtos.GeoPoint point = new CommonDtos.GeoPoint();
@@ -504,6 +530,36 @@ class ChatServiceTest extends AbstractIntegrationTest {
                         original.getMessageId(), anon.getUserId(), List.of(targetConv.getConversationId())))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("target conversation");
+    }
+
+    @Test
+    @DisplayName("转发消息 - 非原会话成员转发应抛 MESSAGE_NOT_VISIBLE")
+    void forwardMessage_notMemberInSourceConversation() {
+        Conversation sourceConv = Conversation.builder()
+                .conversationId(UUID.randomUUID().toString())
+                .kind(ConversationKind.friend)
+                .title("燈 & 立希")
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        conversationRepository.save(sourceConv);
+        conversationMemberRepository.save(ConversationMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .conversationId(sourceConv.getConversationId())
+                .userId(tomori.getUserId())
+                .joinedAt(Instant.now())
+                .build());
+
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("机密消息");
+        ChatDtos.ChatMessage original =
+                chatService.sendMessage(sourceConv.getConversationId(), tomori.getUserId(), request);
+
+        assertThatThrownBy(() -> chatService.forwardMessage(
+                        original.getMessageId(), anon.getUserId(), List.of(conversation.getConversationId())))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("not visible");
     }
 
     @Test

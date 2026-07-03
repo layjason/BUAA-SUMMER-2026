@@ -173,7 +173,7 @@ class MediaAccessServiceTest {
         when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
         when(mediaFileRepository.save(any(MediaFile.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.conversationMember, conversationId);
+        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.conversationMember, conversationId, "user1");
 
         // 验证保存时 entity 已更新
         ArgumentCaptor<MediaFile> captor = ArgumentCaptor.forClass(MediaFile.class);
@@ -187,6 +187,20 @@ class MediaAccessServiceTest {
         assertThat(signed.signedUrl()).contains("policy=conversationMember");
         assertThat(signed.signedUrl()).contains("scope=" + conversationId);
         assertThat(signed.signedUrl()).contains("v=2");
+    }
+
+    @Test
+    @DisplayName("updateAccessPolicy：非上传者调用应返回 403")
+    void shouldRejectUpdateAccessPolicyWhenNotOwner() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile mediaFile = buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.owner, "user1");
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
+
+        assertThatThrownBy(() -> mediaAccessService.updateAccessPolicy(
+                        mediaId, MediaAccessPolicy.conversationMember, "conv-x", "user2"))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode.value")
+                .isEqualTo(403);
     }
 
     @Test
@@ -205,7 +219,7 @@ class MediaAccessServiceTest {
         when(conversationMemberRepository.existsByConversationIdAndUserId(conversationId, "user2"))
                 .thenReturn(true);
 
-        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.conversationMember, conversationId);
+        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.conversationMember, conversationId, "user1");
 
         var auth = new TestingAuthenticationToken("user2", null);
         auth.setAuthenticated(true);
