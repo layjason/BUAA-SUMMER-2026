@@ -275,7 +275,19 @@
               "raw": "{\"kind\":\"image\",\"imageMediaId\":\"{{privateImageMediaId}}\"}"
             },
             "url": "{{baseUrl}}/chat/conversations/{{privateConversationId}}/messages"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.code === 200 && body.data && body.data.image && body.data.image.signedUrl) { pm.environment.set('privateImageSignedUrl', body.data.image.signedUrl); }"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "01.03 私聊成员 test_peer 下载图片",
@@ -449,7 +461,19 @@
               "raw": "{\"kind\":\"image\",\"imageMediaId\":\"{{teamImageMediaId}}\"}"
             },
             "url": "{{baseUrl}}/chat/conversations/{{teamConversationId}}/messages"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.code === 200 && body.data && body.data.image && body.data.image.signedUrl) { pm.environment.set('teamImageSignedUrl', body.data.image.signedUrl); }"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "02.05 群成员 test_peer 下载图片",

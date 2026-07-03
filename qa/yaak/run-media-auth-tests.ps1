@@ -530,7 +530,14 @@ if ($resp.code -eq 200) {
 }
 
 Write-Log "正在发送私聊图片消息（触发策略升级为 conversationMember）..." "Cyan"
-Send-YaakRequest "01.02 发送私聊图片消息"
+$resp = Send-YaakRequestJson "01.02 发送私聊图片消息"
+if ($resp.code -eq 200 -and $resp.data.image) {
+    $signedUrl = Get-JsonField -Response $resp.data.image -Field "signedUrl"
+    if ($signedUrl) {
+        Set-YaakEnvironmentVariables $script:EnvironmentId @{ privateImageSignedUrl = $signedUrl }
+        Write-Host "  [env] privateImageSignedUrl 已刷新为 conversationMember 签名"
+    }
+}
 
 Write-Log "1.1 私聊成员 test_peer 下载图片 => 200" "Cyan"
 Send-YaakRequest "01.03 私聊成员 test_peer 下载图片" @(200)
@@ -585,7 +592,14 @@ if ($resp.code -eq 200) {
 }
 
 Write-Log "正在发送群聊图片消息（触发策略升级为 conversationMember）..." "Cyan"
-Send-YaakRequest "02.04 发送群聊图片消息"
+$resp = Send-YaakRequestJson "02.04 发送群聊图片消息"
+if ($resp.code -eq 200 -and $resp.data.image) {
+    $signedUrl = Get-JsonField -Response $resp.data.image -Field "signedUrl"
+    if ($signedUrl) {
+        Set-YaakEnvironmentVariables $script:EnvironmentId @{ teamImageSignedUrl = $signedUrl }
+        Write-Host "  [env] teamImageSignedUrl 已刷新为 conversationMember 签名"
+    }
+}
 
 Write-Log "2.1 群成员 test_peer 下载群聊图片 => 200" "Cyan"
 Send-YaakRequest "02.05 群成员 test_peer 下载图片" @(200)

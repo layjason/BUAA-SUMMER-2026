@@ -465,7 +465,14 @@ if [[ "$(jq -r '.code' <<< "$resp")" == "200" ]]; then
 fi
 
 log "正在发送私聊图片消息（触发策略升级为 conversationMember）..."
-send_yaak_request "01.02 发送私聊图片消息"
+resp="$(send_yaak_request_json "01.02 发送私聊图片消息")"
+if [[ "$(jq -r '.code' <<< "$resp")" == "200" ]]; then
+  signed_url="$(jq -r '.data.image.signedUrl // ""' <<< "$resp")"
+  if [[ -n "$signed_url" ]]; then
+    set_yaak_environment_variables "$ENVIRONMENT_ID" "privateImageSignedUrl=$signed_url"
+    echo "  [env] privateImageSignedUrl 已刷新为 conversationMember 签名"
+  fi
+fi
 log "1.1 私聊成员 test_peer 下载图片 => 200"
 send_yaak_request "01.03 私聊成员 test_peer 下载图片" "200"
 log "1.2 管理员下载私聊图片 => 200"
@@ -505,7 +512,14 @@ if [[ "$(jq -r '.code' <<< "$resp")" == "200" ]]; then
 fi
 
 log "正在发送群聊图片消息（触发策略升级为 conversationMember）..."
-send_yaak_request "02.04 发送群聊图片消息"
+resp="$(send_yaak_request_json "02.04 发送群聊图片消息")"
+if [[ "$(jq -r '.code' <<< "$resp")" == "200" ]]; then
+  signed_url="$(jq -r '.data.image.signedUrl // ""' <<< "$resp")"
+  if [[ -n "$signed_url" ]]; then
+    set_yaak_environment_variables "$ENVIRONMENT_ID" "teamImageSignedUrl=$signed_url"
+    echo "  [env] teamImageSignedUrl 已刷新为 conversationMember 签名"
+  fi
+fi
 log "2.1 群成员 test_peer 下载群聊图片 => 200"
 send_yaak_request "02.05 群成员 test_peer 下载图片" "200"
 log "2.2 管理员下载群聊图片 => 200"

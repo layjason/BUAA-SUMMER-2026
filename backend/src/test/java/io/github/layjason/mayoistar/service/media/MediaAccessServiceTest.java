@@ -188,6 +188,79 @@ class MediaAccessServiceTest {
     }
 
     @Test
+    @DisplayName("策略更新后旧签名 URL 返回 403，新签名 URL 可访问")
+    void shouldRejectOldSignedUrlAfterPolicyUpdate() {
+        UUID mediaId = UUID.randomUUID();
+        String conversationId = "conv-refresh";
+        MediaFile mediaFile = buildMediaFile(mediaId, MediaVisibility.privateVisible, MediaAccessPolicy.owner, "user1");
+        SignedMediaAccess oldSigned = mediaAccessService.sign(mediaFile);
+        Map<String, String> oldParams = queryParams(oldSigned.signedUrl());
+        InputStream expectedStream = new ByteArrayInputStream("chat-image".getBytes(StandardCharsets.UTF_8));
+
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
+        when(mediaFileRepository.save(any(MediaFile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(fileStorageService.retrieve("avatar/user1/avatar.png")).thenReturn(expectedStream);
+        when(conversationMemberRepository.existsByConversationIdAndUserId(conversationId, "user2"))
+                .thenReturn(true);
+
+        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.conversationMember, conversationId);
+
+        var auth = new TestingAuthenticationToken("user2", null);
+        auth.setAuthenticated(true);
+
+        assertThatThrownBy(() -> mediaAccessService.openSignedContent(
+                        mediaId,
+                        Long.parseLong(oldParams.get("v")),
+                        MediaAccessPolicy.valueOf(oldParams.get("policy")),
+                        oldParams.get("scope"),
+                        oldParams.get("sig"),
+                        auth))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode.value")
+                .isEqualTo(403);
+
+        SignedMediaAccess newSigned = mediaAccessService.sign(mediaFile);
+        Map<String, String> newParams = queryParams(newSigned.signedUrl());
+        InputStream result = mediaAccessService.openSignedContent(
+                mediaId,
+                Long.parseLong(newParams.get("v")),
+                MediaAccessPolicy.valueOf(newParams.get("policy")),
+                newParams.get("scope"),
+                newParams.get("sig"),
+                auth);
+
+        assertThat(result).isSameAs(expectedStream);
+    }
+
+    @Test
+    @DisplayName("缺少签名参数返回 403")
+    void shouldRejectMissingSignature() {
+        UUID mediaId = UUID.randomUUID();
+        MediaFile mediaFile =
+                buildMediaFile(mediaId, MediaVisibility.publicVisible, MediaAccessPolicy.publicAccess, "");
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.of(mediaFile));
+
+        assertThatThrownBy(() -> mediaAccessService.openSignedContent(
+                        mediaId, 1L, MediaAccessPolicy.publicAccess, "", null, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode.value")
+                .isEqualTo(403);
+    }
+
+    @Test
+    @DisplayName("媒体不存在优先返回 404")
+    void shouldReturnNotFoundBeforeSignatureValidationWhenMediaMissing() {
+        UUID mediaId = UUID.randomUUID();
+        when(mediaFileRepository.findById(mediaId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> mediaAccessService.openSignedContent(
+                        mediaId, 1L, MediaAccessPolicy.publicAccess, "", "invalid", null))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode.value")
+                .isEqualTo(404);
+    }
+
+    @Test
     @DisplayName("copyForScope：创建的副本共享存储路径但具有独立的 accessPolicy")
     void shouldCopyMediaFileForNewScope() {
         UUID originalMediaId = UUID.randomUUID();

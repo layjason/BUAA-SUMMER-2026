@@ -177,6 +177,9 @@ class ChatServiceTest extends AbstractIntegrationTest {
         assertThat(result.getSenderId()).isEqualTo(tomori.getUserId());
         assertThat(result.getRecalled()).isFalse();
         assertThat(result.getReadStatus()).isEqualTo("read");
+        assertThat(result.getImage()).isNotNull();
+        assertThat(result.getImage().getSignedUrl()).contains("policy=conversationMember");
+        assertThat(result.getImage().getSignedUrl()).contains("scope=" + conversation.getConversationId());
         assertThat(messageReadRepository.findByMessageIdInAndUserId(List.of(result.getMessageId()), anon.getUserId()))
                 .allMatch(mr -> mr.getStatus() == MessageReadStatus.unread);
 
