@@ -326,19 +326,24 @@ export function get<P extends keyof paths>(
 ): Promise<OpData<GetOpType<P>>> {
   let fullPath = resolvePath(path as string, options?.path)
   if (options?.query) {
-    const params = new URLSearchParams()
-    for (const [k, v] of Object.entries(options.query)) {
+    /* 手动构建查询字符串，兼容 Android WebView（app-plus）不支持的 URLSearchParams */
+    const qsParts: string[] = []
+    const queryObj = options!.query as Record<string, unknown>
+    for (const k of Object.keys(queryObj)) {
+      const v = queryObj[k]
       if (v === undefined || v === null) continue
       if (Array.isArray(v)) {
         for (const item of v) {
-          if (item !== undefined && item !== null) params.append(k, String(item))
+          if (item !== undefined && item !== null) {
+            qsParts.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(item)))
+          }
         }
       } else {
-        params.append(k, String(v))
+        qsParts.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(v)))
       }
     }
-    const qs = params.toString()
-    if (qs) fullPath += `?${qs}`
+    const qs = qsParts.join('&')
+    if (qs) fullPath += '?' + qs
   }
   return extractData(rawRequest('GET', fullPath))
 }
