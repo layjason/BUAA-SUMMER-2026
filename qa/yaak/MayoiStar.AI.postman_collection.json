@@ -1,0 +1,269 @@
+{
+  "info": {
+    "_postman_id": "b0e1d2c3-a4b5-6789-cdef-012345678901",
+    "name": "MayoiStar AI",
+    "description": "AI 图片分类 API 测试集合。导入 Yaak 后配合 MayoiStar.AI.local.postman_environment.json 使用。需先启动 CLIP 边车服务（见 ../clip-service/README.md）。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 登录",
+      "item": [
+        {
+          "name": "个人用户登录 test_user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{testUserEmail}}\",\"password\":\"{{testUserPassword}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/identity/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 图片上传",
+      "item": [
+        {
+          "name": "上传活动图片 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{testImageFile}}"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/media/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "media",
+                "images"
+              ]
+            }
+          }
+        },
+        {
+          "name": "上传活动图片 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{testImageFile}}"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/media/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "media",
+                "images"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 图片分类 - 正常流程",
+      "item": [
+        {
+          "name": "分类单张图片",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mediaIds\":[\"{{testImageMediaId}}\"]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/image-classifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "image-classifications"
+              ]
+            }
+          }
+        },
+        {
+          "name": "分类多张图片",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mediaIds\":[\"{{testImageMediaId}}\",\"{{testImageMediaId2}}\"]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/image-classifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "image-classifications"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 图片分类 - 异常与边界",
+      "item": [
+        {
+          "name": "空 mediaIds 列表",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mediaIds\":[]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/image-classifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "image-classifications"
+              ]
+            }
+          }
+        },
+        {
+          "name": "不存在的 mediaId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mediaIds\":[\"{{nonexistentMediaId}}\"]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/image-classifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "image-classifications"
+              ]
+            }
+          }
+        },
+        {
+          "name": "未认证访问",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mediaIds\":[\"{{testImageMediaId}}\"]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/image-classifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "image-classifications"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

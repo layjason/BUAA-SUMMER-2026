@@ -1,5 +1,7 @@
 # MayoiStar Yaak 测试说明
 
+- Version: 9 20260703 150620
+  - 新增 AI 图片分类接口测试集合
 - Version: 8 20260703 005632
   - 补充 Redis 依赖说明，启动命令与可达性检查增加 Redis 服务
 - Version: 7 20260702 180114
@@ -215,3 +217,67 @@ bash qa/yaak/run-social-chat-tests.sh
 - 需求中的“表情”在当前 TypeSpec 中没有独立 `MessageKind`，按 Unicode Emoji 文本消息测试。
 - 聊天图片上传请求会写入真实 `chatImageMediaId`，运行前请确认 RustFS 已启动。
 - 环境文件中的明文密码只用于 QA 种子账号，不得用于生产环境。
+
+## AI 图片分类测试
+
+### 文件
+
+- `MayoiStar.AI.postman_collection.json`：可导入 Yaak 的 Postman v2.1 集合，覆盖 `/ai/image-classifications` 接口的正常和异常场景。
+- `MayoiStar.AI.local.postman_environment.json`：本地环境变量模板。
+- `start-backend-with-clip.ps1` / `start-backend-with-clip.sh`：启动后端并检查 CLIP 边车服务状态。
+- `test-avatar.png`：图片上传测试用占位图片（复用于 identity 和 social-chat 集合）。
+
+### 前置条件
+
+AI 图片分类依赖 Python CLIP 边车服务（`../../clip-service/`），需在启动后端前先启动：
+
+```bash
+cd ../../clip-service
+python main.py
+```
+
+或使用 Docker（需 GPU）：
+
+```bash
+cd ../../clip-service
+docker compose up -d
+```
+
+启动脚本会自动检查 CLIP 服务是否可达，未启动时输出警告和启动命令。
+
+### 使用 Yaak 图形界面
+
+1. 启动 Docker 依赖和 CLIP 服务。
+2. 启动后端：
+   - PowerShell: `.\qa\yaak\start-backend-with-clip.ps1`
+   - Bash: `./qa/yaak/start-backend-with-clip.sh`
+3. 导入 `MayoiStar.AI.postman_collection.json`。
+4. 导入 `MayoiStar.AI.local.postman_environment.json` 到同一 workspace。
+5. 按分组顺序依次执行请求：
+   - **00 登录**：执行"个人用户登录 test_user"，将 `data.tokens.accessToken` 手动写入 `accessToken` 环境变量。
+   - **01 图片上传**：依次执行两个上传请求，将 `data.mediaId` 分别写入 `testImageMediaId` 和 `testImageMediaId2`。
+   - **02 图片分类 - 正常流程**：执行分类请求，验证返回 `status=succeeded`、`items` 中每项包含 `mediaId`、`suggestedTags`（5 类之一）、`confidence`（[0,1]）。
+   - **03 图片分类 - 异常与边界**：执行异常场景，验证错误码。
+
+### 变量映射
+
+| 响应字段 | 环境变量 |
+|----------|----------|
+| `data.tokens.accessToken` | `accessToken` |
+| `data.mediaId`（上传 1） | `testImageMediaId` |
+| `data.mediaId`（上传 2） | `testImageMediaId2` |
+
+### 预期响应验证
+
+| 用例 | 预期 `code` | 说明 |
+|------|-------------|------|
+| 分类单张/多张 | 200 | `data.status=succeeded`，`items` 非空 |
+| 空 mediaIds | 200 | `data.items=[]` |
+| 不存在的 mediaId | 30003 | `ImageMediaUnavailable` |
+| CLIP 服务未启动 | 30001 | `AiServiceUnavailable` |
+| 未认证 | 401 | token 缺失或无效 |
+
+### 覆盖的接口
+
+- `POST /ai/image-classifications`：图片分类（含媒体文件存在性校验和 AI 调用）
+- `POST /activities/media/images`：活动图片上传（获取分类所需的 mediaId）
