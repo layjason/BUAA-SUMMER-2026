@@ -4,11 +4,15 @@ import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Function;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +25,10 @@ import org.springframework.stereotype.Component;
  * <p>类不变量：映射过程不修改传入实体，不执行持久化操作。
  */
 @Component
+@RequiredArgsConstructor
 public class ActivityDtoMapper {
+
+    private final MediaAccessService mediaAccessService;
 
     /**
      * 将活动实体分页转换为 ActivitySummary 分页结果。
@@ -69,6 +76,43 @@ public class ActivityDtoMapper {
             Function<String, CommonDtos.MediaFile> coverImageProvider,
             Function<String, ActivityRegistrationCounts> countsProvider) {
         ActivityDtos.ActivitySummary dto = new ActivityDtos.ActivitySummary();
+        fillActivitySummary(dto, activity, coverImageProvider, countsProvider.apply(activity.getActivityId()));
+        return dto;
+    }
+
+    /**
+     * 将报名记录转为当前用户报名活动摘要 DTO。
+     *
+     * <p>前置条件：registration 非空且已加载关联 Activity。
+     *
+     * <p>后置条件：返回活动摘要字段以及当前用户的报名状态字段。
+     *
+     * <p>不变量：不修改传入实体。
+     *
+     * @param registration 报名记录
+     * @param coverImageProvider 根据活动 ID 获取封面图
+     * @return 当前用户报名活动摘要 DTO
+     */
+    public ActivityDtos.RegisteredActivitySummary toRegisteredActivitySummary(
+            ActivityRegistration registration,
+            Function<String, CommonDtos.MediaFile> coverImageProvider,
+            ActivityRegistrationCounts counts) {
+        Activity activity = registration.getActivity();
+        ActivityDtos.RegisteredActivitySummary dto = new ActivityDtos.RegisteredActivitySummary();
+        fillActivitySummary(dto, activity, coverImageProvider, counts);
+        dto.setRegistrationId(registration.getRegistrationId());
+        dto.setRegistrationStatus(registration.getStatus());
+        dto.setRegisteredAt(formatInstant(registration.getRegisteredAt()));
+        dto.setWaitingRank(registration.getWaitingRank());
+        dto.setConfirmationDeadline(formatInstant(registration.getConfirmationDeadline()));
+        return dto;
+    }
+
+    private void fillActivitySummary(
+            ActivityDtos.ActivitySummary dto,
+            Activity activity,
+            Function<String, CommonDtos.MediaFile> coverImageProvider,
+            ActivityRegistrationCounts counts) {
         dto.setActivityId(activity.getActivityId());
         dto.setTitle(activity.getTitle());
         dto.setTags(activity.getTags() == null ? List.of() : List.copyOf(activity.getTags()));
@@ -79,11 +123,10 @@ public class ActivityDtoMapper {
         dto.setFeeAmount(activity.getFeeAmount());
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setRuntimeStatus(activity.getRuntimeStatus());
-        ActivityRegistrationCounts counts = countsProvider.apply(activity.getActivityId());
         dto.setRegisteredCount(counts.registeredCount());
         dto.setOccupiedCount(counts.occupiedCount());
         dto.setCapacity(activity.getCapacity());
-        return dto;
+        dto.setRequireLocationCheck(activity.getRequireLocationCheck());
     }
 
     /**
@@ -106,7 +149,7 @@ public class ActivityDtoMapper {
             Activity activity,
             String organizerName,
             List<MediaFile> mediaFiles,
-            Function<String, Integer> imageSortOrderProvider,
+            Function<UUID, Integer> imageSortOrderProvider,
             List<ActivityDtos.ReviewRecord> reviewRecords,
             ActivityRegistrationCounts counts) {
         ActivityDtos.ActivityDetail dto = new ActivityDtos.ActivityDetail();
@@ -145,6 +188,7 @@ public class ActivityDtoMapper {
         dto.setFeeDescription(activity.getFeeDescription());
         dto.setMinAge(activity.getMinAge());
         dto.setReviewRecords(reviewRecords);
+        dto.setRequireLocationCheck(activity.getRequireLocationCheck());
         return dto;
     }
 
@@ -190,15 +234,7 @@ public class ActivityDtoMapper {
     }
 
     private CommonDtos.MediaFile toMediaFile(MediaFile mediaFile) {
-        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
-        dto.setMediaId(mediaFile.getMediaId());
-        dto.setFileName(mediaFile.getFileName());
-        dto.setContentType(mediaFile.getContentType());
-        dto.setSizeBytes(mediaFile.getSizeBytes());
-        dto.setUsage(mediaFile.getUsage());
-        dto.setUrl(mediaFile.getUrl());
-        dto.setUploadedAt(formatInstant(mediaFile.getUploadedAt()));
-        return dto;
+        return mediaAccessService.toSignedDto(mediaFile);
     }
 
     /**

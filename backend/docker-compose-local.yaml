@@ -8,13 +8,32 @@ services:
     ports:
       - "${DEV_POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      test:
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
     volumes:
       - postgres-local-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    command: >
+      redis-server
+      --tcp-keepalive 60
+      --timeout 0
+    ports:
+      - "${DEV_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - redis-local-data:/data
     restart: unless-stopped
 
   mailhog:
@@ -24,5 +43,35 @@ services:
       - "${DEV_MAILHOG_HTTP_PORT:-8025}:8025"
     restart: unless-stopped
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    environment:
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-rustfsadmin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-rustfsadmin}
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS: "*"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - rustfs-local-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh",
+          "-ec",
+          'host="$${RUSTFS_HEALTHCHECK_HOST:-127.0.0.1}"; curl -fsS "http://$${host}:9000/health" && curl -fsS "http://$${host}:9001/rustfs/console/health"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
 volumes:
   postgres-local-data:
+  redis-local-data:
+  rustfs-local-data:

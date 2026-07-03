@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
+import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
@@ -24,15 +26,20 @@ import io.github.layjason.mayoistar.repository.activities.ActivityImageRepositor
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@Import({TestSecurityConfiguration.class, TestStorageConfiguration.class})
 class ActivityDraftServiceTests {
+
+    private static final UUID IMAGE_A_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Autowired
     private ActivityDraftService activityDraftService;
@@ -72,7 +79,7 @@ class ActivityDraftServiceTests {
     @Test
     void saveDraftShouldPersistDraftAndImages() {
         User organizer = saveUser("user-a");
-        MediaFile image = saveMediaFile("image-a", organizer.getUserId());
+        MediaFile image = saveMediaFile(IMAGE_A_ID, organizer.getUserId());
 
         ActivityDtos.ActivityDraftUpsertRequest request = createDraftRequest(List.of(image.getMediaId()));
         ActivityDtos.ActivityDraftDetail draftDetail = activityDraftService.saveDraft(organizer.getUserId(), request);
@@ -344,7 +351,7 @@ class ActivityDraftServiceTests {
                 .build());
     }
 
-    private MediaFile saveMediaFile(String mediaId, String userId) {
+    private MediaFile saveMediaFile(UUID mediaId, String userId) {
         return mediaFileRepository.save(MediaFile.builder()
                 .mediaId(mediaId)
                 .fileName("cover.png")
@@ -358,7 +365,7 @@ class ActivityDraftServiceTests {
                 .build());
     }
 
-    private ActivityDtos.ActivityDraftUpsertRequest createDraftRequest(List<String> imageIds) {
+    private ActivityDtos.ActivityDraftUpsertRequest createDraftRequest(List<UUID> imageIds) {
         ActivityDtos.ActivityDraftUpsertRequest request = new ActivityDtos.ActivityDraftUpsertRequest();
         request.setTitle("桌游局");
         request.setTags(List.of("社交", "桌游"));

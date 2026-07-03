@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.api.common;
 
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
 
 /**
@@ -49,7 +51,7 @@ public final class CommonDtos {
 
     @Data
     public static class MediaFile {
-        private String mediaId;
+        private UUID mediaId;
         private String fileName;
         private String contentType;
         private Long sizeBytes;
@@ -58,13 +60,18 @@ public final class CommonDtos {
         @Nullable
         private String url;
 
+        @Nullable
+        private String signedUrl;
+
+        private MediaVisibility visibility;
+
         @NotNull
         private String uploadedAt;
     }
 
     @Data
     public static class ImageTagConfirmation {
-        private String mediaId;
+        private UUID mediaId;
         private List<String> tags;
     }
 }

@@ -54,7 +54,8 @@ function Invoke-YaakLines {
     if ($script:YaakCliScript) {
         $processInfo.FileName = $script:YaakNodeExecutable
         $processArguments += @($script:YaakCliScript)
-    } else {
+    }
+    else {
         $processInfo.FileName = $script:YaakExecutable
     }
     $processArguments += $Arguments
@@ -63,7 +64,8 @@ function Invoke-YaakLines {
     $processInfo.RedirectStandardError = $true
     if ($null -ne $processInfo.ArgumentList) {
         foreach ($argument in $processArguments) { [void] $processInfo.ArgumentList.Add($argument) }
-    } else {
+    }
+    else {
         $processInfo.Arguments = ($processArguments | ForEach-Object { ConvertTo-WindowsProcessArgument $_ }) -join " "
     }
 
@@ -222,7 +224,8 @@ function Send-YaakRequestJson {
             Write-Host "  Body:"
             Write-Host "  $($req.body.text)"
             $bodyShown = $true
-        } elseif ($req.body.form) {
+        }
+        elseif ($req.body.form) {
             Write-Host "  Body (form):"
             foreach ($f in $req.body.form) {
                 if ($f.enabled) {
@@ -246,7 +249,8 @@ function Send-YaakRequestJson {
     # 解析响应并判断测试结果
     if ([string]::IsNullOrWhiteSpace($respBody)) {
         $resp = [pscustomobject]@{ code = $httpStatus.Code; message = ""; data = @{} }
-    } else {
+    }
+    else {
         $resp = $respBody | ConvertFrom-Json
     }
     $actualCode = $resp.code
@@ -256,7 +260,8 @@ function Send-YaakRequestJson {
         Write-Host "  " -NoNewline
         Write-Host "✓ PASS" -ForegroundColor Green -NoNewline
         Write-Host " (code=$actualCode)"
-    } else {
+    }
+    else {
         $expectedStr = $ExpectedCodes -join ','
         Write-Host "  " -NoNewline
         Write-Host "✗ FAIL" -ForegroundColor Red -NoNewline
@@ -264,11 +269,11 @@ function Send-YaakRequestJson {
     }
 
     [void] $script:testResults.Add(@{
-        Name = $Name
-        Expected = $ExpectedCodes
-        Actual = $actualCode
-        Passed = $passed
-    })
+            Name     = $Name
+            Expected = $ExpectedCodes
+            Actual   = $actualCode
+            Passed   = $passed
+        })
 
     return $resp
 }
@@ -400,16 +405,16 @@ $resp = Send-YaakRequestJson "01.04 Login personal"
 $personalLoginReady = $false
 if ($resp.code -eq 200) {
     Set-YaakEnvironmentVariables -EnvironmentId $script:EnvironmentId -Variables @{
-        personalAccessToken = $resp.data.tokens.accessToken
+        personalAccessToken  = $resp.data.tokens.accessToken
         personalRefreshToken = $resp.data.tokens.refreshToken
-        personalUserId = [string] $resp.data.userId
+        personalUserId       = [string] $resp.data.userId
     }
     $personalLoginReady = $true
     Write-Host "  [env] personalAccessToken 已保存"
 }
 
 Send-YaakRequest "01.05 Duplicate personal email should fail" -ExpectedCodes @(10001)
-Send-YaakRequest "01.06 Profile without token should fail" -ExpectedCodes @(403)
+Send-YaakRequest "01.06 Profile without token should fail" -ExpectedCodes @(401)
 
 if ($personalLoginReady) {
     Send-YaakRequest "01.07 Get personal profile"
@@ -425,7 +430,7 @@ if ($personalLoginReady) {
     $resp = Send-YaakRequestJson "01.11 Refresh personal token"
     if ($resp.code -eq 200) {
         Set-YaakEnvironmentVariables -EnvironmentId $script:EnvironmentId -Variables @{
-            personalAccessToken = $resp.data.accessToken
+            personalAccessToken  = $resp.data.accessToken
             personalRefreshToken = $resp.data.refreshToken
         }
         Write-Host "  [env] tokens 已刷新"
@@ -434,7 +439,8 @@ if ($personalLoginReady) {
     Send-YaakRequest "01.12 Change password with wrong old password" -ExpectedCodes @(10016)
     Send-YaakRequest "01.13 Logout personal"
     Send-YaakRequest "01.14 Refresh after logout should fail" -ExpectedCodes @(10007)
-} else {
+}
+else {
     Write-Skip "个人用户未成功登录，跳过依赖 personalAccessToken 的用例。"
 }
 
@@ -451,9 +457,9 @@ $resp = Send-YaakRequestJson "02.03 Login merchant"
 $merchantLoginReady = $false
 if ($resp.code -eq 200) {
     Set-YaakEnvironmentVariables -EnvironmentId $script:EnvironmentId -Variables @{
-        merchantAccessToken = $resp.data.tokens.accessToken
+        merchantAccessToken  = $resp.data.tokens.accessToken
         merchantRefreshToken = $resp.data.tokens.refreshToken
-        merchantUserId = [string] $resp.data.userId
+        merchantUserId       = [string] $resp.data.userId
     }
     $merchantLoginReady = $true
     Write-Host "  [env] merchantAccessToken 已保存"
@@ -470,13 +476,15 @@ if ($merchantLoginReady) {
         Send-YaakRequest "02.07 Submit merchant qualification"
         Send-YaakRequest "02.08 Get merchant profile after qualification"
     }
-} else {
+}
+else {
     Write-Skip "商家用户未成功登录，跳过依赖 merchantAccessToken 的用例。"
 }
 
 if ($personalLoginReady) {
     Send-YaakRequest "02.09 Personal token cannot access merchant profile" -ExpectedCodes @(403)
-} else {
+}
+else {
     Write-Skip "个人用户未成功登录，跳过个人 token 访问商家接口的权限用例。"
 }
 
@@ -503,10 +511,12 @@ if ($resp.code -eq 200) {
     if ($merchantLoginReady) {
         Send-YaakRequest "04.02 Admin get merchant profile placeholder"
         Send-YaakRequest "04.03 Admin review merchant placeholder"
-    } else {
+    }
+    else {
         Write-Skip "商家用户未成功登录，跳过依赖 merchantUserId 的管理员审核用例。"
     }
-} else {
+}
+else {
     Write-Host "  ⚠ 管理员登录失败，请确认 V2 迁移已执行。" -ForegroundColor Yellow
 }
 

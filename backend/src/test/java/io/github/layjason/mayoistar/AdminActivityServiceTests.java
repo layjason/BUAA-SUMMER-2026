@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
+import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityImage;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
@@ -32,10 +34,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@Import({TestSecurityConfiguration.class, TestStorageConfiguration.class})
 class AdminActivityServiceTests {
 
     @Autowired
@@ -326,8 +330,8 @@ class AdminActivityServiceTests {
     void listActivitiesShouldReturnCoverImage() {
         User organizer = saveUser("user-a");
         Activity activity = saveApprovedActivity(organizer.getUserId(), "带封面活动");
-        MediaFile laterImage = saveMediaFile("media-later", organizer.getUserId(), "later.png");
-        MediaFile coverImage = saveMediaFile("media-cover", organizer.getUserId(), "cover.png");
+        MediaFile laterImage = saveMediaFile(UUID.randomUUID(), organizer.getUserId(), "later.png");
+        MediaFile coverImage = saveMediaFile(UUID.randomUUID(), organizer.getUserId(), "cover.png");
         saveActivityImage(activity.getActivityId(), laterImage.getMediaId(), 2);
         saveActivityImage(activity.getActivityId(), coverImage.getMediaId(), 1);
 
@@ -443,7 +447,7 @@ class AdminActivityServiceTests {
                 .updatedAt(Instant.now());
     }
 
-    private MediaFile saveMediaFile(String mediaId, String userId, String fileName) {
+    private MediaFile saveMediaFile(UUID mediaId, String userId, String fileName) {
         return mediaFileRepository.save(MediaFile.builder()
                 .mediaId(mediaId)
                 .fileName(fileName)
@@ -457,7 +461,7 @@ class AdminActivityServiceTests {
                 .build());
     }
 
-    private ActivityImage saveActivityImage(String activityId, String mediaId, int sortOrder) {
+    private ActivityImage saveActivityImage(String activityId, UUID mediaId, int sortOrder) {
         return activityImageRepository.save(ActivityImage.builder()
                 .imageId(UUID.randomUUID().toString())
                 .activityId(activityId)

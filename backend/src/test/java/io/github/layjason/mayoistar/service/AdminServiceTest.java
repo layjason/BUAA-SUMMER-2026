@@ -39,6 +39,7 @@ import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCountService;
 import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCounts;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -96,6 +97,9 @@ class AdminServiceTest {
     @Mock
     private ActivityRegistrationCountService activityRegistrationCountService;
 
+    @Mock
+    private MediaAccessService mediaAccessService;
+
     private AdminService adminService;
 
     private final String adminId = UUID.randomUUID().toString();
@@ -120,7 +124,8 @@ class AdminServiceTest {
                 teamModerationRecordRepository,
                 reportRepository,
                 reportService,
-                activityRegistrationCountService);
+                activityRegistrationCountService,
+                mediaAccessService);
     }
 
     // ======================== 商家审核 ========================
@@ -722,7 +727,7 @@ class AdminServiceTest {
                 .qualificationId(UUID.randomUUID().toString())
                 .userId(userId)
                 .status(QualificationStatus.pending)
-                .licenseMediaIds(List.of(UUID.randomUUID().toString()))
+                .licenseMediaIds(List.of(UUID.randomUUID()))
                 .submittedAt(Instant.now())
                 .createdAt(Instant.now())
                 .build();

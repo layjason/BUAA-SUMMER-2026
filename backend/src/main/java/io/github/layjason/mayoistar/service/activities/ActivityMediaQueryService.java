@@ -5,10 +5,12 @@ import io.github.layjason.mayoistar.entity.activities.ActivityImage;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class ActivityMediaQueryService {
 
     private final ActivityImageRepository activityImageRepository;
     private final MediaFileRepository mediaFileRepository;
+    private final MediaAccessService mediaAccessService;
 
     /**
      * 加载活动封面图。
@@ -46,8 +49,11 @@ public class ActivityMediaQueryService {
         if (activityImages.isEmpty()) {
             return null;
         }
-        String firstMediaId = activityImages.getFirst().getMediaId();
-        return mediaFileRepository.findById(firstMediaId).map(this::toMediaFile).orElse(null);
+        UUID firstMediaId = activityImages.getFirst().getMediaId();
+        return mediaFileRepository
+                .findById(firstMediaId)
+                .map(mediaAccessService::toSignedDto)
+                .orElse(null);
     }
 
     /**
@@ -68,9 +74,9 @@ public class ActivityMediaQueryService {
         if (activityImages.isEmpty()) {
             return List.of();
         }
-        List<String> mediaIds =
+        List<UUID> mediaIds =
                 activityImages.stream().map(ActivityImage::getMediaId).toList();
-        Map<String, MediaFile> mediaFileMap = mediaFileRepository.findByMediaIdIn(mediaIds).stream()
+        Map<UUID, MediaFile> mediaFileMap = mediaFileRepository.findByMediaIdIn(mediaIds).stream()
                 .collect(Collectors.toMap(MediaFile::getMediaId, mediaFile -> mediaFile));
         return mediaIds.stream().map(mediaFileMap::get).filter(Objects::nonNull).toList();
     }
@@ -88,8 +94,8 @@ public class ActivityMediaQueryService {
      * @return 媒体 ID 到排序值的映射
      */
     @Transactional(readOnly = true)
-    public Map<String, Integer> loadImageSortOrders(String activityId) {
-        Map<String, Integer> sortOrderByMediaId = new LinkedHashMap<>();
+    public Map<UUID, Integer> loadImageSortOrders(String activityId) {
+        Map<UUID, Integer> sortOrderByMediaId = new LinkedHashMap<>();
         for (ActivityImage activityImage : loadActivityImages(activityId)) {
             sortOrderByMediaId.put(activityImage.getMediaId(), activityImage.getSortOrder());
         }
@@ -98,20 +104,5 @@ public class ActivityMediaQueryService {
 
     private List<ActivityImage> loadActivityImages(String activityId) {
         return activityImageRepository.findByActivityIdOrderBySortOrderAsc(activityId);
-    }
-
-    private CommonDtos.MediaFile toMediaFile(MediaFile mediaFile) {
-        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
-        dto.setMediaId(mediaFile.getMediaId());
-        dto.setFileName(mediaFile.getFileName());
-        dto.setContentType(mediaFile.getContentType());
-        dto.setSizeBytes(mediaFile.getSizeBytes());
-        dto.setUsage(mediaFile.getUsage());
-        dto.setUrl(mediaFile.getUrl());
-        dto.setUploadedAt(
-                mediaFile.getUploadedAt() == null
-                        ? null
-                        : mediaFile.getUploadedAt().toString());
-        return dto;
     }
 }

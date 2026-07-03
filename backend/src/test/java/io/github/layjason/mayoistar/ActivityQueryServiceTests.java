@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
+import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
@@ -31,10 +33,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@Import({TestSecurityConfiguration.class, TestStorageConfiguration.class})
 class ActivityQueryServiceTests {
 
     @Autowired
@@ -313,6 +317,133 @@ class ActivityQueryServiceTests {
                 .hasMessageContaining("无效的审核状态筛选条件");
     }
 
+    @Test
+    void listMyRegistrationsShouldOnlyReturnCurrentUsersRegistrations() {
+        User userA = saveUser("user-a");
+        User userB = saveUser("user-b");
+        User organizer = saveUser("organizer");
+        Activity oldActivity = saveApprovedActivity(organizer.getUserId(), "旧报名活动");
+        Activity waitingActivity = saveApprovedActivity(organizer.getUserId(), "候补活动");
+        Activity otherUserActivity = saveApprovedActivity(organizer.getUserId(), "其他用户活动");
+        Instant oldRegisteredAt = Instant.parse("2026-07-02T08:00:00Z");
+        Instant newRegisteredAt = Instant.parse("2026-07-02T09:00:00Z");
+
+        ActivityRegistration oldRegistration = saveRegistration(
+                oldActivity.getActivityId(),
+                userA.getUserId(),
+                RegistrationStatus.registered,
+                null,
+                oldRegisteredAt,
+                null);
+        ActivityRegistration waitingRegistration = saveRegistration(
+                waitingActivity.getActivityId(),
+                userA.getUserId(),
+                RegistrationStatus.waiting,
+                2,
+                newRegisteredAt,
+                null);
+        saveRegistration(
+                otherUserActivity.getActivityId(),
+                userB.getUserId(),
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                null);
+
+        PageResult<ActivityDtos.RegisteredActivitySummary> result =
+                activityQueryService.listMyRegistrations(userA.getUserId(), 1, 20);
+
+        assertThat(result.getTotal()).isEqualTo(2);
+        assertThat(result.getItems()).hasSize(2);
+        assertThat(result.getItems().getFirst().getRegistrationId()).isEqualTo(waitingRegistration.getRegistrationId());
+        assertThat(result.getItems().getFirst().getTitle()).isEqualTo("候补活动");
+        assertThat(result.getItems().getFirst().getRegistrationStatus()).isEqualTo(RegistrationStatus.waiting);
+        assertThat(result.getItems().getFirst().getRegisteredAt()).isEqualTo(newRegisteredAt.toString());
+        assertThat(result.getItems().getFirst().getWaitingRank()).isEqualTo(2);
+        assertThat(result.getItems().getLast().getRegistrationId()).isEqualTo(oldRegistration.getRegistrationId());
+    }
+
+    @Test
+    void listMyRegistrationsShouldDefaultPageParams() {
+        User user = saveUser("user-a");
+
+        PageResult<ActivityDtos.RegisteredActivitySummary> result =
+                activityQueryService.listMyRegistrations(user.getUserId(), null, null);
+
+        assertThat(result.getItems()).isEmpty();
+        assertThat(result.getTotal()).isZero();
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getPageSize()).isEqualTo(20);
+        assertThat(result.getTotalPages()).isZero();
+    }
+
+    @Test
+    void listMyRegistrationsShouldPaginateByRegisteredAtDesc() {
+        User user = saveUser("user-a");
+        User organizer = saveUser("organizer");
+        Activity firstActivity = saveApprovedActivity(organizer.getUserId(), "最早报名");
+        Activity secondActivity = saveApprovedActivity(organizer.getUserId(), "第二报名");
+        Activity thirdActivity = saveApprovedActivity(organizer.getUserId(), "最新报名");
+        saveRegistration(
+                firstActivity.getActivityId(),
+                user.getUserId(),
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T08:00:00Z"),
+                null);
+        saveRegistration(
+                secondActivity.getActivityId(),
+                user.getUserId(),
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T09:00:00Z"),
+                null);
+        saveRegistration(
+                thirdActivity.getActivityId(),
+                user.getUserId(),
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                null);
+
+        PageResult<ActivityDtos.RegisteredActivitySummary> pageOne =
+                activityQueryService.listMyRegistrations(user.getUserId(), 1, 2);
+        PageResult<ActivityDtos.RegisteredActivitySummary> pageTwo =
+                activityQueryService.listMyRegistrations(user.getUserId(), 2, 2);
+
+        assertThat(pageOne.getTotal()).isEqualTo(3);
+        assertThat(pageOne.getTotalPages()).isEqualTo(2);
+        assertThat(pageOne.getItems())
+                .extracting(ActivityDtos.RegisteredActivitySummary::getTitle)
+                .containsExactly("最新报名", "第二报名");
+        assertThat(pageTwo.getItems())
+                .extracting(ActivityDtos.RegisteredActivitySummary::getTitle)
+                .containsExactly("最早报名");
+    }
+
+    @Test
+    void listMyRegistrationsShouldReturnWaitingConfirmationDeadline() {
+        User user = saveUser("user-a");
+        User organizer = saveUser("organizer");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "候补待确认活动");
+        Instant confirmationDeadline = Instant.parse("2026-07-02T10:15:00Z");
+        saveRegistration(
+                activity.getActivityId(),
+                user.getUserId(),
+                RegistrationStatus.waitingConfirmation,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                confirmationDeadline);
+
+        PageResult<ActivityDtos.RegisteredActivitySummary> result =
+                activityQueryService.listMyRegistrations(user.getUserId(), 1, 20);
+
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().getFirst().getRegistrationStatus())
+                .isEqualTo(RegistrationStatus.waitingConfirmation);
+        assertThat(result.getItems().getFirst().getConfirmationDeadline()).isEqualTo(confirmationDeadline.toString());
+    }
+
     // ========== getMapPoints ==========
 
     @Test
@@ -416,6 +547,16 @@ class ActivityQueryServiceTests {
     // ========== 辅助方法 ==========
 
     private ActivityRegistration saveRegistration(String activityId, String userId, RegistrationStatus status) {
+        return saveRegistration(activityId, userId, status, null, Instant.now(), null);
+    }
+
+    private ActivityRegistration saveRegistration(
+            String activityId,
+            String userId,
+            RegistrationStatus status,
+            Integer waitingRank,
+            Instant registeredAt,
+            Instant confirmationDeadline) {
         return activityRegistrationRepository.save(ActivityRegistration.builder()
                 .registrationId(UUID.randomUUID().toString())
                 .activityId(activityId)
@@ -423,7 +564,9 @@ class ActivityQueryServiceTests {
                 .status(status)
                 .participantNote("测试备注")
                 .acceptedSafetyNotice(true)
-                .registeredAt(Instant.now())
+                .waitingRank(waitingRank)
+                .confirmationDeadline(confirmationDeadline)
+                .registeredAt(registeredAt)
                 .build());
     }
 

@@ -3,10 +3,14 @@ name: Frontend CI
 on:
   push:
     paths:
+      - "api-spec/**"
       - "frontend/mayoistar-web/**"
+      - ".github/workflows/frontend-ci.yml"
   pull_request:
     paths:
+      - "api-spec/**"
       - "frontend/mayoistar-web/**"
+      - ".github/workflows/frontend-ci.yml"
 
 jobs:
   frontend-checks:

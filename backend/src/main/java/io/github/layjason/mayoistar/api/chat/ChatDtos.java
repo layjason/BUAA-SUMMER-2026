@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
 
 /**
@@ -31,7 +32,7 @@ public final class ChatDtos {
         private MessageKind kind;
 
         private String text;
-        private String imageMediaId;
+        private UUID imageMediaId;
         private CommonDtos.LocationInfo location;
         private List<String> mentionedUserIds;
         private Boolean mentionAll;
@@ -58,13 +59,13 @@ public final class ChatDtos {
     @Data
     public static class DeleteTeamFilesRequest {
         @NotEmpty
-        private List<String> mediaIds;
+        private List<UUID> mediaIds;
     }
 
     @Data
     public static class DeleteTeamAlbumImagesRequest {
         @NotEmpty
-        private List<String> mediaIds;
+        private List<UUID> mediaIds;
     }
 
     @Data

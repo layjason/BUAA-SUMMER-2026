@@ -4,9 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 
 /**
  * 信誉积分变更记录相关数据库模式测试。
@@ -15,9 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
  *
  * <p>类不变量：测试仅查询内存数据库元数据，不写入业务数据，不连接外部数据库。
  */
-@SpringBootTest
-@ActiveProfiles("test")
-class ReputationSchemaTests {
+class ReputationSchemaTests extends AbstractIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;

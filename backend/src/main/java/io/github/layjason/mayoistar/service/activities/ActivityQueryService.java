@@ -3,14 +3,17 @@ package io.github.layjason.mayoistar.service.activities;
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -18,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -43,6 +47,7 @@ public class ActivityQueryService {
     private final ActivityDtoMapper activityDtoMapper;
     private final ActivityRegistrationCountService activityRegistrationCountService;
     private final ActivityMediaQueryService activityMediaQueryService;
+    private final ActivityRegistrationRepository activityRegistrationRepository;
 
     /**
      * 查询活动详情。
@@ -58,13 +63,14 @@ public class ActivityQueryService {
      * @param userId 当前调用者 ID，未认证时为空
      * @param activityId 活动 ID
      * @return 活动详情
-     * @throws BusinessException 20002 活动不存在或不可见
+     * @throws BusinessException ErrorCodes.ACTIVITY_NOT_VISIBLE 活动不存在或不可见
      */
     @Transactional(readOnly = true)
     public ActivityDtos.ActivityDetail getActivity(Optional<String> userId, String activityId) {
         Activity activity = activityRepository
                 .findById(activityId)
-                .orElseThrow(() -> new BusinessException(20002, "Activity {activityId} is not visible"));
+                .orElseThrow(() ->
+                        new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible"));
         checkVisibility(userId, activity);
 
         ActivityDtos.ActivityDetail detail = loadActivityDetail(activity);
@@ -116,6 +122,55 @@ public class ActivityQueryService {
                 activityPage,
                 activityMediaQueryService::loadCoverImage,
                 activityId -> countsByActivityId.getOrDefault(activityId, ActivityRegistrationCounts.zero()));
+    }
+
+    /**
+     * 查询当前用户报名的活动列表。
+     *
+     * <p>前置条件：userId 非空（调用方已认证）。
+     *
+     * <p>后置条件：分页返回 userId 的报名记录及对应活动摘要，按报名时间倒序。
+     *
+     * <p>不变量：不修改任何持久化数据。
+     *
+     * @param userId 当前调用者 ID
+     * @param page 页码
+     * @param pageSize 每页大小
+     * @return 当前用户报名活动摘要分页结果
+     */
+    @Transactional(readOnly = true)
+    public PageResult<ActivityDtos.RegisteredActivitySummary> listMyRegistrations(
+            String userId, Integer page, Integer pageSize) {
+        int resolvedPage = page == null || page < 1 ? 1 : page;
+        int resolvedPageSize = pageSize == null || pageSize < 1 ? 20 : pageSize;
+        PageRequest pageRequest = PageRequest.of(resolvedPage - 1, resolvedPageSize);
+
+        Page<ActivityRegistration> registrationPage =
+                activityRegistrationRepository.findByUserIdOrderByRegisteredAtDesc(userId, pageRequest);
+        Map<String, ActivityRegistrationCounts> countsByActivityId =
+                activityRegistrationCountService.countByActivityIds(registrationPage.getContent().stream()
+                        .map(ActivityRegistration::getActivityId)
+                        .toList());
+        List<ActivityDtos.RegisteredActivitySummary> items = registrationPage.getContent().stream()
+                .map(registration -> activityDtoMapper.toRegisteredActivitySummary(
+                        registration,
+                        activityMediaQueryService::loadCoverImage,
+                        countsByActivityId.getOrDefault(
+                                registration.getActivityId(), ActivityRegistrationCounts.zero())))
+                .toList();
+
+        log.debug(
+                "已查询我的报名列表，userId={}, page={}, pageSize={}, total={}",
+                sanitizeForLog(userId),
+                resolvedPage,
+                resolvedPageSize,
+                registrationPage.getTotalElements());
+        return new PageResult<>(
+                items,
+                registrationPage.getTotalElements(),
+                registrationPage.getNumber() + 1,
+                registrationPage.getSize(),
+                registrationPage.getTotalPages());
     }
 
     private String sanitizeForLog(String value) {
@@ -244,7 +299,7 @@ public class ActivityQueryService {
      *
      * <p>前置条件：activity 非空且已持久化。
      *
-     * <p>后置条件：可见时正常返回，不可见时抛出 20002。
+     * <p>后置条件：可见时正常返回，不可见时抛出 ErrorCodes.ACTIVITY_NOT_VISIBLE。
      *
      * <p>可见性规则：
      * <ul>
@@ -262,7 +317,7 @@ public class ActivityQueryService {
         if (userId.isPresent() && userId.get().equals(activity.getOrganizerId())) {
             return;
         }
-        throw new BusinessException(20002, "Activity {activityId} is not visible");
+        throw new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible");
     }
 
     /**
@@ -270,8 +325,7 @@ public class ActivityQueryService {
      */
     private ActivityDtos.ActivityDetail loadActivityDetail(Activity activity) {
         List<MediaFile> mediaFiles = activityMediaQueryService.loadMediaFiles(activity.getActivityId());
-        Map<String, Integer> sortOrderByMediaId =
-                activityMediaQueryService.loadImageSortOrders(activity.getActivityId());
+        Map<UUID, Integer> sortOrderByMediaId = activityMediaQueryService.loadImageSortOrders(activity.getActivityId());
         String organizerName = userRepository
                 .findById(activity.getOrganizerId())
                 .map(user -> user.getNickname())
@@ -296,7 +350,7 @@ public class ActivityQueryService {
         try {
             return ActivityReviewStatus.valueOf(status);
         } catch (IllegalArgumentException e) {
-            throw new BusinessException(20004, "无效的审核状态筛选条件：" + status);
+            throw new BusinessException(ErrorCodes.INVALID_ACTIVITY_SCHEDULE, "无效的审核状态筛选条件：" + status);
         }
     }
 

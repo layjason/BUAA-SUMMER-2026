@@ -2,10 +2,15 @@ package io.github.layjason.mayoistar.repository.activities;
 
 import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -34,6 +39,9 @@ public interface ActivityRegistrationRepository extends JpaRepository<ActivityRe
             @Param("activityIds") Collection<String> activityIds,
             @Param("statuses") Collection<RegistrationStatus> statuses);
 
+    @EntityGraph(attributePaths = "activity")
+    Page<ActivityRegistration> findByUserIdOrderByRegisteredAtDesc(String userId, Pageable pageable);
+
     long countByActivityIdAndStatusIn(String activityId, Collection<RegistrationStatus> statuses);
 
     List<ActivityRegistration> findByActivityIdAndStatusIn(String activityId, Collection<RegistrationStatus> statuses);
@@ -43,4 +51,33 @@ public interface ActivityRegistrationRepository extends JpaRepository<ActivityRe
 
     List<ActivityRegistration> findByActivityIdAndStatusOrderByWaitingRankAscRegisteredAtAsc(
             String activityId, RegistrationStatus status);
+
+    /**
+     * 分页查询活动的所有报名记录。
+     *
+     * @param activityId 活动 ID
+     * @param pageable   分页参数
+     * @return 分页报名记录
+     */
+    Page<ActivityRegistration> findByActivityId(String activityId, Pageable pageable);
+
+    /**
+     * 按签到时间升序查询活动的所有报名记录，用于导出。
+     *
+     * @param activityId 活动 ID
+     * @return 报名记录列表
+     */
+    List<ActivityRegistration> findByActivityIdOrderByCheckedInAtAsc(String activityId);
+
+    /**
+     * 按活动 ID 和用户 ID 加悲观写锁读取报名记录，用于签到流程防止重复签到。
+     *
+     * @param activityId 活动 ID
+     * @param userId     用户 ID
+     * @return 报名记录
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select ar from ActivityRegistration ar where ar.activityId = :activityId and ar.userId = :userId")
+    Optional<ActivityRegistration> findByActivityIdAndUserIdForUpdate(
+            @Param("activityId") String activityId, @Param("userId") String userId);
 }

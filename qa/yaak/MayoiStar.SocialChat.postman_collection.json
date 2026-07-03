@@ -945,7 +945,7 @@
                 {
                   "key": "file",
                   "type": "file",
-                  "src": "qa/yaak/fixtures/chat-image.txt"
+                  "src": "{{chatImageFile}}"
                 }
               ]
             },
@@ -1171,6 +1171,800 @@
                 "conversations",
                 "{{conversationId}}",
                 "messages"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 小队管理",
+      "item": [
+        {
+          "name": "创建公开小队",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"MyGO!!!!!\", \"tags\": [\"音楽\", \"バンド\"], \"joinMode\": \"publicJoin\", \"capacity\": 20, \"description\": \"迷子でも、進み続ける。\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams"
+              ]
+            }
+          }
+        },
+        {
+          "name": "搜索小队（按关键词）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/teams?keyword=MyGO&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "MyGO"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "搜索小队（按标签）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/teams?tags=音楽&tags=バンド&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams"
+              ],
+              "query": [
+                {
+                  "key": "tags",
+                  "value": "音楽"
+                },
+                {
+                  "key": "tags",
+                  "value": "バンド"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取小队详情",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取小队成员列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}/members?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}",
+                "members"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取积分榜",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}/points?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}",
+                "points"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "退出小队",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}/leave",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}",
+                "leave"
+              ]
+            }
+          }
+        },
+        {
+          "name": "创建审核制小队",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"CRYCHIC\", \"tags\": [\"音楽\", \"再結成\"], \"joinMode\": \"approvalRequired\", \"capacity\": 5, \"description\": \"もう一度、あの頃のように。\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams"
+              ]
+            }
+          }
+        },
+        {
+          "name": "加入审核制小队",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"message\": \"ギター、やる\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}/join",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}",
+                "join"
+              ]
+            }
+          }
+        },
+        {
+          "name": "查看入队申请列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}/join-requests?status=pending&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}",
+                "join-requests"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "同意入队申请",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"accepted\": true}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}/join-requests/{{requestId}}/decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}",
+                "join-requests",
+                "{{requestId}}",
+                "decision"
+              ]
+            }
+          }
+        },
+        {
+          "name": "拒绝入队申请",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"accepted\": false}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}/join-requests/{{requestId}}/decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}",
+                "join-requests",
+                "{{requestId}}",
+                "decision"
+              ]
+            }
+          }
+        },
+        {
+          "name": "调整成员为管理员",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"role\": \"admin\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}/members/{{memberId}}/role",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}",
+                "members",
+                "{{memberId}}",
+                "role"
+              ]
+            }
+          }
+        },
+        {
+          "name": "转让队长",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"role\": \"leader\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}/members/{{memberId}}/role",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}",
+                "members",
+                "{{memberId}}",
+                "role"
+              ]
+            }
+          }
+        },
+        {
+          "name": "解散小队",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "发布群公告",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"content\": \"今週の練習は水曜日、18:00から。遅れないでください。\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/teams/{{teamId}}/announcements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "teams",
+                "{{teamId}}",
+                "announcements"
+              ]
+            }
+          }
+        },
+        {
+          "name": "标记公告已读",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/teams/{{teamId}}/announcements/{{announcementId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "teams",
+                "{{teamId}}",
+                "announcements",
+                "{{announcementId}}",
+                "read"
+              ]
+            }
+          }
+        },
+        {
+          "name": "创建群投票",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"合宿の行き先は？\", \"options\": [\"軽井沢\", \"箱根\", \"熱海\"], \"deadline\": \"2099-12-31T23:59:59Z\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/teams/{{teamId}}/polls",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "teams",
+                "{{teamId}}",
+                "polls"
+              ]
+            }
+          }
+        },
+        {
+          "name": "参与群投票",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"optionId\": \"{{optionId}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/teams/{{teamId}}/polls/{{pollId}}/votes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "teams",
+                "{{teamId}}",
+                "polls",
+                "{{pollId}}",
+                "votes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "上传群文件",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "// multipart form-data: {\"file\": \"@test-file.txt\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/teams/{{teamId}}/files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "teams",
+                "{{teamId}}",
+                "files"
+              ]
+            }
+          }
+        },
+        {
+          "name": "查看群文件",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/teams/{{teamId}}/files?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "teams",
+                "{{teamId}}",
+                "files"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "删除群文件",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mediaIds\": [\"{{mediaId}}\"]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/teams/{{teamId}}/files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "teams",
+                "{{teamId}}",
+                "files"
+              ]
+            }
+          }
+        },
+        {
+          "name": "创建队内活动",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"MyGO!!!!! 1st Live 「迷子の叫び」\", \"tags\": [\"ライブ\", \"音楽\"], \"startAt\": \"2099-07-15T18:00:00Z\", \"endAt\": \"2099-07-15T21:00:00Z\", \"location\": {\"point\": {\"longitude\": 139.691, \"latitude\": 35.689}, \"city\": \"東京\", \"address\": \"新宿区\", \"placeName\": \"Zepp Shinjuku\"}, \"introduction\": \"MyGO!!!!! 初めてのワンマンライブ！\", \"safetyNotice\": \"熱中症に注意、水分補給を忘れずに\", \"capacity\": 100, \"registrationDeadline\": \"2099-07-14T12:00:00Z\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}/activities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}",
+                "activities"
+              ]
+            }
+          }
+        },
+        {
+          "name": "查看队内活动列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}/activities?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}",
+                "activities"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "查看队内活动详情",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/teams/{{teamId}}/activities/{{activityId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "teams",
+                "{{teamId}}",
+                "activities",
+                "{{activityId}}"
               ]
             }
           }

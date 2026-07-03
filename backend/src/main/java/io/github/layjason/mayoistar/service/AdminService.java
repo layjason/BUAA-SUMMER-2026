@@ -41,6 +41,7 @@ import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCountService;
 import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCounts;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -85,6 +86,7 @@ public class AdminService {
     private final ReportRepository reportRepository;
     private final ReportService reportService;
     private final ActivityRegistrationCountService activityRegistrationCountService;
+    private final MediaAccessService mediaAccessService;
 
     /**
      * @param userRepository                   用户数据访问
@@ -101,6 +103,7 @@ public class AdminService {
      * @param reportRepository                 举报数据访问
      * @param reportService                    举报服务
      * @param activityRegistrationCountService 活动报名计数服务
+     * @param mediaAccessService               媒体访问签名服务
      */
     public AdminService(
             UserRepository userRepository,
@@ -116,7 +119,8 @@ public class AdminService {
             TeamModerationRecordRepository teamModerationRecordRepository,
             ReportRepository reportRepository,
             ReportService reportService,
-            ActivityRegistrationCountService activityRegistrationCountService) {
+            ActivityRegistrationCountService activityRegistrationCountService,
+            MediaAccessService mediaAccessService) {
         this.userRepository = userRepository;
         this.merchantProfileRepository = merchantProfileRepository;
         this.qualificationRepository = qualificationRepository;
@@ -131,6 +135,7 @@ public class AdminService {
         this.reportRepository = reportRepository;
         this.reportService = reportService;
         this.activityRegistrationCountService = activityRegistrationCountService;
+        this.mediaAccessService = mediaAccessService;
     }
 
     // ======================== 商家管理 ========================
@@ -1140,11 +1145,13 @@ public class AdminService {
             if (qualification.getLicenseMediaIds() != null
                     && !qualification.getLicenseMediaIds().isEmpty()) {
                 List<String> urls = new ArrayList<>();
-                for (String licenseId : qualification.getLicenseMediaIds()) {
+                for (UUID licenseId : qualification.getLicenseMediaIds()) {
                     mediaFileRepository
                             .findById(licenseId)
                             .ifPresentOrElse(
-                                    mf -> urls.add(mf.getUrl() != null ? mf.getUrl() : ""), () -> urls.add(""));
+                                    mf -> urls.add(
+                                            mediaAccessService.toSignedDto(mf).getSignedUrl()),
+                                    () -> urls.add(""));
                 }
                 detail.setLicenseImageUrls(urls);
             }

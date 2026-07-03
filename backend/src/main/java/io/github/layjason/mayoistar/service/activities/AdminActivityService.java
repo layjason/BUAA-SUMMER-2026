@@ -287,8 +287,7 @@ public class AdminActivityService {
      */
     private ActivityDtos.ActivityDetail loadActivityDetail(Activity activity) {
         List<MediaFile> mediaFiles = activityMediaQueryService.loadMediaFiles(activity.getActivityId());
-        Map<String, Integer> sortOrderByMediaId =
-                activityMediaQueryService.loadImageSortOrders(activity.getActivityId());
+        Map<UUID, Integer> sortOrderByMediaId = activityMediaQueryService.loadImageSortOrders(activity.getActivityId());
         String organizerName = userRepository
                 .findById(activity.getOrganizerId())
                 .map(user -> user.getNickname())

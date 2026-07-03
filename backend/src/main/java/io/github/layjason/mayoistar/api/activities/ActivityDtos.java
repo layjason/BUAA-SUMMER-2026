@@ -17,7 +17,9 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 public final class ActivityDtos {
 
@@ -66,7 +68,9 @@ public final class ActivityDtos {
         @Min(0)
         private Integer minAge;
 
-        private List<String> imageIds;
+        private List<UUID> imageIds;
+
+        private Boolean requireLocationCheck;
     }
 
     @Data
@@ -86,7 +90,9 @@ public final class ActivityDtos {
         private BigDecimal feeAmount;
         private String feeDescription;
         private Integer minAge;
-        private List<String> imageIds;
+        private List<UUID> imageIds;
+
+        private Boolean requireLocationCheck;
     }
 
     @Data
@@ -121,7 +127,7 @@ public final class ActivityDtos {
         private String content;
 
         @NotEmpty
-        private List<String> imageIds;
+        private List<UUID> imageIds;
 
         @NotEmpty
         private List<CommonDtos.ImageTagConfirmation> confirmedImageTags;
@@ -154,6 +160,17 @@ public final class ActivityDtos {
         private Integer registeredCount;
         private Integer occupiedCount;
         private Integer capacity;
+        private Boolean requireLocationCheck;
+    }
+
+    @Data
+    @EqualsAndHashCode(callSuper = true)
+    public static class RegisteredActivitySummary extends ActivitySummary {
+        private String registrationId;
+        private RegistrationStatus registrationStatus;
+        private String registeredAt;
+        private Integer waitingRank;
+        private String confirmationDeadline;
     }
 
     @Data
@@ -191,6 +208,7 @@ public final class ActivityDtos {
         private String feeDescription;
         private Integer minAge;
         private List<ReviewRecord> reviewRecords;
+        private Boolean requireLocationCheck;
     }
 
     @Data
@@ -212,6 +230,7 @@ public final class ActivityDtos {
         private ActivityReviewStatus reviewStatus;
         private String updatedAt;
         private String createdAt;
+        private Boolean requireLocationCheck;
     }
 
     @Data

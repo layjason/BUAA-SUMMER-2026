@@ -3,6 +3,8 @@ set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://127.0.0.1:8080}"
 YAAK_DATA_DIR="${YAAK_DATA_DIR:-/tmp/mayoistar-social-chat-yaak}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CHAT_IMAGE_FILE="${CHAT_IMAGE_FILE:-$SCRIPT_DIR/test-avatar.png}"
 
 TEST_USER_EMAIL="test_user@mayoistar.qa"
 TEST_USER_PASSWORD="4g9Pf6KNpw4rxe3NL7hij9l2"
@@ -51,6 +53,11 @@ require_command() {
 require_command yaak
 require_command jq
 
+if [[ ! -f "$CHAT_IMAGE_FILE" ]]; then
+  echo "聊天图片测试文件不存在: $CHAT_IMAGE_FILE" >&2
+  exit 1
+fi
+
 create_workspace() {
   local output
   output=$(yaak --data-dir "$YAAK_DATA_DIR" workspace create --json '{"name":"MayoiStar Social Chat CLI Smoke"}')
@@ -71,6 +78,7 @@ create_environment() {
     --arg testUserId "$TEST_USER_ID" \
     --arg testPeerId "$TEST_PEER_ID" \
     --arg adminUserId "$ADMIN_USER_ID" \
+    --arg chatImageFile "$CHAT_IMAGE_FILE" \
     '{
       workspaceId: $workspaceId,
       name: "Local",
@@ -92,7 +100,8 @@ create_environment() {
         {name:"conversationId", value:""},
         {name:"messageId", value:""},
         {name:"reportId", value:""},
-        {name:"chatImageMediaId", value:"media-placeholder"}
+        {name:"chatImageMediaId", value:""},
+        {name:"chatImageFile", value:$chatImageFile}
       ]
     }' > /tmp/mayoistar-yaak-env.json
   yaak --data-dir "$YAAK_DATA_DIR" environment create --json "$(cat /tmp/mayoistar-yaak-env.json)" | awk '{print $3}'
@@ -140,6 +149,52 @@ create_request() {
       authentication: $authentication
     }
     + (if $body == "" then {} else {bodyType:"application/json", body:{text:$body}} end)' > /tmp/mayoistar-yaak-request.json
+
+  yaak --data-dir "$YAAK_DATA_DIR" request create "$workspace_id" --json "$(cat /tmp/mayoistar-yaak-request.json)" | awk '{print $3}'
+}
+
+# 前置条件：file_path 指向存在的本地文件；后置条件：创建 multipart/form-data 请求；不变量：认证配置与 create_request 保持一致。
+create_multipart_request() {
+  local workspace_id="$1"
+  local folder_id="$2"
+  local name="$3"
+  local method="$4"
+  local url="$5"
+  local token_var="${6:-}"
+  local file_path="$7"
+
+  local auth_type="null"
+  local auth="{}"
+  if [[ -n "$token_var" ]]; then
+    auth_type='"bearer"'
+    auth=$(jq -n --arg token "\${[ $token_var ]}" '{token:$token,prefix:"Bearer"}')
+  fi
+
+  jq -n \
+    --arg workspaceId "$workspace_id" \
+    --arg folderId "$folder_id" \
+    --arg name "$name" \
+    --arg method "$method" \
+    --arg url "$url" \
+    --arg filePath "$file_path" \
+    --argjson authenticationType "$auth_type" \
+    --argjson authentication "$auth" \
+    '{
+      workspaceId: $workspaceId,
+      folderId: $folderId,
+      name: $name,
+      method: $method,
+      url: $url,
+      headers: [],
+      authenticationType: $authenticationType,
+      authentication: $authentication,
+      bodyType: "multipart/form-data",
+      body: {
+        form: [
+          {name: "file", file: $filePath, enabled: true}
+        ]
+      }
+    }' > /tmp/mayoistar-yaak-request.json
 
   yaak --data-dir "$YAAK_DATA_DIR" request create "$workspace_id" --json "$(cat /tmp/mayoistar-yaak-request.json)" | awk '{print $3}'
 }
@@ -261,6 +316,8 @@ list_my_reports=$(create_request "$workspace_id" "$social_folder" "我的举报"
 list_conversations=$(create_request "$workspace_id" "$chat_folder" "会话列表" "GET" "${BASE_URL}/chat/conversations?page=1&pageSize=20" "userAccessToken")
 send_text=$(create_request "$workspace_id" "$chat_folder" "发送文字消息" "POST" "${BASE_URL}"'/chat/conversations/${[ conversationId ]}/messages' "userAccessToken" '{"kind":"text","text":"Hello from Yaak CLI"}')
 send_emoji=$(create_request "$workspace_id" "$chat_folder" "发送表情文本消息" "POST" "${BASE_URL}"'/chat/conversations/${[ conversationId ]}/messages' "userAccessToken" '{"kind":"text","text":"😀⭐"}')
+upload_chat_image=$(create_multipart_request "$workspace_id" "$chat_folder" "上传聊天图片" "POST" "${BASE_URL}/chat/media/images" "userAccessToken" "$CHAT_IMAGE_FILE")
+send_image=$(create_request "$workspace_id" "$chat_folder" "发送图片消息" "POST" "${BASE_URL}"'/chat/conversations/${[ conversationId ]}/messages' "userAccessToken" '{"kind":"image","imageMediaId":"${[ chatImageMediaId ]}"}')
 mark_read=$(create_request "$workspace_id" "$chat_folder" "标记已读" "POST" "${BASE_URL}/chat/messages/read" "peerAccessToken" '{"messageIds":["${[ messageId ]}"]}')
 forward_message=$(create_request "$workspace_id" "$chat_folder" "转发消息" "POST" "${BASE_URL}"'/chat/messages/${[ messageId ]}/forward' "userAccessToken" '{"targetConversationIds":["${[ conversationId ]}"]}')
 recall_message=$(create_request "$workspace_id" "$chat_folder" "撤回消息" "POST" "${BASE_URL}"'/chat/messages/${[ messageId ]}/recall' "userAccessToken")
@@ -452,6 +509,27 @@ assert_jq_equals "$response" '.data.conversationId' "$conversation_id"
 assert_jq_equals "$response" '.data.senderId' "$TEST_USER_ID"
 assert_jq_equals "$response" '.data.kind' "text"
 assert_jq_equals "$response" '.data.text' "😀⭐"
+assert_jq_equals "$response" '.data.recalled' "false"
+pass_test
+
+begin_test "上传聊天图片"
+response=$(send_json "$upload_chat_image" "$environment_id")
+assert_code "$response" "200"
+assert_jq_non_empty "$response" '.data.mediaId'
+assert_jq_equals "$response" '.data.usage' "chatImage"
+assert_jq_non_empty "$response" '.data.url'
+chat_image_media_id=$(echo "$response" | jq -r '.data.mediaId')
+set_env_var "$environment_id" "chatImageMediaId" "$chat_image_media_id"
+pass_test
+
+begin_test "发送图片消息"
+response=$(send_json "$send_image" "$environment_id")
+assert_code "$response" "200"
+assert_jq_non_empty "$response" '.data.messageId'
+assert_jq_equals "$response" '.data.conversationId' "$conversation_id"
+assert_jq_equals "$response" '.data.senderId' "$TEST_USER_ID"
+assert_jq_equals "$response" '.data.kind' "image"
+assert_jq_equals "$response" '.data.imageMediaId' "$chat_image_media_id"
 assert_jq_equals "$response" '.data.recalled' "false"
 pass_test
 
