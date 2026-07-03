@@ -65,6 +65,26 @@ class MediaControllerTest {
         verifyNoMoreInteractions(mediaAccessService);
     }
 
+    @Test
+    @DisplayName("缺少签名参数时委托服务按无效签名处理")
+    void shouldDelegateMissingSignatureAsNull() {
+        UUID mediaId = UUID.randomUUID();
+        MediaAccessDescriptor descriptor = buildDescriptor(mediaId);
+        InputStream inputStream = new ByteArrayInputStream("image-data".getBytes());
+
+        when(mediaAccessService.loadDescriptor(mediaId)).thenReturn(descriptor);
+        when(mediaAccessService.openSignedContent(mediaId, 1L, MediaAccessPolicy.publicAccess, "", null, null))
+                .thenReturn(inputStream);
+
+        ResponseEntity<?> response =
+                mediaController.getMediaFile(mediaId, 1L, MediaAccessPolicy.publicAccess, "", null, null);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(mediaAccessService).loadDescriptor(mediaId);
+        verify(mediaAccessService).openSignedContent(mediaId, 1L, MediaAccessPolicy.publicAccess, "", null, null);
+        verifyNoMoreInteractions(mediaAccessService);
+    }
+
     private MediaAccessDescriptor buildDescriptor(UUID mediaId) {
         return new MediaAccessDescriptor(
                 mediaId,

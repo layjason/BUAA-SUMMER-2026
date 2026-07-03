@@ -83,7 +83,7 @@ public class MediaAccessService {
      * @param accessVersion  URL 中的访问版本
      * @param policy         URL 中的访问策略
      * @param scope          URL 中的访问作用域
-     * @param signature      URL 签名
+     * @param signature      URL 签名，可为空
      * @param authentication 当前认证信息，可为空
      * @return 文件输入流
      */
@@ -92,15 +92,14 @@ public class MediaAccessService {
             long accessVersion,
             MediaAccessPolicy policy,
             @Nullable String scope,
-            String signature,
+            @Nullable String signature,
             @Nullable Authentication authentication) {
-        if (!verifySignature(mediaId, accessVersion, policy, normalizeScope(scope), signature)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Permission is denied");
-        }
-
         MediaAccessDescriptor descriptor = loadDescriptor(mediaId);
         if (descriptor.deletedAt() != null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found");
+        }
+        if (!verifySignature(mediaId, accessVersion, policy, normalizeScope(scope), signature)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Permission is denied");
         }
         if (descriptor.accessVersion() != accessVersion
                 || descriptor.policy() != policy
@@ -328,7 +327,10 @@ public class MediaAccessService {
     }
 
     private boolean verifySignature(
-            UUID mediaId, long accessVersion, MediaAccessPolicy policy, String scope, String signature) {
+            UUID mediaId, long accessVersion, MediaAccessPolicy policy, String scope, @Nullable String signature) {
+        if (signature == null || signature.isBlank()) {
+            return false;
+        }
         String expected = createSignature(mediaId, accessVersion, policy, scope);
         return MessageDigest.isEqual(
                 expected.getBytes(StandardCharsets.UTF_8), signature.getBytes(StandardCharsets.UTF_8));

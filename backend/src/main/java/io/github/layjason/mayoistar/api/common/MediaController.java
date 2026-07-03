@@ -63,7 +63,7 @@ public class MediaController {
             @RequestParam("v") long accessVersion,
             @RequestParam MediaAccessPolicy policy,
             @RequestParam(defaultValue = "") String scope,
-            @RequestParam String sig,
+            @RequestParam(required = false) String sig,
             Authentication authentication) {
         InputStream inputStream =
                 mediaAccessService.openSignedContent(mediaId, accessVersion, policy, scope, sig, authentication);

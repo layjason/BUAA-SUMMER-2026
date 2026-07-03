@@ -150,6 +150,12 @@ public class ChatService {
         initializeReadStatus(savedMessage.getMessageId(), conversationId, senderId);
 
         ChatDtos.ChatMessage result = toChatMessageDto(savedMessage, MessageReadStatus.read);
+        if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
+            mediaFileRepository
+                    .findById(request.getImageMediaId())
+                    .map(this::toMediaFileDto)
+                    .ifPresent(result::setImage);
+        }
         notificationService.notifyMessageCreated(result, getRecipientUserIds(conversationId, senderId));
         return result;
     }
