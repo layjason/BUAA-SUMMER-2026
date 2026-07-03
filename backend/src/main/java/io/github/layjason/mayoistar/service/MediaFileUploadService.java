@@ -194,19 +194,6 @@ public class MediaFileUploadService {
         }
     }
 
-    private CommonDtos.MediaFile toDto(MediaFile mediaFile) {
-        CommonDtos.MediaFile result = new CommonDtos.MediaFile();
-        result.setMediaId(mediaFile.getMediaId());
-        result.setFileName(mediaFile.getFileName());
-        result.setContentType(mediaFile.getContentType());
-        result.setSizeBytes(mediaFile.getSizeBytes());
-        result.setUsage(mediaFile.getUsage());
-        result.setVisibility(mediaFile.getVisibility());
-        result.setUrl(mediaFile.getUrl());
-        result.setUploadedAt(mediaFile.getUploadedAt().toString());
-        return result;
-    }
-
     private static MediaVisibility defaultVisibility(MediaUsage usage) {
         return switch (usage) {
             case avatar, activityImage, summaryImage -> MediaVisibility.publicVisible;

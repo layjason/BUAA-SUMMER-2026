@@ -50,6 +50,7 @@ import io.github.layjason.mayoistar.repository.TeamPointRecordRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -89,6 +90,7 @@ public class TeamService {
     private final UserRepository userRepository;
     private final MediaFileRepository mediaFileRepository;
     private final TeamMediaFileRepository teamMediaFileRepository;
+    private final MediaAccessService mediaAccessService;
     private final ActivityRepository activityRepository;
     private final ActivityImageRepository activityImageRepository;
 
@@ -1138,14 +1140,6 @@ public class TeamService {
     }
 
     private CommonDtos.MediaFile toMediaFileDto(MediaFile entity) {
-        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
-        dto.setMediaId(entity.getMediaId());
-        dto.setFileName(entity.getFileName());
-        dto.setContentType(entity.getContentType());
-        dto.setSizeBytes(entity.getSizeBytes());
-        dto.setUsage(entity.getUsage());
-        dto.setUrl(entity.getUrl());
-        dto.setUploadedAt(entity.getUploadedAt().toString());
-        return dto;
+        return mediaAccessService.toSignedDto(entity);
     }
 }
