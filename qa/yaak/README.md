@@ -1,5 +1,7 @@
 # MayoiStar Yaak 测试说明
 
+- Version: 10 20260703 153000
+  - 统一 AI 测试脚本的 yaak 调用方式与服务检查风格，修复按名称查找请求的 bug
 - Version: 9 20260703 150620
   - 新增 AI 图片分类接口测试集合，包含 Postman 集合、环境模板、启动脚本和全量自动化测试脚本
 - Version: 8 20260703 005632
@@ -246,14 +248,14 @@ bash qa/yaak/run-social-chat-tests.sh
 3. 启动 Python CLIP 边车服务：
 
    ```bash
-   cd ../clip-service
+   cd clip-service
    python main.py
    ```
 
    或使用 Docker（需 GPU）：
 
    ```bash
-   cd ../clip-service
+   cd clip-service
    docker compose up -d
    ```
 
