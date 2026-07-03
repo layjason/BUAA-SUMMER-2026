@@ -17,6 +17,7 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -27,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +56,7 @@ public class ActivityQueryService {
     private final UserRepository userRepository;
     private final ActivityDtoMapper activityDtoMapper;
     private final ActivityRegistrationRepository activityRegistrationRepository;
+    private final MediaAccessService mediaAccessService;
 
     /**
      * 查询活动详情。
@@ -279,7 +282,7 @@ public class ActivityQueryService {
         List<ActivityImage> activityImages =
                 activityImageRepository.findByActivityIdOrderBySortOrderAsc(activity.getActivityId());
         List<MediaFile> mediaFiles = loadMediaFiles(activityImages);
-        Map<String, Integer> sortOrderByMediaId = new LinkedHashMap<>();
+        Map<UUID, Integer> sortOrderByMediaId = new LinkedHashMap<>();
         for (ActivityImage activityImage : activityImages) {
             sortOrderByMediaId.put(activityImage.getMediaId(), activityImage.getSortOrder());
         }
@@ -315,23 +318,10 @@ public class ActivityQueryService {
         if (activityImages.isEmpty()) {
             return null;
         }
-        String firstMediaId = activityImages.getFirst().getMediaId();
+        UUID firstMediaId = activityImages.getFirst().getMediaId();
         return mediaFileRepository
                 .findById(firstMediaId)
-                .map(mediaFile -> {
-                    CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
-                    dto.setMediaId(mediaFile.getMediaId());
-                    dto.setFileName(mediaFile.getFileName());
-                    dto.setContentType(mediaFile.getContentType());
-                    dto.setSizeBytes(mediaFile.getSizeBytes());
-                    dto.setUsage(mediaFile.getUsage());
-                    dto.setUrl(mediaFile.getUrl());
-                    dto.setUploadedAt(
-                            mediaFile.getUploadedAt() == null
-                                    ? null
-                                    : mediaFile.getUploadedAt().toString());
-                    return dto;
-                })
+                .map(mediaAccessService::toSignedDto)
                 .orElse(null);
     }
 
@@ -339,9 +329,9 @@ public class ActivityQueryService {
         if (activityImages.isEmpty()) {
             return List.of();
         }
-        List<String> mediaIds =
+        List<UUID> mediaIds =
                 activityImages.stream().map(ActivityImage::getMediaId).toList();
-        Map<String, MediaFile> mediaFileMap = mediaFileRepository.findByMediaIdIn(mediaIds).stream()
+        Map<UUID, MediaFile> mediaFileMap = mediaFileRepository.findByMediaIdIn(mediaIds).stream()
                 .collect(Collectors.toMap(MediaFile::getMediaId, mediaFile -> mediaFile));
         return mediaIds.stream().map(mediaFileMap::get).filter(Objects::nonNull).toList();
     }

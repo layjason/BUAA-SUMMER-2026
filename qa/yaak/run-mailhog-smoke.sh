@@ -382,7 +382,7 @@ if [[ "$(echo "$RESP" | jq -r '.code')" == "200" ]]; then
 fi
 
 send_yaak_request "01.05 Duplicate personal email should fail" "10001"
-send_yaak_request "01.06 Profile without token should fail" "403"
+send_yaak_request "01.06 Profile without token should fail" "401"
 
 if [[ "$PERSONAL_LOGIN_READY" == "true" ]]; then
     send_yaak_request "01.07 Get personal profile"

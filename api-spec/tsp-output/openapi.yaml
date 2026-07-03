@@ -10,6 +10,7 @@ tags:
   - name: 好友社群
   - name: 即时通讯
   - name: 后台管理
+  - name: 通用
 paths:
   /activities/drafts:
     post:
@@ -4842,6 +4843,27 @@ paths:
         - 身份与资料
       security:
         - {}
+  /media/{mediaId}:
+    get:
+      operationId: CommonOperations_getMediaFile
+      description: 根据媒体文件标识获取文件内容，成功时固定返回 200 和原始二进制流，Content-Type 根据上传时的 MIME 类型设置。
+      parameters:
+        - name: mediaId
+          in: path
+          required: true
+          description: 媒体文件标识
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+      tags:
+        - 通用
   /social/blacklist:
     get:
       operationId: SocialOperations_listBlacklist
@@ -11617,6 +11639,13 @@ components:
         url:
           type: string
           description: 访问地址。
+        signedUrl:
+          type: string
+          description: 签名访问地址，客户端不得作为永久地址保存。
+        visibility:
+          allOf:
+            - $ref: '#/components/schemas/MediaVisibility'
+          description: 媒体可见性。
         uploadedAt:
           allOf:
             - $ref: '#/components/schemas/DateTimeString'
@@ -11643,6 +11672,12 @@ components:
         - summaryImage
         - activityReviewImage
       description: 媒体用途。
+    MediaVisibility:
+      type: string
+      enum:
+        - publicVisible
+        - privateVisible
+      description: 媒体可见性。
     ReviewDecisionRequest:
       type: object
       required:

@@ -19,5 +19,25 @@ done < "$ENV_FILE"
 export SPRING_PROFILES_ACTIVE=dev
 export SPRING_CONFIG_IMPORT="optional:file:.env.mailhog.example[.properties]"
 
+STORAGE_HOST="${MAYOISTAR_S3_HOST:-localhost}"
+STORAGE_PORT="${MAYOISTAR_S3_PORT:-9000}"
+if command -v nc >/dev/null 2>&1; then
+    if ! nc -z -w 3 "$STORAGE_HOST" "$STORAGE_PORT" 2>/dev/null; then
+        echo "Warning: RustFS/S3 endpoint is not reachable at ${STORAGE_HOST}:${STORAGE_PORT}. File upload QA cases require docker compose to start rustfs." >&2
+    fi
+else
+    echo "Warning: nc not found; cannot check RustFS/S3 endpoint ${STORAGE_HOST}:${STORAGE_PORT}." >&2
+fi
+
+REDIS_HOST="${MAYOISTAR_REDIS_HOST:-localhost}"
+REDIS_PORT="${MAYOISTAR_REDIS_PORT:-6379}"
+if command -v nc >/dev/null 2>&1; then
+    if ! nc -z -w 3 "$REDIS_HOST" "$REDIS_PORT" 2>/dev/null; then
+        echo "Warning: Redis is not reachable at ${REDIS_HOST}:${REDIS_PORT}. Backend will fail to start because Redis is required for media access cache and rate limiting." >&2
+    fi
+else
+    echo "Warning: nc not found; cannot check Redis endpoint ${REDIS_HOST}:${REDIS_PORT}." >&2
+fi
+
 cd "$BACKEND_DIR"
 mvn spring-boot:run

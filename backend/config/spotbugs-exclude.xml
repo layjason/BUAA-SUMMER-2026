@@ -39,6 +39,7 @@
         <Or>
             <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+ServiceImpl" />
             <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+Service" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.storage\.\w+Service" />
         </Or>
     </Match>
     <!--
@@ -47,6 +48,15 @@
     -->
     <Match>
         <Class name="io.github.layjason.mayoistar.service.ChatService" />
+        <Bug pattern="CRLF_INJECTION_LOGS" />
+    </Match>
+    <!--
+        MediaFileUploadService 中日志参数 mediaId、usage 为 UUID/枚举；
+        key 与 storagePath 在写日志前已通过 sanitizeForLog 替换 CRLF 字符。
+        SpotBugs 无法识别该清理函数，故排除此误报。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.MediaFileUploadService" />
         <Bug pattern="CRLF_INJECTION_LOGS" />
     </Match>
     <Match>
@@ -116,12 +126,27 @@
         <Bug pattern="CT_CONSTRUCTOR_THROW" />
     </Match>
     <!--
-        JwtChannelInterceptor 中 claims 的 null 检查因 JwtService.parseToken 的 NP_NONNULL_RETURN_VIOLATION
-        排除规则导致 SpotBugs 误判 parseToken 始终返回 non-null，产生 RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE 误报。
-        实际 parseToken 可返回 null（JWT 解析失败时）。
-    -->
+         JwtChannelInterceptor 中 claims 的 null 检查因 JwtService.parseToken 的 NP_NONNULL_RETURN_VIOLATION
+         排除规则导致 SpotBugs 误判 parseToken 始终返回 non-null，产生 RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE 误报。
+         实际 parseToken 可返回 null（JWT 解析失败时）。
+     -->
     <Match>
         <Class name="io.github.layjason.mayoistar.config.JwtChannelInterceptor" />
         <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE" />
+    </Match>
+    <!--
+         MediaRefreshRateLimiter 构造器中通过 ObjectProvider.getIfAvailable() 获取可选的 StringRedisTemplate，
+         当 Redis 不可用时返回 null 回退到内存实现。构造器中初始化 Lua 脚本属下的 setResultType 可能被 SpotBugs
+         误判为可抛出异常导致对象未完全构造（CT_CONSTRUCTOR_THROW），以及 @Data 修饰的 MediaAccessProperties
+         的 setter 被 SpotBugs 认为存在外部可变对象暴露（EI_EXPOSE_REP2）。实际 Lua 脚本的 setResultType
+         不会抛出异常，而 properties 字段由同包的 config 类提供，不存在外部暴露风险。
+     -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.media.MediaRefreshRateLimiter" />
+        <Bug pattern="CT_CONSTRUCTOR_THROW" />
+    </Match>
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.media.MediaRefreshRateLimiter" />
+        <Bug pattern="EI_EXPOSE_REP2" />
     </Match>
 </FindBugsFilter>

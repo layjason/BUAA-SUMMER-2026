@@ -945,7 +945,7 @@
                 {
                   "key": "file",
                   "type": "file",
-                  "src": "qa/yaak/fixtures/chat-image.txt"
+                  "src": "{{chatImageFile}}"
                 }
               ]
             },

@@ -6,6 +6,7 @@ import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -17,11 +18,11 @@ import org.junit.jupiter.api.Test;
 class SocialUtilsTest {
 
     @Test
-    @DisplayName("toMediaFileDto 应正确转换所有字段")
+    @DisplayName("toMediaFileDto 应正确转换所有字段，已有 url 时保持不变")
     void toMediaFileDtoMapsAllFields() {
         Instant now = Instant.now();
         MediaFile entity = MediaFile.builder()
-                .mediaId("media-1")
+                .mediaId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .fileName("avatar.png")
                 .contentType("image/png")
                 .sizeBytes(1024L)
@@ -32,12 +33,30 @@ class SocialUtilsTest {
 
         CommonDtos.MediaFile dto = SocialUtils.toMediaFileDto(entity);
 
-        assertThat(dto.getMediaId()).isEqualTo("media-1");
+        assertThat(dto.getMediaId()).isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertThat(dto.getFileName()).isEqualTo("avatar.png");
         assertThat(dto.getContentType()).isEqualTo("image/png");
         assertThat(dto.getSizeBytes()).isEqualTo(1024L);
         assertThat(dto.getUsage()).isEqualTo(MediaUsage.avatar);
         assertThat(dto.getUrl()).isEqualTo("https://cdn.example.com/avatar.png");
         assertThat(dto.getUploadedAt()).isEqualTo(now.toString());
+    }
+
+    @Test
+    @DisplayName("url 为空时不再生成长期媒体地址")
+    void shouldNotGenerateLongLivedUrlWhenUrlIsNull() {
+        MediaFile entity = MediaFile.builder()
+                .mediaId(UUID.fromString("00000000-0000-0000-0000-000000000002"))
+                .fileName("photo.jpg")
+                .contentType("image/jpeg")
+                .sizeBytes(512L)
+                .usage(MediaUsage.activityImage)
+                .url(null)
+                .uploadedAt(Instant.now())
+                .build();
+
+        CommonDtos.MediaFile dto = SocialUtils.toMediaFileDto(entity);
+
+        assertThat(dto.getUrl()).isNull();
     }
 }

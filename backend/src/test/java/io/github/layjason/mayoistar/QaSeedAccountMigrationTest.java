@@ -18,9 +18,7 @@ import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.ActiveProfiles;
 
 /**
  * QA 种子账号迁移测试。
@@ -31,9 +29,7 @@ import org.springframework.test.context.ActiveProfiles;
  * <p>类不变量：测试只依赖 Flyway 初始化后的 H2 数据库，不连接外部服务。
  * 使用 @BeforeEach 重新插入种子数据，避免其他测试的 @AfterEach 清理导致数据丢失。
  */
-@SpringBootTest
-@ActiveProfiles("test")
-class QaSeedAccountMigrationTest {
+class QaSeedAccountMigrationTest extends AbstractIntegrationTest {
 
     private static final String TEST_USER_ID = "11111111-1111-1111-1111-111111111111";
     private static final String TEST_PEER_ID = "22222222-2222-2222-2222-222222222222";

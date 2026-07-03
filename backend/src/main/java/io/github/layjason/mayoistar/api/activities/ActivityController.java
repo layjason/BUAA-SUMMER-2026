@@ -1,13 +1,15 @@
 package io.github.layjason.mayoistar.api.activities;
 
 import io.github.layjason.mayoistar.api.common.ApiResponse;
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.common.SecurityUtils;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
-import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.service.ActivityRegistrationService;
 import io.github.layjason.mayoistar.service.ActivityRegistrationStateService;
 import io.github.layjason.mayoistar.service.ActivitySearchService;
+import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
 import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
 import io.github.layjason.mayoistar.service.activities.RequestActorResolver;
@@ -17,9 +19,6 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,6 +37,8 @@ public class ActivityController {
 
     private final DefaultApiResponseFactory responseFactory;
     private final ActivitySearchService activitySearchService;
+    private final SecurityUtils securityUtils;
+    private final MediaFileUploadService mediaFileUploadService;
 
     private final RequestActorResolver requestActorResolver;
     private final ActivityDraftService activityDraftService;
@@ -126,15 +127,19 @@ public class ActivityController {
     }
 
     @PostMapping(value = "/media/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
-            uploadActivityImage(@RequestPart(value = "file") MultipartFile file) {
-        return responseFactory.mediaFile(MediaUsage.activityImage);
+    public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> uploadActivityImage(
+            @RequestPart(value = "file") MultipartFile file) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = mediaFileUploadService.upload(userId, file, MediaUsage.activityImage);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping(value = "/media/review-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile>>
-            uploadActivityReviewImage(@RequestPart(value = "file") MultipartFile file) {
-        return responseFactory.mediaFile(MediaUsage.activityReviewImage);
+    public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> uploadActivityReviewImage(
+            @RequestPart(value = "file") MultipartFile file) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = mediaFileUploadService.upload(userId, file, MediaUsage.activityReviewImage);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/mine")
@@ -245,21 +250,21 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityParticipationState>> getParticipationState(
             @PathVariable String activityId) {
         return ResponseEntity.ok(ApiResponse.success(
-                activityRegistrationStateService.getParticipationState(activityId, getCurrentUserId())));
+                activityRegistrationStateService.getParticipationState(activityId, securityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/{activityId}/registrations")
     public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> registerActivity(
             @PathVariable String activityId, @RequestBody ActivityDtos.RegisterActivityRequest request) {
         return ResponseEntity.ok(ApiResponse.success(
-                activityRegistrationService.registerActivity(activityId, getCurrentUserId(), request)));
+                activityRegistrationService.registerActivity(activityId, securityUtils.getCurrentUserId(), request)));
     }
 
     @PostMapping("/{activityId}/registrations/cancel")
     public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> cancelRegistration(
             @PathVariable String activityId) {
-        return ResponseEntity.ok(
-                ApiResponse.success(activityRegistrationService.cancelRegistration(activityId, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.success(
+                activityRegistrationService.cancelRegistration(activityId, securityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/{activityId}/reviews")
@@ -287,7 +292,7 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> confirmWaitingSeat(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.WaitingConfirmationRequest request) {
         return ResponseEntity.ok(ApiResponse.success(
-                activityRegistrationService.confirmWaitingSeat(activityId, getCurrentUserId(), request)));
+                activityRegistrationService.confirmWaitingSeat(activityId, securityUtils.getCurrentUserId(), request)));
     }
 
     private ActivitySearchService.SearchCriteria toSearchCriteria(
@@ -316,20 +321,5 @@ public class ActivityController {
                 distanceMeters,
                 page,
                 pageSize);
-    }
-
-    private String getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null) {
-            throw new BusinessException(401, "Authentication is required");
-        }
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof String userId) {
-            return userId;
-        }
-        if (principal instanceof UserDetails userDetails) {
-            return userDetails.getUsername();
-        }
-        throw new BusinessException(401, "Authentication is required");
     }
 }

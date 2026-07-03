@@ -30,8 +30,7 @@ public class MessageContentValidator implements ConstraintValidator<ValidMessage
                 }
             }
             case image -> {
-                if (request.getImageMediaId() == null
-                        || request.getImageMediaId().isBlank()) {
+                if (request.getImageMediaId() == null) {
                     throw new BusinessException(MESSAGE_CONTENT_INVALID, "Message content is invalid for its kind");
                 }
             }

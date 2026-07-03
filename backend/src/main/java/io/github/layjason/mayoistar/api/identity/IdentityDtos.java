@@ -12,6 +12,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
 
 /**
@@ -121,8 +122,7 @@ public final class IdentityDtos {
 
     @Data
     public static class UpdatePersonalProfileRequest {
-        @Size(max = 36)
-        private String avatarMediaId;
+        private UUID avatarMediaId;
 
         @Size(max = 50)
         private String nickname;
@@ -146,8 +146,7 @@ public final class IdentityDtos {
         @Size(max = 50)
         private String nickname;
 
-        @Size(max = 36)
-        private String avatarMediaId;
+        private UUID avatarMediaId;
 
         private List<String> interestedActivityFields;
     }
@@ -155,7 +154,7 @@ public final class IdentityDtos {
     @Data
     public static class QualificationSubmitRequest {
         @NotEmpty
-        private List<String> licenseMediaIds;
+        private List<UUID> licenseMediaIds;
     }
 
     /* ========== 响应 DTO ========== */

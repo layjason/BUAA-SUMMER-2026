@@ -307,7 +307,7 @@ public class ActivityDraftService {
         List<ActivityImage> activityImages =
                 activityImageRepository.findByActivityIdOrderBySortOrderAsc(activity.getActivityId());
         List<MediaFile> mediaFiles = loadMediaFiles(activityImages);
-        Map<String, Integer> sortOrderByMediaId = new LinkedHashMap<>();
+        Map<UUID, Integer> sortOrderByMediaId = new LinkedHashMap<>();
         for (ActivityImage activityImage : activityImages) {
             sortOrderByMediaId.put(activityImage.getMediaId(), activityImage.getSortOrder());
         }
@@ -348,7 +348,7 @@ public class ActivityDraftService {
         List<ActivityImage> activityImages =
                 activityImageRepository.findByActivityIdOrderBySortOrderAsc(activity.getActivityId());
         List<MediaFile> mediaFiles = loadMediaFiles(activityImages);
-        Map<String, Integer> sortOrderByMediaId = new LinkedHashMap<>();
+        Map<UUID, Integer> sortOrderByMediaId = new LinkedHashMap<>();
         for (ActivityImage activityImage : activityImages) {
             sortOrderByMediaId.put(activityImage.getMediaId(), activityImage.getSortOrder());
         }
@@ -360,21 +360,21 @@ public class ActivityDraftService {
         if (activityImages.isEmpty()) {
             return List.of();
         }
-        List<String> mediaIds =
+        List<UUID> mediaIds =
                 activityImages.stream().map(ActivityImage::getMediaId).toList();
-        Map<String, MediaFile> mediaFileMap = mediaFileRepository.findByMediaIdIn(mediaIds).stream()
+        Map<UUID, MediaFile> mediaFileMap = mediaFileRepository.findByMediaIdIn(mediaIds).stream()
                 .collect(Collectors.toMap(MediaFile::getMediaId, mediaFile -> mediaFile));
         return mediaIds.stream().map(mediaFileMap::get).filter(Objects::nonNull).toList();
     }
 
-    private void replaceImages(String activityId, Collection<String> imageIds) {
+    private void replaceImages(String activityId, Collection<UUID> imageIds) {
         activityImageRepository.deleteByActivityId(activityId);
         if (imageIds == null || imageIds.isEmpty()) {
             return;
         }
         validateMediaFiles(imageIds);
         int index = 0;
-        for (String imageId : imageIds) {
+        for (UUID imageId : imageIds) {
             activityImageRepository.save(ActivityImage.builder()
                     .imageId(UUID.randomUUID().toString())
                     .activityId(activityId)
@@ -384,7 +384,7 @@ public class ActivityDraftService {
         }
     }
 
-    private void validateMediaFiles(Collection<String> mediaIds) {
+    private void validateMediaFiles(Collection<UUID> mediaIds) {
         List<MediaFile> mediaFiles = mediaFileRepository.findByMediaIdIn(mediaIds);
         if (mediaFiles.size() != mediaIds.size()) {
             throw new BusinessException(20017, "存在不可用的活动图片");
