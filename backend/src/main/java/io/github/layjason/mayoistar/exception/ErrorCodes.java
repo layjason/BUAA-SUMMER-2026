@@ -109,4 +109,18 @@ public final class ErrorCodes {
 
     /** 消息引用的媒体文件不存在 */
     public static final int MEDIA_REFERENCE_INVALID = 50018;
+
+    /* ========== AI ========== */
+
+    /** AI 调用频率超过限制 */
+    public static final int AI_RATE_LIMITED = 30000;
+
+    /** AI 服务暂不可用 */
+    public static final int AI_SERVICE_UNAVAILABLE = 30001;
+
+    /** AI 输出不可用或无法解析 */
+    public static final int AI_OUTPUT_UNAVAILABLE = 30002;
+
+    /** 图片媒体文件不存在或不支持 AI 分类 */
+    public static final int IMAGE_MEDIA_UNAVAILABLE = 30003;
 }

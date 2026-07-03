@@ -59,3 +59,9 @@ mayoistar:
   media:
     access:
       signing-secret: ${MAYOISTAR_MEDIA_SIGNING_SECRET:${MAYOISTAR_JWT_SECRET:dev-media-signing-secret-change-me}}
+  ai:
+    clip:
+      endpoint: ${MAYOISTAR_CLIP_ENDPOINT:http://localhost:8000}
+      timeout-seconds: 60
+    rate-limit:
+      max-requests-per-minute: 20
