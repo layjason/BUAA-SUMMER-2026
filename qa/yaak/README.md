@@ -318,11 +318,11 @@ bash qa/yaak/run-social-chat-tests.sh
 
 ### 变量映射
 
-| 响应字段 | 环境变量 |
-|----------|----------|
-| `data.tokens.accessToken` | `accessToken` |
-| `data.mediaId`（上传 1） | `testImageMediaId` |
-| `data.mediaId`（上传 2） | `testImageMediaId2` |
+| 响应字段                  | 环境变量            |
+| ------------------------- | ------------------- |
+| `data.tokens.accessToken` | `accessToken`       |
+| `data.mediaId`（上传 1）  | `testImageMediaId`  |
+| `data.mediaId`（上传 2）  | `testImageMediaId2` |
 
 ### 覆盖的接口测试
 
@@ -363,7 +363,7 @@ bash qa/yaak/run-social-chat-tests.sh
 
 ### 使用步骤
 
-1. 确保 Docker 依赖已启动（postgres、redis、mailhog、rustfs），并已执行 V2 种子数据迁移。
+1. 确保 Docker 依赖已启动（postgres、redis、mailhog、rustfs），并已执行 V2 种子数据迁移。因脚本不幂等，需要清理数据库或重新构建 Docker 容器后再运行测试。
 
 2. 在 Yaak 中导入集合与环境模板：
 
@@ -453,16 +453,17 @@ bash qa/yaak/run-social-chat-tests.sh
 
 ### 鉴权逻辑说明
 
-| 访问策略 | 允许访问者 | 拒绝访问者 |
-|---------|-----------|-----------|
-| `publicAccess` | 任何人（需同时满足 `publicVisible`） | — |
-| `owner` | 上传者 | 非上传者、匿名 |
-| `conversationMember` | 当前会话成员 | 非成员、已退出成员、匿名 |
-| `teamMember` | 当前小队成员 | 非成员、匿名 |
-| `activityOwner` | 活动组织者 | 非组织者、匿名 |
-| `adminOnly` | 仅管理员 | 所有非管理员（管理员通过 `isAdmin()` 在策略检查前直接放行） |
+| 访问策略             | 允许访问者                           | 拒绝访问者                                                  |
+| -------------------- | ------------------------------------ | ----------------------------------------------------------- |
+| `publicAccess`       | 任何人（需同时满足 `publicVisible`） | —                                                           |
+| `owner`              | 上传者                               | 非上传者、匿名                                              |
+| `conversationMember` | 当前会话成员                         | 非成员、已退出成员、匿名                                    |
+| `teamMember`         | 当前小队成员                         | 非成员、匿名                                                |
+| `activityOwner`      | 活动组织者                           | 非组织者、匿名                                              |
+| `adminOnly`          | 仅管理员                             | 所有非管理员（管理员通过 `isAdmin()` 在策略检查前直接放行） |
 
 **特殊规则**：
+
 - 管理员（`ROLE_admin`）绕过所有策略检查，可访问任意媒体资源
 - 未认证用户访问非公开资源返回 `401`
 - 已认证但无权限的用户返回 `403`
@@ -482,24 +483,24 @@ bash qa/yaak/run-social-chat-tests.sh
 
 在 Yaak 中手动执行时，请自行把响应值写入环境变量：
 
-| 响应字段 | 环境变量 |
-|----------|----------|
-| `data.tokens.accessToken`（test_user 登录） | `userAccessToken` |
-| `data.tokens.accessToken`（test_peer 登录） | `peerAccessToken` |
-| `data.tokens.accessToken`（admin 登录） | `adminAccessToken` |
-| `data.tokens.accessToken`（商家登录） | `merchantAccessToken` |
-| `data.userId` | `merchantUserId` |
-| `data.requestId` | `friendRequestId` |
-| `data.items[0].conversationId` | `privateConversationId` |
-| `data.teamId` | `teamId` |
-| `data.chatId` | `teamConversationId` |
-| `data.mediaId`（私聊上传） | `privateImageMediaId` |
-| `data.url`（私聊上传） | `privateImageSignedUrl` |
-| `data.mediaId`（群聊上传） | `teamImageMediaId` |
-| `data.url`（群聊上传） | `teamImageSignedUrl` |
-| `data.mediaId`（执照上传） | `licenseMediaId` |
-| `data.url`（执照上传） | `licenseSignedUrl` |
-| `data.url`（头像上传） | `avatarSignedUrl` |
+| 响应字段                                    | 环境变量                |
+| ------------------------------------------- | ----------------------- |
+| `data.tokens.accessToken`（test_user 登录） | `userAccessToken`       |
+| `data.tokens.accessToken`（test_peer 登录） | `peerAccessToken`       |
+| `data.tokens.accessToken`（admin 登录）     | `adminAccessToken`      |
+| `data.tokens.accessToken`（商家登录）       | `merchantAccessToken`   |
+| `data.userId`                               | `merchantUserId`        |
+| `data.requestId`                            | `friendRequestId`       |
+| `data.items[0].conversationId`              | `privateConversationId` |
+| `data.teamId`                               | `teamId`                |
+| `data.chatId`                               | `teamConversationId`    |
+| `data.mediaId`（私聊上传）                  | `privateImageMediaId`   |
+| `data.url`（私聊上传）                      | `privateImageSignedUrl` |
+| `data.mediaId`（群聊上传）                  | `teamImageMediaId`      |
+| `data.url`（群聊上传）                      | `teamImageSignedUrl`    |
+| `data.mediaId`（执照上传）                  | `licenseMediaId`        |
+| `data.url`（执照上传）                      | `licenseSignedUrl`      |
+| `data.url`（头像上传）                      | `avatarSignedUrl`       |
 
 ### 注意事项
 
