@@ -23,6 +23,7 @@ CREATE TABLE media_files (
     deleted_at      TIMESTAMP WITH TIME ZONE,
     uploaded_by     VARCHAR(36)  NOT NULL,
     uploaded_at     TIMESTAMP WITH TIME ZONE NOT NULL,
+    team_id         VARCHAR(36),
     CONSTRAINT pk_media_files PRIMARY KEY (media_id)
 );
 
@@ -30,6 +31,7 @@ CREATE INDEX idx_media_files_uploaded_by ON media_files (uploaded_by);
 CREATE INDEX idx_media_files_usage       ON media_files (usage);
 CREATE INDEX idx_media_files_access_scope ON media_files (access_policy, access_scope_id);
 CREATE INDEX idx_media_files_deleted_at ON media_files (deleted_at);
+CREATE INDEX idx_media_files_team_id     ON media_files (team_id);
 
 COMMENT ON TABLE media_files IS '媒体文件元数据，记录上传文件的存储信息和用途。业务对象通过 media_id 引用媒体文件，不直接存储文件内容或存储凭据。';
 
