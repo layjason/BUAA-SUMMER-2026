@@ -63,6 +63,15 @@ mayoistar:
     clip:
       endpoint: ${MAYOISTAR_CLIP_ENDPOINT:http://localhost:8000}
       timeout-seconds: 60
+    content-review:
+      endpoint: ${MAYOISTAR_ALIYUN_IMAGEAUDIT_ENDPOINT:imageaudit.cn-shanghai.aliyuncs.com}
+      access-key-id: ${ALIBABA_CLOUD_ACCESS_KEY_ID:}
+      access-key-secret: ${ALIBABA_CLOUD_ACCESS_KEY_SECRET:}
+      text-labels:
+        - ad
+      image-scenes:
+        - porn
+        - logo
     rate-limit:
       max-requests-per-minute: 20
   check-in:

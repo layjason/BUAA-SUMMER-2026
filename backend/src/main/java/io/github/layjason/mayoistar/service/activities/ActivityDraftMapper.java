@@ -6,6 +6,7 @@ import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.service.ai.AiContentReviewSnapshotMapper;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.Collection;
@@ -28,6 +29,7 @@ import org.springframework.stereotype.Component;
 public class ActivityDraftMapper {
 
     private final MediaAccessService mediaAccessService;
+    private final AiContentReviewSnapshotMapper aiContentReviewSnapshotMapper;
 
     public PageResult<ActivityDtos.ActivityDraftSummary> toDraftSummaryPage(Page<Activity> activityPage) {
         List<ActivityDtos.ActivityDraftSummary> items =
@@ -172,6 +174,7 @@ public class ActivityDraftMapper {
                 .map(this::toMediaFile)
                 .toList());
         dto.setWaitingCount(waitingCount);
+        dto.setAiContentReview(aiContentReviewSnapshotMapper.fromJson(activity.getAiContentReviewJson()));
         dto.setManualReviewRequired(activity.getManualReviewRequired());
         dto.setFeeDescription(activity.getFeeDescription());
         dto.setMinAge(activity.getMinAge());

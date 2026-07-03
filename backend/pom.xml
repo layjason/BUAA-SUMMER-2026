@@ -29,6 +29,7 @@
 	<properties>
 		<java.version>25</java.version>
 		<awssdk.version>2.31.30</awssdk.version>
+		<aliyun.imageaudit.version>2.0.7</aliyun.imageaudit.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
@@ -124,6 +125,11 @@
 					<artifactId>jackson-annotations</artifactId>
 				</exclusion>
 			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>com.aliyun</groupId>
+			<artifactId>imageaudit20191230</artifactId>
+			<version>${aliyun.imageaudit.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
