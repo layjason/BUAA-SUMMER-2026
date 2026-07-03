@@ -1181,60 +1181,7 @@
       "name": "05 小队管理",
       "item": [
         {
-          "name": "1. 注册测试用户",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\": \"tomori@mygo.band\", \"password\": \"Haruka0314\", \"nickname\": \"燈\", \"kind\": \"personal\"}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/identity/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "identity",
-                "register"
-              ]
-            }
-          }
-        },
-        {
-          "name": "2. 登录",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\": \"tomori@mygo.band\", \"password\": \"Haruka0314\"}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/identity/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "identity",
-                "auth",
-                "login"
-              ]
-            }
-          }
-        },
-        {
-          "name": "3. 创建公开小队",
+          "name": "创建公开小队",
           "request": {
             "method": "POST",
             "header": [
@@ -1244,7 +1191,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1264,13 +1211,13 @@
           }
         },
         {
-          "name": "4. 搜索小队（按关键词）",
+          "name": "搜索小队（按关键词）",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "url": {
@@ -1300,13 +1247,13 @@
           }
         },
         {
-          "name": "5. 搜索小队（按标签）",
+          "name": "搜索小队（按标签）",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "url": {
@@ -1340,13 +1287,13 @@
           }
         },
         {
-          "name": "6. 获取小队详情",
+          "name": "获取小队详情",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "url": {
@@ -1363,13 +1310,13 @@
           }
         },
         {
-          "name": "7. 获取小队成员列表",
+          "name": "获取小队成员列表",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "url": {
@@ -1397,13 +1344,13 @@
           }
         },
         {
-          "name": "8. 获取积分榜",
+          "name": "获取积分榜",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "url": {
@@ -1431,13 +1378,13 @@
           }
         },
         {
-          "name": "9. 退出小队",
+          "name": "退出小队",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "url": {
@@ -1455,7 +1402,7 @@
           }
         },
         {
-          "name": "10. 创建审核制小队",
+          "name": "创建审核制小队",
           "request": {
             "method": "POST",
             "header": [
@@ -1465,7 +1412,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1485,7 +1432,7 @@
           }
         },
         {
-          "name": "11. 加入审核制小队",
+          "name": "加入审核制小队",
           "request": {
             "method": "POST",
             "header": [
@@ -1495,7 +1442,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1517,13 +1464,13 @@
           }
         },
         {
-          "name": "12. 查看入队申请列表",
+          "name": "查看入队申请列表",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "url": {
@@ -1555,7 +1502,7 @@
           }
         },
         {
-          "name": "13. 同意入队申请",
+          "name": "同意入队申请",
           "request": {
             "method": "POST",
             "header": [
@@ -1565,7 +1512,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1589,7 +1536,7 @@
           }
         },
         {
-          "name": "14. 拒绝入队申请",
+          "name": "拒绝入队申请",
           "request": {
             "method": "POST",
             "header": [
@@ -1599,7 +1546,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1623,7 +1570,7 @@
           }
         },
         {
-          "name": "15a. 调整成员为管理员",
+          "name": "调整成员为管理员",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1633,7 +1580,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1657,7 +1604,7 @@
           }
         },
         {
-          "name": "15b. 转让队长",
+          "name": "转让队长",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1667,7 +1614,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1691,13 +1638,13 @@
           }
         },
         {
-          "name": "16. 解散小队",
+          "name": "解散小队",
           "request": {
             "method": "DELETE",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "url": {
@@ -1714,7 +1661,7 @@
           }
         },
         {
-          "name": "17. 发布群公告",
+          "name": "发布群公告",
           "request": {
             "method": "POST",
             "header": [
@@ -1724,7 +1671,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1746,13 +1693,13 @@
           }
         },
         {
-          "name": "18. 标记公告已读",
+          "name": "标记公告已读",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "url": {
@@ -1772,7 +1719,7 @@
           }
         },
         {
-          "name": "19. 创建群投票",
+          "name": "创建群投票",
           "request": {
             "method": "POST",
             "header": [
@@ -1782,7 +1729,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1804,7 +1751,7 @@
           }
         },
         {
-          "name": "20. 参与群投票",
+          "name": "参与群投票",
           "request": {
             "method": "POST",
             "header": [
@@ -1814,7 +1761,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1838,13 +1785,13 @@
           }
         },
         {
-          "name": "21. 上传群文件",
+          "name": "上传群文件",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1866,13 +1813,13 @@
           }
         },
         {
-          "name": "22. 查看群文件",
+          "name": "查看群文件",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "url": {
@@ -1900,7 +1847,7 @@
           }
         },
         {
-          "name": "23. 删除群文件",
+          "name": "删除群文件",
           "request": {
             "method": "DELETE",
             "header": [
@@ -1910,7 +1857,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1932,7 +1879,7 @@
           }
         },
         {
-          "name": "24. 创建队内活动",
+          "name": "创建队内活动",
           "request": {
             "method": "POST",
             "header": [
@@ -1942,7 +1889,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "body": {
@@ -1964,13 +1911,13 @@
           }
         },
         {
-          "name": "25. 查看队内活动列表",
+          "name": "查看队内活动列表",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "url": {
@@ -1998,13 +1945,13 @@
           }
         },
         {
-          "name": "26. 查看队内活动详情",
+          "name": "查看队内活动详情",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{userAccessToken}}"
               }
             ],
             "url": {
