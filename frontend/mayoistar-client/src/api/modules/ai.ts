@@ -6,6 +6,8 @@
 import { post } from '@/api/request'
 import type { components } from '@/api/types/schema'
 
+export type { ActivityPlanningResult, ImageClassificationResult } from '@/api/types/ai-schemas'
+
 type ActivityPlanningRequest = components['schemas']['Ai.ActivityPlanningRequest']
 
 /** 使用 AI 生成活动计划 */

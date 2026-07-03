@@ -36,9 +36,17 @@
           <text class="card-title">{{ item.title }}</text>
           <view class="card-row">
             <text class="tag">{{ formatTags(item.tags) }}</text>
-            <text class="status-tag" :class="'status-' + item.runtimeStatus">{{
-              runtimeStatusText(item.runtimeStatus)
-            }}</text>
+            <view class="status-group">
+              <text class="status-tag review-status" :class="'review-' + item.reviewStatus">{{
+                reviewStatusText(item.reviewStatus)
+              }}</text>
+              <text
+                v-if="item.reviewStatus === 'approved'"
+                class="status-tag"
+                :class="'status-' + item.runtimeStatus"
+                >{{ runtimeStatusText(item.runtimeStatus) }}</text
+              >
+            </view>
           </view>
           <view class="card-row">
             <text class="meta">{{ formatDate(item.startAt) }}</text>
@@ -83,7 +91,12 @@ import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
-import { getMyActivities, getDrafts } from '@/api/modules/activities'
+import {
+  getDrafts,
+  getMyActivities,
+  type ActivityDraftSummary,
+  type ActivitySummary,
+} from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
 import { runtimeStatusText as getRuntimeStatus } from '@/utils/status'
@@ -101,27 +114,12 @@ const reviewStatusMap: Record<string, string> = {
   pending: t('myActivities.statusPending'),
   approved: t('myActivities.statusApproved'),
   rejected: t('myActivities.statusRejected'),
+  changeRequired: t('myActivities.statusChangeRequired'),
 }
 
-interface ActivityItem {
-  activityId: string
-  title: string
-  registeredCount: number
-  tags: string[]
-  runtimeStatus: string
-  startAt: string
-}
+const activities = ref<ActivitySummary[]>([])
 
-const activities = ref<ActivityItem[]>([])
-
-interface DraftItem {
-  activityId: string
-  title: string
-  updatedAt: string
-  reviewStatus: string
-}
-
-const drafts = ref<DraftItem[]>([])
+const drafts = ref<ActivityDraftSummary[]>([])
 
 /**
  * 加载已发布活动列表
@@ -129,7 +127,7 @@ const drafts = ref<DraftItem[]>([])
 async function loadActivities(): Promise<void> {
   try {
     const result = await getMyActivities()
-    activities.value = result.items as ActivityItem[]
+    activities.value = result.items ?? []
   } catch (error) {
     if (error instanceof BusinessError) {
       errorMsg.value = getErrorMessage(error.code)
@@ -145,7 +143,7 @@ async function loadActivities(): Promise<void> {
 async function loadDrafts(): Promise<void> {
   try {
     const result = await getDrafts()
-    drafts.value = result.items as DraftItem[]
+    drafts.value = result.items ?? []
   } catch (error) {
     if (error instanceof BusinessError) {
       errorMsg.value = getErrorMessage(error.code)
@@ -191,10 +189,10 @@ async function onRefresh(): Promise<void> {
   try {
     if (activeTab.value === 'published') {
       const result = await getMyActivities()
-      activities.value = result.items as ActivityItem[]
+      activities.value = result.items ?? []
     } else {
       const result = await getDrafts()
-      drafts.value = result.items as DraftItem[]
+      drafts.value = result.items ?? []
     }
   } catch {
     // 刷新失败静默处理
@@ -337,6 +335,13 @@ function goDetail(activityId: string): void {
   margin-top: 8rpx;
 }
 
+.status-group {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
 .tag {
   font-size: 24rpx;
   color: #1989fa;
@@ -362,6 +367,11 @@ function goDetail(activityId: string): void {
   color: #ee0a24;
 }
 
+.draft-changeRequired {
+  background-color: #fff7e6;
+  color: #ff9800;
+}
+
 .draft-pending {
   background-color: #fff7e6;
   color: #ed6a0c;
@@ -370,6 +380,26 @@ function goDetail(activityId: string): void {
 .draft-approved {
   background-color: #ebf9e9;
   color: #07c160;
+}
+
+.review-status.review-pending {
+  background-color: #fff7e6;
+  color: #ed6a0c;
+}
+
+.review-status.review-approved {
+  background-color: #ebf9e9;
+  color: #07c160;
+}
+
+.review-status.review-rejected {
+  background-color: #fff2f0;
+  color: #ee0a24;
+}
+
+.review-status.review-changeRequired {
+  background-color: #fff7e6;
+  color: #ff9800;
 }
 
 .status-tag {

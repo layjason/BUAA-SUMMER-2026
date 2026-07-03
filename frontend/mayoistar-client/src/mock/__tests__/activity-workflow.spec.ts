@@ -4,8 +4,14 @@ import {
   cancelRegistration,
   checkIn,
   createDraft,
+  createReview,
+  createSummary,
   getCheckIns,
+  getMyActivities,
+  getMyActivityReview,
   getParticipationState,
+  listActivityReviews,
+  listActivitySummaries,
   submitActivity,
 } from '@/mock/workflow'
 
@@ -114,6 +120,71 @@ describe('活动 mock workflow 契约对齐', () => {
       checkedInAt: expect.any(String),
     })
     expect(result).not.toHaveProperty('activityId')
+  })
+
+  it('已结束且已签到用户应可提交活动评价', () => {
+    expect(getMyActivityReview(7, 10001)).toEqual({})
+
+    const state = getParticipationState(7, 10001)
+    expect(state.status).toBe('checkedIn')
+
+    const review = createReview(7, 10001, {
+      rating: 5,
+      content: '活动很棒，期待下次再参加。',
+      tags: ['组织有序', '氛围很好'],
+    })
+
+    expect(review).toMatchObject({
+      activityId: '7',
+      userId: '10001',
+      rating: 5,
+      tags: ['组织有序', '氛围很好'],
+      reviewId: expect.any(String),
+      createdAt: expect.any(String),
+    })
+    expect(getMyActivityReview(7, 10001).review).toMatchObject({
+      activityId: '7',
+      userId: '10001',
+    })
+  })
+
+  it('活动详情应能查询总结与评价列表', () => {
+    const summaries = listActivitySummaries(7, 1, 10)
+    const reviews = listActivityReviews(7, 1, 10)
+
+    expect(summaries.items).toHaveLength(1)
+    expect(summaries.items[0]).toMatchObject({
+      activityId: '7',
+      title: expect.any(String),
+    })
+    expect(reviews.items.length).toBeGreaterThanOrEqual(1)
+    expect(reviews.items[0]).toMatchObject({
+      activityId: '7',
+      nickname: expect.any(String),
+      rating: expect.any(Number),
+    })
+  })
+
+  it('每个活动仅允许发布一篇总结', () => {
+    expect(() =>
+      createSummary(7, 10001, {
+        title: '重复总结',
+        content: '不应成功',
+        imageIds: [],
+        confirmedImageTags: [],
+      }),
+    ).toThrow()
+  })
+
+  it('我创建的活动列表应包含审核状态字段', () => {
+    const result = getMyActivities(10001, 1, 50)
+    const pending = result.items.find((item) => item.activityId === '11')
+
+    expect(pending).toMatchObject({
+      title: '大型户外音乐节',
+      reviewStatus: 'pending',
+      runtimeStatus: 'registering',
+    })
   })
 
   it('签到列表应返回 OpenAPI 分页响应', () => {

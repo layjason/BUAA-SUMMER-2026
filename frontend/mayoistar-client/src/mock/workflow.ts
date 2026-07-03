@@ -16,7 +16,10 @@ import type {
   ActivityParticipant,
   ActivityParticipationState,
   ActivityReview,
+  ActivityReviewListItem,
   ActivityReviewRequest,
+  MyActivityReviewResult,
+  MyActivitySummaryResult,
   ActivitySearchQuery,
   ActivitySummary,
   ActivitySummaryPost,
@@ -400,14 +403,24 @@ export function getActivityDetail(activityId: number): ActivityDetail {
     feeAmount: a.fee,
     reviewStatus: a.reviewStatus,
     runtimeStatus: a.runtimeStatus,
-    manualReviewRequired: a.capacity > 50,
+    manualReviewRequired: Boolean(a.aiContentReview) || a.capacity > 50,
     tags: a.tags,
     location: toLocationInfo(a.location),
     coverImage: mediaFilesFromActivity(a)[0],
     images: mediaFilesFromActivity(a),
     organizerId: String(a.creatorId),
     organizerName: creator?.nickname ?? '未知',
-    reviewRecords: [],
+    reviewRecords: a.aiContentReview
+      ? [
+          {
+            reviewId: `auto-${a.id}`,
+            result: 'pending' as const,
+            reason: a.aiContentReview.reasons.join('; '),
+            reviewedAt: a.createdAt,
+          },
+        ]
+      : [],
+    aiContentReview: a.aiContentReview ?? undefined,
   }
 }
 
@@ -876,16 +889,34 @@ export function submitActivity(draftId: number): ActivityDetail {
     throw new MockBusinessError(20005, '活动信息不完整，请补充后再提交')
   }
 
-  // 决定审核状态
+  // 决定审核状态，构建 AI 内容审核结果
   let reviewStatus: MockActivity['reviewStatus'] = 'approved'
-  if (draft.capacity > 50) {
-    reviewStatus = 'pending'
-  }
+  let aiContentReview: MockActivity['aiContentReview'] | undefined = undefined
   // 简单敏感词检测
   const riskKeywords = ['危险', '违规', '低俗', '违法', '暴力']
   const textToCheck = (draft.title ?? '') + (draft.introduction ?? '')
-  if (riskKeywords.some((kw) => textToCheck.includes(kw))) {
+  const matchedKeywords = riskKeywords.filter((kw) => textToCheck.includes(kw))
+  if (matchedKeywords.length > 0) {
     reviewStatus = 'pending'
+    aiContentReview = {
+      status: 'succeeded',
+      riskLevel: 'high',
+      suggestedReviewStatus: 'pending',
+      reasons: [`内容包含敏感关键词（${matchedKeywords.join('、')}），需要人工审核`],
+    }
+  }
+  if (draft.capacity > 50) {
+    reviewStatus = 'pending'
+    if (!aiContentReview) {
+      aiContentReview = {
+        status: 'succeeded',
+        riskLevel: 'medium',
+        suggestedReviewStatus: 'pending',
+        reasons: ['活动人数超过50人，需要人工审核'],
+      }
+    } else {
+      aiContentReview.reasons.push('活动人数超过50人，需要人工审核')
+    }
   }
 
   const actId = nextId('activities')
@@ -913,6 +944,7 @@ export function submitActivity(draftId: number): ActivityDetail {
     reviewStatus,
     isTakenDown: false,
     createdAt: now,
+    aiContentReview,
   }
   db.activities.push(activity)
   // 从草稿列表移除
@@ -1649,6 +1681,146 @@ export function getCheckIns(
   return paginate(items, page, pageSize)
 }
 
+/**
+ * 将 mock 评价转为 OpenAPI ActivityReview
+ *
+ * @param review mock 评价记录
+ * @returns OpenAPI 评价对象
+ */
+function reviewToResponse(review: {
+  id: number
+  activityId: number
+  userId: number
+  rating: number
+  content: string
+  tags: string[]
+  createdAt: string
+}): ActivityReview {
+  return {
+    reviewId: String(review.id),
+    activityId: String(review.activityId),
+    userId: String(review.userId),
+    rating: review.rating,
+    content: review.content || undefined,
+    tags: review.tags,
+    createdAt: review.createdAt,
+  }
+}
+
+/**
+ * 将 mock 总结转为 OpenAPI ActivitySummaryPost
+ *
+ * @param summary mock 总结记录
+ * @returns OpenAPI 总结对象
+ */
+function summaryToResponse(summary: {
+  id: number
+  activityId: number
+  title: string
+  content: string
+  images: string[]
+  imageTags: Array<{ mediaId: string; tags: string[] }>
+  createdAt: string
+}): ActivitySummaryPost {
+  return {
+    summaryId: String(summary.id),
+    activityId: String(summary.activityId),
+    title: summary.title,
+    content: summary.content,
+    images: summary.images.map((img, index) => {
+      if (img.startsWith('http')) {
+        return {
+          mediaId: `media_summary_${summary.id}_${index}`,
+          url: img,
+          contentType: 'image/jpeg',
+          fileName: `summary_${summary.id}_${index}.jpg`,
+          sizeBytes: 50000,
+          uploadedAt: summary.createdAt,
+          usage: 'summaryImage' as MediaFile['usage'],
+        }
+      }
+      return mediaFileFromId(
+        img,
+        summary.createdAt,
+        `summary_${summary.id}_${index}`,
+        'summaryImage',
+      )
+    }),
+    imageTags: summary.imageTags,
+    createdAt: summary.createdAt,
+  }
+}
+
+/** 获取活动评价列表 */
+export function listActivityReviews(
+  activityId: number,
+  page: number,
+  pageSize: number,
+): MockPageResult<ActivityReviewListItem> {
+  const db = getMockDb()
+  const activity = db.activities.find((a) => a.id === activityId)
+  if (!activity) {
+    throw new MockBusinessError(20002, `活动 ${activityId} 不存在或不可见`)
+  }
+
+  const items = db.reviews
+    .filter((r) => r.activityId === activityId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .map((r) => {
+      const user = db.users.find((u) => u.id === r.userId)
+      return {
+        ...reviewToResponse(r),
+        nickname: user?.nickname ?? '未知',
+      }
+    })
+
+  return paginate(items, page, pageSize)
+}
+
+/** 获取当前用户对指定活动的评价 */
+export function getMyActivityReview(activityId: number, userId: number): MyActivityReviewResult {
+  const db = getMockDb()
+  const activity = db.activities.find((a) => a.id === activityId)
+  if (!activity) {
+    throw new MockBusinessError(20002, `活动 ${activityId} 不存在或不可见`)
+  }
+
+  const review = db.reviews.find((r) => r.activityId === activityId && r.userId === userId)
+  return review ? { review: reviewToResponse(review) } : {}
+}
+
+/** 获取活动总结列表 */
+export function listActivitySummaries(
+  activityId: number,
+  page: number,
+  pageSize: number,
+): MockPageResult<ActivitySummaryPost> {
+  const db = getMockDb()
+  const activity = db.activities.find((a) => a.id === activityId)
+  if (!activity) {
+    throw new MockBusinessError(20002, `活动 ${activityId} 不存在或不可见`)
+  }
+
+  const items = db.summaries
+    .filter((s) => s.activityId === activityId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .map((s) => summaryToResponse(s))
+
+  return paginate(items, page, pageSize)
+}
+
+/** 获取当前用户对指定活动发布的总结 */
+export function getMyActivitySummary(activityId: number, userId: number): MyActivitySummaryResult {
+  const db = getMockDb()
+  const activity = db.activities.find((a) => a.id === activityId)
+  if (!activity) {
+    throw new MockBusinessError(20002, `活动 ${activityId} 不存在或不可见`)
+  }
+
+  const summary = db.summaries.find((s) => s.activityId === activityId && s.userId === userId)
+  return summary ? { summary: summaryToResponse(summary) } : {}
+}
+
 /** 创建评价 */
 export function createReview(
   activityId: number,
@@ -1657,6 +1829,21 @@ export function createReview(
 ): ActivityReview {
   const db = getMockDb()
 
+  const activity = db.activities.find((a) => a.id === activityId)
+  if (!activity) {
+    throw new MockBusinessError(20002, '活动不存在')
+  }
+  if (activity.runtimeStatus !== 'ended') {
+    throw new MockBusinessError(20015, '活动尚未结束，不能评价')
+  }
+
+  const reg = db.registrations.find(
+    (r) => r.activityId === activityId && r.userId === userId && r.status !== 'canceled',
+  )
+  if (!reg || reg.status !== 'checkedIn') {
+    throw new MockBusinessError(20011, '未找到可评价的报名记录')
+  }
+
   const existing = db.reviews.find((r) => r.activityId === activityId && r.userId === userId)
   if (existing) {
     throw new MockBusinessError(20016, '你已评价过该活动')
@@ -1664,25 +1851,19 @@ export function createReview(
 
   const id = nextId('reviews')
   const now = new Date().toISOString()
-  db.reviews.push({
+  const review = {
     id,
     activityId,
     userId,
     rating: request.rating,
     content: request.content ?? '',
-    createdAt: now,
-  })
-  persistMockDb()
-
-  return {
-    reviewId: String(id),
-    activityId: String(activityId),
-    userId: String(userId),
-    rating: request.rating,
-    content: request.content || undefined,
     tags: request.tags ?? [],
     createdAt: now,
   }
+  db.reviews.push(review)
+  persistMockDb()
+
+  return reviewToResponse(review)
 }
 
 /** 创建活动总结 */
@@ -1692,31 +1873,36 @@ export function createSummary(
   request: ActivitySummaryPostRequest,
 ): ActivitySummaryPost {
   const db = getMockDb()
+  const activity = db.activities.find((a) => a.id === activityId)
+  if (!activity) {
+    throw new MockBusinessError(20002, '活动不存在')
+  }
+  if (activity.creatorId !== userId) {
+    throw new MockBusinessError(20003, '无权发布该活动总结')
+  }
+  if (activity.runtimeStatus !== 'ended') {
+    throw new MockBusinessError(20015, '活动尚未结束，不能发布总结')
+  }
+  if (db.summaries.some((s) => s.activityId === activityId)) {
+    throw new MockBusinessError(20020, '活动总结已存在')
+  }
+
   const id = nextId('summaries')
   const now = new Date().toISOString()
-
-  db.summaries.push({
+  const summary = {
     id,
     activityId,
     userId,
     title: request.title,
     content: request.content,
     images: request.imageIds,
-    createdAt: now,
-  })
-  persistMockDb()
-
-  return {
-    summaryId: String(id),
-    activityId: String(activityId),
-    title: request.title,
-    content: request.content,
-    images: request.imageIds.map((mediaId, index) =>
-      mediaFileFromId(mediaId, now, `summary_${id}_${index}`),
-    ),
     imageTags: request.confirmedImageTags,
     createdAt: now,
   }
+  db.summaries.push(summary)
+  persistMockDb()
+
+  return summaryToResponse(summary)
 }
 
 /** 克隆活动为草稿 */
@@ -1761,7 +1947,7 @@ export function createDraftFromTemplate(templateId: number, userId: number): Act
   const db = getMockDb()
   const template = db.templates.find((t) => t.id === templateId)
   if (!template) {
-    throw new MockBusinessError(20020, '模板不存在')
+    throw new MockBusinessError(20001, '模板不存在')
   }
 
   const now = new Date().toISOString()

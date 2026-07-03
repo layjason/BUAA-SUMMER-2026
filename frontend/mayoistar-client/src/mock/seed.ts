@@ -538,6 +538,12 @@ export function createSeedData(): MockDatabase {
       reviewStatus: 'pending',
       isTakenDown: false,
       createdAt: iso(-2),
+      aiContentReview: {
+        status: 'succeeded',
+        riskLevel: 'medium',
+        suggestedReviewStatus: 'pending',
+        reasons: ['活动人数超过50人，需要人工审核'],
+      },
     },
     // 12: 风险审核活动
     {
@@ -816,17 +822,10 @@ export function createSeedData(): MockDatabase {
     {
       id: 1,
       activityId: 7,
-      userId: 10001,
-      rating: 5,
-      content: '故宫角楼日落真的太美了！大家一起拍照很开心，学到了很多构图技巧。',
-      createdAt: iso(-2),
-    },
-    {
-      id: 2,
-      activityId: 7,
       userId: 10006,
       rating: 4,
       content: '活动组织得很好，就是人稍微多了一点。下次还会参加！',
+      tags: ['组织有序', '氛围很好'],
       createdAt: iso(-2),
     },
   ]
@@ -840,6 +839,7 @@ export function createSeedData(): MockDatabase {
       title: '故宫角楼日落外拍精彩回顾',
       content: '上周六的故宫角楼外拍圆满结束！共有 3 位小伙伴参与，大家一起记录了绝美的日落时分...',
       images: [cover(7)],
+      imageTags: [{ mediaId: cover(7), tags: ['合影', '场地'] }],
       createdAt: iso(-1),
     },
   ]

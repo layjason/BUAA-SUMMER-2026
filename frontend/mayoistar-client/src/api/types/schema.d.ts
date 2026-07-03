@@ -165,10 +165,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** @description 获取活动评价列表，活动存在且调用方可见，分页返回参与者评价，用于活动详情页展示评价摘要。 */
+        get: operations["ActivityOperations_listReviews"];
         put?: never;
         /** @description 评价活动，调用方已参与且评价入口仍有效，保存评价，每个用户仅能评价一次。 */
         post: operations["ActivityOperations_reviewActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activities/{activityId}/reviews/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 获取当前登录用户对指定活动的评价，调用方已登录，未评价时 review 为空。 */
+        get: operations["ActivityOperations_getMyReview"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -199,10 +217,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** @description 获取活动图文总结列表，活动存在且调用方可见，分页返回已发布的活动总结，用于活动详情页展示回顾内容。 */
+        get: operations["ActivityOperations_listSummaries"];
         put?: never;
-        /** @description 发布活动图文总结，活动已结束且调用方为发起人，发布总结，AI 图片标签必须经人工确认。 */
+        /** @description 发布活动图文总结，活动已结束且调用方为发起人，每个活动仅允许发布一篇总结，AI 图片标签必须经人工确认。 */
         post: operations["ActivityOperations_createSummary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activities/{activityId}/summaries/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 获取当前登录用户对指定活动发布的总结，调用方已登录，未发布时 summary 为空。 */
+        get: operations["ActivityOperations_getMySummary"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2034,6 +2070,28 @@ export interface components {
             /** @description 评价用户标识。 */
             userId: components["schemas"]["EntityId"];
         };
+        /** @description 活动评价列表项，在评价基础上补充评价用户展示昵称。 */
+        "Activities.ActivityReviewListItem": {
+            /** @description 活动标识。 */
+            activityId: components["schemas"]["EntityId"];
+            /** @description 评价正文，使用 Markdown 格式；正文中的图片链接来自活动评价图片上传接口返回的媒体访问地址。 */
+            content?: string;
+            /** @description 评价创建时间。 */
+            createdAt: components["schemas"]["DateTimeString"];
+            /** @description 评价用户展示昵称。 */
+            nickname: string;
+            /**
+             * Format: int32
+             * @description 评分。
+             */
+            rating: number;
+            /** @description 评价标识。 */
+            reviewId: components["schemas"]["EntityId"];
+            /** @description 评价标签。 */
+            tags: string[];
+            /** @description 评价用户标识。 */
+            userId: components["schemas"]["EntityId"];
+        };
         /** @description 活动评价请求，调用方已签到且评价窗口未关闭，保存评价，每名参与者对同一活动仅评价一次。 */
         "Activities.ActivityReviewRequest": {
             /** @description 评价正文，使用 Markdown 格式；正文中的图片应先通过活动评价图片上传接口取得链接后再嵌入。 */
@@ -2220,6 +2278,16 @@ export interface components {
             mediaId: components["schemas"]["EntityId"];
             /** @description 该图片最终确认的标签。 */
             tags: string[];
+        };
+        /** @description 当前登录用户对指定活动的评价查询结果。 */
+        "Activities.MyActivityReviewResult": {
+            /** @description 评价内容，当前用户未评价时为空。 */
+            review?: components["schemas"]["Activities.ActivityReview"];
+        };
+        /** @description 当前登录用户对指定活动发布的总结查询结果。 */
+        "Activities.MyActivitySummaryResult": {
+            /** @description 总结内容，当前用户未发布时为空。 */
+            summary?: components["schemas"]["Activities.ActivitySummaryPost"];
         };
         /** @description 活动报名请求，活动存在且用户满足信誉、年龄等校验，生成正式报名或候补记录，满员时不得直接占用名额。 */
         "Activities.RegisterActivityRequest": {
@@ -2923,6 +2991,21 @@ export interface components {
              * @enum {string}
              */
             message: "Activity review already exists";
+        };
+        /** @description 20020：活动总结已存在，每个活动仅允许发布一篇总结。 */
+        "Errors.Activities.DuplicateSummary": {
+            /**
+             * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+             * @enum {number}
+             */
+            code: 20020;
+            /** @description 错误上下文，默认无额外业务数据。 */
+            data: components["schemas"]["EmptyData"];
+            /**
+             * @description 平台错误消息，业务错误使用英文模板文案。
+             * @enum {string}
+             */
+            message: "Activity summary already exists";
         };
         /** @description 20018：上传文件不是支持的 JPG 或 PNG 图像。 */
         "Errors.Activities.ImageFormatInvalid": {
@@ -5312,6 +5395,69 @@ export interface operations {
             };
         };
     };
+    ActivityOperations_listReviews: {
+        parameters: {
+            query?: {
+                /** @description 页码，从 1 开始。 */
+                page?: components["parameters"]["PageQuery.page"];
+                /** @description 每页数量。 */
+                pageSize?: components["parameters"]["PageQuery.pageSize"];
+            };
+            header?: never;
+            path: {
+                activityId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: {
+                            /** @description 当前页数据。 */
+                            items: components["schemas"]["Activities.ActivityReviewListItem"][];
+                            /**
+                             * Format: int32
+                             * @description 当前页码。
+                             */
+                            page: number;
+                            /**
+                             * Format: int32
+                             * @description 每页数量。
+                             */
+                            pageSize: number;
+                            /**
+                             * Format: int64
+                             * @description 匹配总数。
+                             */
+                            total: number;
+                            /**
+                             * Format: int32
+                             * @description 匹配总页数。
+                             */
+                            totalPages: number;
+                        };
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.ActivityNotVisible"];
+                };
+            };
+        };
+    };
     ActivityOperations_reviewActivity: {
         parameters: {
             query?: never;
@@ -5351,6 +5497,41 @@ export interface operations {
             };
         };
     };
+    ActivityOperations_getMyReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["Activities.MyActivityReviewResult"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.ActivityNotVisible"];
+                };
+            };
+        };
+    };
     ActivityOperations_submitActivity: {
         parameters: {
             query?: never;
@@ -5382,6 +5563,69 @@ export interface operations {
                          */
                         message: "For Super Earth!";
                     } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.ActivityNotVisible"] | components["schemas"]["Errors.Activities.ActivityPermissionDenied"] | components["schemas"]["Errors.Activities.ActivityStateNotSubmittable"] | components["schemas"]["Errors.Activities.InvalidActivitySchedule"];
+                };
+            };
+        };
+    };
+    ActivityOperations_listSummaries: {
+        parameters: {
+            query?: {
+                /** @description 页码，从 1 开始。 */
+                page?: components["parameters"]["PageQuery.page"];
+                /** @description 每页数量。 */
+                pageSize?: components["parameters"]["PageQuery.pageSize"];
+            };
+            header?: never;
+            path: {
+                activityId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: {
+                            /** @description 当前页数据。 */
+                            items: components["schemas"]["Activities.ActivitySummaryPost"][];
+                            /**
+                             * Format: int32
+                             * @description 当前页码。
+                             */
+                            page: number;
+                            /**
+                             * Format: int32
+                             * @description 每页数量。
+                             */
+                            pageSize: number;
+                            /**
+                             * Format: int64
+                             * @description 匹配总数。
+                             */
+                            total: number;
+                            /**
+                             * Format: int32
+                             * @description 匹配总页数。
+                             */
+                            totalPages: number;
+                        };
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.ActivityNotVisible"];
                 };
             };
         };
@@ -5420,7 +5664,42 @@ export interface operations {
                          * @enum {string}
                          */
                         message: "For Super Earth!";
-                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.ActivityNotVisible"] | components["schemas"]["Errors.Activities.ActivityPermissionDenied"] | components["schemas"]["Errors.Activities.ActivityNotEnded"] | components["schemas"]["Errors.Activities.MediaFileUnavailable"];
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.ActivityNotVisible"] | components["schemas"]["Errors.Activities.ActivityPermissionDenied"] | components["schemas"]["Errors.Activities.ActivityNotEnded"] | components["schemas"]["Errors.Activities.MediaFileUnavailable"] | components["schemas"]["Errors.Activities.DuplicateSummary"];
+                };
+            };
+        };
+    };
+    ActivityOperations_getMySummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["Activities.MyActivitySummaryResult"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.ActivityNotVisible"];
                 };
             };
         };

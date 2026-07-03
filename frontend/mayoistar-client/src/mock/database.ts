@@ -54,7 +54,6 @@ export interface MockDatabase {
 
 let db: MockDatabase
 
-
 /**
  * 初始化数据库（从 storage 恢复或使用种子数据）
  *

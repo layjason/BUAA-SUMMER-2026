@@ -80,6 +80,49 @@
           <text class="section-body">{{ activity.safetyNotice }}</text>
         </view>
 
+        <!-- AI 内容审核 -->
+        <view v-if="activity.aiContentReview" class="section card">
+          <text class="section-title">{{ t('aiReview.title') }}</text>
+          <view class="info-row">
+            <text class="info-label">{{ t('aiReview.riskLevel') }}</text>
+            <text class="info-value" :class="'risk-' + activity.aiContentReview.riskLevel">{{
+              riskLevelText(activity.aiContentReview.riskLevel)
+            }}</text>
+          </view>
+          <view v-if="activity.aiContentReview.reasons.length" class="info-row">
+            <text class="info-label">{{ t('aiReview.reason') }}</text>
+            <text class="info-value">{{ activity.aiContentReview.reasons.join('; ') }}</text>
+          </view>
+        </view>
+
+        <!-- 活动总结 -->
+        <view v-if="publishedSummaries.length > 0" class="section card">
+          <text class="section-title">{{ t('activityDetail.summarySection') }}</text>
+          <view v-for="item in publishedSummaries" :key="item.summaryId" class="published-block">
+            <text class="published-title">{{ item.title }}</text>
+            <text class="published-body">{{ item.content }}</text>
+          </view>
+        </view>
+
+        <!-- 活动评价 -->
+        <view v-if="publishedReviews.length > 0" class="section card">
+          <text class="section-title">{{
+            t('activityDetail.reviewsSection', { count: publishedReviews.length })
+          }}</text>
+          <view v-for="item in publishedReviews" :key="item.reviewId" class="published-block">
+            <view class="review-header">
+              <text class="published-title">{{ item.nickname }}</text>
+              <text class="review-rating">{{
+                t('activityDetail.reviewStars', { rating: item.rating })
+              }}</text>
+            </view>
+            <view v-if="item.tags.length > 0" class="tag-row">
+              <text v-for="tag in item.tags" :key="tag" class="tag-chip">{{ tag }}</text>
+            </view>
+            <text v-if="item.content" class="published-body">{{ item.content }}</text>
+          </view>
+        </view>
+
         <!-- 参与者菜单 -->
         <view class="section">
           <view class="menu-card" hover-class="menu-hover" @click="goParticipants">
@@ -121,13 +164,15 @@
             <button v-if="canReview" class="action-btn-sm" @click="goReview">
               {{ t('activityDetail.writeReview') }}
             </button>
-            <button
-              v-if="isOrganizer && activity.runtimeStatus === 'ended'"
-              class="action-btn-sm"
-              @click="goSummary"
-            >
+            <text v-else-if="showReviewedStatus" class="action-status-chip">{{
+              t('activityDetail.reviewSubmitted')
+            }}</text>
+            <button v-if="canPostSummary" class="action-btn-sm" @click="goSummary">
               {{ t('activityDetail.writeSummary') }}
             </button>
+            <text v-else-if="showSummaryPostedStatus" class="action-status-chip">{{
+              t('activityDetail.summarySubmitted')
+            }}</text>
             <button
               v-if="
                 isOrganizer &&
@@ -154,12 +199,20 @@
  * 后置条件：加载成功后展示活动详情与操作按钮
  */
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
 import {
   getActivityDetail,
+  getActivityReviews,
+  getActivitySummaries,
+  getMyActivityReview,
   getParticipationState as fetchParticipationState,
+  type ActivityDetail,
+  type ActivityParticipationState,
+  type ActivityReviewListItem,
+  type ActivitySummaryPost,
+  type RegistrationResult,
 } from '@/api/modules/activities'
 import {
   registerForActivity,
@@ -182,69 +235,31 @@ const errorMsg = ref('')
 const actioning = ref(false)
 const activityId = ref('')
 
-interface MediaFile {
-  mediaId: string
-  fileName: string
-  contentType: string
-  sizeBytes: number
-  usage: string
-  url?: string
-  uploadedAt: string
-}
-
-interface ActivityDetail {
-  activityId: string
-  title: string
-  tags: string[]
-  introduction: string
-  safetyNotice: string
-  startAt: string
-  endAt: string
-  location: {
-    address: string
-    city: string
-    placeName?: string
-    point: { longitude: number; latitude: number }
-  }
-  coverImage: MediaFile | null
-  images: MediaFile[]
-  feeAmount?: number
-  feeDescription?: string
-  minAge?: number
-  capacity: number
-  registeredCount: number
-  occupiedCount: number
-  waitingCount: number
-  registrationDeadline: string
-  organizerId: string
-  organizerName: string
-  reviewStatus: string
-  runtimeStatus: string
-  manualReviewRequired: boolean
-  reviewRecords: {
-    reviewId: string
-    result: string
-    reason?: string
-    reviewerId?: string
-    reviewedAt: string
-  }[]
-}
-
-interface ParticipationState {
-  canRegister: boolean
-  status: string | null
-  waitingRank?: number
-  confirmationDeadline?: string
-  canCancelRegistration: boolean
-  canConfirmWaitingSeat: boolean
-  canCheckIn: boolean
-}
-
 const activity = ref<ActivityDetail | null>(null)
-const participation = ref<ParticipationState | null>(null)
+const participation = ref<ActivityParticipationState | null>(null)
+
+const publishedSummaries = ref<ActivitySummaryPost[]>([])
+const publishedReviews = ref<ActivityReviewListItem[]>([])
+const hasReviewed = ref(false)
 
 function getRuntimeStatusText(status: string): string {
   return runtimeStatusText(status, t)
+}
+
+/**
+ * 风险等级文本映射
+ *
+ * @param level 风险等级值
+ * @returns 中文文本
+ */
+function riskLevelText(level: string): string {
+  const map: Record<string, string> = {
+    low: t('aiReview.riskLow'),
+    medium: t('aiReview.riskMedium'),
+    high: t('aiReview.riskHigh'),
+    uncertain: t('aiReview.riskUncertain'),
+  }
+  return map[level] ?? level
 }
 
 const feeText = computed(() => {
@@ -264,9 +279,37 @@ const isOrganizer = computed(() => {
   return activity.value?.organizerId === authStore.userId
 })
 
-/** 当前用户是否可以评价（已签到且活动已结束） */
-const canReview = computed(() => {
+/** 当前用户是否满足评价条件（已签到且活动已结束） */
+const meetsReviewCondition = computed(() => {
   return participation.value?.status === 'checkedIn' && activity.value?.runtimeStatus === 'ended'
+})
+
+/** 当前用户是否可以评价（满足条件且尚未评价） */
+const canReview = computed(() => {
+  return meetsReviewCondition.value && !hasReviewed.value
+})
+
+/** 是否展示「已评价」状态 */
+const showReviewedStatus = computed(() => {
+  return meetsReviewCondition.value && hasReviewed.value
+})
+
+/** 当前用户是否可以发布总结（发起人、活动已结束且活动尚无总结） */
+const canPostSummary = computed(() => {
+  return (
+    isOrganizer.value &&
+    activity.value?.runtimeStatus === 'ended' &&
+    publishedSummaries.value.length === 0
+  )
+})
+
+/** 是否展示「已发布总结」状态 */
+const showSummaryPostedStatus = computed(() => {
+  return (
+    isOrganizer.value &&
+    activity.value?.runtimeStatus === 'ended' &&
+    publishedSummaries.value.length > 0
+  )
 })
 
 /** 活动是否已满员（依据 API 返回的 occupiedCount） */
@@ -294,6 +337,9 @@ function goSummary(): void {
 async function handleExportCheckIns(): Promise<void> {
   try {
     uni.showLoading({ title: t('checkInExport.exporting') })
+    /*
+    UNKNOWN-TYPE: mock 导出返回下载 URL，OpenAPI 定义为 application/octet-stream
+    */
     const result = (await exportCheckIns(activityId.value)) as { url: string }
 
     const downloadResult = await uni.downloadFile({ url: result.url })
@@ -472,10 +518,7 @@ async function handleCheckIn(): Promise<void> {
 async function handleGenerateQrCode(): Promise<void> {
   try {
     uni.showLoading({ title: '生成中...' })
-    const result = (await generateCheckInQrCode(activityId.value)) as {
-      qrCodeToken: string
-      expiresAt: string
-    }
+    const result = await generateCheckInQrCode(activityId.value)
     const qrImageUrl =
       'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' +
       encodeURIComponent(result.qrCodeToken)
@@ -528,9 +571,9 @@ function goCheckIns(): void {
 async function handleRegister(): Promise<void> {
   actioning.value = true
   try {
-    const result = (await registerForActivity(activityId.value, {
+    const result: RegistrationResult = await registerForActivity(activityId.value, {
       acceptedSafetyNotice: true,
-    })) as { status?: string }
+    })
     const message = result.status === 'waiting' ? '已加入候补' : '报名成功'
     uni.showToast({ title: message, icon: 'success' })
     await loadData()
@@ -581,12 +624,19 @@ async function handleConfirmWaiting(): Promise<void> {
 
 async function loadData(): Promise<void> {
   try {
-    const [act, state] = await Promise.all([
+    const [act, state, summariesRes, reviewsRes, myReviewRes] = await Promise.all([
       getActivityDetail(activityId.value),
       fetchParticipationState(activityId.value),
+      getActivitySummaries(activityId.value, 1, 5),
+      getActivityReviews(activityId.value, 1, 10),
+      getMyActivityReview(activityId.value),
     ])
-    activity.value = act as ActivityDetail
-    participation.value = state as ParticipationState
+    activity.value = act
+    participation.value = state
+
+    publishedSummaries.value = summariesRes.items ?? []
+    publishedReviews.value = reviewsRes.items ?? []
+    hasReviewed.value = Boolean(myReviewRes.review)
   } catch (error) {
     if (error instanceof BusinessError) {
       errorMsg.value = getErrorMessage(error.code)
@@ -606,6 +656,12 @@ onLoad((query) => {
     return
   }
   loadData()
+})
+
+onShow(() => {
+  if (activityId.value && activity.value) {
+    void loadData()
+  }
 })
 </script>
 
@@ -805,6 +861,61 @@ onLoad((query) => {
   white-space: pre-wrap;
 }
 
+.published-block {
+  margin-top: 16rpx;
+}
+
+.published-block + .published-block {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid #ebedf0;
+}
+
+.published-title {
+  display: block;
+  font-size: 28rpx;
+  color: #323233;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+.published-body {
+  display: block;
+  font-size: 26rpx;
+  color: #646566;
+  line-height: 1.6;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.review-rating {
+  font-size: 24rpx;
+  color: #ff9800;
+}
+
+/* AI 内容审核风险等级 */
+.risk-high {
+  color: #ee0a24;
+  font-weight: 600;
+}
+
+.risk-medium {
+  color: #ed6a0c;
+}
+
+.risk-low {
+  color: #07c160;
+}
+
+.risk-uncertain {
+  color: #969799;
+}
+
 .bar-btn-disabled {
   background-color: #c8c9cc;
   color: #fff;
@@ -844,6 +955,21 @@ onLoad((query) => {
   background-color: #e8f7f0;
   border-radius: 8rpx;
   border: none;
+  padding: 0 12rpx;
+  box-sizing: border-box;
+}
+
+.action-status-chip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 160rpx;
+  height: 64rpx;
+  font-size: 24rpx;
+  color: #969799;
+  background-color: #f2f3f5;
+  border-radius: 8rpx;
   padding: 0 12rpx;
   box-sizing: border-box;
 }
