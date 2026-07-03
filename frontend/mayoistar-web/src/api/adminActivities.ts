@@ -44,7 +44,9 @@ export async function listActivities(params: ListActivitiesParams): Promise<Admi
         reviewStatus: act.reviewStatus,
         runtimeStatus: act.runtimeStatus,
         registeredCount: act.registeredCount,
+        occupiedCount: act.occupiedCount,
         capacity: act.capacity,
+        requireLocationCheck: act.requireLocationCheck,
       };
       return summary;
     });

@@ -207,7 +207,9 @@ const initialActivities = [
     reviewStatus: 'approved',
     runtimeStatus: 'registering',
     registeredCount: 42,
+    occupiedCount: 45,
     capacity: 100,
+    requireLocationCheck: true,
     introduction:
       '逃离城市的高温与喧嚣，和志同道合的伙伴们一起征服北京第一高峰！本次活动将有专业户外领队全程带队，提供全套安全装备。傍晚我们将在海拔2000米的草甸上扎营，煮热红酒，数流星，迎接日出。',
     safetyNotice:
@@ -278,7 +280,9 @@ const initialActivities = [
     reviewStatus: 'pending',
     runtimeStatus: 'notStarted',
     registeredCount: 0,
+    occupiedCount: 0,
     capacity: 6,
+    requireLocationCheck: false,
     introduction:
       '一封来自阿卡姆镇的神秘求助信，拉开了探寻古老迷雾的序幕。专业KP带跑，精美道具，全程高能沉浸式演绎，适合第一次体验TRPG跑团的新人小伙伴。',
     safetyNotice:
@@ -331,7 +335,9 @@ const initialActivities = [
     reviewStatus: 'rejected',
     runtimeStatus: 'notStarted',
     registeredCount: 0,
+    occupiedCount: 0,
     capacity: 200,
+    requireLocationCheck: false,
     introduction:
       '急招线下展会充场人员，工作简单，只需扫码加群，下载我们的最新金融客户端注册实名即可领取50元微信返现，现场咖啡免费畅饮！',
     safetyNotice: '不收取任何押金。18岁以下不招。',
@@ -382,7 +388,9 @@ const initialActivities = [
     reviewStatus: 'approved',
     runtimeStatus: 'takenDown',
     registeredCount: 4,
+    occupiedCount: 4,
     capacity: 15,
+    requireLocationCheck: true,
     introduction:
       '绝望坡连续数十个陡峭山头连登，重装负重15kg以上，路况全为野路碎石，无任何补给点。此次为高强度拉练，谢绝所有无重装经验的新人。出了任何危险责任全自负。',
     safetyNotice: '山高路陡，常年有野猪，气温高。必须携带足够1.5L*4瓶水。签署生死免责协议。',
@@ -804,7 +812,9 @@ class MockDatabase {
         reviewStatus: a.reviewStatus,
         runtimeStatus: a.runtimeStatus,
         registeredCount: a.registeredCount,
+        occupiedCount: a.occupiedCount,
         capacity: a.capacity,
+        requireLocationCheck: a.requireLocationCheck,
       }));
   }
 
@@ -877,7 +887,9 @@ class MockDatabase {
         reviewStatus: a.reviewStatus,
         runtimeStatus: a.runtimeStatus,
         registeredCount: a.registeredCount,
+        occupiedCount: a.occupiedCount,
         capacity: a.capacity,
+        requireLocationCheck: a.requireLocationCheck,
       }));
   }
 
