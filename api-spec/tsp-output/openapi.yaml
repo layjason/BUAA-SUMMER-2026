@@ -9241,7 +9241,7 @@ components:
                 - $ref: '#/components/schemas/EmptyData'
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
-      description: 20020：活动要求位置签到，但用户未提供位置信息。
+      description: 20021：活动要求位置签到，但用户未提供位置信息。
     Errors.Activities.CheckInQrCodeInvalid:
       type: object
       allOf:
