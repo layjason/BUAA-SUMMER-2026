@@ -5,6 +5,7 @@ import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.service.ai.ClipModels.ClipClassifyRequest;
 import io.github.layjason.mayoistar.service.ai.ClipModels.ClipClassifyResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +21,7 @@ import org.springframework.web.client.RestClientException;
  *
  * <p>类职责：封装与 Python CLIP 边车服务的 HTTP 通信，处理图片编码、请求发送、响应解析和错误处理。
  *
- * <p>类不变量：RestClient 在构造时创建并配置超时，请求符合 CLIP 服务的 /classify 端点契约。
+ * <p>类不变量：RestClient 通过 Spring 自动配置的 RestClient.Builder 构建，具备完整的 message converter 和错误处理。
  */
 @Slf4j
 @Component
@@ -33,14 +34,13 @@ public class ClipServiceClient {
      *
      * <p>前置条件：AiProperties 中 clip.endpoint 为有效的 HTTP URL。
      *
-     * <p>后置条件：创建已配置超时和 JSON 编解码的 RestClient 实例。
+     * <p>后置条件：创建已配置 JSON 编解码的 RestClient 实例。
      *
-     * @param properties   AI 配置属性
-     * @param objectMapper JSON 序列化/反序列化工具
+     * @param properties AI 配置属性
+     * @param builder    Spring 自动配置的 RestClient.Builder
      */
-    public ClipServiceClient(AiProperties properties) {
-        this.restClient =
-                RestClient.builder().baseUrl(properties.getClip().getEndpoint()).build();
+    public ClipServiceClient(AiProperties properties, RestClient.Builder builder) {
+        this.restClient = builder.baseUrl(properties.getClip().getEndpoint()).build();
     }
 
     /**
@@ -92,7 +92,7 @@ public class ClipServiceClient {
 
             return response;
         } catch (RestClientException e) {
-            log.error("CLIP 服务调用失败: endpoint={}", restClient.toString(), e);
+            log.error("CLIP 服务调用失败", e);
             throw new BusinessException(ErrorCodes.AI_SERVICE_UNAVAILABLE, "AI service is unavailable", e);
         }
     }
@@ -102,14 +102,15 @@ public class ClipServiceClient {
      *
      * <p>前置条件：HTTP 响应状态码为 4xx 或 5xx。
      *
-     * <p>后置条件：抛出包含适当错误码的 BusinessException。
+     * <p>后置条件：记录响应体详情后抛出包含适当错误码的 BusinessException。
      *
      * @param response HTTP 客户端响应
      */
     private void handleErrorResponse(ClientHttpResponse response) {
         try {
             int statusCode = response.getStatusCode().value();
-            log.warn("CLIP 服务返回错误: status={}", statusCode);
+            String responseBody = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+            log.warn("CLIP 服务返回错误: status={}, body={}", statusCode, responseBody);
             if (statusCode >= 500) {
                 throw new BusinessException(ErrorCodes.AI_SERVICE_UNAVAILABLE, "AI service is unavailable");
             }
