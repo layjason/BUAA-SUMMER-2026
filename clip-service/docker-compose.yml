@@ -1,0 +1,31 @@
+# Docker Compose 配置 - MayoiStar CLIP 分类服务（GPU）
+# 启动方式：docker compose up -d
+# 注意：需要先安装 NVIDIA Container Toolkit（https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html）
+#
+# 若无需 GPU，移除 deploy 段落并将 image 改为 clip-service:cpu
+
+services:
+  clip-classifier:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mayoistar-clip:gpu
+    container_name: mayoistar-clip
+    ports:
+      - "8000:8000"
+    environment:
+      - HF_HOME=/app/.cache/huggingface
+    volumes:
+      # 持久化模型缓存，避免每次重启重新下载（约 600MB）
+      - clip_model_cache:/app/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  clip_model_cache:
