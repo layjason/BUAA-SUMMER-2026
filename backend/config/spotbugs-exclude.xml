@@ -59,7 +59,6 @@
         <Bug pattern="CRLF_INJECTION_LOGS" />
     </Match>
     <!--
-    <!--
         CheckInService 中日志参数 activityId、userId 均为 UUID 标识符，
         不可能包含 CRLF 字符。SpotBugs 无法推断参数类型安全性。
     -->
