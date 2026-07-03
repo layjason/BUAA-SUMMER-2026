@@ -37,6 +37,7 @@ import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamModerationRecordRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -91,6 +92,9 @@ class AdminServiceTest {
     @Mock
     private ReportService reportService;
 
+    @Mock
+    private MediaAccessService mediaAccessService;
+
     private AdminService adminService;
 
     private final String adminId = UUID.randomUUID().toString();
@@ -114,7 +118,8 @@ class AdminServiceTest {
                 teamMemberRepository,
                 teamModerationRecordRepository,
                 reportRepository,
-                reportService);
+                reportService,
+                mediaAccessService);
     }
 
     // ======================== 商家审核 ========================

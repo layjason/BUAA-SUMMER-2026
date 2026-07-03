@@ -39,6 +39,7 @@ import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamModerationRecordRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -81,6 +82,7 @@ public class AdminService {
     private final TeamModerationRecordRepository teamModerationRecordRepository;
     private final ReportRepository reportRepository;
     private final ReportService reportService;
+    private final MediaAccessService mediaAccessService;
 
     /**
      * @param userRepository                   用户数据访问
@@ -110,7 +112,8 @@ public class AdminService {
             TeamMemberRepository teamMemberRepository,
             TeamModerationRecordRepository teamModerationRecordRepository,
             ReportRepository reportRepository,
-            ReportService reportService) {
+            ReportService reportService,
+            MediaAccessService mediaAccessService) {
         this.userRepository = userRepository;
         this.merchantProfileRepository = merchantProfileRepository;
         this.qualificationRepository = qualificationRepository;
@@ -124,6 +127,7 @@ public class AdminService {
         this.teamModerationRecordRepository = teamModerationRecordRepository;
         this.reportRepository = reportRepository;
         this.reportService = reportService;
+        this.mediaAccessService = mediaAccessService;
     }
 
     // ======================== 商家管理 ========================
@@ -1128,7 +1132,9 @@ public class AdminService {
                     mediaFileRepository
                             .findById(licenseId)
                             .ifPresentOrElse(
-                                    mf -> urls.add(mf.getUrl() != null ? mf.getUrl() : ""), () -> urls.add(""));
+                                    mf -> urls.add(
+                                            mediaAccessService.toSignedDto(mf).getSignedUrl()),
+                                    () -> urls.add(""));
                 }
                 detail.setLicenseImageUrls(urls);
             }
