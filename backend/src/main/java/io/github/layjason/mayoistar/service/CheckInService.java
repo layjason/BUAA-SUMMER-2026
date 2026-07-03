@@ -93,12 +93,12 @@ public class CheckInService {
         Instant expiresAt = now.plusSeconds(properties.getTokenExpireSeconds());
         long expiresAtEpoch = expiresAt.getEpochSecond();
 
-        String signature = createSignature(activityId, expiresAtEpoch);
-        // token 格式: base64(activityId|expiresAtEpoch).base64(signature)
+        byte[] signature = createSignature(activityId, expiresAtEpoch);
+        // token 格式: base64(activityId|expiresAtEpoch).base64(rawSignature)
         String payload = activityId + "|" + expiresAtEpoch;
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(StandardCharsets.UTF_8))
                 + "."
-                + Base64.getUrlEncoder().withoutPadding().encodeToString(signature.getBytes(StandardCharsets.UTF_8));
+                + Base64.getUrlEncoder().withoutPadding().encodeToString(signature);
 
         ActivityDtos.CheckInQrCode result = new ActivityDtos.CheckInQrCode();
         result.setActivityId(activityId);
@@ -144,9 +144,9 @@ public class CheckInService {
                 .findById(activityId)
                 .orElseThrow(() -> new BusinessException(20002, "Activity " + activityId + " is not visible"));
 
-        // 查找报名记录
+        // 查找报名记录（加悲观写锁，防止并发重复签到）
         ActivityRegistration registration = registrationRepository
-                .findByActivityIdAndUserId(activityId, userId)
+                .findByActivityIdAndUserIdForUpdate(activityId, userId)
                 .orElseThrow(() -> new BusinessException(20011, "未报名该活动，无法签到"));
 
         // 检查报名状态
@@ -318,10 +318,9 @@ public class CheckInService {
             }
 
             // 验证签名
-            String expectedSig = createSignature(activityId, expiresAtEpoch);
-            String actualSig = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
-            if (!MessageDigest.isEqual(
-                    expectedSig.getBytes(StandardCharsets.UTF_8), actualSig.getBytes(StandardCharsets.UTF_8))) {
+            byte[] expectedSig = createSignature(activityId, expiresAtEpoch);
+            byte[] actualSig = Base64.getUrlDecoder().decode(parts[1]);
+            if (!MessageDigest.isEqual(expectedSig, actualSig)) {
                 throw new BusinessException(20013, "签到二维码无效");
             }
         } catch (IllegalArgumentException e) {
@@ -390,17 +389,16 @@ public class CheckInService {
     /**
      * 生成 HMAC-SHA256 签名。
      *
-     * @param activityId  活动 ID
+     * @param activityId   活动 ID
      * @param expiresEpoch 过期时间（epoch 秒）
-     * @return URL-safe Base64 编码的签名
+     * @return HMAC 原始签名字节
      */
-    private String createSignature(String activityId, long expiresEpoch) {
+    private byte[] createSignature(String activityId, long expiresEpoch) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(properties.getSigningSecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             String payload = activityId + "\n" + expiresEpoch;
-            byte[] digest = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+            return mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             throw new IllegalStateException("签到 token 签名生成失败", e);
         }
