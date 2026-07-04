@@ -36,18 +36,18 @@ public class AiProperties {
     }
 
     /**
-     * 阿里云内容安全审核配置。
+     * AI 内容安全审核配置。
      */
     @Data
     public static class ContentReview {
 
-        /** 阿里云 ImageAudit 服务端点 */
-        private String endpoint = "imageaudit.cn-shanghai.aliyuncs.com";
+        /** 内容审核服务端点 */
+        private String endpoint = "";
 
-        /** 阿里云 AccessKey ID，默认由 ALIBABA_CLOUD_ACCESS_KEY_ID 注入 */
+        /** 内容审核 AccessKey ID，默认由 ALIBABA_CLOUD_ACCESS_KEY_ID 注入 */
         private String accessKeyId = "";
 
-        /** 阿里云 AccessKey Secret，默认由 ALIBABA_CLOUD_ACCESS_KEY_SECRET 注入 */
+        /** 内容审核 AccessKey Secret，默认由 ALIBABA_CLOUD_ACCESS_KEY_SECRET 注入 */
         private String accessKeySecret = "";
 
         /** 文本审核标签 */
