@@ -217,4 +217,22 @@ public class ChatController {
         var result = chatService.votePoll(teamId, pollId, userId, request);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
+
+    @GetMapping("/teams/{teamId}/polls")
+    public ResponseEntity<ApiResponse<PageResult<ChatDtos.TeamPoll>>> listPolls(
+            @PathVariable String teamId,
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.listPolls(teamId, userId, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/teams/{teamId}/polls/{pollId}")
+    public ResponseEntity<ApiResponse<ChatDtos.TeamPoll>> getPoll(
+            @PathVariable String teamId, @PathVariable String pollId) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.getPoll(teamId, pollId, userId);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
 }

@@ -178,5 +178,6 @@ public final class ChatDtos {
         private List<TeamPollOption> options;
         private String deadline;
         private String createdAt;
+        private String votedOptionId;
     }
 }

@@ -857,6 +857,58 @@ public class ChatService {
     }
 
     /**
+     * 分页获取群投票列表，按创建时间降序排列，含各选项票数。
+     *
+     * <p>前置条件：{@code userId} 是 {@code teamId} 小队的成员。
+     *
+     * <p>后置条件：返回分页投票列表。
+     */
+    @Transactional(readOnly = true)
+    public PageResult<ChatDtos.TeamPoll> listPolls(String teamId, String userId, int page, int pageSize) {
+        if (!teamMemberRepository.findByTeamIdAndUserId(teamId, userId).isPresent()) {
+            throw new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        }
+
+        var pollPage = teamPollRepository.findByTeamIdOrderByCreatedAtDesc(teamId, PageRequest.of(page - 1, pageSize));
+
+        List<ChatDtos.TeamPoll> items = toTeamPollDtoBatch(pollPage.getContent());
+
+        return new PageResult<>(
+                items,
+                pollPage.getTotalElements(),
+                pollPage.getNumber() + 1,
+                pollPage.getSize(),
+                pollPage.getTotalPages());
+    }
+
+    /**
+     * 获取单个群投票详情，含各选项票数和当前用户的选择。
+     *
+     * <p>前置条件：{@code userId} 是 {@code teamId} 小队的成员。
+     *
+     * <p>后置条件：返回带用户选择的投票详情。
+     */
+    @Transactional(readOnly = true)
+    public ChatDtos.TeamPoll getPoll(String teamId, String pollId, String userId) {
+        if (!teamMemberRepository.findByTeamIdAndUserId(teamId, userId).isPresent()) {
+            throw new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        }
+
+        TeamPoll poll = teamPollRepository.findByPollIdAndTeamId(pollId, teamId).orElseThrow(() -> {
+            log.warn("投票不存在: pollId={}, teamId={}", pollId, teamId);
+            return new BusinessException(POLL_UNAVAILABLE, "Poll is not available");
+        });
+
+        ChatDtos.TeamPoll result = toTeamPollDto(poll);
+
+        pollVoteRepository
+                .findByPollIdAndUserId(pollId, userId)
+                .ifPresent(v -> result.setVotedOptionId(v.getOptionId()));
+
+        return result;
+    }
+
+    /**
      * 将 TeamPoll 实体转换为 DTO，含各选项票数。
      *
      * <p>前置条件：{@code entity} 已持久化。
@@ -887,6 +939,54 @@ public class ChatService {
         dto.setDeadline(entity.getDeadline() != null ? entity.getDeadline().toString() : null);
         dto.setCreatedAt(entity.getCreatedAt().toString());
         return dto;
+    }
+
+    /**
+     * 批量将 TeamPoll 实体转换为 DTO，一次性加载所有 options 和 votes，
+     * 避免 forEach 调用 toTeamPollDto 产生的 N+1 查询。
+     */
+    private List<ChatDtos.TeamPoll> toTeamPollDtoBatch(List<TeamPoll> polls) {
+        if (polls.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> pollIds = polls.stream().map(TeamPoll::getPollId).collect(Collectors.toList());
+
+        Map<String, List<PollOption>> optionsByPollId = pollOptionRepository.findByPollIdIn(pollIds).stream()
+                .collect(Collectors.groupingBy(PollOption::getPollId));
+        Map<String, Map<String, Long>> voteCountsByPollId = pollVoteRepository.findByPollIdIn(pollIds).stream()
+                .collect(Collectors.groupingBy(
+                        PollVote::getPollId, Collectors.groupingBy(PollVote::getOptionId, Collectors.counting())));
+
+        return polls.stream()
+                .map(poll -> {
+                    ChatDtos.TeamPoll dto = new ChatDtos.TeamPoll();
+                    dto.setPollId(poll.getPollId());
+                    dto.setTeamId(poll.getTeamId());
+                    dto.setTitle(poll.getTitle());
+                    dto.setDeadline(
+                            poll.getDeadline() != null ? poll.getDeadline().toString() : null);
+                    dto.setCreatedAt(poll.getCreatedAt().toString());
+
+                    List<PollOption> options = optionsByPollId.getOrDefault(poll.getPollId(), List.of());
+                    Map<String, Long> voteCounts = voteCountsByPollId.getOrDefault(poll.getPollId(), Map.of());
+
+                    List<ChatDtos.TeamPollOption> optionDtos = options.stream()
+                            .map(opt -> {
+                                ChatDtos.TeamPollOption optDto = new ChatDtos.TeamPollOption();
+                                optDto.setOptionId(opt.getOptionId());
+                                optDto.setContent(opt.getContent());
+                                optDto.setVoteCount(voteCounts
+                                        .getOrDefault(opt.getOptionId(), 0L)
+                                        .intValue());
+                                return optDto;
+                            })
+                            .collect(Collectors.toList());
+                    dto.setOptions(optionDtos);
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     /**
