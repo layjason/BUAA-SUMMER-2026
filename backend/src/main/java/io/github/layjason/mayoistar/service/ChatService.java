@@ -420,13 +420,17 @@ public class ChatService {
             }
 
             // 为图片消息创建目标会话独立的 MediaFile 副本，各会话权限互不干扰
-            UUID targetImageMediaId;
+            // 若原始媒体文件已被删除，转发后图片字段置空而非复用已失效的 mediaId
+            UUID targetImageMediaId = null;
             if (originalImage != null) {
                 var copiedImage = mediaAccessService.copyForScope(
                         originalImage, senderId, MediaAccessPolicy.conversationMember, targetId);
                 targetImageMediaId = copiedImage.getMediaId();
-            } else {
-                targetImageMediaId = original.getImageMediaId();
+            } else if (original.getImageMediaId() != null) {
+                log.warn(
+                        "转发消息时原始媒体文件不存在: originalMessageId={}, mediaId={}",
+                        originalMessageId,
+                        original.getImageMediaId());
             }
 
             ChatMessage forwarded = ChatMessage.builder()
