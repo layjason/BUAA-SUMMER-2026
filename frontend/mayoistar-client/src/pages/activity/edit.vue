@@ -361,14 +361,7 @@ function buildAmapStaticMapUrl(input: {
  * 后置条件：回填 location 各字段，清除 location 错误
  */
 function goToMapPicker(): void {
-  const query =
-    hasLocation.value && locationLongitude.value != null && locationLatitude.value != null
-      ? `?longitude=${encodeURIComponent(
-          String(locationLongitude.value),
-        )}&latitude=${encodeURIComponent(String(locationLatitude.value))}&name=${encodeURIComponent(
-          formPlaceName.value || formAddress.value,
-        )}&address=${encodeURIComponent(formAddress.value)}&city=${encodeURIComponent(formCity.value)}`
-      : ''
+  const query = buildMapPickerQuery()
   uni.navigateTo({
     url: `/pages/activity/map-picker${query}`,
     events: {
@@ -377,6 +370,23 @@ function goToMapPicker(): void {
       },
     } as Record<string, (data: unknown) => void>,
   })
+}
+
+/**
+ * 构造跳转至地图选点页的查询字符串
+ * 前置条件：地点坐标与文本可能为空
+ * 返回值：以 `?` 开头的查询字符串或空字符串
+ */
+function buildMapPickerQuery(): string {
+  if (!hasLocation.value || locationLongitude.value == null || locationLatitude.value == null)
+    return ''
+  const parts: string[] = []
+  parts.push(`longitude=${encodeURIComponent(String(locationLongitude.value))}`)
+  parts.push(`latitude=${encodeURIComponent(String(locationLatitude.value))}`)
+  parts.push(`name=${encodeURIComponent(String(formPlaceName.value || formAddress.value || ''))}`)
+  parts.push(`address=${encodeURIComponent(String(formAddress.value || ''))}`)
+  parts.push(`city=${encodeURIComponent(String(formCity.value || ''))}`)
+  return `?${parts.join('&')}`
 }
 
 /**
