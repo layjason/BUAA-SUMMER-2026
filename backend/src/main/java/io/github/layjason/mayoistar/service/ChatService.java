@@ -107,7 +107,16 @@ public class ChatService {
             throw new BusinessException(CONVERSATION_MEMBER_REQUIRED, "Conversation membership is required");
         }
 
-        validateMessageContent(request);
+        // 预加载图片媒体：校验存在性，同时供后续策略更新和 DTO 填充复用，避免重复查库
+        io.github.layjason.mayoistar.entity.common.MediaFile imageMedia = null;
+        if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
+            imageMedia = mediaFileRepository
+                    .findById(request.getImageMediaId())
+                    .orElseThrow(() -> new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid"));
+            // 图片消息需将访问策略从默认 owner 提升为 conversationMember，使会话所有成员可查看
+            mediaAccessService.updateAccessPolicy(
+                    request.getImageMediaId(), MediaAccessPolicy.conversationMember, conversationId);
+        }
 
         ChatMessage message = ChatMessage.builder()
                 .messageId(UUID.randomUUID().toString())
@@ -141,20 +150,11 @@ public class ChatService {
                 conversationId,
                 request.getKind());
 
-        // 图片消息需将访问策略从默认 owner 提升为 conversationMember，使会话所有成员可查看
-        if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
-            mediaAccessService.updateAccessPolicy(
-                    request.getImageMediaId(), MediaAccessPolicy.conversationMember, conversationId);
-        }
-
         initializeReadStatus(savedMessage.getMessageId(), conversationId, senderId);
 
         ChatDtos.ChatMessage result = toChatMessageDto(savedMessage, MessageReadStatus.read);
-        if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
-            mediaFileRepository
-                    .findById(request.getImageMediaId())
-                    .map(this::toMediaFileDto)
-                    .ifPresent(result::setImage);
+        if (imageMedia != null) {
+            result.setImage(toMediaFileDto(imageMedia));
         }
         notificationService.notifyMessageCreated(result, getRecipientUserIds(conversationId, senderId));
         return result;
@@ -761,21 +761,6 @@ public class ChatService {
         return conversationMemberRepository.findByConversationId(conversationId).stream()
                 .map(io.github.layjason.mayoistar.entity.chat.ConversationMember::getUserId)
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * 校验消息中引用的媒体等外部资源是否存在。
-     *
-     * <p>前置条件：request 已通过 Controller 层的 {@code @ValidMessageContent} 跨字段校验。
-     *
-     * <p>后置条件：引用的资源均存在时通过，否则抛出异常。
-     *
-     * <p>不变量：消息内容格式校验由 Controller 层负责，本方法仅校验需要访问数据库的依赖。
-     */
-    private void validateMessageContent(ChatDtos.SendMessageRequest request) {
-        if (request.getKind() == MessageKind.image && !mediaFileRepository.existsById(request.getImageMediaId())) {
-            throw new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
-        }
     }
 
     /**
