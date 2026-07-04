@@ -13,6 +13,7 @@ import io.github.layjason.mayoistar.service.CheckInService;
 import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
 import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
+import io.github.layjason.mayoistar.service.activities.ActivitySummaryReviewService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +43,7 @@ public class ActivityController {
 
     private final ActivityDraftService activityDraftService;
     private final ActivityQueryService activityQueryService;
+    private final ActivitySummaryReviewService activitySummaryReviewService;
 
     private final ActivityRegistrationService activityRegistrationService;
     private final ActivityRegistrationStateService activityRegistrationStateService;
@@ -269,7 +271,25 @@ public class ActivityController {
     @PostMapping("/{activityId}/reviews")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityReview>> reviewActivity(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.ActivityReviewRequest request) {
-        return responseFactory.activityReview();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(
+                ApiResponse.success(activitySummaryReviewService.createReview(userId, activityId, request)));
+    }
+
+    @GetMapping("/{activityId}/reviews")
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivityReviewListItem>>> listReviews(
+            @PathVariable String activityId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        return ResponseEntity.ok(
+                ApiResponse.success(activitySummaryReviewService.listReviews(activityId, page, pageSize)));
+    }
+
+    @GetMapping("/{activityId}/reviews/mine")
+    public ResponseEntity<ApiResponse<ActivityDtos.MyActivityReviewResult>> getMyReview(
+            @PathVariable String activityId) {
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(activitySummaryReviewService.getMyReview(userId, activityId)));
     }
 
     @PostMapping("/{activityId}/submit")
@@ -281,7 +301,25 @@ public class ActivityController {
     @PostMapping("/{activityId}/summaries")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivitySummaryPost>> createSummary(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.ActivitySummaryPostRequest request) {
-        return responseFactory.activitySummaryPost();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(
+                ApiResponse.success(activitySummaryReviewService.createSummary(userId, activityId, request)));
+    }
+
+    @GetMapping("/{activityId}/summaries")
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummaryPost>>> listSummaries(
+            @PathVariable String activityId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        return ResponseEntity.ok(
+                ApiResponse.success(activitySummaryReviewService.listSummaries(activityId, page, pageSize)));
+    }
+
+    @GetMapping("/{activityId}/summaries/mine")
+    public ResponseEntity<ApiResponse<ActivityDtos.MyActivitySummaryResult>> getMySummary(
+            @PathVariable String activityId) {
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(activitySummaryReviewService.getMySummary(userId, activityId)));
     }
 
     @PostMapping("/{activityId}/waiting-confirmations")

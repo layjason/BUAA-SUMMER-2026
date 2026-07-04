@@ -35,6 +35,7 @@ import io.github.layjason.mayoistar.service.CheckInService;
 import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
 import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
+import io.github.layjason.mayoistar.service.activities.ActivitySummaryReviewService;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -185,6 +186,7 @@ class ActivityQueryControllerTests {
                 mock(MediaFileUploadService.class),
                 mock(ActivityDraftService.class),
                 mock(ActivityQueryService.class),
+                mock(ActivitySummaryReviewService.class),
                 mock(ActivityRegistrationService.class),
                 mock(ActivityRegistrationStateService.class),
                 mock(CheckInService.class));
