@@ -8,6 +8,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * 小队成员数据访问层。
@@ -32,7 +34,9 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, String> 
      * @return 成员（若存在）
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<TeamMember> findByTeamIdAndUserIdForUpdate(String teamId, String userId);
+    @Query("select tm from TeamMember tm where tm.teamId = :teamId and tm.userId = :userId")
+    Optional<TeamMember> findByTeamIdAndUserIdForUpdate(
+            @Param("teamId") String teamId, @Param("userId") String userId);
 
     long countByUserId(String userId);
 }
