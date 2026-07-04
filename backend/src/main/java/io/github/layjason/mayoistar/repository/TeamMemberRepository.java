@@ -35,8 +35,7 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, String> 
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select tm from TeamMember tm where tm.teamId = :teamId and tm.userId = :userId")
-    Optional<TeamMember> findByTeamIdAndUserIdForUpdate(
-            @Param("teamId") String teamId, @Param("userId") String userId);
+    Optional<TeamMember> findByTeamIdAndUserIdForUpdate(@Param("teamId") String teamId, @Param("userId") String userId);
 
     long countByUserId(String userId);
 }

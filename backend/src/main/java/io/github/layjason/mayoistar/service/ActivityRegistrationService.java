@@ -45,7 +45,8 @@ public class ActivityRegistrationService {
             throw new BusinessException(SAFETY_NOTICE_NOT_ACCEPTED, "Safety notice must be accepted");
         }
         if (!reputationService.canRegisterForActivity(userId)) {
-            throw new BusinessException(REPUTATION_INSUFFICIENT, "Reputation score is insufficient for activity registration");
+            throw new BusinessException(
+                    REPUTATION_INSUFFICIENT, "Reputation score is insufficient for activity registration");
         }
         Activity activity = findVisibleActivityForUpdate(activityId);
         if (!isRegistrationOpen(activity, now)) {

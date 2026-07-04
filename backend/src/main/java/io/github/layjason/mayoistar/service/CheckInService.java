@@ -198,11 +198,7 @@ public class CheckInService {
                         registration.getRegistrationId(),
                         "活动签到");
             } catch (BusinessException e) {
-                log.info(
-                        "签到加分跳过: activityId={}, userId={}, code={}",
-                        activityId,
-                        userId,
-                        e.getCode());
+                log.info("签到加分跳过: activityId={}, userId={}, code={}", activityId, userId, e.getCode());
             } catch (Exception e) {
                 log.warn("签到加分失败: activityId={}, userId={}", activityId, userId, e);
             }
