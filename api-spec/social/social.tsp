@@ -396,6 +396,58 @@ model TeamPointRankItem {
   points: int32;
 }
 
+@doc("手动调整小队成员积分请求。")
+model ManualPointAdjustmentRequest {
+  @doc("积分变动值，正数为加、负数为减。")
+  pointChange: int32;
+
+  @doc("调整原因。")
+  @maxLength(50)
+  reason: string;
+}
+
+@doc("小队积分变动记录项。")
+model TeamPointRecordItem {
+  @doc("记录唯一标识。")
+  recordId: EntityId;
+
+  @doc("成员用户标识。")
+  userId: EntityId;
+
+  @doc("成员昵称。")
+  nickname: string;
+
+  @doc("积分变动值。")
+  pointChange: int32;
+
+  @doc("变动来源。")
+  source: TeamPointChangeSource;
+
+  @doc("关联实体 ID，如报名记录 ID。")
+  referenceId?: EntityId;
+
+  @doc("变动原因。")
+  reason: string;
+
+  @doc("变动时间。")
+  createdAt: utcDateTime;
+}
+
+@doc("小队积分变动来源枚举。")
+enum TeamPointChangeSource {
+  @doc("活动签到加分。")
+  checkin,
+
+  @doc("爽约扣分。")
+  no_show,
+
+  @doc("发布活动图文总结加分。")
+  summary_post,
+
+  @doc("管理员手动加减分。")
+  manual,
+}
+
 @route("/social")
 @tag("好友社群")
 interface SocialOperations {
@@ -686,6 +738,33 @@ interface SocialOperations {
   getTeamPointRanks(@path teamId: EntityId, ...PageQuery): APIResult<
     PageResult<TeamPointRankItem>,
 
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamMemberNotFound
+  >;
+
+  @post
+  @route("/teams/{teamId}/members/{userId}/points")
+  @doc("手动调整小队成员积分，仅队长和管理员可执行。")
+  adjustTeamMemberPoints(
+    @path teamId: EntityId,
+    @path userId: EntityId,
+    @body request: ManualPointAdjustmentRequest
+  ): APIResult<
+    EmptyData,
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamMemberNotFound
+      | QujuApi.Errors.Social.TeamPermissionDenied
+  >;
+
+  @get
+  @route("/teams/{teamId}/members/{userId}/points/history")
+  @doc("查看小队成员积分变动历史。")
+  getTeamMemberPointHistory(
+    @path teamId: EntityId,
+    @path userId: EntityId,
+    ...PageQuery
+  ): APIResult<
+    PageResult<TeamPointRecordItem>,
       | QujuApi.Errors.Social.TeamNotVisible
       | QujuApi.Errors.Social.TeamMemberNotFound
   >;
