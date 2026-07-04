@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -134,6 +135,42 @@ public class ChatController {
         String userId = securityUtils.getCurrentUserId();
         var result = chatService.markAnnouncementRead(teamId, announcementId, userId);
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/teams/{teamId}/announcements")
+    public ResponseEntity<ApiResponse<PageResult<ChatDtos.TeamAnnouncement>>> listAnnouncements(
+            @PathVariable String teamId,
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.listAnnouncements(teamId, userId, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/teams/{teamId}/announcements/{announcementId}")
+    public ResponseEntity<ApiResponse<ChatDtos.TeamAnnouncement>> getAnnouncement(
+            @PathVariable String teamId, @PathVariable String announcementId) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.getAnnouncement(teamId, announcementId, userId);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @PutMapping("/teams/{teamId}/announcements/{announcementId}")
+    public ResponseEntity<ApiResponse<ChatDtos.TeamAnnouncement>> updateAnnouncement(
+            @PathVariable String teamId,
+            @PathVariable String announcementId,
+            @Valid @RequestBody ChatDtos.TeamAnnouncementUpdateRequest request) {
+        String userId = securityUtils.getCurrentUserId();
+        var result = chatService.updateAnnouncement(teamId, announcementId, userId, request.getContent());
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @DeleteMapping("/teams/{teamId}/announcements/{announcementId}")
+    public ResponseEntity<ApiResponse<EmptyData>> deleteAnnouncement(
+            @PathVariable String teamId, @PathVariable String announcementId) {
+        String userId = securityUtils.getCurrentUserId();
+        chatService.deleteAnnouncement(teamId, announcementId, userId);
+        return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
     }
 
     @PostMapping(value = "/teams/{teamId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

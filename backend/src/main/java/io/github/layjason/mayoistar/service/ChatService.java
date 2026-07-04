@@ -565,6 +565,155 @@ public class ChatService {
         return toTeamAnnouncementDto(announcement, readByCurrentUser);
     }
 
+    /**
+     * 分页获取群公告列表，按发布时间降序排列，含当前用户已读状态。
+     *
+     * <p>前置条件：{@code userId} 是 {@code teamId} 小队的成员。
+     *
+     * <p>后置条件：返回分页公告列表。
+     */
+    @Transactional(readOnly = true)
+    public PageResult<ChatDtos.TeamAnnouncement> listAnnouncements(
+            String teamId, String userId, int page, int pageSize) {
+        if (!teamMemberRepository.findByTeamIdAndUserId(teamId, userId).isPresent()) {
+            throw new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        }
+
+        var announcementPage = teamAnnouncementRepository.findByTeamIdOrderByPublishedAtDesc(
+                teamId, PageRequest.of(page - 1, pageSize));
+
+        List<String> annIds = announcementPage.getContent().stream()
+                .map(TeamAnnouncement::getAnnouncementId)
+                .collect(Collectors.toList());
+        Map<String, Boolean> readStatusMap;
+        if (annIds.isEmpty()) {
+            readStatusMap = Map.of();
+        } else {
+            readStatusMap = teamAnnouncementReadRepository.findByAnnouncementIdInAndUserId(annIds, userId).stream()
+                    .collect(Collectors.toMap(
+                            TeamAnnouncementRead::getAnnouncementId, r -> r.getReadAt() != null, (a, b) -> a));
+        }
+
+        List<ChatDtos.TeamAnnouncement> items = announcementPage.getContent().stream()
+                .map(a -> toTeamAnnouncementDto(a, readStatusMap.getOrDefault(a.getAnnouncementId(), false)))
+                .collect(Collectors.toList());
+
+        return new PageResult<>(
+                items,
+                announcementPage.getTotalElements(),
+                announcementPage.getNumber() + 1,
+                announcementPage.getSize(),
+                announcementPage.getTotalPages());
+    }
+
+    /**
+     * 获取单条群公告详情，含当前用户已读状态。
+     *
+     * <p>前置条件：{@code userId} 是 {@code teamId} 小队的成员，公告属于该小队。
+     *
+     * <p>后置条件：返回公告详情。
+     */
+    @Transactional(readOnly = true)
+    public ChatDtos.TeamAnnouncement getAnnouncement(String teamId, String announcementId, String userId) {
+        if (!teamMemberRepository.findByTeamIdAndUserId(teamId, userId).isPresent()) {
+            throw new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        }
+
+        TeamAnnouncement announcement = teamAnnouncementRepository
+                .findById(announcementId)
+                .orElseThrow(() -> new BusinessException(
+                        ANNOUNCEMENT_NOT_VISIBLE, "Announcement " + announcementId + " is not visible"));
+
+        if (!announcement.getTeamId().equals(teamId)) {
+            throw new BusinessException(ANNOUNCEMENT_NOT_VISIBLE, "Announcement does not belong to this team");
+        }
+
+        boolean readByCurrentUser = teamAnnouncementReadRepository
+                .findByAnnouncementIdAndUserId(announcementId, userId)
+                .map(r -> r.getReadAt() != null)
+                .orElse(false);
+
+        return toTeamAnnouncementDto(announcement, readByCurrentUser);
+    }
+
+    /**
+     * 编辑群公告，仅发布者或小队管理员可操作。
+     *
+     * <p>前置条件：{@code userId} 是公告发布者或小队管理员，公告属于该小队。
+     *
+     * <p>后置条件：公告内容已更新。
+     */
+    public ChatDtos.TeamAnnouncement updateAnnouncement(
+            String teamId, String announcementId, String userId, String content) {
+        TeamAnnouncement announcement = teamAnnouncementRepository
+                .findById(announcementId)
+                .orElseThrow(() -> new BusinessException(
+                        ANNOUNCEMENT_NOT_VISIBLE, "Announcement " + announcementId + " is not visible"));
+
+        if (!announcement.getTeamId().equals(teamId)) {
+            throw new BusinessException(ANNOUNCEMENT_NOT_VISIBLE, "Announcement does not belong to this team");
+        }
+
+        var member = teamMemberRepository.findByTeamIdAndUserId(teamId, userId).orElseThrow(() -> {
+            log.warn("非小队成员尝试编辑公告: teamId={}, userId={}", teamId, userId);
+            return new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        });
+
+        boolean isPublisher = announcement.getPublisherId().equals(userId);
+        boolean isAdmin = member.getRole() == TeamMemberRole.leader || member.getRole() == TeamMemberRole.admin;
+
+        if (!isPublisher && !isAdmin) {
+            log.warn("非发布者/管理员尝试编辑公告: announcementId={}, userId={}", announcementId, userId);
+            throw new BusinessException(ANNOUNCEMENT_PERMISSION_DENIED, "Announcement operation is not allowed");
+        }
+
+        announcement.setContent(content);
+        teamAnnouncementRepository.save(announcement);
+        log.info("群公告已更新: announcementId={}, teamId={}", announcementId, teamId);
+
+        boolean readByCurrentUser = teamAnnouncementReadRepository
+                .findByAnnouncementIdAndUserId(announcementId, userId)
+                .map(r -> r.getReadAt() != null)
+                .orElse(false);
+        return toTeamAnnouncementDto(announcement, readByCurrentUser);
+    }
+
+    /**
+     * 删除群公告，仅发布者或小队管理员可操作。硬删除公告及关联已读记录。
+     *
+     * <p>前置条件：{@code userId} 是公告发布者或小队管理员。
+     *
+     * <p>后置条件：公告和所有已读记录已删除。
+     */
+    public void deleteAnnouncement(String teamId, String announcementId, String userId) {
+        TeamAnnouncement announcement = teamAnnouncementRepository
+                .findById(announcementId)
+                .orElseThrow(() -> new BusinessException(
+                        ANNOUNCEMENT_NOT_VISIBLE, "Announcement " + announcementId + " is not visible"));
+
+        if (!announcement.getTeamId().equals(teamId)) {
+            throw new BusinessException(ANNOUNCEMENT_NOT_VISIBLE, "Announcement does not belong to this team");
+        }
+
+        var member = teamMemberRepository.findByTeamIdAndUserId(teamId, userId).orElseThrow(() -> {
+            log.warn("非小队成员尝试删除公告: teamId={}, userId={}", teamId, userId);
+            return new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        });
+
+        boolean isPublisher = announcement.getPublisherId().equals(userId);
+        boolean isAdmin = member.getRole() == TeamMemberRole.leader || member.getRole() == TeamMemberRole.admin;
+
+        if (!isPublisher && !isAdmin) {
+            log.warn("非发布者/管理员尝试删除公告: announcementId={}, userId={}", announcementId, userId);
+            throw new BusinessException(ANNOUNCEMENT_PERMISSION_DENIED, "Announcement operation is not allowed");
+        }
+
+        var readRecords = teamAnnouncementReadRepository.findByAnnouncementId(announcementId);
+        teamAnnouncementReadRepository.deleteAll(readRecords);
+        teamAnnouncementRepository.delete(announcement);
+        log.info("群公告已删除: announcementId={}, teamId={}", announcementId, teamId);
+    }
+
     // ========================================
     // Team Polls
     // ========================================

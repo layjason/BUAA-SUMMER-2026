@@ -175,6 +175,77 @@ class ChatServiceAnnouncementTest {
                 .hasMessageContaining("membership");
     }
 
+    @Test
+    @DisplayName("分页获取群公告列表，按发布时间降序")
+    void listAnnouncements() {
+        chatService.publishAnnouncement(teamId, leader.getUserId(), "第一報");
+        chatService.publishAnnouncement(teamId, leader.getUserId(), "第二報");
+
+        var result = chatService.listAnnouncements(teamId, member.getUserId(), 1, 20);
+
+        assertThat(result.getItems()).hasSize(2);
+        assertThat(result.getItems().get(0).getContent()).isEqualTo("第二報");
+        assertThat(result.getItems().get(1).getContent()).isEqualTo("第一報");
+    }
+
+    @Test
+    @DisplayName("获取单条公告详情")
+    void getAnnouncement() {
+        var published = chatService.publishAnnouncement(teamId, leader.getUserId(), "詳細のお知らせ");
+
+        var result = chatService.getAnnouncement(teamId, published.getAnnouncementId(), member.getUserId());
+
+        assertThat(result.getAnnouncementId()).isEqualTo(published.getAnnouncementId());
+        assertThat(result.getContent()).isEqualTo("詳細のお知らせ");
+        assertThat(result.getReadByCurrentUser()).isFalse();
+    }
+
+    @Test
+    @DisplayName("发布者编辑公告成功")
+    void updateAnnouncementByPublisher() {
+        var published = chatService.publishAnnouncement(teamId, leader.getUserId(), "元の内容");
+
+        var result =
+                chatService.updateAnnouncement(teamId, published.getAnnouncementId(), leader.getUserId(), "変更後の内容");
+
+        assertThat(result.getContent()).isEqualTo("変更後の内容");
+    }
+
+    @Test
+    @DisplayName("非发布者/非管理员编辑公告拒绝")
+    void updateAnnouncementByNonPublisherRejected() {
+        var published = chatService.publishAnnouncement(teamId, leader.getUserId(), "元の内容");
+
+        assertThatThrownBy(() -> chatService.updateAnnouncement(
+                        teamId, published.getAnnouncementId(), member.getUserId(), "書き換え"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("not allowed");
+    }
+
+    @Test
+    @DisplayName("发布者删除公告成功，已读记录级联删除")
+    void deleteAnnouncement() {
+        var published = chatService.publishAnnouncement(teamId, leader.getUserId(), "削除予定");
+
+        chatService.deleteAnnouncement(teamId, published.getAnnouncementId(), leader.getUserId());
+
+        assertThat(teamAnnouncementRepository.findById(published.getAnnouncementId()))
+                .isEmpty();
+        assertThat(teamAnnouncementReadRepository.findByAnnouncementId(published.getAnnouncementId()))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("非发布者/非管理员删除公告拒绝")
+    void deleteAnnouncementByNonPublisherRejected() {
+        var published = chatService.publishAnnouncement(teamId, leader.getUserId(), "消さないで");
+
+        assertThatThrownBy(
+                        () -> chatService.deleteAnnouncement(teamId, published.getAnnouncementId(), member.getUserId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("not allowed");
+    }
+
     private User createUser(String email, String nickname) {
         User user = User.builder()
                 .userId(UUID.randomUUID().toString())
