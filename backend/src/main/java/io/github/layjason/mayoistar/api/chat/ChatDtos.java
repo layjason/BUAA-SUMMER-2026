@@ -57,6 +57,12 @@ public final class ChatDtos {
     }
 
     @Data
+    public static class TeamAnnouncementUpdateRequest {
+        @NotBlank
+        private String content;
+    }
+
+    @Data
     public static class DeleteTeamFilesRequest {
         @NotEmpty
         private List<UUID> mediaIds;
@@ -172,5 +178,6 @@ public final class ChatDtos {
         private List<TeamPollOption> options;
         private String deadline;
         private String createdAt;
+        private String votedOptionId;
     }
 }
