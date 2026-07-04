@@ -1,7 +1,9 @@
 package io.github.layjason.mayoistar.service.activities;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
@@ -13,8 +15,10 @@ import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.ai.AiContentReviewSnapshotMapper;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +43,23 @@ class ActivityFeedServiceTest {
         @Bean
         MediaAccessService mediaAccessService() {
             return mock(MediaAccessService.class);
+        }
+
+        @Bean
+        ActivityMediaQueryService activityMediaQueryService() {
+            return mock(ActivityMediaQueryService.class);
+        }
+
+        @Bean
+        ActivityRegistrationCountService activityRegistrationCountService() {
+            ActivityRegistrationCountService mock = mock(ActivityRegistrationCountService.class);
+            when(mock.countByActivityIds(anyCollection())).thenReturn(Map.of());
+            return mock;
+        }
+
+        @Bean
+        AiContentReviewSnapshotMapper aiContentReviewSnapshotMapper() {
+            return mock(AiContentReviewSnapshotMapper.class);
         }
     }
 

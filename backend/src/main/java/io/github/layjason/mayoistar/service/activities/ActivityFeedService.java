@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -40,6 +42,8 @@ public class ActivityFeedService {
 
     private final ActivityRepository activityRepository;
     private final ActivityDtoMapper activityDtoMapper;
+    private final ActivityMediaQueryService activityMediaQueryService;
+    private final ActivityRegistrationCountService activityRegistrationCountService;
 
     /**
      * 获取首页活动信息流。
@@ -92,7 +96,9 @@ public class ActivityFeedService {
     private PageResult<ActivityDtos.ActivitySummary> getLatestFeed(int page, int pageSize) {
         Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Activity> activityPage = activityRepository.findAll(visibleSpecification(), pageable);
-        return activityDtoMapper.toActivitySummaryPage(activityPage, activityId -> null);
+        Function<String, ActivityRegistrationCounts> countsProvider = loadCountsProvider(activityPage.getContent());
+        return activityDtoMapper.toActivitySummaryPage(
+                activityPage, activityMediaQueryService::loadCoverImage, countsProvider);
     }
 
     /**
@@ -165,8 +171,10 @@ public class ActivityFeedService {
             return new PageResult<>(List.of(), (long) total, page, pageSize, totalPages);
         }
         int toIndex = Math.min(fromIndex + pageSize, total);
+        Function<String, ActivityRegistrationCounts> countsProvider = loadCountsProvider(activities);
         List<ActivityDtos.ActivitySummary> items = activities.subList(fromIndex, toIndex).stream()
-                .map(activity -> activityDtoMapper.toActivitySummary(activity, activityId -> null))
+                .map(activity -> activityDtoMapper.toActivitySummary(
+                        activity, activityMediaQueryService::loadCoverImage, countsProvider))
                 .toList();
         return new PageResult<>(items, (long) total, page, pageSize, totalPages);
     }
@@ -212,6 +220,22 @@ public class ActivityFeedService {
                         * Math.sin(lonDistance / 2)
                         * Math.sin(lonDistance / 2);
         return EARTH_RADIUS_METERS * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    /**
+     * 为活动列表构建报名计数查询函数。
+     *
+     * <p>前置条件：activities 非空列表或空列表。
+     *
+     * <p>后置条件：返回一个 Function，对于已统计的活动返回计数，未知活动返回零值。
+     *
+     * <p>不变量：纯函数，不修改输入。
+     */
+    private Function<String, ActivityRegistrationCounts> loadCountsProvider(List<Activity> activities) {
+        Map<String, ActivityRegistrationCounts> countsByActivityId =
+                activityRegistrationCountService.countByActivityIds(
+                        activities.stream().map(Activity::getActivityId).toList());
+        return activityId -> countsByActivityId.getOrDefault(activityId, ActivityRegistrationCounts.zero());
     }
 
     private int normalizePage(Integer page) {
