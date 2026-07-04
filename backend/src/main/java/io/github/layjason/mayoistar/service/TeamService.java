@@ -574,7 +574,14 @@ public class TeamService {
     public void dissolveTeam(String teamId, String operatorId) {
         Team team = findVisibleTeam(teamId);
 
-        if (!team.getLeaderId().equals(operatorId)) {
+        TeamMember member = teamMemberRepository
+                .findByTeamIdAndUserId(teamId, operatorId)
+                .orElseThrow(() -> {
+                    log.warn("操作人不是小队成员: teamId={}, userId={}", teamId, operatorId);
+                    return new BusinessException(TEAM_MEMBER_NOT_FOUND, "Team membership is required");
+                });
+
+        if (member.getRole() != TeamMemberRole.leader) {
             log.warn("非队长尝试解散小队: teamId={}, userId={}", teamId, operatorId);
             throw new BusinessException(TEAM_PERMISSION_DENIED, "Only the team leader can dissolve the team");
         }
