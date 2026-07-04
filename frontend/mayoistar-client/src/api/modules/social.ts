@@ -25,11 +25,15 @@ export function getSentFriendRequests() {
 }
 
 /** 发送好友请求 */
-export function sendFriendRequest(targetUserId: string, message?: string) {
+export function sendFriendRequest(
+  targetUserId: string,
+  message?: string,
+  source?: FriendRequestCreate['source'],
+) {
   const body: FriendRequestCreate = {
     targetUserId,
     message,
-    source: 'profile',
+    source: source ?? 'profile',
   }
   return post('/social/friend-requests', {
     body,
@@ -53,10 +57,13 @@ export function removeFriend(userId: string) {
 }
 
 /** 更新好友备注 */
-export function updateFriendRemark(userId: string, remark: string) {
+export function updateFriendRemark(userId: string, remark?: string, groupTags?: string[]) {
+  const body: Record<string, unknown> = {}
+  if (remark !== undefined) body.remark = remark
+  if (groupTags !== undefined) body.groupTags = groupTags
   return patch('/social/friends/{userId}', {
     path: { userId },
-    body: { remark },
+    body,
   })
 }
 
@@ -88,5 +95,26 @@ export function getFollowers() {
 export function getUserProfile(userId: string) {
   return get('/social/profiles/{userId}', {
     path: { userId },
+  })
+}
+
+/** 获取黑名单列表 */
+export function getBlacklist(page = 1, pageSize = 20) {
+  return get('/social/blacklist', {
+    query: { page, pageSize },
+  })
+}
+
+/** 屏蔽用户 */
+export function blockUser(targetUserId: string) {
+  return post('/social/blacklist/{targetUserId}', {
+    path: { targetUserId },
+  })
+}
+
+/** 取消屏蔽用户 */
+export function unblockUser(targetUserId: string) {
+  return del('/social/blacklist/{targetUserId}', {
+    path: { targetUserId },
   })
 }

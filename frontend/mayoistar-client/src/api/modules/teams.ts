@@ -10,9 +10,21 @@ type TeamCreateRequest = components['schemas']['Social.TeamCreateRequest']
 type TeamJoinRequestDecision = components['schemas']['Social.TeamJoinRequestDecision']
 type TeamMemberRoleUpdate = components['schemas']['Social.TeamMemberRoleUpdate']
 
-/** 获取队伍列表 */
+/** 获取我的队伍列表 */
 export function getTeams() {
   return get('/social/teams')
+}
+
+/** 搜索/发现小队 */
+export function searchTeams(params?: {
+  keyword?: string
+  tags?: string[]
+  page?: number
+  pageSize?: number
+}) {
+  return get('/social/teams', {
+    query: params as Record<string, unknown>,
+  })
 }
 
 /** 创建队伍 */

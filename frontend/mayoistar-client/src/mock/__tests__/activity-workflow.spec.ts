@@ -7,6 +7,7 @@ import {
   createReview,
   createSummary,
   getCheckIns,
+  getFeed,
   getMyActivities,
   getMyActivityReview,
   getParticipationState,
@@ -107,6 +108,14 @@ describe('活动 mock workflow 契约对齐', () => {
       canConfirmWaitingSeat: true,
       waitingRank: 1,
     })
+  })
+
+  it('首页信息流封面应返回 signedUrl 供卡片渲染', () => {
+    const feed = getFeed('recommended', 1, 10)
+    expect(feed.items.length).toBeGreaterThan(0)
+    const withCover = feed.items.find((item) => item.coverImage?.signedUrl)
+    expect(withCover?.coverImage?.signedUrl).toMatch(/^https?:\/\//)
+    expect(withCover?.coverImage).not.toHaveProperty('url')
   })
 
   it('扫码签到应返回 OpenAPI CheckInRecord 必填字段', () => {

@@ -17,6 +17,7 @@ import type {
   MockFriend,
   MockFriendRequest,
   MockFollow,
+  MockBlacklist,
   MockConversation,
   MockMessage,
   MockTeam,
@@ -41,6 +42,7 @@ export interface MockDatabase {
   friends: MockFriend[]
   friendRequests: MockFriendRequest[]
   follows: MockFollow[]
+  blacklist: MockBlacklist[]
   conversations: MockConversation[]
   messages: MockMessage[]
   teams: MockTeam[]
@@ -67,6 +69,8 @@ export function initMockDb(): MockDatabase {
       db = JSON.parse(raw as string) as MockDatabase
       // 基本完整性校验：确保关键数组存在
       if (db.users && db.activities && db.nextId) {
+        repairConversationStore()
+        persistMockDb()
         return db
       }
     }
@@ -129,4 +133,80 @@ export function nextId(entity: string): number {
   const id = db.nextId[entity]
   db.nextId[entity] = id + 1
   return id
+}
+
+/** 好友会话参与者对唯一键 */
+function friendPairKey(userA: number, userB: number): string {
+  return userA < userB ? `${userA}:${userB}` : `${userB}:${userA}`
+}
+
+/**
+ * 修复会话存储：同步 nextId、消除重复 ID、合并重复好友会话
+ *
+ * 根因：历史种子 nextId.conversations 与已有会话 ID 不一致，会生成重复会话并污染消息列表。
+ */
+export function repairConversationStore(): void {
+  if (!db?.conversations || !db.messages || !db.nextId) return
+
+  const maxConvId = db.conversations.reduce((max, c) => Math.max(max, c.id), 0)
+  const maxMsgId = db.messages.reduce((max, m) => Math.max(max, m.id), 0)
+  if (!db.nextId.conversations || db.nextId.conversations <= maxConvId) {
+    db.nextId.conversations = maxConvId + 1
+  }
+  if (!db.nextId.messages || db.nextId.messages <= maxMsgId) {
+    db.nextId.messages = maxMsgId + 1
+  }
+
+  // 相同 numeric id 的会话：保留先出现的记录，后者换新 id
+  const seenConvIds = new Set<number>()
+  for (const conv of db.conversations) {
+    if (!seenConvIds.has(conv.id)) {
+      seenConvIds.add(conv.id)
+      continue
+    }
+
+    const newId = nextId('conversations')
+    if (conv.kind === 'friend' && conv.participantIds.length === 2) {
+      const participants = new Set(conv.participantIds)
+      db.messages.forEach((msg) => {
+        if (msg.conversationId === conv.id && participants.has(msg.senderId)) {
+          msg.conversationId = newId
+        }
+      })
+    }
+    conv.id = newId
+    seenConvIds.add(newId)
+  }
+
+  // 相同好友对的重复会话：保留消息更多的那条
+  const pairKeep = new Map<string, MockConversation>()
+  const removeConvIds = new Set<number>()
+
+  for (const conv of db.conversations) {
+    if (conv.kind !== 'friend' || conv.participantIds.length !== 2) continue
+
+    const key = friendPairKey(conv.participantIds[0], conv.participantIds[1])
+    const kept = pairKeep.get(key)
+    if (!kept) {
+      pairKeep.set(key, conv)
+      continue
+    }
+
+    const keptCount = db.messages.filter((m) => m.conversationId === kept.id).length
+    const currentCount = db.messages.filter((m) => m.conversationId === conv.id).length
+    const remove = currentCount > keptCount ? kept : conv
+    const keep = remove === kept ? conv : kept
+
+    db.messages.forEach((msg) => {
+      if (msg.conversationId === remove.id) {
+        msg.conversationId = keep.id
+      }
+    })
+    removeConvIds.add(remove.id)
+    pairKeep.set(key, keep)
+  }
+
+  if (removeConvIds.size > 0) {
+    db.conversations = db.conversations.filter((c) => !removeConvIds.has(c.id))
+  }
 }

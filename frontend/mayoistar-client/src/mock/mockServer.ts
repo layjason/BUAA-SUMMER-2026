@@ -22,6 +22,7 @@ import type {
   RegisterActivityRequest,
   SendMessageRequest,
   TeamCreateRequest,
+  TeamMemberRole,
 } from './schema-types'
 import { persistMockDb, resetMockDb } from './database'
 import { MockBusinessError } from './workflow'
@@ -67,10 +68,28 @@ import {
   getFriends,
   getReceivedFriendRequests,
   getSentFriendRequests,
+  removeFriend,
+  updateFriendRemark,
+  followUser,
+  unfollowUser,
+  getFollows,
+  getFollowers,
+  blockUser,
+  unblockUser,
+  getBlacklist,
   getConversations,
   getMessages,
   getTeams,
   getTeamDetail,
+  searchTeams,
+  leaveTeam,
+  dissolveTeam,
+  getTeamMembers,
+  getTeamJoinRequests,
+  handleJoinRequest,
+  updateMemberRole,
+  markMessagesRead,
+  forwardMessage,
   getInterestTags,
   getTemplates,
   getMerchantProfile,
@@ -127,13 +146,14 @@ function err(code: number, message: string): MockApiResponse<null> {
 function mockUploadResponse(usage: string = 'activityImage'): Record<string, unknown> {
   const now = new Date().toISOString()
   const mediaId = `media_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  const accessUrl = `https://picsum.photos/seed/${encodeURIComponent(mediaId)}/400/300`
   return {
     mediaId,
     fileName: `${mediaId}.jpg`,
     contentType: 'image/jpeg',
     sizeBytes: 50000,
     usage,
-    signedUrl: `https://picsum.photos/seed/${encodeURIComponent(mediaId)}/400/300`,
+    signedUrl: accessUrl,
     uploadedAt: now,
   }
 }
@@ -563,12 +583,95 @@ const routes: Route[] = [
       return ok(result)
     },
   },
+  {
+    method: 'DELETE',
+    pattern: '/social/friends/{userId}',
+    handler: (params) => {
+      removeFriend(getCurrentUserId(), parseInt(params.userId, 10))
+      return ok(null)
+    },
+  },
+  {
+    method: 'PATCH',
+    pattern: '/social/friends/{userId}',
+    handler: (params, _q, body) => {
+      updateFriendRemark(
+        getCurrentUserId(),
+        parseInt(params.userId, 10),
+        body.remark as string | undefined,
+        body.groupTags as string[] | undefined,
+      )
+      return ok(null)
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/follows',
+    handler: () => ok(getFollows(getCurrentUserId())),
+  },
+  {
+    method: 'GET',
+    pattern: '/social/followers',
+    handler: () => ok(getFollowers(getCurrentUserId())),
+  },
+  {
+    method: 'POST',
+    pattern: '/social/follows/{targetUserId}',
+    handler: (params) => {
+      return ok(followUser(getCurrentUserId(), parseInt(params.targetUserId, 10)))
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: '/social/follows/{targetUserId}',
+    handler: (params) => {
+      return ok(unfollowUser(getCurrentUserId(), parseInt(params.targetUserId, 10)))
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/blacklist',
+    handler: () => ok(getBlacklist(getCurrentUserId())),
+  },
+  {
+    method: 'POST',
+    pattern: '/social/blacklist/{targetUserId}',
+    handler: (params) => {
+      blockUser(getCurrentUserId(), parseInt(params.targetUserId, 10))
+      return ok(null)
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: '/social/blacklist/{targetUserId}',
+    handler: (params) => {
+      unblockUser(getCurrentUserId(), parseInt(params.targetUserId, 10))
+      return ok(null)
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/profiles/{userId}',
+    handler: (params) => ok(getUserProfile(parseInt(params.userId, 10))),
+  },
 
   /* ===== 小队 ===== */
   {
     method: 'GET',
     pattern: '/social/teams',
-    handler: () => ok(getTeams(getCurrentUserId())),
+    handler: (_p, query) => {
+      // 如果有 keyword/tags 参数，走 searchTeams（发现小队）
+      // 否则走 getTeams（我的小队，前端自行过滤）
+      const keyword = query.keyword as string | undefined
+      const tagsRaw = query.tags as string | undefined
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      if (keyword || tagsRaw) {
+        const tags = tagsRaw ? tagsRaw.split(',') : undefined
+        return ok(searchTeams(keyword, tags, page, pageSize))
+      }
+      return ok(getTeams(getCurrentUserId()))
+    },
   },
   {
     method: 'POST',
@@ -592,8 +695,67 @@ const routes: Route[] = [
       return ok(result)
     },
   },
+  {
+    method: 'DELETE',
+    pattern: '/social/teams/{teamId}',
+    handler: (params) => {
+      dissolveTeam(parseInt(params.teamId, 10), getCurrentUserId())
+      return ok(null)
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/social/teams/{teamId}/leave',
+    handler: (params) => {
+      leaveTeam(parseInt(params.teamId, 10), getCurrentUserId())
+      return ok(null)
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/teams/{teamId}/members',
+    handler: (params, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(getTeamMembers(parseInt(params.teamId, 10), page, pageSize))
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/teams/{teamId}/join-requests',
+    handler: (params, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(getTeamJoinRequests(parseInt(params.teamId, 10), page, pageSize))
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/social/teams/{teamId}/join-requests/{requestId}/decision',
+    handler: (params, _q, body) => {
+      const result = handleJoinRequest(parseInt(params.requestId, 10), body.accepted as boolean)
+      return ok(result)
+    },
+  },
+  {
+    method: 'PATCH',
+    pattern: '/social/teams/{teamId}/members/{memberId}/role',
+    handler: (params, _q, body) => {
+      const result = updateMemberRole(
+        parseInt(params.teamId, 10),
+        parseInt(params.memberId, 10),
+        body.role as TeamMemberRole,
+      )
+      return ok(result)
+    },
+  },
 
   /* ===== 聊天 ===== */
+  {
+    method: 'POST',
+    pattern: '/chat/media/images',
+    handler: () => ok(mockUploadResponse('chatImage')),
+  },
   {
     method: 'GET',
     pattern: '/chat/conversations',
@@ -605,7 +767,9 @@ const routes: Route[] = [
     handler: (params, query) => {
       const page = parseInt(query.page ?? '1', 10)
       const pageSize = parseInt(query.pageSize ?? '20', 10)
-      return ok(getMessages(parseInt(params.conversationId, 10), page, pageSize))
+      return ok(
+        getMessages(parseInt(params.conversationId, 10), getCurrentUserId(), page, pageSize),
+      )
     },
   },
   {
@@ -626,6 +790,23 @@ const routes: Route[] = [
     handler: (params) => {
       const result = recallMessage(parseInt(params.messageId, 10), getCurrentUserId())
       return ok(result)
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/chat/messages/read',
+    handler: (_p, _q, body) => {
+      const messageIds = (body.messageIds as string[]).map((id) => parseInt(id, 10))
+      return ok(markMessagesRead(messageIds, getCurrentUserId()))
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/chat/messages/{messageId}/forward',
+    handler: (params, _q, body) => {
+      const targetIds = (body.targetConversationIds as string[]).map((id) => parseInt(id, 10))
+      forwardMessage(parseInt(params.messageId, 10), getCurrentUserId(), targetIds)
+      return ok(null)
     },
   },
 

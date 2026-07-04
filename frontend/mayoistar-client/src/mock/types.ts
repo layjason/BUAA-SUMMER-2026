@@ -136,6 +136,7 @@ export interface MockFriend {
   userId: number
   friendId: number
   remark: string
+  groupTags: string[]
   source: string
   createdAt: string
 }
@@ -172,6 +173,7 @@ export interface MockMessage {
   kind: 'text' | 'image' | 'location'
   content: string
   status: 'sent' | 'recalled'
+  readBy?: number[]
   createdAt: string
 }
 
@@ -186,6 +188,7 @@ export interface MockTeam {
   maxMembers: number
   memberCount: number
   tags?: string[]
+  conversationId?: number
   createdAt: string
 }
 
@@ -219,6 +222,12 @@ export interface MockTemplate {
   tags: string[]
   defaultTitle: string
   defaultIntroduction: string
+}
+
+export interface MockBlacklist {
+  userId: number
+  blockedBy: number
+  blockedAt: string
 }
 
 /** Mock API 响应格式 */

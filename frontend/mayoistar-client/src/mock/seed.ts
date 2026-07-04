@@ -16,6 +16,7 @@ import type {
   MockFriend,
   MockFriendRequest,
   MockFollow,
+  MockBlacklist,
   MockConversation,
   MockMessage,
   MockTeam,
@@ -935,6 +936,7 @@ export function createSeedData(): MockDatabase {
       userId: 10001,
       friendId: 10006,
       remark: '摄影搭子',
+      groupTags: ['兴趣'],
       source: 'manualRequest',
       createdAt: iso(-100),
     },
@@ -942,6 +944,7 @@ export function createSeedData(): MockDatabase {
       userId: 10006,
       friendId: 10001,
       remark: '',
+      groupTags: [],
       source: 'manualRequest',
       createdAt: iso(-100),
     },
@@ -949,6 +952,7 @@ export function createSeedData(): MockDatabase {
       userId: 10001,
       friendId: 10003,
       remark: '户外大神',
+      groupTags: ['户外'],
       source: 'activityParticipants',
       createdAt: iso(-50),
     },
@@ -956,6 +960,7 @@ export function createSeedData(): MockDatabase {
       userId: 10003,
       friendId: 10001,
       remark: '',
+      groupTags: [],
       source: 'activityParticipants',
       createdAt: iso(-50),
     },
@@ -963,6 +968,7 @@ export function createSeedData(): MockDatabase {
       userId: 10007,
       friendId: 10010,
       remark: '',
+      groupTags: [],
       source: 'team',
       createdAt: iso(-30),
     },
@@ -970,6 +976,7 @@ export function createSeedData(): MockDatabase {
       userId: 10010,
       friendId: 10007,
       remark: '',
+      groupTags: [],
       source: 'team',
       createdAt: iso(-30),
     },
@@ -999,14 +1006,16 @@ export function createSeedData(): MockDatabase {
 
   /* ---- 关注 ---- */
   const follows: MockFollow[] = [
-    { followerId: 10001, followingId: 10003, createdAt: iso(-50) },
-    { followerId: 10001, followingId: 10006, createdAt: iso(-100) },
-    { followerId: 10006, followingId: 10001, createdAt: iso(-99) },
+    // 10001 与 10003/10006 已是手动好友，不再重复互关，避免「取消关注」与好友状态混淆
+    { followerId: 10001, followingId: 10008, createdAt: iso(-5) },
     { followerId: 10007, followingId: 10001, createdAt: iso(-40) },
     { followerId: 10008, followingId: 10003, createdAt: iso(-20) },
     { followerId: 10009, followingId: 10003, createdAt: iso(-15) },
     { followerId: 10010, followingId: 10001, createdAt: iso(-10) },
   ]
+
+  /* ---- 黑名单 ---- */
+  const blacklist: MockBlacklist[] = []
 
   /* ---- 会话 ---- */
   const conversations: MockConversation[] = [
@@ -1025,6 +1034,30 @@ export function createSeedData(): MockDatabase {
       participantIds: [10001, 10003],
       lastMessage: '下次骑行记得叫我',
       lastMessageAt: iso(-3, 10, 0),
+    },
+    {
+      id: 3,
+      kind: 'team',
+      name: '北京户外探险队',
+      participantIds: [10003, 10001, 10009],
+      lastMessage: '周末徒步活动已确定！',
+      lastMessageAt: iso(-1, 9, 0),
+    },
+    {
+      id: 4,
+      kind: 'team',
+      name: '桌游研究社',
+      participantIds: [10007, 10010],
+      lastMessage: '本周六下午老地方见',
+      lastMessageAt: iso(-2, 14, 0),
+    },
+    {
+      id: 5,
+      kind: 'team',
+      name: '废弃小队',
+      participantIds: [10004],
+      lastMessage: '',
+      lastMessageAt: iso(-90),
     },
   ]
 
@@ -1098,6 +1131,7 @@ export function createSeedData(): MockDatabase {
       status: 'active',
       maxMembers: 50,
       memberCount: 3,
+      conversationId: 3,
       createdAt: iso(-60),
     },
     {
@@ -1110,6 +1144,7 @@ export function createSeedData(): MockDatabase {
       status: 'active',
       maxMembers: 20,
       memberCount: 2,
+      conversationId: 4,
       createdAt: iso(-40),
     },
     {
@@ -1122,6 +1157,7 @@ export function createSeedData(): MockDatabase {
       status: 'dissolved',
       maxMembers: 10,
       memberCount: 0,
+      conversationId: 5,
       createdAt: iso(-90),
     },
   ]
@@ -1236,6 +1272,7 @@ export function createSeedData(): MockDatabase {
     friends,
     friendRequests,
     follows,
+    blacklist,
     conversations,
     messages,
     teams,
@@ -1253,7 +1290,7 @@ export function createSeedData(): MockDatabase {
       reviews: 3,
       summaries: 2,
       friendRequests: 3,
-      conversations: 3,
+      conversations: 6,
       messages: 7,
       teams: 4,
       teamMembers: 6,

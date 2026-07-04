@@ -16,15 +16,20 @@
       @scrolltolower="onLoadMore"
     >
       <view v-for="item in items" :key="item.registrationId" class="card">
-        <view class="card-left">
+        <view class="card-left" @tap="goToProfile(item)">
           <view class="avatar-placeholder">
             <text class="avatar-text">{{ item.nickname.charAt(0).toUpperCase() }}</text>
           </view>
           <text class="nickname">{{ item.nickname }}</text>
         </view>
-        <text class="status-tag" :class="'status-' + item.registrationStatus">{{
-          registrationStatusText(item.registrationStatus)
-        }}</text>
+        <view class="card-right">
+          <text class="status-tag" :class="'status-' + item.registrationStatus">{{
+            registrationStatusText(item.registrationStatus)
+          }}</text>
+          <view v-if="item.userId !== currentUserId" class="add-friend-btn" @tap="addFriend(item)">
+            <text class="add-friend-text">加好友</text>
+          </view>
+        </view>
       </view>
 
       <view v-if="loadingMore" class="load-more">{{ t('加载中') }}</view>
@@ -43,7 +48,10 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import { getParticipants } from '@/api/modules/activities'
+import { sendFriendRequest } from '@/api/modules/social'
+import { useAuthStore } from '@/stores/auth'
 import { getErrorMessage } from '@/utils/error'
 
 const { t } = useI18n()
@@ -56,9 +64,13 @@ const errorMsg = ref('')
 
 interface ParticipantItem {
   registrationId: string
+  userId: string
   nickname: string
   registrationStatus: string
 }
+
+const authStore = useAuthStore()
+const currentUserId = authStore.userId || '10001'
 
 const items = ref<ParticipantItem[]>([])
 const currentPage = ref(1)
@@ -91,10 +103,11 @@ async function loadData(page: number, reset = false): Promise<void> {
   }
 
   try {
-    const result = (await api.get('/activities/{activityId}/participants', {
-      path: { activityId: activityId.value },
-      query: { page, pageSize: PAGE_SIZE },
-    })) as { items: ParticipantItem[]; page: number; totalPages: number }
+    const result = (await getParticipants(activityId.value, page, PAGE_SIZE)) as {
+      items: ParticipantItem[]
+      page: number
+      totalPages: number
+    }
 
     if (reset) {
       items.value = result.items
@@ -144,6 +157,28 @@ onLoad((query) => {
   }
   loadData(1, true)
 })
+
+/** 跳转到用户资料 */
+function goToProfile(item: ParticipantItem) {
+  if (item.userId) {
+    uni.navigateTo({ url: `/pages/social/user-profile?id=${item.userId}` })
+  }
+}
+
+/** 加好友 */
+async function addFriend(item: ParticipantItem) {
+  if (!item.userId) return
+  try {
+    await sendFriendRequest(
+      item.userId,
+      '你好，我们一起参加了活动，加个好友吧！',
+      'activityParticipants',
+    )
+    uni.showToast({ title: '好友请求已发送', icon: 'success' })
+  } catch {
+    uni.showToast({ title: '发送失败', icon: 'none' })
+  }
+}
 </script>
 
 <style scoped>
@@ -180,6 +215,12 @@ onLoad((query) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.card-right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
 }
 
 .card-left {
@@ -234,6 +275,17 @@ onLoad((query) => {
 .status-waitingConfirmation {
   background-color: #fff7e6;
   color: #ed6a0c;
+}
+
+.add-friend-btn {
+  background-color: #1989fa;
+  padding: 6rpx 16rpx;
+  border-radius: 6rpx;
+}
+
+.add-friend-text {
+  font-size: 22rpx;
+  color: #fff;
 }
 
 .load-more {

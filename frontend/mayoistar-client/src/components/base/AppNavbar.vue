@@ -6,7 +6,7 @@
     <!-- 导航栏主体 -->
     <view class="app-navbar__bar">
       <!-- 左侧返回按钮 -->
-      <view v-if="showBack" class="app-navbar__back" @click="handleBack">
+      <view v-if="showBack" class="app-navbar__back" @tap="handleBack">
         <text class="app-navbar__back-icon">←</text>
       </view>
       <view v-else class="app-navbar__placeholder" />
@@ -64,6 +64,7 @@ function handleBack() {
 
 .app-navbar {
   position: relative;
+  z-index: 1000;
   width: 100%;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);

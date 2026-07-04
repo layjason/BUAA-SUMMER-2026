@@ -1,6 +1,9 @@
 {
   "easycom": {
-    "autoscan": true
+    "autoscan": true,
+    "custom": {
+      "^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue"
+    }
   },
   "pages": [
     {
@@ -17,7 +20,11 @@
     },
     {
       "path": "pages/messages/index",
-      "style": { "navigationBarTitleText": "消息", "disableScroll": true }
+      "style": {
+        "navigationBarTitleText": "消息",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
     },
     {
       "path": "pages/profile/index",
@@ -70,6 +77,110 @@
     {
       "path": "pages/profile/blacklist",
       "style": { "navigationBarTitleText": "黑名单", "disableScroll": true }
+    },
+    {
+      "path": "pages/social/friends",
+      "style": {
+        "navigationBarTitleText": "好友列表",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/friend-requests",
+      "style": {
+        "navigationBarTitleText": "好友申请",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/add-friend",
+      "style": {
+        "navigationBarTitleText": "添加好友",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/user-profile",
+      "style": {
+        "navigationBarTitleText": "用户主页",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/activity-companions",
+      "style": {
+        "navigationBarTitleText": "活动同伴",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/blacklist",
+      "style": {
+        "navigationBarTitleText": "黑名单",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/follows",
+      "style": {
+        "navigationBarTitleText": "关注与粉丝",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/messages/chat",
+      "style": {
+        "navigationBarTitleText": "聊天",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/index",
+      "style": {
+        "navigationBarTitleText": "小队",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/create",
+      "style": {
+        "navigationBarTitleText": "创建小队",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/detail",
+      "style": {
+        "navigationBarTitleText": "小队详情",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/edit",
+      "style": {
+        "navigationBarTitleText": "编辑小队",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/members",
+      "style": {
+        "navigationBarTitleText": "小队成员",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
     },
     {
       "path": "pages/profile/settings",
