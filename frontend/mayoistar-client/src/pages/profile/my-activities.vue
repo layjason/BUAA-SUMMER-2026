@@ -1,3 +1,232 @@
+<script setup lang="ts">
+/**
+ * 我创建的活动页。
+ *
+ * 前置条件：用户已登录，可访问我的活动与草稿接口。
+ * 后置条件：已发布 Tab 展示审核通过活动，未发布 Tab 展示草稿和仍在审核流程中的活动。
+ * 不变量：草稿入口页与未发布 Tab 的定位不同，本页会保留审核中活动供用户追踪流程。
+ */
+import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { BusinessError } from '@/api'
+import {
+  getDrafts,
+  getMyActivities,
+  type ActivityDraftSummary,
+  type ActivitySummary,
+} from '@/api/modules/activities'
+import { getErrorMessage } from '@/utils/error'
+import { formatDate } from '@/utils/date'
+import { reviewStatusText, runtimeStatusText } from '@/utils/status'
+
+type ActivityTab = 'published' | 'unpublished'
+
+const activeTab = ref<ActivityTab>('published')
+const loading = ref(true)
+const refreshing = ref(false)
+const errorMsg = ref('')
+const activities = ref<ActivitySummary[]>([])
+const unpublishedActivities = ref<ActivityDraftSummary[]>([])
+
+/**
+ * 简易状态翻译函数。
+ *
+ * 前置条件：状态工具传入固定 i18n key。
+ * 后置条件：返回中文展示文案。
+ * 不变量：不依赖页面外 i18n 资源，避免旧资源乱码影响展示。
+ *
+ * @param key 状态文案 key
+ * @returns 中文展示文案
+ */
+function translateStatus(key: string): string {
+  const statusMap: Record<string, string> = {
+    'myActivities.statusDraft': '草稿',
+    'myActivities.statusPending': '审核中',
+    'myActivities.statusApproved': '已发布',
+    'myActivities.statusRejected': '已驳回',
+    'myActivities.statusChangeRequired': '需修改',
+    'myActivities.statusNotStarted': '未开始',
+    'myActivities.statusRegistering': '报名中',
+    'myActivities.statusRegistrationClosed': '报名截止',
+    'myActivities.statusOngoing': '进行中',
+    'myActivities.statusEnded': '已结束',
+    'myActivities.statusTakenDown': '已下架',
+  }
+  return statusMap[key] ?? key
+}
+
+/**
+ * 加载已发布活动列表。
+ *
+ * 前置条件：我的活动接口返回 ActivitySummary 分页。
+ * 后置条件：只保留 reviewStatus 为 approved 的活动。
+ * 不变量：不会把审核中或草稿活动展示到已发布 Tab。
+ */
+async function loadPublishedActivities(): Promise<void> {
+  try {
+    const result = await getMyActivities()
+    activities.value = (result.items ?? []).filter((item) => item.reviewStatus === 'approved')
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      errorMsg.value = getErrorMessage(error.code)
+    } else {
+      errorMsg.value = getErrorMessage(0, '加载失败')
+    }
+  }
+}
+
+/**
+ * 加载未发布活动列表。
+ *
+ * 前置条件：草稿接口返回 ActivityDraftSummary 分页。
+ * 后置条件：展示所有非 approved 状态，包含草稿、审核中、需修改和已驳回。
+ * 不变量：已发布活动不会出现在未发布 Tab。
+ */
+async function loadUnpublishedActivities(): Promise<void> {
+  try {
+    const result = await getDrafts()
+    unpublishedActivities.value = (result.items ?? []).filter(
+      (item) => item.reviewStatus !== 'approved',
+    )
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      errorMsg.value = getErrorMessage(error.code)
+    } else {
+      errorMsg.value = getErrorMessage(0, '加载失败')
+    }
+  }
+}
+
+/**
+ * 加载当前 Tab 数据。
+ *
+ * 前置条件：activeTab 为合法 Tab。
+ * 后置条件：刷新当前 Tab 数据并结束 loading。
+ * 不变量：错误信息会在每次加载前清空。
+ */
+async function loadCurrentTab(): Promise<void> {
+  loading.value = true
+  errorMsg.value = ''
+  try {
+    if (activeTab.value === 'published') {
+      await loadPublishedActivities()
+    } else {
+      await loadUnpublishedActivities()
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+/**
+ * 切换 Tab。
+ *
+ * 前置条件：tab 为页面声明的 Tab。
+ * 后置条件：激活对应 Tab 并重新加载数据。
+ * 不变量：不会保留上一次错误提示。
+ *
+ * @param tab 目标 Tab
+ */
+function switchTab(tab: ActivityTab): void {
+  if (activeTab.value === tab) return
+  activeTab.value = tab
+  void loadCurrentTab()
+}
+
+/**
+ * 下拉刷新当前列表。
+ *
+ * 前置条件：当前页面可访问接口。
+ * 后置条件：刷新当前 Tab 数据。
+ * 不变量：刷新失败只显示错误，不改变 Tab。
+ */
+async function onRefresh(): Promise<void> {
+  refreshing.value = true
+  errorMsg.value = ''
+  try {
+    if (activeTab.value === 'published') {
+      await loadPublishedActivities()
+    } else {
+      await loadUnpublishedActivities()
+    }
+  } finally {
+    refreshing.value = false
+  }
+}
+
+/**
+ * 格式化标签列表。
+ *
+ * 前置条件：tags 为 OpenAPI 返回的字符串数组。
+ * 后置条件：返回适合列表展示的文本。
+ * 不变量：不会修改原数组。
+ *
+ * @param tags 标签数组
+ * @returns 展示文本
+ */
+function formatTags(tags: string[]): string {
+  return tags.length > 0 ? tags.join(' · ') : '未设置标签'
+}
+
+/**
+ * 获取审核状态展示文案。
+ *
+ * 前置条件：status 为审核状态枚举。
+ * 后置条件：返回中文文案。
+ * 不变量：未知状态原样返回。
+ *
+ * @param status 审核状态
+ * @returns 中文文案
+ */
+function getReviewStatusText(status: string): string {
+  return reviewStatusText(status, translateStatus)
+}
+
+/**
+ * 获取运行状态展示文案。
+ *
+ * 前置条件：status 为运行状态枚举。
+ * 后置条件：返回中文文案。
+ * 不变量：未知状态原样返回。
+ *
+ * @param status 运行状态
+ * @returns 中文文案
+ */
+function getRuntimeStatusText(status: string): string {
+  return runtimeStatusText(status, translateStatus)
+}
+
+/**
+ * 打开未发布活动。
+ *
+ * 前置条件：activityId 来自未发布列表。
+ * 后置条件：进入编辑页，供草稿继续编辑或查看审核结果。
+ * 不变量：不直接改变审核状态。
+ *
+ * @param activityId 活动标识
+ */
+function goEdit(activityId: string): void {
+  uni.navigateTo({ url: `/pages/activity/edit?activityId=${activityId}` })
+}
+
+/**
+ * 打开已发布活动详情。
+ *
+ * 前置条件：activityId 来自已发布列表。
+ * 后置条件：进入活动详情页。
+ * 不变量：不修改活动数据。
+ *
+ * @param activityId 活动标识
+ */
+function goDetail(activityId: string): void {
+  uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
+}
+
+onShow(() => {
+  void loadCurrentTab()
+})
+</script>
+
 <template>
   <view class="page">
     <view class="tab-bar">
@@ -6,10 +235,14 @@
         :class="{ active: activeTab === 'published' }"
         @click="switchTab('published')"
       >
-        <text>{{ t('myActivities.tabPublished') }}</text>
+        <text>已发布</text>
       </view>
-      <view class="tab" :class="{ active: activeTab === 'drafts' }" @click="switchTab('drafts')">
-        <text>{{ t('myActivities.tabDrafts') }}</text>
+      <view
+        class="tab"
+        :class="{ active: activeTab === 'unpublished' }"
+        @click="switchTab('unpublished')"
+      >
+        <text>未发布</text>
       </view>
     </view>
 
@@ -20,12 +253,12 @@
       :refresher-triggered="refreshing"
       @refresherrefresh="onRefresh"
     >
-      <view v-if="loading" class="loading-text">{{ t('加载中') }}</view>
+      <view v-if="loading" class="loading-text">加载中...</view>
 
       <view v-else-if="errorMsg" class="error-text">{{ errorMsg }}</view>
 
-      <view v-else-if="activeTab === 'published'">
-        <view v-if="activities.length === 0" class="empty-text">{{ t('暂无数据') }}</view>
+      <view v-else-if="activeTab === 'published'" class="list-content">
+        <view v-if="activities.length === 0" class="empty-text">暂无已发布活动</view>
         <view
           v-for="item in activities"
           :key="item.activityId"
@@ -33,226 +266,60 @@
           hover-class="card-hover"
           @click="goDetail(item.activityId)"
         >
-          <text class="card-title">{{ item.title }}</text>
+          <view class="card-header">
+            <text class="card-title">{{ item.title }}</text>
+            <text class="status-tag status-approved">已发布</text>
+          </view>
           <view class="card-row">
             <text class="tag">{{ formatTags(item.tags) }}</text>
-            <view class="status-group">
-              <text class="status-tag review-status" :class="'review-' + item.reviewStatus">{{
-                reviewStatusText(item.reviewStatus)
-              }}</text>
-              <text
-                v-if="item.reviewStatus === 'approved'"
-                class="status-tag"
-                :class="'status-' + item.runtimeStatus"
-                >{{ runtimeStatusText(item.runtimeStatus) }}</text
-              >
-            </view>
+            <text class="status-tag" :class="'runtime-' + item.runtimeStatus">
+              {{ getRuntimeStatusText(item.runtimeStatus) }}
+            </text>
           </view>
           <view class="card-row">
             <text class="meta">{{ formatDate(item.startAt) }}</text>
-            <text class="meta">{{
-              t('myActivities.participants', { count: item.registeredCount })
-            }}</text>
+            <text class="meta">{{ item.registeredCount }}/{{ item.capacity }}人</text>
           </view>
         </view>
       </view>
 
-      <view v-else>
-        <view v-if="drafts.length === 0" class="empty-text">{{ t('暂无数据') }}</view>
+      <view v-else class="list-content">
+        <view v-if="unpublishedActivities.length === 0" class="empty-text">暂无未发布活动</view>
         <view
-          v-for="item in drafts"
+          v-for="item in unpublishedActivities"
           :key="item.activityId"
-          class="card card-draft"
+          class="card card-unpublished"
           hover-class="card-hover"
           @click="goEdit(item.activityId)"
         >
-          <text class="card-title">{{ item.title }}</text>
+          <view class="card-header">
+            <text class="card-title">{{ item.title || '未命名活动' }}</text>
+            <text class="status-tag" :class="'review-' + item.reviewStatus">
+              {{ getReviewStatusText(item.reviewStatus) }}
+            </text>
+          </view>
+          <text class="unpublished-desc">
+            {{
+              item.reviewStatus === 'draft'
+                ? '尚未提交审核，可以继续编辑'
+                : item.reviewStatus === 'pending'
+                  ? '活动已提交，正在等待审核结果'
+                  : item.reviewStatus === 'changeRequired'
+                    ? '审核要求修改，请调整后重新提交'
+                    : '审核未通过，可修改后重新提交'
+            }}
+          </text>
           <view class="card-row">
-            <text class="tag draft-status" :class="'draft-' + item.reviewStatus">{{
-              reviewStatusText(item.reviewStatus)
+            <text class="meta">更新于 {{ formatDate(item.updatedAt) }}</text>
+            <text class="edit-action">{{
+              item.reviewStatus === 'pending' ? '查看' : '继续编辑'
             }}</text>
-            <text class="meta">{{ formatDate(item.updatedAt) }}</text>
           </view>
         </view>
-      </view></scroll-view
-    >
+      </view>
+    </scroll-view>
   </view>
 </template>
-
-<script setup lang="ts">
-/**
- * 我创建的活动
- *
- * Tab 切换已发布和草稿两个列表。
- * 前置条件：用户已登录
- * 后置条件：加载成功后展示活动数据
- */
-import { ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-import { useI18n } from 'vue-i18n'
-import { BusinessError } from '@/api'
-import {
-  getDrafts,
-  getMyActivities,
-  type ActivityDraftSummary,
-  type ActivitySummary,
-} from '@/api/modules/activities'
-import { getErrorMessage } from '@/utils/error'
-import { formatDate } from '@/utils/date'
-import { runtimeStatusText as getRuntimeStatus } from '@/utils/status'
-
-const { t } = useI18n()
-
-const activeTab = ref<'published' | 'drafts'>('published')
-const loading = ref(true)
-const refreshing = ref(false)
-const errorMsg = ref('')
-
-/** 审核状态文本映射 */
-const reviewStatusMap: Record<string, string> = {
-  draft: t('myActivities.statusDraft'),
-  pending: t('myActivities.statusPending'),
-  approved: t('myActivities.statusApproved'),
-  rejected: t('myActivities.statusRejected'),
-  changeRequired: t('myActivities.statusChangeRequired'),
-}
-
-const activities = ref<ActivitySummary[]>([])
-
-const drafts = ref<ActivityDraftSummary[]>([])
-
-/**
- * 加载已发布活动列表
- */
-async function loadActivities(): Promise<void> {
-  try {
-    const result = await getMyActivities()
-    activities.value = result.items ?? []
-  } catch (error) {
-    if (error instanceof BusinessError) {
-      errorMsg.value = getErrorMessage(error.code)
-    } else {
-      errorMsg.value = getErrorMessage(0, '加载失败')
-    }
-  }
-}
-
-/**
- * 加载草稿列表
- */
-async function loadDrafts(): Promise<void> {
-  try {
-    const result = await getDrafts()
-    drafts.value = result.items ?? []
-  } catch (error) {
-    if (error instanceof BusinessError) {
-      errorMsg.value = getErrorMessage(error.code)
-    } else {
-      errorMsg.value = getErrorMessage(0, '加载失败')
-    }
-  }
-}
-
-/**
- * 每次进入页面或切换 Tab 时加载当前 Tab 数据
- */
-async function loadCurrentTab(): Promise<void> {
-  loading.value = true
-  errorMsg.value = ''
-  try {
-    if (activeTab.value === 'published') {
-      await loadActivities()
-    } else {
-      await loadDrafts()
-    }
-  } finally {
-    loading.value = false
-  }
-}
-
-/**
- * 切换 Tab
- *
- * @param tab Tab 名称
- */
-function switchTab(tab: 'published' | 'drafts'): void {
-  activeTab.value = tab
-  loadCurrentTab()
-}
-
-/**
- * 下拉刷新
- */
-async function onRefresh(): Promise<void> {
-  refreshing.value = true
-  errorMsg.value = ''
-  try {
-    if (activeTab.value === 'published') {
-      const result = await getMyActivities()
-      activities.value = result.items ?? []
-    } else {
-      const result = await getDrafts()
-      drafts.value = result.items ?? []
-    }
-  } catch {
-    // 刷新失败静默处理
-  } finally {
-    refreshing.value = false
-  }
-}
-
-onShow(() => {
-  loadCurrentTab()
-})
-
-/**
- * 格式化标签列表为展示文本
- *
- * @param tags 标签数组
- * @returns 逗号分隔的标签文本
- */
-function formatTags(tags: string[]): string {
-  return tags.join(' · ')
-}
-
-/**
- * 获取运行时状态中文展示文本
- *
- * @param status 运行时状态值
- * @returns 中文文本
- */
-function runtimeStatusText(status: string): string {
-  return getRuntimeStatus(status, t)
-}
-
-/**
- * 获取审核状态中文展示文本
- *
- * @param status 审核状态值
- * @returns 中文文本
- */
-function reviewStatusText(status: string): string {
-  return reviewStatusMap[status] ?? status
-}
-
-/**
- * 跳转到活动编辑页
- *
- * @param activityId 草稿活动标识
- */
-function goEdit(activityId: string): void {
-  uni.navigateTo({ url: `/pages/activity/edit?activityId=${activityId}` })
-}
-
-/**
- * 跳转到活动详情页
- *
- * @param activityId 活动标识
- */
-function goDetail(activityId: string): void {
-  uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
-}
-</script>
 
 <style scoped>
 .page {
@@ -271,25 +338,26 @@ function goDetail(activityId: string): void {
 
 .tab-bar {
   display: flex;
-  background-color: #fff;
-  padding: 0 32rpx;
-  border-bottom: 1rpx solid #ebedf0;
   flex-shrink: 0;
+  padding: 12rpx 32rpx;
+  background-color: #fff;
+  border-bottom: 1rpx solid #ebedf0;
 }
 
 .tab {
   flex: 1;
-  text-align: center;
-  padding: 24rpx 0;
-  font-size: 28rpx;
+  height: 64rpx;
+  border-radius: 32rpx;
   color: #646566;
-  border-bottom: 4rpx solid transparent;
+  font-size: 28rpx;
+  line-height: 64rpx;
+  text-align: center;
 }
 
 .tab.active {
-  color: #1989fa;
-  border-bottom-color: #1989fa;
-  font-weight: 600;
+  background-color: #e8f7f0;
+  color: #5ec8a7;
+  font-weight: 700;
 }
 
 .loading-text,
@@ -305,142 +373,125 @@ function goDetail(activityId: string): void {
   color: #ee0a24;
 }
 
+.list-content {
+  padding: 16rpx 0 32rpx;
+}
+
 .card {
-  background-color: #fff;
   margin: 16rpx 32rpx;
   padding: 28rpx 32rpx;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
+  background-color: #fff;
+  box-shadow: 0 12rpx 32rpx rgba(50, 50, 51, 0.06);
 }
 
 .card-hover {
   opacity: 0.85;
 }
 
-.card-draft {
-  border-left: 6rpx solid #ed6a0c;
+.card-unpublished {
+  border-left: 6rpx solid #5ec8a7;
 }
 
-.card-title {
-  display: block;
-  font-size: 30rpx;
-  color: #323233;
-  font-weight: 600;
-  margin-bottom: 16rpx;
+.card-header,
+.card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
 }
 
 .card-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 8rpx;
+  margin-top: 12rpx;
 }
 
-.status-group {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  flex-shrink: 0;
+.card-title {
+  flex: 1;
+  min-width: 0;
+  color: #323233;
+  font-size: 30rpx;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tag {
-  font-size: 24rpx;
+  flex: 1;
+  min-width: 0;
   color: #1989fa;
+  font-size: 24rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.draft-tag {
+.meta {
+  min-width: 0;
   color: #969799;
-}
-
-.draft-status {
-  font-size: 22rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 4rpx;
-}
-
-.draft-draft {
-  background-color: #ebedf0;
-  color: #969799;
-}
-
-.draft-rejected {
-  background-color: #fff2f0;
-  color: #ee0a24;
-}
-
-.draft-changeRequired {
-  background-color: #fff7e6;
-  color: #ff9800;
-}
-
-.draft-pending {
-  background-color: #fff7e6;
-  color: #ed6a0c;
-}
-
-.draft-approved {
-  background-color: #ebf9e9;
-  color: #07c160;
-}
-
-.review-status.review-pending {
-  background-color: #fff7e6;
-  color: #ed6a0c;
-}
-
-.review-status.review-approved {
-  background-color: #ebf9e9;
-  color: #07c160;
-}
-
-.review-status.review-rejected {
-  background-color: #fff2f0;
-  color: #ee0a24;
-}
-
-.review-status.review-changeRequired {
-  background-color: #fff7e6;
-  color: #ff9800;
+  font-size: 24rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status-tag {
-  font-size: 22rpx;
+  flex-shrink: 0;
   padding: 4rpx 12rpx;
-  border-radius: 4rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 600;
 }
 
-.status-registering {
-  background-color: #e6f0fe;
-  color: #1989fa;
+.status-approved,
+.review-approved,
+.runtime-registering,
+.runtime-ongoing {
+  background-color: #e8f7f0;
+  color: #5ec8a7;
 }
 
-.status-registrationClosed {
+.review-draft,
+.runtime-notStarted {
+  background-color: #f2f3f5;
+  color: #969799;
+}
+
+.review-pending,
+.runtime-registrationClosed {
   background-color: #fff7e6;
   color: #ed6a0c;
 }
 
-.status-ongoing {
-  background-color: #ebf9e9;
-  color: #07c160;
+.review-changeRequired {
+  background-color: #fff7e6;
+  color: #ff9800;
 }
 
-.status-ended {
+.review-rejected,
+.runtime-takenDown {
+  background-color: #fff2f0;
+  color: #ee0a24;
+}
+
+.runtime-ended {
   background-color: #f2f3f5;
   color: #c8c9cc;
 }
 
-.status-notStarted {
-  background-color: #ebedf0;
-  color: #969799;
-}
-
-.status-takenDown {
-  background-color: #fff2f0;
-  color: #ee0a24;
-}
-
-.meta {
+.unpublished-desc {
+  display: block;
+  margin-top: 12rpx;
+  color: #646566;
   font-size: 24rpx;
-  color: #969799;
+  line-height: 1.5;
+}
+
+.edit-action {
+  flex-shrink: 0;
+  color: #5ec8a7;
+  font-size: 24rpx;
+  font-weight: 700;
 }
 </style>
 
