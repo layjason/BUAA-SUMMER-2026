@@ -301,16 +301,7 @@ public class ChatService {
             }
         }
 
-        long unreadCount = 0L;
-        var allMessages = chatMessageRepository.findByConversationIdOrderBySentAtDesc(
-                conv.getConversationId(), PageRequest.of(0, Integer.MAX_VALUE));
-        List<String> messageIds =
-                allMessages.getContent().stream().map(ChatMessage::getMessageId).collect(Collectors.toList());
-        if (!messageIds.isEmpty()) {
-            unreadCount = messageReadRepository.findByMessageIdInAndUserId(messageIds, userId).stream()
-                    .filter(mr -> mr.getStatus() == MessageReadStatus.unread)
-                    .count();
-        }
+        long unreadCount = messageReadRepository.countUnreadByConversationIdAndUserId(conv.getConversationId(), userId);
         summary.setUnreadCount((int) unreadCount);
 
         return summary;

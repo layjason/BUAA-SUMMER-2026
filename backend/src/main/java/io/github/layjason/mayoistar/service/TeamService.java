@@ -118,6 +118,10 @@ public class TeamService {
             throw new BusinessException(TEAM_NAME_UNAVAILABLE, "Team name is already taken");
         }
 
+        if (request.getCapacity() == null || request.getCapacity() <= 0) {
+            throw new BusinessException(TEAM_NAME_UNAVAILABLE, "Team capacity must be positive");
+        }
+
         Instant now = Instant.now();
         String teamId = UUID.randomUUID().toString();
         String conversationId = UUID.randomUUID().toString();
@@ -494,7 +498,13 @@ public class TeamService {
 
         if (Boolean.TRUE.equals(accepted)) {
             long memberCount = teamMemberRepository.countByTeamId(teamId);
-            Team team = findVisibleTeam(teamId);
+            Team team = teamRepository
+                    .findByIdWithLock(teamId)
+                    .filter(t -> t.getStatus() != TeamStatus.dissolved)
+                    .orElseThrow(() -> {
+                        log.warn("小队不可见: teamId={}", teamId);
+                        return new BusinessException(TEAM_NOT_VISIBLE, "Team is not visible");
+                    });
             if (memberCount >= team.getCapacity()) {
                 throw new BusinessException(TEAM_FULL, "Team is full, cannot accept more members");
             }
@@ -1147,6 +1157,7 @@ public class TeamService {
         try {
             return Instant.parse(dateString);
         } catch (DateTimeParseException e) {
+            log.warn("日期字符串解析失败: dateString={}", dateString, e);
             return null;
         }
     }
