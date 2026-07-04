@@ -26,7 +26,6 @@ import io.github.layjason.mayoistar.entity.chat.TeamAnnouncement;
 import io.github.layjason.mayoistar.entity.chat.TeamAnnouncementRead;
 import io.github.layjason.mayoistar.entity.chat.TeamPoll;
 import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
-import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ChatMessageRepository;
@@ -111,12 +110,10 @@ public class ChatService {
         // 预加载图片媒体：校验存在性，同时供后续策略更新和 DTO 填充复用，避免重复查库
         io.github.layjason.mayoistar.entity.common.MediaFile imageMedia = null;
         if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
-            imageMedia = mediaFileRepository
-                    .findById(request.getImageMediaId())
-                    .orElseThrow(() -> {
-                        log.warn("消息引用的媒体文件不存在: mediaId={}", request.getImageMediaId());
-                        return new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
-                    });
+            imageMedia = mediaFileRepository.findById(request.getImageMediaId()).orElseThrow(() -> {
+                log.warn("消息引用的媒体文件不存在: mediaId={}", request.getImageMediaId());
+                return new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
+            });
             // 校验须先于策略更新执行：发送者须为图片上传者，防止劫持他人上传的图片
             if (!imageMedia.getUploadedBy().equals(senderId)) {
                 log.warn(
