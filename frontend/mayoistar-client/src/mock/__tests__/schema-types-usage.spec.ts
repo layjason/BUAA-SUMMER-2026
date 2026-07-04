@@ -120,6 +120,7 @@ describe('mock schema-types 契约应用', () => {
       canCancelRegistration: expect.any(Boolean),
       canCheckIn: expect.any(Boolean),
       canConfirmWaitingSeat: expect.any(Boolean),
+      canReview: expect.any(Boolean),
     })
     expect(state).not.toHaveProperty('isOrganizer')
   })

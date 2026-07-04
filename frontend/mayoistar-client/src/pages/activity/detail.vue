@@ -166,9 +166,14 @@
             <button v-if="isOrganizer" class="action-btn-sm" @click="goCheckIns">
               {{ t('activityDetail.checkInManagement') }}
             </button>
-            <button v-if="canReview" class="action-btn-sm" @click="goReview">
-              {{ t('activityDetail.writeReview') }}
-            </button>
+            <view v-if="canReview" class="review-action-block">
+              <button class="action-btn-sm" @click="goReview">
+                {{ t('activityDetail.writeReview') }}
+              </button>
+              <text v-if="reviewDeadlineText" class="review-deadline-text">{{
+                reviewDeadlineText
+              }}</text>
+            </view>
             <text v-else-if="showReviewedStatus" class="action-status-chip">{{
               t('activityDetail.reviewSubmitted')
             }}</text>
@@ -284,19 +289,21 @@ const isOrganizer = computed(() => {
   return activity.value?.organizerId === authStore.userId
 })
 
-/** 当前用户是否满足评价条件（已签到且活动已结束） */
-const meetsReviewCondition = computed(() => {
-  return participation.value?.status === 'checkedIn' && activity.value?.runtimeStatus === 'ended'
-})
-
-/** 当前用户是否可以评价（满足条件且尚未评价） */
+/** 当前用户是否可以评价，由后端根据活动状态、签到、评价窗口等规则统一计算 */
 const canReview = computed(() => {
-  return meetsReviewCondition.value && !hasReviewed.value
+  return participation.value?.canReview === true
 })
 
 /** 是否展示「已评价」状态 */
 const showReviewedStatus = computed(() => {
-  return meetsReviewCondition.value && hasReviewed.value
+  return hasReviewed.value
+})
+
+/** 评价入口截止时间文案，空字符串表示后端未返回截止时间 */
+const reviewDeadlineText = computed(() => {
+  const endsAt = participation.value?.reviewWindowEndsAt
+  if (!endsAt) return ''
+  return t('activityDetail.reviewDeadline', { time: formatDateTime(endsAt) })
 })
 
 /** 当前用户是否可以发布总结（发起人、活动已结束且活动尚无总结） */
@@ -962,6 +969,24 @@ onShow(() => {
   border: none;
   padding: 0 12rpx;
   box-sizing: border-box;
+}
+
+.review-action-block {
+  flex: 1;
+  min-width: 200rpx;
+}
+
+.review-action-block .action-btn-sm {
+  width: 100%;
+}
+
+.review-deadline-text {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  line-height: 1.3;
+  color: #ed6a0c;
+  text-align: center;
 }
 
 .action-status-chip {

@@ -207,6 +207,7 @@
     "loading": "加载中...",
     "viewParticipants": "参与者列表",
     "writeReview": "评价活动",
+    "reviewDeadline": "评价截止：{time}",
     "writeSummary": "发布总结",
     "reviewSubmitted": "已评价",
     "summarySubmitted": "已发布总结",
@@ -282,7 +283,10 @@
     "contentPlaceholder": "分享你的活动体验...",
     "submit": "提交评价",
     "success": "评价提交成功",
-    "failed": "评价提交失败"
+    "failed": "评价提交失败",
+    "deadline": "请在 {time} 前完成评价",
+    "windowClosed": "评价入口已关闭",
+    "windowExpired": "评价时间已过期，请返回活动详情刷新状态"
   },
 
   "activitySummary": {

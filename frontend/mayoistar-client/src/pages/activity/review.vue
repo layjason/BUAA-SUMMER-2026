@@ -4,6 +4,10 @@
       <view class="form-container">
         <text class="title">{{ t('activityReview.title') }}</text>
 
+        <view v-if="reviewDeadlineText" class="deadline-card">
+          <text class="deadline-text">{{ reviewDeadlineText }}</text>
+        </view>
+
         <view class="star-section">
           <text class="label">{{ t('activityReview.rating') }}</text>
           <view class="star-row">
@@ -88,18 +92,21 @@
  * 前置条件：用户已登录，activityId 通过 query 传入，活动已结束且用户已签到
  * 后置条件：提交成功后返回上一页
  */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
 
 import {
   createActivityReview,
+  getParticipationState,
   getMyActivityReview,
   uploadReviewImages,
+  type ActivityParticipationState,
   type MyActivityReviewResult,
 } from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
+import { formatDateTime } from '@/utils/date'
 import { FormError, BottomActionBar } from '@/components'
 
 const { t } = useI18n()
@@ -111,10 +118,24 @@ const submitting = ref(false)
 const formError = ref('')
 const imageUrls = ref<string[]>([])
 const uploadingImage = ref(false)
+const participation = ref<ActivityParticipationState | null>(null)
 
 // 预设评价标签
 const availableTags = ['组织有序', '氛围很好', '收获满满', '场地不错', '时间合理', '物超所值']
 const selectedTags = ref<string[]>([])
+
+/** 评价入口截止时间文案，空字符串表示后端未返回截止时间 */
+const reviewDeadlineText = computed(() => {
+  const endsAt = participation.value?.reviewWindowEndsAt
+  if (!endsAt) return ''
+  return t('activityReview.deadline', { time: formatDateTime(endsAt) })
+})
+
+/** 当前评价窗口是否已经在本地时间中过期，最终结果仍以后端提交接口校验为准 */
+const isReviewWindowExpired = computed(() => {
+  const endsAt = participation.value?.reviewWindowEndsAt
+  return endsAt ? new Date(endsAt).getTime() <= Date.now() : false
+})
 
 /** 切换标签选中状态 */
 function toggleTag(tag: string): void {
@@ -172,6 +193,10 @@ function removeReviewImage(index: number): void {
 async function handleSubmit(): Promise<void> {
   if (submitting.value || rating.value === 0) return
   formError.value = ''
+  if (isReviewWindowExpired.value) {
+    formError.value = t('activityReview.windowExpired')
+    return
+  }
   submitting.value = true
 
   try {
@@ -202,9 +227,19 @@ onLoad((query) => {
   }
   void (async () => {
     try {
-      const result: MyActivityReviewResult = await getMyActivityReview(activityId.value)
+      const [state, result]: [ActivityParticipationState, MyActivityReviewResult] =
+        await Promise.all([
+          getParticipationState(activityId.value),
+          getMyActivityReview(activityId.value),
+        ])
+      participation.value = state
       if (result.review) {
         uni.showToast({ title: t('activityDetail.alreadyReviewed'), icon: 'none' })
+        setTimeout(() => uni.navigateBack(), 1000)
+        return
+      }
+      if (!state.canReview) {
+        uni.showToast({ title: t('activityReview.windowClosed'), icon: 'none' })
         setTimeout(() => uni.navigateBack(), 1000)
       }
     } catch {
@@ -239,6 +274,19 @@ onLoad((query) => {
   font-weight: 700;
   color: #323233;
   margin-bottom: 40rpx;
+}
+
+.deadline-card {
+  margin-bottom: 32rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 12rpx;
+  background-color: #fff7e8;
+}
+
+.deadline-text {
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #ed6a0c;
 }
 
 .star-section {

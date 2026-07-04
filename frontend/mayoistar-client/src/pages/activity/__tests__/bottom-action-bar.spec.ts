@@ -50,4 +50,17 @@ describe('活动页面底部操作栏', () => {
       handleActionBody.indexOf('p.canCheckIn'),
     )
   })
+
+  it('详情页评价入口应使用后端参与状态控制并展示截止时间', () => {
+    const source = readActivityPage('detail.vue')
+    const canReviewBody = source.slice(
+      source.indexOf('const canReview = computed(() => {'),
+      source.indexOf('/** 是否展示「已评价」状态 */'),
+    )
+
+    expect(canReviewBody).toContain('participation.value?.canReview === true')
+    expect(canReviewBody).not.toContain("status === 'checkedIn'")
+    expect(source).toContain('reviewWindowEndsAt')
+    expect(source).toContain('reviewDeadlineText')
+  })
 })

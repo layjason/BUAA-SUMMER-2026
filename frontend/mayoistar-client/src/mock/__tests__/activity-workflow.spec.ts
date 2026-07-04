@@ -92,6 +92,17 @@ describe('活动 mock workflow 契约对齐', () => {
       status: 'registered',
       canCancelRegistration: true,
       canCheckIn: false,
+      canReview: false,
+    })
+  })
+
+  it('已结束且已签到未评价用户应可在评价窗口内评价', () => {
+    const state = getParticipationState(7, 10001)
+
+    expect(state).toMatchObject({
+      status: 'checkedIn',
+      canReview: true,
+      reviewWindowEndsAt: expect.any(String),
     })
   })
 

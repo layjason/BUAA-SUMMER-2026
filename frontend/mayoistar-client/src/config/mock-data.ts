@@ -924,6 +924,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: true,
       canConfirmWaitingSeat: false,
       canCheckIn: true,
+      canReview: false,
     },
   },
 
@@ -998,6 +999,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: true,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1057,6 +1059,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1107,6 +1110,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: true,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1157,6 +1161,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1207,6 +1212,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1259,6 +1265,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: true,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1310,6 +1317,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: true,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1805,6 +1813,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1855,6 +1864,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1906,6 +1916,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1954,6 +1965,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 

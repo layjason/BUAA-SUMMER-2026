@@ -524,6 +524,15 @@ export function getParticipationState(
     !isDeadlinePassed
   const canCheckIn = reg?.status === 'registered' && activity?.runtimeStatus === 'ongoing'
   const canConfirmWaiting = waitEntry?.status === 'waitingConfirmation'
+  const reviewWindowEndsAt = activity
+    ? new Date(new Date(activity.endTime).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    : undefined
+  const hasReviewed = db.reviews.some((r) => r.activityId === activityId && r.userId === userId)
+  const canReview =
+    reg?.status === 'checkedIn' &&
+    activity?.runtimeStatus === 'ended' &&
+    !hasReviewed &&
+    Boolean(reviewWindowEndsAt && new Date(reviewWindowEndsAt).getTime() > Date.now())
 
   const status: ActivityParticipationState['status'] = reg
     ? reg.status
@@ -537,6 +546,8 @@ export function getParticipationState(
     canCancelRegistration: canCancel,
     canCheckIn,
     canConfirmWaitingSeat: canConfirmWaiting,
+    canReview,
+    reviewWindowEndsAt: canReview ? reviewWindowEndsAt : undefined,
     waitingRank: waitEntry?.position,
     confirmationDeadline: canConfirmWaiting
       ? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
@@ -1861,6 +1872,12 @@ export function createReview(
   )
   if (!reg || reg.status !== 'checkedIn') {
     throw new MockBusinessError(20011, '未找到可评价的报名记录')
+  }
+  const reviewWindowEndsAt = new Date(
+    new Date(activity.endTime).getTime() + 7 * 24 * 60 * 60 * 1000,
+  ).toISOString()
+  if (new Date(reviewWindowEndsAt).getTime() <= Date.now()) {
+    throw new MockBusinessError(20015, '评价入口已关闭')
   }
 
   const existing = db.reviews.find((r) => r.activityId === activityId && r.userId === userId)
