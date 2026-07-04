@@ -27,6 +27,7 @@ import io.github.layjason.mayoistar.service.ai.AiContentReviewSnapshotMapper;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -177,6 +178,54 @@ public class ActivityDraftService {
                 activityTemplateRepository.findAll(PageRequest.of(resolvedPage - 1, resolvedPageSize)));
         log.debug("已查询活动模板列表，page={}, pageSize={}, total={}", resolvedPage, resolvedPageSize, result.getTotal());
         return result;
+    }
+
+    /**
+     * 基于活动模板创建草稿。
+     *
+     * <p>前置条件：调用者用户存在；templateId 对应模板存在。
+     *
+     * <p>后置条件：创建一条 reviewStatus=draft 的可编辑活动草稿，标题、标签、简介、安全须知和容量来自模板。
+     *
+     * <p>不变量：模板记录不会被修改；模板封面不自动绑定为草稿图片，避免绕过活动图片的上传者校验。
+     *
+     * @param organizerId 当前调用者 ID
+     * @param templateId 模板 ID
+     * @return 新建草稿详情
+     */
+    @Transactional
+    public ActivityDtos.ActivityDraftDetail createDraftFromTemplate(String organizerId, String templateId) {
+        validateUserExists(organizerId);
+        var template = activityTemplateRepository
+                .findById(templateId)
+                .orElseThrow(() -> new BusinessException(ErrorCodes.TEMPLATE_NOT_FOUND, "活动模板不存在"));
+        Instant now = Instant.now();
+        Instant startAt = now.plus(7, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MINUTES);
+        Activity activity = Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizerId)
+                .title(template.getName())
+                .tags(copyTags(template.getDefaultTags()))
+                .introduction(template.getDefaultIntroduction())
+                .startAt(startAt)
+                .endAt(startAt.plus(2, ChronoUnit.HOURS))
+                .safetyNotice(template.getDefaultSafetyNotice())
+                .capacity(template.getDefaultCapacity())
+                .registrationDeadline(startAt.minus(1, ChronoUnit.DAYS))
+                .reviewStatus(ActivityReviewStatus.draft)
+                .runtimeStatus(ActivityRuntimeStatus.notStarted)
+                .manualReviewRequired(false)
+                .requireLocationCheck(false)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        Activity savedActivity = activityRepository.save(activity);
+        log.info(
+                "已基于活动模板创建草稿，activityId={}, templateId={}, organizerId={}",
+                savedActivity.getActivityId(),
+                templateId,
+                organizerId);
+        return loadDraftDetail(savedActivity);
     }
 
     /**

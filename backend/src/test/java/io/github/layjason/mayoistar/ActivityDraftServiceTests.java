@@ -202,6 +202,36 @@ class ActivityDraftServiceTests {
     }
 
     @Test
+    void createDraftFromTemplateShouldPersistEditableDraft() {
+        User organizer = saveUser("user-a");
+        saveTemplate("template-a", "桌游模板", "社交", List.of("桌游", "轻松"));
+
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.createDraftFromTemplate(organizer.getUserId(), "template-a");
+
+        Activity savedActivity =
+                activityRepository.findById(draft.getActivityId()).orElseThrow();
+        assertThat(savedActivity.getOrganizerId()).isEqualTo(organizer.getUserId());
+        assertThat(savedActivity.getReviewStatus()).isEqualTo(ActivityReviewStatus.draft);
+        assertThat(draft.getTitle()).isEqualTo("桌游模板");
+        assertThat(draft.getTags()).containsExactly("桌游", "轻松");
+        assertThat(draft.getIntroduction()).isEqualTo("模板介绍");
+        assertThat(draft.getSafetyNotice()).isEqualTo("模板安全须知");
+        assertThat(draft.getCapacity()).isEqualTo(12);
+        assertThat(draft.getImages()).isEmpty();
+    }
+
+    @Test
+    void createDraftFromTemplateShouldRejectMissingTemplate() {
+        User organizer = saveUser("user-a");
+
+        assertThatThrownBy(() -> activityDraftService.createDraftFromTemplate(organizer.getUserId(), "missing"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(20001);
+    }
+
+    @Test
     void submitActivityShouldAutoApproveLowRiskActivity() {
         User organizer = saveUser("user-a");
         ActivityDtos.ActivityDraftDetail draft =

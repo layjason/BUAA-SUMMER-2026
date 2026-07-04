@@ -138,6 +138,32 @@ class ActivityDraftControllerTests {
     }
 
     @Test
+    void createDraftFromTemplateShouldReturnPersistedDraft() throws Exception {
+        saveUser("user-a");
+        saveTemplate("template-a", "桌游模板", "社交", List.of("桌游", "轻松"));
+
+        mockMvc.perform(post("/activities/templates/{templateId}/drafts", "template-a")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.activityId").isNotEmpty())
+                .andExpect(jsonPath("$.data.title").value("桌游模板"))
+                .andExpect(jsonPath("$.data.tags[0]").value("桌游"))
+                .andExpect(jsonPath("$.data.reviewStatus").value("draft"));
+    }
+
+    @Test
+    void createDraftFromTemplateShouldRejectMissingTemplate() throws Exception {
+        saveUser("user-a");
+
+        mockMvc.perform(post("/activities/templates/{templateId}/drafts", "missing")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(20001));
+    }
+
+    @Test
     void updateDraftShouldRefreshTitle() throws Exception {
         saveUser("user-a");
         String responseBody = mockMvc.perform(post("/activities/drafts")

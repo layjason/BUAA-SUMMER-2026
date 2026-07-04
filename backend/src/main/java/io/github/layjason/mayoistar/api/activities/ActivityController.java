@@ -187,7 +187,8 @@ public class ActivityController {
     @PostMapping("/templates/{templateId}/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> createDraftFromTemplate(
             @PathVariable String templateId) {
-        return responseFactory.activityDraftDetail();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.createDraftFromTemplate(userId, templateId)));
     }
 
     @GetMapping("/{activityId}")
