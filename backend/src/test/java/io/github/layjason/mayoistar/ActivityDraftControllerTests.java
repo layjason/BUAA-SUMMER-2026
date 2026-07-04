@@ -167,7 +167,8 @@ class ActivityDraftControllerTests {
                                 .roles("personal")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.activityId").value(activityId))
-                .andExpect(jsonPath("$.data.reviewStatus").value("pending"))
+                .andExpect(jsonPath("$.data.reviewStatus").value("approved"))
+                .andExpect(jsonPath("$.data.aiContentReview.riskLevel").value("low"))
                 .andExpect(jsonPath("$.data.organizerName").value("nickname-user-a"))
                 .andExpect(jsonPath("$.data.reviewRecords.length()").value(1));
     }
@@ -220,7 +221,6 @@ class ActivityDraftControllerTests {
                 .sizeBytes(1L)
                 .usage(MediaUsage.activityImage)
                 .storagePath("/tmp/" + mediaId)
-                .url("https://example.com/" + mediaId)
                 .uploadedBy(userId)
                 .uploadedAt(Instant.now())
                 .build());

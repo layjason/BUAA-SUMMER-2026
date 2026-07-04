@@ -6,12 +6,15 @@ import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +44,7 @@ public class AdminActivityService {
     private final ActivityDtoMapper activityDtoMapper;
     private final ActivityRegistrationCountService activityRegistrationCountService;
     private final ActivityMediaQueryService activityMediaQueryService;
+    private final MediaAccessService mediaAccessService;
 
     /**
      * 管理员查询活动详情（不受可见性限制）。
@@ -164,6 +168,8 @@ public class AdminActivityService {
             case approved -> {
                 activity.setReviewStatus(ActivityReviewStatus.approved);
                 activity.setRuntimeStatus(ActivityRuntimeStatus.notStarted);
+                // 审核通过后活动对所有人可见，图片升级为公开访问
+                publishImages(activityId);
             }
             case rejected -> activity.setReviewStatus(ActivityReviewStatus.rejected);
             case changeRequired -> activity.setReviewStatus(ActivityReviewStatus.changeRequired);
@@ -220,6 +226,9 @@ public class AdminActivityService {
         activity.setUpdatedAt(Instant.now());
         activityRepository.save(activity);
 
+        // 下架后活动不再对外可见，图片回退为 activityOwner（私有），立即失效公开 URL
+        restrictImages(activityId);
+
         createReviewRecord(activityId, ReviewStatus.rejected, reason);
 
         log.info("管理员已下架活动，activityId={}", activityId.replace("\n", "\\n").replace("\r", "\\r"));
@@ -251,6 +260,9 @@ public class AdminActivityService {
         activity.setUpdatedAt(Instant.now());
         activityRepository.save(activity);
 
+        // 恢复后活动重新对外可见，图片恢复为公开访问
+        publishImages(activityId);
+
         createReviewRecord(activityId, ReviewStatus.approved, "管理员恢复活动");
 
         log.info("管理员已恢复活动，activityId={}", activityId.replace("\n", "\\n").replace("\r", "\\r"));
@@ -264,6 +276,45 @@ public class AdminActivityService {
         return activityRepository
                 .findById(activityId)
                 .orElseThrow(() -> new BusinessException(60008, "Activity {activityId} does not exist"));
+    }
+
+    /**
+     * 将活动图片升级为公开访问（publicAccess / publicVisible），用于审核通过和恢复上架。
+     *
+     * <p>前置条件：调用方已确认活动进入对所有人可见的状态。
+     *
+     * <p>后置条件：活动关联的未软删除图片访问策略均为 publicAccess，任何人（含匿名）可经签名 URL 访问。
+     *
+     * @param activityId 活动 ID
+     */
+    private void publishImages(String activityId) {
+        for (MediaFile mediaFile : activityMediaQueryService.loadMediaFiles(activityId)) {
+            if (mediaFile.getDeletedAt() == null) {
+                mediaAccessService.overrideAccessPolicy(
+                        mediaFile.getMediaId(), MediaAccessPolicy.publicAccess, "", MediaVisibility.publicVisible);
+            }
+        }
+    }
+
+    /**
+     * 将活动图片回退为仅组织者可见（activityOwner / privateVisible），用于下架。
+     *
+     * <p>前置条件：调用方已确认活动不再对外可见。
+     *
+     * <p>后置条件：活动关联的未软删除图片访问策略均为 activityOwner，公开签名 URL 因版本递增立即失效。
+     *
+     * @param activityId 活动 ID
+     */
+    private void restrictImages(String activityId) {
+        for (MediaFile mediaFile : activityMediaQueryService.loadMediaFiles(activityId)) {
+            if (mediaFile.getDeletedAt() == null) {
+                mediaAccessService.overrideAccessPolicy(
+                        mediaFile.getMediaId(),
+                        MediaAccessPolicy.activityOwner,
+                        activityId,
+                        MediaVisibility.privateVisible);
+            }
+        }
     }
 
     /**

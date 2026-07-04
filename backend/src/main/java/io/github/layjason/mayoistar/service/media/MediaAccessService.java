@@ -73,13 +73,16 @@ public class MediaAccessService {
     /**
      * 校验签名 URL 并读取媒体文件。
      *
-     * <p>前置条件：请求参数来自签名 URL，mediaId 非空。
+     * <p>前置条件：descriptor 已通过 {@link #loadDescriptor(UUID)} 加载且非空。
      *
      * <p>后置条件：若签名和权限均有效，返回对象存储输入流；否则抛出对应 HTTP 异常。
      *
      * <p>不变量：私有资源必须存在有效认证；管理员仍必须提供有效签名 URL。
      *
-     * @param mediaId        媒体标识
+     * <p>调用方应在调用本方法前加载描述符，并使用同一描述符设置响应头，避免重复加载
+     * 导致 TOCTOU 竞态。
+     *
+     * @param descriptor     已加载的媒体访问描述符
      * @param accessVersion  URL 中的访问版本
      * @param policy         URL 中的访问策略
      * @param scope          URL 中的访问作用域
@@ -88,17 +91,16 @@ public class MediaAccessService {
      * @return 文件输入流
      */
     public InputStream openSignedContent(
-            UUID mediaId,
+            MediaAccessDescriptor descriptor,
             long accessVersion,
             MediaAccessPolicy policy,
             @Nullable String scope,
             @Nullable String signature,
             @Nullable Authentication authentication) {
-        MediaAccessDescriptor descriptor = loadDescriptor(mediaId);
         if (descriptor.deletedAt() != null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found");
         }
-        if (!verifySignature(mediaId, accessVersion, policy, normalizeScope(scope), signature)) {
+        if (!verifySignature(descriptor.mediaId(), accessVersion, policy, normalizeScope(scope), signature)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Permission is denied");
         }
         if (descriptor.accessVersion() != accessVersion
@@ -127,16 +129,17 @@ public class MediaAccessService {
     public CommonDtos.MediaFile toSignedDto(MediaFile mediaFile) {
         CommonDtos.MediaFile result = new CommonDtos.MediaFile();
         result.setMediaId(mediaFile.getMediaId());
+        if (mediaFile.getDeletedAt() != null) {
+            return result;
+        }
         result.setFileName(mediaFile.getFileName());
         result.setContentType(mediaFile.getContentType());
         result.setSizeBytes(mediaFile.getSizeBytes());
         result.setUsage(mediaFile.getUsage());
         result.setVisibility(mediaFile.getVisibility());
         result.setUploadedAt(mediaFile.getUploadedAt().toString());
-        if (mediaFile.getDeletedAt() == null) {
-            SignedMediaAccess signed = sign(mediaFile);
-            result.setSignedUrl(signed.signedUrl());
-        }
+        SignedMediaAccess signed = sign(mediaFile);
+        result.setSignedUrl(signed.signedUrl());
         return result;
     }
 
@@ -164,26 +167,120 @@ public class MediaAccessService {
     }
 
     /**
-     * 更新媒体文件的访问策略和作用域，并刷新缓存。
+     * 软删除媒体文件（不含权限校验），递增访问版本使旧签名 URL 立即失效。
      *
-     * <p>前置条件：mediaId 对应有效的媒体文件。
+     * <p>重要：本方法不执行权限校验，调用方必须在调用前完成独立的权限检查（如团队管理权限、
+     * 管理员身份等）。误用可能导致越权删除。
      *
-     * <p>后置条件：accessPolicy 和 accessScopeId 已更新，缓存中的快照已刷新。
+     * <p>前置条件：调用方需自行确保删除权限。
+     *
+     * <p>后置条件：deletedAt 非空，accessVersion 递增，旧签名 URL 因版本不匹配而失效。
      *
      * @param mediaId 媒体标识
-     * @param policy  新的访问策略
-     * @param scope   新的访问作用域
      */
     @Transactional
-    public void updateAccessPolicy(UUID mediaId, MediaAccessPolicy policy, String scope) {
+    public void softDelete(UUID mediaId) {
+        MediaFile mediaFile = mediaFileRepository
+                .findById(mediaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found"));
+        if (mediaFile.getDeletedAt() != null) {
+            log.debug("媒体文件已删除，跳过重复操作: mediaId={}", mediaId);
+            return;
+        }
+        mediaFile.setDeletedAt(clock.instant());
+        mediaFile.setAccessVersion(mediaFile.getAccessVersion() + 1);
+        mediaFileRepository.save(mediaFile);
+        mediaAccessCache.put(toDescriptor(mediaFile));
+        log.info("媒体文件已软删除: mediaId={}, accessVersion={}", mediaId, mediaFile.getAccessVersion());
+    }
+
+    /**
+     * 更新媒体文件的访问策略和作用域，递增访问版本使旧签名 URL 失效，并刷新缓存。
+     *
+     * <p>前置条件：mediaId 对应有效的媒体文件，且 {@code callerUserId} 为该文件的上传者。
+     *
+     * <p>后置条件：当目标 policy/scope 与现值不同时，accessPolicy 和 accessScopeId 已更新，
+     * accessVersion 递增，旧签名 URL 因版本不匹配而失效，缓存中的快照已刷新；若目标与现值一致
+     * 则跳过，不递增版本（幂等，避免重复绑定草稿造成的版本膨胀）。
+     *
+     * @param mediaId      媒体标识
+     * @param policy       新的访问策略
+     * @param scope        新的访问作用域
+     * @param callerUserId 调用者用户 ID，必须为文件上传者
+     */
+    @Transactional
+    public void updateAccessPolicy(UUID mediaId, MediaAccessPolicy policy, String scope, String callerUserId) {
         MediaFile mediaFile = mediaFileRepository
                 .findById(mediaId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file not found"));
+        if (!mediaFile.getUploadedBy().equals(callerUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Permission is denied");
+        }
+        if (mediaFile.getDeletedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found");
+        }
+        if (mediaFile.getAccessPolicy() == policy
+                && normalizeScope(mediaFile.getAccessScopeId()).equals(normalizeScope(scope))) {
+            log.debug("媒体访问策略未变化，跳过更新: mediaId={}, policy={}, scope={}", mediaId, policy, scope);
+            return;
+        }
         mediaFile.setAccessPolicy(policy);
         mediaFile.setAccessScopeId(scope);
+        mediaFile.setAccessVersion(mediaFile.getAccessVersion() + 1);
         mediaFileRepository.save(mediaFile);
         mediaAccessCache.put(toDescriptor(mediaFile));
-        log.info("媒体访问策略已更新: mediaId={}, policy={}, scope={}", mediaId, policy, scope);
+        log.info(
+                "媒体访问策略已更新: mediaId={}, policy={}, scope={}, accessVersion={}",
+                mediaId,
+                policy,
+                scope,
+                mediaFile.getAccessVersion());
+    }
+
+    /**
+     * 以权威身份覆盖媒体的访问策略、作用域与可见性，递增访问版本使旧签名 URL 失效。
+     *
+     * <p>重要：本方法<strong>不执行 owner 校验</strong>，调用方（如管理员审核发布、下架、恢复流程）
+     * 必须在调用前完成独立的权限检查。相较于 owner 校验版本，本方法可同时更新 {@code visibility}，
+     * 用于活动图片在 {@code activityOwner}（私有）与 {@code publicAccess}（公开）之间翻转。
+     *
+     * <p>前置条件：mediaId 对应有效且未软删除的媒体文件；调用方已完成鉴权。
+     *
+     * <p>后置条件：当目标状态与现值不同时，accessPolicy、accessScopeId、visibility 已更新，
+     * accessVersion 递增，缓存已刷新；若目标状态与现值完全一致则跳过，不递增版本（幂等）。
+     *
+     * @param mediaId    媒体标识
+     * @param policy     新的访问策略
+     * @param scope      新的访问作用域
+     * @param visibility 新的可见性
+     */
+    @Transactional
+    public void overrideAccessPolicy(UUID mediaId, MediaAccessPolicy policy, String scope, MediaVisibility visibility) {
+        MediaFile mediaFile = mediaFileRepository
+                .findById(mediaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file not found"));
+        if (mediaFile.getDeletedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media file is not found");
+        }
+        if (mediaFile.getAccessPolicy() == policy
+                && normalizeScope(mediaFile.getAccessScopeId()).equals(normalizeScope(scope))
+                && mediaFile.getVisibility() == visibility) {
+            log.debug("媒体访问策略未变化，跳过覆盖: mediaId={}, policy={}, scope={}", mediaId, policy, scope);
+            return;
+        }
+        mediaFile.setAccessPolicy(policy);
+        mediaFile.setAccessScopeId(scope);
+        mediaFile.setVisibility(visibility);
+        mediaFile.setAccessVersion(mediaFile.getAccessVersion() + 1);
+        mediaFileRepository.save(mediaFile);
+        mediaAccessCache.put(toDescriptor(mediaFile));
+        log.info(
+                "媒体访问策略已覆盖: mediaId={}, policy={}, scope={}, visibility={}, accessVersion={}",
+                mediaId,
+                policy,
+                scope,
+                visibility,
+                mediaFile.getAccessVersion());
     }
 
     /**
@@ -201,6 +298,9 @@ public class MediaAccessService {
      */
     @Transactional
     public MediaFile copyForScope(MediaFile source, String uploadedBy, MediaAccessPolicy policy, String scope) {
+        if (source.getDeletedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Source media file has been deleted");
+        }
         MediaFile copy = MediaFile.builder()
                 .mediaId(UUID.randomUUID())
                 .fileName(source.getFileName())

@@ -15,7 +15,6 @@ CREATE TABLE media_files (
     size_bytes      BIGINT       NOT NULL,
     usage           VARCHAR(50)  NOT NULL,
     storage_path    VARCHAR(500) NOT NULL,
-    url             VARCHAR(500),
     visibility      VARCHAR(30)  NOT NULL DEFAULT 'privateVisible',
     access_policy   VARCHAR(50)  NOT NULL DEFAULT 'owner',
     access_scope_id VARCHAR(100),
@@ -39,7 +38,6 @@ COMMENT ON COLUMN media_files.content_type IS 'MIME 类型，如 image/png、ima
 COMMENT ON COLUMN media_files.size_bytes IS '文件字节数';
 COMMENT ON COLUMN media_files.usage IS '用途分类。avatar / merchantLicense / activityImage / chatImage / teamFile / teamAlbum / summaryImage / activityReviewImage';
 COMMENT ON COLUMN media_files.storage_path IS '存储服务中的路径';
-COMMENT ON COLUMN media_files.url IS '历史访问地址字段。新实现中客户端应使用 signedUrl，不应长期依赖该字段';
 COMMENT ON COLUMN media_files.visibility IS '媒体可见性。publicVisible / privateVisible';
 COMMENT ON COLUMN media_files.access_policy IS '媒体访问策略。publicAccess / owner / conversationMember / teamMember / activityOwner / adminOnly';
 COMMENT ON COLUMN media_files.access_scope_id IS '访问策略作用域标识，例如 conversationId、teamId、activityId 或 ownerId';
@@ -227,6 +225,7 @@ CREATE TABLE activities (
     review_status           VARCHAR(30)   NOT NULL,
     runtime_status          VARCHAR(30)   NOT NULL,
     manual_review_required  BOOLEAN       NOT NULL DEFAULT FALSE,
+    ai_content_review_json  TEXT,
     require_location_check  BOOLEAN       NOT NULL DEFAULT FALSE,
     created_at              TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at              TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -264,6 +263,7 @@ COMMENT ON COLUMN activities.registration_deadline IS '报名截止时间，UTC 
 COMMENT ON COLUMN activities.review_status IS '审核状态。不变量：非空，值为 draft / pending / approved / rejected / changeRequired 之一。前置条件：创建活动时初始值为 draft';
 COMMENT ON COLUMN activities.runtime_status IS '运行状态。不变量：非空。notStarted — 未开始；registering — 报名中；registrationClosed — 报名结束；ongoing — 进行中；ended — 已结束；takenDown — 已下架';
 COMMENT ON COLUMN activities.manual_review_required IS '是否需要人工审核，默认 false。为 true 时即使 AI 审核通过也需要管理员确认';
+COMMENT ON COLUMN activities.ai_content_review_json IS 'AI 内容安全审核结果快照 JSON。前置条件：活动提交审核时由服务端生成；后置条件：活动详情可回显最近一次 AI 审核结果。';
 COMMENT ON COLUMN activities.created_at IS '创建时间，UTC 时区';
 COMMENT ON COLUMN activities.updated_at IS '最后更新时间，UTC 时区';
 
@@ -691,6 +691,14 @@ CREATE TABLE team_media_files (
 CREATE INDEX idx_team_media_files_team  ON team_media_files (team_id);
 CREATE INDEX idx_team_media_files_media ON team_media_files (media_id);
 CREATE UNIQUE INDEX uq_team_media_files_pair ON team_media_files (team_id, media_id);
+
+ALTER TABLE team_media_files
+    ADD CONSTRAINT fk_team_media_files_team
+        FOREIGN KEY (team_id) REFERENCES teams (team_id) ON DELETE CASCADE;
+
+ALTER TABLE team_media_files
+    ADD CONSTRAINT fk_team_media_files_media
+        FOREIGN KEY (media_id) REFERENCES media_files (media_id) ON DELETE CASCADE;
 
 COMMENT ON TABLE team_media_files IS '小队与媒体文件的关联，记录小队拥有的群文件和相册图片，解耦 media_files 表与小队业务。';
 

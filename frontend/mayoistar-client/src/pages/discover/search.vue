@@ -32,7 +32,7 @@ interface SearchResultItem {
     address: string
     placeName: string | null
   }
-  coverImage: { url: string; mediaId: string } | null
+  coverImage: { signedUrl: string; mediaId: string } | null
   feeAmount?: number | null
   capacity: number
   registeredCount: number
@@ -305,8 +305,8 @@ function displayOccupiedCount(item: SearchResultItem): number {
         @tap="goDetail(item.activityId)"
       >
         <view class="result-card-inner">
-          <view v-if="item.coverImage?.url" class="result-cover">
-            <image :src="item.coverImage.url" mode="aspectFill" class="cover-img" />
+          <view v-if="item.coverImage?.signedUrl" class="result-cover">
+            <image :src="item.coverImage.signedUrl" mode="aspectFill" class="cover-img" />
           </view>
           <view v-else class="result-cover result-cover-placeholder">
             <text class="placeholder-icon">📌</text>

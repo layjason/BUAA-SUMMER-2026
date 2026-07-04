@@ -70,6 +70,9 @@ public final class ErrorCodes {
     /** 图片大小超出限制 */
     public static final int IMAGE_TOO_LARGE = 20019;
 
+    /** 活动总结已存在 */
+    public static final int DUPLICATE_SUMMARY = 20020;
+
     /** 活动要求位置签到，但用户未提供位置信息 */
     public static final int CHECK_IN_LOCATION_REQUIRED = 20021;
 
@@ -141,6 +144,9 @@ public final class ErrorCodes {
     /** 调用方缺少小队管理权限 */
     public static final int TEAM_PERMISSION_DENIED = 40020;
 
+    /** 二维码令牌无效或已过期 */
+    public static final int QR_CODE_TOKEN_INVALID = 40021;
+
     /* ========== 聊天 ========== */
 
     /** 会话不存在或调用方不可见 */
@@ -191,6 +197,9 @@ public final class ErrorCodes {
 
     /** 小队媒体文件不存在 */
     public static final int TEAM_MEDIA_NOT_FOUND = 50003;
+
+    /** 同名群文件已存在 */
+    public static final int TEAM_FILE_DUPLICATE = 50015;
 
     /** 调用方缺少小队媒体管理权限 */
     public static final int TEAM_MEDIA_PERMISSION_DENIED = 50014;

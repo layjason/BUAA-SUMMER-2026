@@ -1,5 +1,6 @@
 package io.github.layjason.mayoistar.api.activities;
 
+import io.github.layjason.mayoistar.api.ai.AiDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
@@ -135,6 +136,7 @@ public final class ActivityDtos {
 
     @Data
     public static class ActivityReviewRequest {
+        @NotNull
         @Min(1)
         @Max(5)
         private Integer rating;
@@ -204,6 +206,7 @@ public final class ActivityDtos {
         private String organizerName;
         private List<CommonDtos.MediaFile> images;
         private Integer waitingCount;
+        private AiDtos.AiContentReviewResult aiContentReview;
         private Boolean manualReviewRequired;
         private String feeDescription;
         private Integer minAge;
@@ -331,5 +334,21 @@ public final class ActivityDtos {
         private String content;
         private List<String> tags;
         private String createdAt;
+    }
+
+    @Data
+    @EqualsAndHashCode(callSuper = true)
+    public static class ActivityReviewListItem extends ActivityReview {
+        private String nickname;
+    }
+
+    @Data
+    public static class MyActivityReviewResult {
+        private ActivityReview review;
+    }
+
+    @Data
+    public static class MyActivitySummaryResult {
+        private ActivitySummaryPost summary;
     }
 }

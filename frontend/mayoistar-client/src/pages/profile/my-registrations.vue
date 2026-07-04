@@ -24,9 +24,9 @@
         >
           <view class="card-inner">
             <image
-              v-if="item.coverImage?.url"
+              v-if="item.coverImage?.signedUrl"
               class="card-cover"
-              :src="item.coverImage.url"
+              :src="item.coverImage.signedUrl"
               mode="aspectFill"
             />
             <view v-else class="card-cover card-cover-placeholder">
@@ -109,7 +109,7 @@ interface RegistrationItem {
   startAt: string
   endAt: string
   location: { city: string; address: string; placeName?: string }
-  coverImage: { url: string; mediaId: string } | null
+  coverImage: { signedUrl: string; mediaId: string } | null
   feeAmount?: number
   capacity: number
   registeredCount: number

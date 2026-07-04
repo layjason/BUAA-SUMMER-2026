@@ -18,7 +18,7 @@ interface RecommendItem {
   tags: string[]
   startAt: string
   location: { city: string; address: string; placeName: string | null }
-  coverImage: { url: string; mediaId: string } | null
+  coverImage: { signedUrl: string; mediaId: string } | null
   feeAmount?: number | null
   capacity: number
   registeredCount: number
@@ -119,8 +119,8 @@ function getStatusText(status: string): string {
               @tap="goDetail(item.activityId)"
             >
               <view class="recommend-inner">
-                <view v-if="item.coverImage?.url" class="recommend-cover">
-                  <image :src="item.coverImage.url" mode="aspectFill" class="cover-img" />
+                <view v-if="item.coverImage?.signedUrl" class="recommend-cover">
+                  <image :src="item.coverImage.signedUrl" mode="aspectFill" class="cover-img" />
                 </view>
                 <view v-else class="recommend-cover recommend-cover-placeholder">
                   <text class="placeholder-icon">📌</text>

@@ -108,9 +108,9 @@ onLoad(() => {
             @click="selectTemplate(template)"
           >
             <image
-              v-if="template.defaultCoverImage?.url"
+              v-if="template.defaultCoverImage?.signedUrl"
               class="card-cover"
-              :src="template.defaultCoverImage.url"
+              :src="template.defaultCoverImage.signedUrl"
               mode="aspectFill"
             />
             <view v-else class="card-cover cover-placeholder">

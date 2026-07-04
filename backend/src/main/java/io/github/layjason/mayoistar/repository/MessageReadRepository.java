@@ -30,4 +30,19 @@ public interface MessageReadRepository extends JpaRepository<MessageRead, String
     @Query("DELETE FROM MessageRead mr WHERE mr.messageId IN "
             + "(SELECT cm.messageId FROM ChatMessage cm WHERE cm.conversationId = :conversationId)")
     void deleteByConversationId(String conversationId);
+
+    /**
+     * 统计用户在指定会话中的未读消息数。
+     */
+    @Query("""
+            SELECT COUNT(r)
+            FROM MessageRead r
+            WHERE r.userId = :userId
+              AND r.status = 'unread'
+              AND r.messageId IN (
+                SELECT cm.messageId FROM ChatMessage cm
+                WHERE cm.conversationId = :conversationId
+              )
+            """)
+    long countUnreadByConversationIdAndUserId(String conversationId, String userId);
 }

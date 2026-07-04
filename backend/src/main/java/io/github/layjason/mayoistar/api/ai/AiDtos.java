@@ -1,5 +1,6 @@
 package io.github.layjason.mayoistar.api.ai;
 
+import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
@@ -63,6 +64,15 @@ public final class AiDtos {
     public static class ImageClassificationResult {
         private String status;
         private List<ImageClassificationItem> items;
+        private String friendlyErrorMessage;
+    }
+
+    @Data
+    public static class AiContentReviewResult {
+        private String status;
+        private String riskLevel;
+        private ReviewStatus suggestedReviewStatus;
+        private List<String> reasons;
         private String friendlyErrorMessage;
     }
 }

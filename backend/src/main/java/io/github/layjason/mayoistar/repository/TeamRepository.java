@@ -1,10 +1,14 @@
 package io.github.layjason.mayoistar.repository;
 
 import io.github.layjason.mayoistar.entity.social.Team;
+import jakarta.persistence.LockModeType;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 
 /**
  * 小队数据访问层。
@@ -31,10 +35,28 @@ public interface TeamRepository extends JpaRepository<Team, String>, JpaSpecific
     Page<Team> findByCreatorId(String creatorId, Pageable pageable);
 
     /**
+     * 通过群聊会话 ID 查找小队。
+     *
+     * @param chatId 群聊会话 ID
+     * @return 小队信息（可能为空）
+     */
+    Optional<Team> findByChatId(String chatId);
+
+    /**
      * 检查指定名称的小队是否存在。
      *
      * @param name 小队名称
      * @return 存在时返回 true
      */
     boolean existsByName(String name);
+
+    /**
+     * 通过 ID 查找小队并施加悲观写锁，防止并发修改容量溢出。
+     *
+     * @param teamId 小队 ID
+     * @return 小队信息（可能为空）
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM Team t WHERE t.teamId = :teamId")
+    Optional<Team> findByIdWithLock(String teamId);
 }

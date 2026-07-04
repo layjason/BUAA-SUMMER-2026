@@ -116,7 +116,6 @@ public class MediaFileUploadService {
                 .sizeBytes(size)
                 .usage(usage)
                 .storagePath(key)
-                .url(null)
                 .visibility(defaultVisibility(usage))
                 .accessPolicy(defaultAccessPolicy(usage))
                 .accessScopeId(defaultAccessScope(userId, usage))
@@ -196,22 +195,24 @@ public class MediaFileUploadService {
 
     private static MediaVisibility defaultVisibility(MediaUsage usage) {
         return switch (usage) {
-            case avatar, activityImage, summaryImage -> MediaVisibility.publicVisible;
-            case merchantLicense, chatImage, teamFile, teamAlbum, activityReviewImage -> MediaVisibility.privateVisible;
+            // activityImage 上传时活动尚不存在，初态仅上传者可预览，绑定草稿/发布后再升级
+            case avatar, summaryImage, activityReviewImage -> MediaVisibility.publicVisible;
+            case merchantLicense, chatImage, teamFile, teamAlbum, activityImage -> MediaVisibility.privateVisible;
         };
     }
 
     private static MediaAccessPolicy defaultAccessPolicy(MediaUsage usage) {
         return switch (usage) {
-            case avatar, activityImage, summaryImage -> MediaAccessPolicy.publicAccess;
-            case merchantLicense, chatImage, teamFile, teamAlbum, activityReviewImage -> MediaAccessPolicy.owner;
+            // activityImage 初态为 owner，绑定草稿升级为 activityOwner，审核通过后升级为 publicAccess
+            case avatar, summaryImage, activityReviewImage -> MediaAccessPolicy.publicAccess;
+            case merchantLicense, chatImage, teamFile, teamAlbum, activityImage -> MediaAccessPolicy.owner;
         };
     }
 
     private static String defaultAccessScope(String userId, MediaUsage usage) {
         return switch (usage) {
-            case avatar, activityImage, summaryImage -> "";
-            case merchantLicense, chatImage, teamFile, teamAlbum, activityReviewImage -> userId;
+            case avatar, summaryImage, activityReviewImage -> "";
+            case merchantLicense, chatImage, teamFile, teamAlbum, activityImage -> userId;
         };
     }
 

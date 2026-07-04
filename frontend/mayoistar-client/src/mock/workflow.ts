@@ -151,7 +151,7 @@ function mediaFileFromId(
 ): MediaFile {
   return {
     mediaId,
-    url: `https://picsum.photos/seed/${encodeURIComponent(mediaId || fallbackSeed)}/400/225`,
+    signedUrl: `https://picsum.photos/seed/${encodeURIComponent(mediaId || fallbackSeed)}/400/225`,
     contentType: 'image/jpeg',
     fileName: `${mediaId || fallbackSeed}.jpg`,
     sizeBytes: 50000,
@@ -844,7 +844,7 @@ export function createDraft(creatorId: number, data: MockDraftUpsertInput): Acti
     coverUrl: input.coverUrl ?? '',
     images:
       input.images ??
-      imageIds.map((mediaId) => mediaFileFromId(mediaId, now, mediaId).url as string),
+      imageIds.map((mediaId) => mediaFileFromId(mediaId, now, mediaId).signedUrl as string),
     imageIds,
     startTime: input.startAt ?? input.startTime ?? '',
     endTime: input.endAt ?? input.endTime ?? '',
@@ -895,7 +895,7 @@ export function updateDraft(draftId: number, data: MockDraftUpsertInput): Activi
   if (input.imageIds !== undefined) {
     draft.imageIds = input.imageIds
     draft.images = input.imageIds.map(
-      (mediaId) => mediaFileFromId(mediaId, draft.updatedAt, mediaId).url as string,
+      (mediaId) => mediaFileFromId(mediaId, draft.updatedAt, mediaId).signedUrl as string,
     )
   } else if (input.images !== undefined) {
     draft.images = input.images
@@ -1363,7 +1363,8 @@ export function createTeam(leaderId: number, data: TeamCreateRequest): TeamProfi
     name: data.name,
     description: data.description ?? '',
     coverUrl: data.avatarMediaId
-      ? (mediaFileFromId(data.avatarMediaId, now, `team_${teamId}`, 'teamAlbum').url as string)
+      ? (mediaFileFromId(data.avatarMediaId, now, `team_${teamId}`, 'teamAlbum')
+          .signedUrl as string)
       : '',
     leaderId,
     joinMode: data.joinMode,
@@ -1874,7 +1875,7 @@ function summaryToResponse(summary: {
       if (img.startsWith('http')) {
         return {
           mediaId: `media_summary_${summary.id}_${index}`,
-          url: img,
+          signedUrl: img,
           contentType: 'image/jpeg',
           fileName: `summary_${summary.id}_${index}.jpg`,
           sizeBytes: 50000,

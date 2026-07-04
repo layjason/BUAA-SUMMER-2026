@@ -29,6 +29,7 @@
 	<properties>
 		<java.version>25</java.version>
 		<awssdk.version>2.31.30</awssdk.version>
+		<aliyun.imageaudit.version>2.0.7</aliyun.imageaudit.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
@@ -126,6 +127,11 @@
 			</exclusions>
 		</dependency>
 		<dependency>
+			<groupId>com.aliyun</groupId>
+			<artifactId>imageaudit20191230</artifactId>
+			<version>${aliyun.imageaudit.version}</version>
+		</dependency>
+		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 		</dependency>
@@ -155,6 +161,16 @@
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>core</artifactId>
+			<version>3.5.4</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>javase</artifactId>
+			<version>3.5.4</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

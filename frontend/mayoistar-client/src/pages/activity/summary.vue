@@ -124,7 +124,7 @@ async function handleAddImage(): Promise<void> {
       const newMediaIds: string[] = []
       for (const r of results) {
         const mediaId = r.mediaId
-        const url = r.url
+        const url = r.signedUrl
         if (!mediaId) continue
         imageIds.value.push(mediaId)
         imagePreviews.value.push(url || '')

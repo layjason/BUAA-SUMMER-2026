@@ -1,6 +1,6 @@
 package io.github.layjason.mayoistar;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,10 +35,9 @@ import io.github.layjason.mayoistar.service.CheckInService;
 import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
 import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
-import io.github.layjason.mayoistar.service.activities.RequestActorResolver;
+import io.github.layjason.mayoistar.service.activities.ActivitySummaryReviewService;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -46,7 +45,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -177,23 +176,22 @@ class ActivityQueryControllerTests {
 
     @Test
     void listMyRegistrationsShouldReturnForbiddenWhenCurrentUserMissing() {
-        RequestActorResolver requestActorResolver = mock(RequestActorResolver.class);
-        when(requestActorResolver.resolveCurrentUserId()).thenReturn(Optional.empty());
+        SecurityUtils securityUtils = mock(SecurityUtils.class);
+        when(securityUtils.getCurrentUserId()).thenThrow(new AccessDeniedException("Forbidden"));
+
         ActivityController controller = new ActivityController(
                 new DefaultApiResponseFactory(),
                 mock(ActivitySearchService.class),
-                mock(SecurityUtils.class),
+                securityUtils,
                 mock(MediaFileUploadService.class),
-                requestActorResolver,
                 mock(ActivityDraftService.class),
                 mock(ActivityQueryService.class),
+                mock(ActivitySummaryReviewService.class),
                 mock(ActivityRegistrationService.class),
                 mock(ActivityRegistrationStateService.class),
                 mock(CheckInService.class));
 
-        var response = controller.listMyRegistrations(null, null);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThatThrownBy(() -> controller.listMyRegistrations(null, null)).isInstanceOf(AccessDeniedException.class);
     }
 
     @Test

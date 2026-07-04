@@ -7,6 +7,7 @@ import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.service.ai.AiContentReviewSnapshotMapper;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.springframework.stereotype.Component;
 public class ActivityDtoMapper {
 
     private final MediaAccessService mediaAccessService;
+    private final AiContentReviewSnapshotMapper aiContentReviewSnapshotMapper;
 
     /**
      * 将活动实体分页转换为 ActivitySummary 分页结果。
@@ -184,6 +186,7 @@ public class ActivityDtoMapper {
                 .map(this::toMediaFile)
                 .toList());
         dto.setWaitingCount(counts.waitingCount());
+        dto.setAiContentReview(aiContentReviewSnapshotMapper.fromJson(activity.getAiContentReviewJson()));
         dto.setManualReviewRequired(activity.getManualReviewRequired());
         dto.setFeeDescription(activity.getFeeDescription());
         dto.setMinAge(activity.getMinAge());
