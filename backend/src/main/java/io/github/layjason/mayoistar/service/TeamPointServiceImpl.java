@@ -68,12 +68,19 @@ public class TeamPointServiceImpl implements TeamPointService {
     @Override
     @Transactional
     public void addPoints(
-            String teamId, String userId, int pointChange, TeamPointChangeSource source,
-            @Nullable String referenceId, String reason) {
+            String teamId,
+            String userId,
+            int pointChange,
+            TeamPointChangeSource source,
+            @Nullable String referenceId,
+            String reason) {
         if (referenceId != null && teamPointRecordRepository.existsBySourceAndReferenceId(source, referenceId)) {
             log.info(
                     "积分变动流水已存在，跳过: teamId={}, userId={}, source={}, referenceId={}",
-                    teamId, userId, source, referenceId);
+                    teamId,
+                    userId,
+                    source,
+                    referenceId);
             return;
         }
 
@@ -88,7 +95,10 @@ public class TeamPointServiceImpl implements TeamPointService {
         if (newPoints < 0) {
             log.warn(
                     "积分扣减后为负值: teamId={}, userId={}, currentPoints={}, pointChange={}",
-                    teamId, userId, member.getPoints(), pointChange);
+                    teamId,
+                    userId,
+                    member.getPoints(),
+                    pointChange);
             throw new BusinessException(ErrorCodes.TEAM_POINTS_INSUFFICIENT, "积分不足以扣减");
         }
 
@@ -109,7 +119,12 @@ public class TeamPointServiceImpl implements TeamPointService {
 
         log.info(
                 "小队积分变动: teamId={}, userId={}, change={}, newPoints={}, source={}, reason={}",
-                teamId, userId, pointChange, newPoints, source, reason);
+                teamId,
+                userId,
+                pointChange,
+                newPoints,
+                source,
+                reason);
     }
 
     /**
@@ -124,23 +139,19 @@ public class TeamPointServiceImpl implements TeamPointService {
     @Override
     @Transactional
     public void processNoShows(String activityId) {
-        Activity activity = activityRepository
-                .findById(activityId)
-                .orElseThrow(() -> {
-                    log.warn("活动不存在: activityId={}", activityId);
-                    return new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "活动不存在");
-                });
+        Activity activity = activityRepository.findById(activityId).orElseThrow(() -> {
+            log.warn("活动不存在: activityId={}", activityId);
+            return new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "活动不存在");
+        });
 
         if (activity.getTeamId() == null) {
             log.info("活动 {} 不是小队活动，跳过爽约扣分", activityId);
             return;
         }
 
-        List<RegistrationStatus> noShowStatuses = List.of(
-                RegistrationStatus.registered,
-                RegistrationStatus.waitingConfirmation);
-        var registrations =
-                activityRegistrationRepository.findByActivityIdAndStatusIn(activityId, noShowStatuses);
+        List<RegistrationStatus> noShowStatuses =
+                List.of(RegistrationStatus.registered, RegistrationStatus.waitingConfirmation);
+        var registrations = activityRegistrationRepository.findByActivityIdAndStatusIn(activityId, noShowStatuses);
 
         if (registrations.isEmpty()) {
             log.info("活动 {} 无爽约用户", activityId);
@@ -199,7 +210,13 @@ public class TeamPointServiceImpl implements TeamPointService {
             throw new BusinessException(ErrorCodes.TEAM_PERMISSION_DENIED, "仅队长和管理员可以调整成员积分");
         }
 
-        addPoints(teamId, userId, pointChange, TeamPointChangeSource.manual, UUID.randomUUID().toString(), reason);
+        addPoints(
+                teamId,
+                userId,
+                pointChange,
+                TeamPointChangeSource.manual,
+                UUID.randomUUID().toString(),
+                reason);
     }
 
     /**
@@ -222,16 +239,10 @@ public class TeamPointServiceImpl implements TeamPointService {
         var pageRequest = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
         var dbPage = teamPointRecordRepository.findByTeamIdAndUserIdOrderByCreatedAtDesc(teamId, userId, pageRequest);
 
-        var items = dbPage.getContent().stream()
-                .map(this::toDto)
-                .toList();
+        var items = dbPage.getContent().stream().map(this::toDto).toList();
 
-        return new PageResult<>(
-                items,
-                dbPage.getTotalElements(),
-                page,
-                pageSize,
-                (int) Math.ceil((double) dbPage.getTotalElements() / pageSize));
+        return new PageResult<>(items, dbPage.getTotalElements(), page, pageSize, (int)
+                Math.ceil((double) dbPage.getTotalElements() / pageSize));
     }
 
     private SocialDtos.TeamPointRecordItem toDto(TeamPointRecord record) {

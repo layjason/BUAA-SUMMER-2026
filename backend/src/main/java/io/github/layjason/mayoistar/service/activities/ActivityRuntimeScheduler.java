@@ -64,11 +64,7 @@ public class ActivityRuntimeScheduler {
                 activity.setUpdatedAt(now);
                 activityRepository.save(activity);
                 updatedCount++;
-                log.debug(
-                        "活动运行时状态自动流转，activityId={}, {} → {}",
-                        activity.getActivityId(),
-                        oldStatus,
-                        newStatus);
+                log.debug("活动运行时状态自动流转，activityId={}, {} → {}", activity.getActivityId(), oldStatus, newStatus);
 
                 if (newStatus == ActivityRuntimeStatus.ended) {
                     try {

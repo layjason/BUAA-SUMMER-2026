@@ -19,8 +19,12 @@ public interface TeamPointService {
     int SUMMARY_POST_POINTS = 5;
 
     void addPoints(
-            String teamId, String userId, int pointChange, TeamPointChangeSource source,
-            @Nullable String referenceId, String reason);
+            String teamId,
+            String userId,
+            int pointChange,
+            TeamPointChangeSource source,
+            @Nullable String referenceId,
+            String reason);
 
     void processNoShows(String activityId);
 
