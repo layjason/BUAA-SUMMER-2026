@@ -5,6 +5,7 @@ import static io.github.layjason.mayoistar.exception.ErrorCodes.ANNOUNCEMENT_PER
 import static io.github.layjason.mayoistar.exception.ErrorCodes.CONVERSATION_MEMBER_REQUIRED;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.FORWARD_TARGET_UNAVAILABLE;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MEDIA_REFERENCE_INVALID;
+import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_CONTENT_INVALID;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_NOT_VISIBLE;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_RECALL_EXPIRED;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_SENDER_REQUIRED;
@@ -39,6 +40,7 @@ import io.github.layjason.mayoistar.repository.TeamAnnouncementReadRepository;
 import io.github.layjason.mayoistar.repository.TeamAnnouncementRepository;
 import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamPollRepository;
+import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Duration;
 import java.time.Instant;
@@ -78,6 +80,7 @@ public class ChatService {
     private final TeamAnnouncementRepository teamAnnouncementRepository;
     private final TeamAnnouncementReadRepository teamAnnouncementReadRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final TeamRepository teamRepository;
     private final TeamPollRepository teamPollRepository;
     private final PollOptionRepository pollOptionRepository;
     private final PollVoteRepository pollVoteRepository;
@@ -105,6 +108,24 @@ public class ChatService {
         if (!conversationMemberRepository.existsByConversationIdAndUserId(conversationId, senderId)) {
             log.warn("用户非会话成员: conversationId={}, userId={}", conversationId, senderId);
             throw new BusinessException(CONVERSATION_MEMBER_REQUIRED, "Conversation membership is required");
+        }
+
+        if (Boolean.TRUE.equals(request.getMentionAll())) {
+            Conversation conversation =
+                    conversationRepository.findById(conversationId).orElse(null);
+            if (conversation != null
+                    && conversation.getKind() == io.github.layjason.mayoistar.entity.chat.ConversationKind.team) {
+                var teamOpt = teamRepository.findByChatId(conversationId);
+                if (teamOpt.isPresent()) {
+                    var member = teamMemberRepository.findByTeamIdAndUserId(
+                            teamOpt.get().getTeamId(), senderId);
+                    if (member.isEmpty() || member.get().getRole() == TeamMemberRole.member) {
+                        log.warn("普通成员无权使用 mentionAll: conversationId={}, userId={}", conversationId, senderId);
+                        throw new BusinessException(
+                                MESSAGE_CONTENT_INVALID, "Only team leader or admin can use mentionAll");
+                    }
+                }
+            }
         }
 
         // 预加载图片媒体：校验存在性，同时供后续策略更新和 DTO 填充复用，避免重复查库

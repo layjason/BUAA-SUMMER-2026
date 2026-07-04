@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.repository;
 
 import io.github.layjason.mayoistar.entity.social.Team;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -29,6 +30,14 @@ public interface TeamRepository extends JpaRepository<Team, String>, JpaSpecific
      * @return 分页结果
      */
     Page<Team> findByCreatorId(String creatorId, Pageable pageable);
+
+    /**
+     * 通过群聊会话 ID 查找小队。
+     *
+     * @param chatId 群聊会话 ID
+     * @return 小队信息（可能为空）
+     */
+    Optional<Team> findByChatId(String chatId);
 
     /**
      * 检查指定名称的小队是否存在。

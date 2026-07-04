@@ -20,12 +20,19 @@ import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
+import io.github.layjason.mayoistar.entity.social.Team;
+import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
+import io.github.layjason.mayoistar.entity.social.TeamMember;
+import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
+import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ChatMessageRepository;
 import io.github.layjason.mayoistar.repository.ConversationMemberRepository;
 import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MessageReadRepository;
+import io.github.layjason.mayoistar.repository.TeamMemberRepository;
+import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -65,6 +72,12 @@ class ChatServiceTest extends AbstractIntegrationTest {
 
     @Autowired
     private MediaFileRepository mediaFileRepository;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
+    @Autowired
+    private TeamMemberRepository teamMemberRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -349,6 +362,143 @@ class ChatServiceTest extends AbstractIntegrationTest {
         assertThatThrownBy(() -> chatService.sendMessage(conversation.getConversationId(), "stranger", request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Conversation membership");
+    }
+
+    @Test
+    @DisplayName("发送消息 - friend 会话中 member 使用 mentionAll 不抛错")
+    void sendMessage_mentionAllInFriendConversation() {
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("@all hello");
+        request.setMentionAll(true);
+
+        ChatDtos.ChatMessage result =
+                chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request);
+
+        assertThat(result.getMentionAll()).isTrue();
+    }
+
+    @Test
+    @DisplayName("发送消息 - team 会话中普通成员使用 mentionAll 抛 MESSAGE_CONTENT_INVALID")
+    void sendMessage_mentionAllByRegularMemberInTeam_throws() {
+        String teamConversationId = UUID.randomUUID().toString();
+        Conversation teamConv = Conversation.builder()
+                .conversationId(teamConversationId)
+                .kind(ConversationKind.team)
+                .title("测试小队群聊")
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        conversationRepository.save(teamConv);
+
+        Team team = Team.builder()
+                .teamId(UUID.randomUUID().toString())
+                .name("mentionAll小队")
+                .tags(List.of())
+                .joinMode(TeamJoinMode.publicJoin)
+                .capacity(10)
+                .status(TeamStatus.active)
+                .creatorId(tomori.getUserId())
+                .leaderId(tomori.getUserId())
+                .chatId(teamConversationId)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        teamRepository.save(team);
+
+        teamMemberRepository.save(TeamMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .teamId(team.getTeamId())
+                .userId(tomori.getUserId())
+                .role(TeamMemberRole.leader)
+                .points(0)
+                .joinedAt(Instant.now())
+                .build());
+        teamMemberRepository.save(TeamMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .teamId(team.getTeamId())
+                .userId(anon.getUserId())
+                .role(TeamMemberRole.member)
+                .points(0)
+                .joinedAt(Instant.now())
+                .build());
+
+        conversationMemberRepository.save(ConversationMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .conversationId(teamConversationId)
+                .userId(anon.getUserId())
+                .joinedAt(Instant.now())
+                .build());
+        conversationMemberRepository.save(ConversationMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .conversationId(teamConversationId)
+                .userId(tomori.getUserId())
+                .joinedAt(Instant.now())
+                .build());
+
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("@all 公告");
+        request.setMentionAll(true);
+
+        assertThatThrownBy(() -> chatService.sendMessage(teamConversationId, anon.getUserId(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("mentionAll");
+    }
+
+    @Test
+    @DisplayName("发送消息 - team 会话中队长使用 mentionAll 成功")
+    void sendMessage_mentionAllByLeaderInTeam_succeeds() {
+        String teamConversationId = UUID.randomUUID().toString();
+        Conversation teamConv = Conversation.builder()
+                .conversationId(teamConversationId)
+                .kind(ConversationKind.team)
+                .title("测试小队群聊")
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        conversationRepository.save(teamConv);
+
+        Team team = Team.builder()
+                .teamId(UUID.randomUUID().toString())
+                .name("mentionAll队长小队")
+                .tags(List.of())
+                .joinMode(TeamJoinMode.publicJoin)
+                .capacity(10)
+                .status(TeamStatus.active)
+                .creatorId(tomori.getUserId())
+                .leaderId(tomori.getUserId())
+                .chatId(teamConversationId)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        teamRepository.save(team);
+
+        teamMemberRepository.save(TeamMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .teamId(team.getTeamId())
+                .userId(tomori.getUserId())
+                .role(TeamMemberRole.leader)
+                .points(0)
+                .joinedAt(Instant.now())
+                .build());
+
+        conversationMemberRepository.save(ConversationMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .conversationId(teamConversationId)
+                .userId(tomori.getUserId())
+                .joinedAt(Instant.now())
+                .build());
+
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("@all 重要通知");
+        request.setMentionAll(true);
+
+        ChatDtos.ChatMessage result = chatService.sendMessage(teamConversationId, tomori.getUserId(), request);
+
+        assertThat(result.getMentionAll()).isTrue();
+        assertThat(result.getText()).isEqualTo("@all 重要通知");
     }
 
     // ========================================
