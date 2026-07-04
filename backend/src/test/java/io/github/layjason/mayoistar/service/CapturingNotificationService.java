@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 /**
  * 测试用通知服务，记录所有通知调用以供断言。
  *
- * <p>类职责：在 test profile 下替代 NoOpNotificationService，
+ * <p>类职责：在 test profile 下作为 NotificationService 的 @Primary 实现，
  * 拦截通知调用并保存参数。
  */
 @Component

@@ -141,6 +141,9 @@ public final class ErrorCodes {
     /** 调用方缺少小队管理权限 */
     public static final int TEAM_PERMISSION_DENIED = 40020;
 
+    /** 二维码令牌无效或已过期 */
+    public static final int QR_CODE_TOKEN_INVALID = 40021;
+
     /* ========== 聊天 ========== */
 
     /** 会话不存在或调用方不可见 */

@@ -1114,7 +1114,7 @@ ALTER TABLE team_moderation_records ADD CONSTRAINT ck_team_moderation_records_ac
 -- chat
 ALTER TABLE conversations ADD CONSTRAINT ck_conversations_kind CHECK (kind IN ('friend', 'team'));
 
-ALTER TABLE chat_messages ADD CONSTRAINT ck_chat_messages_kind CHECK (kind IN ('text', 'image', 'location', 'emoticon'));
+ALTER TABLE chat_messages ADD CONSTRAINT ck_chat_messages_kind CHECK (kind IN ('text', 'image', 'location'));
 
 ALTER TABLE message_reads ADD CONSTRAINT ck_message_reads_status CHECK (status IN ('unread', 'read'));
 

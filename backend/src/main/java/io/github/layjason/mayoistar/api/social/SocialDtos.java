@@ -214,4 +214,13 @@ public final class SocialDtos {
         private String nickname;
         private Integer points;
     }
+
+    @Data
+    public static class QrCodeScanRequest {
+        @NotBlank
+        private String token;
+
+        @Size(max = 500)
+        private String message;
+    }
 }

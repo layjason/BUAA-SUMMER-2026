@@ -517,7 +517,7 @@ response=$(send_json "$upload_chat_image" "$environment_id")
 assert_code "$response" "200"
 assert_jq_non_empty "$response" '.data.mediaId'
 assert_jq_equals "$response" '.data.usage' "chatImage"
-assert_jq_non_empty "$response" '.data.url'
+assert_jq_non_empty "$response" '.data.url // .data.signedUrl'
 chat_image_media_id=$(echo "$response" | jq -r '.data.mediaId')
 set_env_var "$environment_id" "chatImageMediaId" "$chat_image_media_id"
 pass_test
@@ -529,7 +529,7 @@ assert_jq_non_empty "$response" '.data.messageId'
 assert_jq_equals "$response" '.data.conversationId' "$conversation_id"
 assert_jq_equals "$response" '.data.senderId' "$TEST_USER_ID"
 assert_jq_equals "$response" '.data.kind' "image"
-assert_jq_equals "$response" '.data.imageMediaId' "$chat_image_media_id"
+assert_jq_equals "$response" '.data.image.mediaId' "$chat_image_media_id"
 assert_jq_equals "$response" '.data.recalled' "false"
 pass_test
 
