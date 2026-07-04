@@ -243,6 +243,59 @@ class ActivityQueryControllerTests {
     }
 
     @Test
+    void listParticipantsShouldReturnActivityRegistrationsForOrganizer() throws Exception {
+        saveUser("organizer");
+        saveUser("participant-a");
+        saveUser("participant-b");
+        Activity activity = saveApprovedActivity("organizer", "参与者列表活动");
+        saveRegistration(
+                activity.getActivityId(),
+                "participant-a",
+                RegistrationStatus.checkedIn,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                null);
+        saveRegistration(
+                activity.getActivityId(),
+                "participant-b",
+                RegistrationStatus.waiting,
+                2,
+                Instant.parse("2026-07-02T09:00:00Z"),
+                null);
+
+        mockMvc.perform(get("/activities/{activityId}/participants", activity.getActivityId())
+                        .with(SecurityMockMvcRequestPostProcessors.user("organizer")
+                                .roles("personal")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(2))
+                .andExpect(jsonPath("$.data.items[0].userId").value("participant-a"))
+                .andExpect(jsonPath("$.data.items[0].nickname").value("nickname-participant-a"))
+                .andExpect(jsonPath("$.data.items[0].registrationStatus").value("checkedIn"))
+                .andExpect(jsonPath("$.data.items[1].waitingRank").value(2));
+    }
+
+    @Test
+    void listParticipantsShouldRejectUnrelatedUser() throws Exception {
+        saveUser("organizer");
+        saveUser("participant");
+        saveUser("viewer");
+        Activity activity = saveApprovedActivity("organizer", "参与者权限活动");
+        saveRegistration(
+                activity.getActivityId(),
+                "participant",
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                null);
+
+        mockMvc.perform(get("/activities/{activityId}/participants", activity.getActivityId())
+                        .with(SecurityMockMvcRequestPostProcessors.user("viewer")
+                                .roles("personal")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(20003));
+    }
+
+    @Test
     void getActivityShouldReturnReviewStatusAndRuntimeStatus() throws Exception {
         saveUser("user-a");
         Activity activity = saveApprovedActivity("user-a", "状态测试");

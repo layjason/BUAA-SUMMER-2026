@@ -42,6 +42,12 @@ public interface ActivityRegistrationRepository extends JpaRepository<ActivityRe
     @EntityGraph(attributePaths = "activity")
     Page<ActivityRegistration> findByUserIdOrderByRegisteredAtDesc(String userId, Pageable pageable);
 
+    @EntityGraph(attributePaths = "user")
+    Page<ActivityRegistration> findByActivityIdOrderByRegisteredAtDesc(String activityId, Pageable pageable);
+
+    boolean existsByActivityIdAndUserIdAndStatusIn(
+            String activityId, String userId, Collection<RegistrationStatus> statuses);
+
     long countByActivityIdAndStatusIn(String activityId, Collection<RegistrationStatus> statuses);
 
     List<ActivityRegistration> findByActivityIdAndStatusIn(String activityId, Collection<RegistrationStatus> statuses);

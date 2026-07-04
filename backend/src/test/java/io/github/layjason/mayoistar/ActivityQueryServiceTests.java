@@ -544,6 +544,66 @@ class ActivityQueryServiceTests {
         assertThat(page1).hasSize(2);
     }
 
+    @Test
+    void listParticipantsShouldAllowJoinedUserAndReturnParticipants() {
+        saveUser("organizer");
+        saveUser("participant-a");
+        saveUser("participant-b");
+        Activity activity = saveApprovedActivity("organizer", "参与者列表");
+        saveRegistration(
+                activity.getActivityId(),
+                "participant-a",
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                null);
+        saveRegistration(
+                activity.getActivityId(),
+                "participant-b",
+                RegistrationStatus.checkedIn,
+                null,
+                Instant.parse("2026-07-02T09:00:00Z"),
+                null);
+
+        PageResult<ActivityDtos.ActivityParticipant> result =
+                activityQueryService.listParticipants("participant-a", false, activity.getActivityId(), 1, 20);
+
+        assertThat(result.getItems()).hasSize(2);
+        assertThat(result.getItems().getFirst().getUserId()).isEqualTo("participant-a");
+        assertThat(result.getItems().getFirst().getNickname()).isEqualTo("nickname-participant-a");
+        assertThat(result.getItems().getFirst().getRegistrationStatus()).isEqualTo(RegistrationStatus.registered);
+        assertThat(result.getTotal()).isEqualTo(2);
+    }
+
+    @Test
+    void listParticipantsShouldRejectUnrelatedUser() {
+        saveUser("organizer");
+        saveUser("participant");
+        saveUser("viewer");
+        Activity activity = saveApprovedActivity("organizer", "参与者权限");
+        saveRegistration(activity.getActivityId(), "participant", RegistrationStatus.registered);
+
+        assertThatThrownBy(
+                        () -> activityQueryService.listParticipants("viewer", false, activity.getActivityId(), 1, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(20003);
+    }
+
+    @Test
+    void listParticipantsShouldRejectInvisibleActivityForNonOrganizer() {
+        saveUser("organizer");
+        saveUser("participant");
+        Activity activity = saveDraftActivity("organizer", "草稿参与者");
+        saveRegistration(activity.getActivityId(), "participant", RegistrationStatus.registered);
+
+        assertThatThrownBy(() ->
+                        activityQueryService.listParticipants("participant", false, activity.getActivityId(), 1, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(20002);
+    }
+
     // ========== 辅助方法 ==========
 
     private ActivityRegistration saveRegistration(String activityId, String userId, RegistrationStatus status) {
