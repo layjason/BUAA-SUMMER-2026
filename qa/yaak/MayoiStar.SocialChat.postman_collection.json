@@ -231,6 +231,37 @@
           }
         },
         {
+          "name": "扫描二维码（无效令牌）- 应返回 40021",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"token\":\"not-a-valid-token\",\"message\":\"扫描添加\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/social/qr-code/scan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "qr-code",
+                "scan"
+              ]
+            }
+          }
+        },
+        {
           "name": "查看已发送好友申请",
           "request": {
             "method": "GET",
