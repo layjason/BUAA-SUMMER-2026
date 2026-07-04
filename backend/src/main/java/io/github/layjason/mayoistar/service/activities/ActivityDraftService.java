@@ -13,6 +13,7 @@ import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.exception.ErrorCodes;
@@ -22,10 +23,14 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityTemplateRepository;
 import io.github.layjason.mayoistar.service.ai.AiContentReviewSnapshotMapper;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
+import io.github.layjason.mayoistar.service.storage.FileStorageService;
+import java.io.InputStream;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -57,12 +62,14 @@ public class ActivityDraftService {
     private final ActivityRepository activityRepository;
     private final ActivityImageRepository activityImageRepository;
     private final ActivityRegistrationRepository activityRegistrationRepository;
+    private final ActivityTemplateRepository activityTemplateRepository;
     private final ActivityReviewRecordRepository activityReviewRecordRepository;
     private final MediaFileRepository mediaFileRepository;
     private final UserRepository userRepository;
     private final ActivityDraftMapper activityDraftMapper;
     private final SubmitActivityValidator submitActivityValidator;
     private final MediaAccessService mediaAccessService;
+    private final FileStorageService fileStorageService;
     private final ActivityContentReviewService activityContentReviewService;
     private final AiContentReviewSnapshotMapper aiContentReviewSnapshotMapper;
 
@@ -152,6 +159,139 @@ public class ActivityDraftService {
                 resolvedPageSize,
                 result.getTotal());
         return result;
+    }
+
+    /**
+     * 分页获取活动模板。
+     *
+     * <p>前置条件：分页参数为空时采用默认值。
+     *
+     * <p>后置条件：返回活动模板分页结果，默认封面图会转换为可访问的签名媒体 DTO。
+     *
+     * <p>不变量：不修改模板、媒体文件或活动草稿。
+     *
+     * @param page 页码，从 1 开始
+     * @param pageSize 每页大小
+     * @return 活动模板分页结果
+     */
+    @Transactional(readOnly = true)
+    public PageResult<ActivityDtos.ActivityTemplate> listTemplates(Integer page, Integer pageSize) {
+        int resolvedPage = page == null || page < 1 ? 1 : page;
+        int resolvedPageSize = pageSize == null || pageSize < 1 ? 20 : pageSize;
+        PageResult<ActivityDtos.ActivityTemplate> result = activityDraftMapper.toTemplatePage(
+                activityTemplateRepository.findAll(PageRequest.of(resolvedPage - 1, resolvedPageSize)));
+        log.debug("已查询活动模板列表，page={}, pageSize={}, total={}", resolvedPage, resolvedPageSize, result.getTotal());
+        return result;
+    }
+
+    /**
+     * 基于活动模板创建草稿。
+     *
+     * <p>前置条件：调用者用户存在；templateId 对应模板存在。
+     *
+     * <p>后置条件：创建一条 reviewStatus=draft 的可编辑活动草稿，标题、标签、简介、安全须知和容量来自模板。
+     *
+     * <p>不变量：模板记录不会被修改；模板封面不自动绑定为草稿图片，避免绕过活动图片的上传者校验。
+     *
+     * @param organizerId 当前调用者 ID
+     * @param templateId 模板 ID
+     * @return 新建草稿详情
+     */
+    @Transactional
+    public ActivityDtos.ActivityDraftDetail createDraftFromTemplate(String organizerId, String templateId) {
+        validateUserExists(organizerId);
+        var template = activityTemplateRepository
+                .findById(templateId)
+                .orElseThrow(() -> new BusinessException(ErrorCodes.TEMPLATE_NOT_FOUND, "活动模板不存在"));
+        Instant now = Instant.now();
+        Instant startAt = now.plus(7, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MINUTES);
+        Activity activity = Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizerId)
+                .title(template.getName())
+                .tags(copyTags(template.getDefaultTags()))
+                .introduction(template.getDefaultIntroduction())
+                .startAt(startAt)
+                .endAt(startAt.plus(2, ChronoUnit.HOURS))
+                .safetyNotice(template.getDefaultSafetyNotice())
+                .capacity(template.getDefaultCapacity())
+                .registrationDeadline(startAt.minus(1, ChronoUnit.DAYS))
+                .reviewStatus(ActivityReviewStatus.draft)
+                .runtimeStatus(ActivityRuntimeStatus.notStarted)
+                .manualReviewRequired(false)
+                .requireLocationCheck(false)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        Activity savedActivity = activityRepository.save(activity);
+        log.info(
+                "已基于活动模板创建草稿，activityId={}, templateId={}, organizerId={}",
+                savedActivity.getActivityId(),
+                templateId,
+                organizerId);
+        return loadDraftDetail(savedActivity);
+    }
+
+    /**
+     * 克隆已有活动为新的活动草稿。
+     *
+     * <p>前置条件：调用者用户存在；activityId 对应活动存在；调用者是原活动发起人。
+     *
+     * <p>后置条件：复制原活动基础字段和活动图片副本，生成一条新的 reviewStatus=draft 活动。
+     *
+     * <p>不变量：原活动、原活动图片、报名记录、签到记录、活动总结和评价记录均不被修改或复制。
+     *
+     * @param organizerId 当前调用者 ID
+     * @param activityId 原活动 ID
+     * @return 新建草稿详情
+     */
+    @Transactional
+    public ActivityDtos.ActivityDraftDetail cloneActivity(String organizerId, String activityId) {
+        validateUserExists(organizerId);
+        Activity source = activityRepository
+                .findById(activityId)
+                .orElseThrow(() ->
+                        new BusinessException(ErrorCodes.ACTIVITY_NOT_VISIBLE, "Activity {activityId} is not visible"));
+        if (!organizerId.equals(source.getOrganizerId())) {
+            throw new BusinessException(ErrorCodes.ACTIVITY_PERMISSION_DENIED, "无权克隆其他用户的活动");
+        }
+
+        Instant now = Instant.now();
+        Activity clone = Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizerId)
+                .teamId(source.getTeamId())
+                .title(source.getTitle())
+                .tags(copyTags(source.getTags()))
+                .introduction(source.getIntroduction())
+                .startAt(source.getStartAt())
+                .endAt(source.getEndAt())
+                .pointLon(source.getPointLon())
+                .pointLat(source.getPointLat())
+                .city(source.getCity())
+                .address(source.getAddress())
+                .placeName(source.getPlaceName())
+                .safetyNotice(source.getSafetyNotice())
+                .capacity(source.getCapacity())
+                .feeAmount(source.getFeeAmount())
+                .feeDescription(source.getFeeDescription())
+                .minAge(source.getMinAge())
+                .registrationDeadline(source.getRegistrationDeadline())
+                .reviewStatus(ActivityReviewStatus.draft)
+                .runtimeStatus(ActivityRuntimeStatus.notStarted)
+                .manualReviewRequired(false)
+                .requireLocationCheck(Boolean.TRUE.equals(source.getRequireLocationCheck()))
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        Activity savedClone = activityRepository.save(clone);
+        cloneImages(organizerId, source.getActivityId(), savedClone.getActivityId());
+        log.info(
+                "已克隆活动为草稿，sourceActivityId={}, clonedActivityId={}, organizerId={}",
+                source.getActivityId(),
+                savedClone.getActivityId(),
+                organizerId);
+        return loadDraftDetail(savedClone);
     }
 
     /**
@@ -465,6 +605,73 @@ public class ActivityDraftService {
                 mediaAccessService.softDelete(removed);
             }
         }
+    }
+
+    /**
+     * 复制原活动图片为新草稿专属媒体，避免草稿编辑影响原活动图片。
+     *
+     * <p>前置条件：sourceActivityId 和 targetActivityId 均属于 organizerId 创建的活动。
+     *
+     * <p>后置条件：为目标草稿创建新的 activityImage 媒体记录和 activity_images 关联。
+     *
+     * <p>不变量：不复用原媒体 ID，不修改原媒体访问策略或删除状态。
+     *
+     * @param organizerId 活动组织者
+     * @param sourceActivityId 原活动 ID
+     * @param targetActivityId 目标草稿 ID
+     */
+    private void cloneImages(String organizerId, String sourceActivityId, String targetActivityId) {
+        List<ActivityImage> sourceImages =
+                activityImageRepository.findByActivityIdOrderBySortOrderAsc(sourceActivityId);
+        if (sourceImages.isEmpty()) {
+            return;
+        }
+        List<MediaFile> sourceMediaFiles = loadMediaFiles(sourceImages);
+        Map<UUID, MediaFile> mediaById =
+                sourceMediaFiles.stream().collect(Collectors.toMap(MediaFile::getMediaId, mediaFile -> mediaFile));
+        for (ActivityImage sourceImage : sourceImages) {
+            MediaFile sourceMedia = mediaById.get(sourceImage.getMediaId());
+            if (sourceMedia == null || sourceMedia.getDeletedAt() != null) {
+                continue;
+            }
+            MediaFile clonedMedia = cloneMediaFile(organizerId, targetActivityId, sourceMedia);
+            activityImageRepository.save(ActivityImage.builder()
+                    .imageId(UUID.randomUUID().toString())
+                    .activityId(targetActivityId)
+                    .mediaId(clonedMedia.getMediaId())
+                    .sortOrder(sourceImage.getSortOrder())
+                    .build());
+        }
+    }
+
+    private MediaFile cloneMediaFile(String organizerId, String targetActivityId, MediaFile sourceMedia) {
+        UUID clonedMediaId = UUID.randomUUID();
+        String clonedKey = MediaUsage.activityImage.name() + "/" + organizerId + "/" + clonedMediaId + "_"
+                + sourceMedia.getFileName();
+        try (InputStream inputStream = fileStorageService.retrieve(sourceMedia.getStoragePath())) {
+            fileStorageService.store(clonedKey, inputStream, sourceMedia.getContentType(), sourceMedia.getSizeBytes());
+        } catch (Exception exception) {
+            log.warn(
+                    "克隆活动图片失败，sourceMediaId={}, targetActivityId={}",
+                    sourceMedia.getMediaId(),
+                    targetActivityId,
+                    exception);
+            throw new BusinessException(ErrorCodes.MEDIA_FILE_UNAVAILABLE, "活动图片复制失败");
+        }
+        return mediaFileRepository.save(MediaFile.builder()
+                .mediaId(clonedMediaId)
+                .fileName(sourceMedia.getFileName())
+                .contentType(sourceMedia.getContentType())
+                .sizeBytes(sourceMedia.getSizeBytes())
+                .usage(MediaUsage.activityImage)
+                .storagePath(clonedKey)
+                .visibility(MediaVisibility.privateVisible)
+                .accessPolicy(MediaAccessPolicy.activityOwner)
+                .accessScopeId(targetActivityId)
+                .accessVersion(1L)
+                .uploadedBy(organizerId)
+                .uploadedAt(Instant.now())
+                .build());
     }
 
     /**
