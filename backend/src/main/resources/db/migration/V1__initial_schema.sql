@@ -15,7 +15,6 @@ CREATE TABLE media_files (
     size_bytes      BIGINT       NOT NULL,
     usage           VARCHAR(50)  NOT NULL,
     storage_path    VARCHAR(500) NOT NULL,
-    url             VARCHAR(500),
     visibility      VARCHAR(30)  NOT NULL DEFAULT 'privateVisible',
     access_policy   VARCHAR(50)  NOT NULL DEFAULT 'owner',
     access_scope_id VARCHAR(100),
@@ -39,7 +38,6 @@ COMMENT ON COLUMN media_files.content_type IS 'MIME 类型，如 image/png、ima
 COMMENT ON COLUMN media_files.size_bytes IS '文件字节数';
 COMMENT ON COLUMN media_files.usage IS '用途分类。avatar / merchantLicense / activityImage / chatImage / teamFile / teamAlbum / summaryImage / activityReviewImage';
 COMMENT ON COLUMN media_files.storage_path IS '存储服务中的路径';
-COMMENT ON COLUMN media_files.url IS '历史访问地址字段。新实现中客户端应使用 signedUrl，不应长期依赖该字段';
 COMMENT ON COLUMN media_files.visibility IS '媒体可见性。publicVisible / privateVisible';
 COMMENT ON COLUMN media_files.access_policy IS '媒体访问策略。publicAccess / owner / conversationMember / teamMember / activityOwner / adminOnly';
 COMMENT ON COLUMN media_files.access_scope_id IS '访问策略作用域标识，例如 conversationId、teamId、activityId 或 ownerId';
@@ -227,6 +225,8 @@ CREATE TABLE activities (
     review_status           VARCHAR(30)   NOT NULL,
     runtime_status          VARCHAR(30)   NOT NULL,
     manual_review_required  BOOLEAN       NOT NULL DEFAULT FALSE,
+    require_location_check BOOLEAN       NOT NULL DEFAULT FALSE,
+    ai_content_review_json TEXT,
     created_at              TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at              TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT pk_activities PRIMARY KEY (activity_id)
@@ -263,6 +263,8 @@ COMMENT ON COLUMN activities.registration_deadline IS '报名截止时间，UTC 
 COMMENT ON COLUMN activities.review_status IS '审核状态。不变量：非空，值为 draft / pending / approved / rejected / changeRequired 之一。前置条件：创建活动时初始值为 draft';
 COMMENT ON COLUMN activities.runtime_status IS '运行状态。不变量：非空。notStarted — 未开始；registering — 报名中；registrationClosed — 报名结束；ongoing — 进行中；ended — 已结束；takenDown — 已下架';
 COMMENT ON COLUMN activities.manual_review_required IS '是否需要人工审核，默认 false。为 true 时即使 AI 审核通过也需要管理员确认';
+COMMENT ON COLUMN activities.require_location_check IS '是否要求签到用户提供位置信息进行位置校验。true 时签到必须传入 currentLocation，且服务端校验距离。默认 false。';
+COMMENT ON COLUMN activities.ai_content_review_json IS 'AI 内容安全审核结果快照 JSON。前置条件：活动提交审核时由服务端生成；后置条件：活动详情可回显最近一次 AI 审核结果。';
 COMMENT ON COLUMN activities.created_at IS '创建时间，UTC 时区';
 COMMENT ON COLUMN activities.updated_at IS '最后更新时间，UTC 时区';
 
@@ -681,6 +683,23 @@ COMMENT ON COLUMN team_moderation_records.reason IS '治理原因或说明';
 COMMENT ON COLUMN team_moderation_records.operator_id IS '操作管理员 ID';
 COMMENT ON COLUMN team_moderation_records.created_at IS '治理时间，UTC 时区';
 
+CREATE TABLE team_media_files (
+    id       UUID        NOT NULL,
+    team_id  VARCHAR(36) NOT NULL,
+    media_id UUID        NOT NULL,
+    CONSTRAINT pk_team_media_files PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_team_media_files_team  ON team_media_files (team_id);
+CREATE INDEX idx_team_media_files_media ON team_media_files (media_id);
+CREATE UNIQUE INDEX uq_team_media_files_pair ON team_media_files (team_id, media_id);
+
+COMMENT ON TABLE team_media_files IS '小队群文件/相册关联表，记录媒体文件与小队的多对多关系。';
+
+COMMENT ON COLUMN team_media_files.id IS '关联记录唯一标识，UUID 格式';
+COMMENT ON COLUMN team_media_files.team_id IS '关联小队 ID';
+COMMENT ON COLUMN team_media_files.media_id IS '关联媒体文件 ID';
+
 -- reputation - 信誉积分
 
 CREATE TABLE reputation_records (
@@ -1032,6 +1051,14 @@ ALTER TABLE team_point_records ADD CONSTRAINT fk_team_points_user FOREIGN KEY (u
 ALTER TABLE team_moderation_records ADD CONSTRAINT fk_team_moderation_records_team FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE;
 ALTER TABLE team_moderation_records ADD CONSTRAINT fk_team_moderation_records_operator FOREIGN KEY (operator_id) REFERENCES admins(admin_id) ON DELETE RESTRICT;
 
+ALTER TABLE team_media_files
+    ADD CONSTRAINT fk_team_media_files_team
+        FOREIGN KEY (team_id) REFERENCES teams (team_id) ON DELETE CASCADE;
+
+ALTER TABLE team_media_files
+    ADD CONSTRAINT fk_team_media_files_media
+        FOREIGN KEY (media_id) REFERENCES media_files (media_id) ON DELETE CASCADE;
+
 ALTER TABLE reputation_records ADD CONSTRAINT fk_reputation_records_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
 
 -- chat - 即时通讯
@@ -1137,3 +1164,122 @@ CREATE INDEX idx_announcements_publisher ON team_announcements (publisher_id);
 CREATE INDEX idx_poll_votes_option ON poll_votes (option_id);
 CREATE INDEX idx_ban_records_operator ON ban_records (operator_id);
 CREATE INDEX idx_reviews_user ON activity_reviews (user_id);
+
+-- ============================================================================
+-- 种子数据
+-- ============================================================================
+
+INSERT INTO admins (admin_id, username, password_hash, created_at, updated_at, login_attempts)
+VALUES (
+    'dev-admin-id',
+    'testadminyaak',
+    '$2a$12$DyrIUrUDF9GemFv/o2XLbuaHJ.Ji38p0a9nqMOHMcSAMTn5WPhTum',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
+    0
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO users (
+    user_id,
+    email,
+    nickname,
+    password_hash,
+    kind,
+    account_status,
+    activated_at,
+    created_at,
+    updated_at
+)
+SELECT
+    '11111111-1111-1111-1111-111111111111',
+    'test_user@mayoistar.qa',
+    'test_user',
+    '$2a$12$HUxVBbqQjJY5.JhW.COwq.qoiR.hsa.balmFFD2BPuyDDJDJbIkV2',
+    'personal',
+    'active',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+WHERE NOT EXISTS (
+    SELECT 1 FROM users WHERE user_id = '11111111-1111-1111-1111-111111111111'
+);
+
+INSERT INTO personal_profiles (
+    user_id,
+    gender,
+    signature,
+    interest_tags,
+    reputation_score,
+    updated_at
+)
+SELECT
+    '11111111-1111-1111-1111-111111111111',
+    'unspecified',
+    'QA 默认个人用户',
+    NULL,
+    100,
+    CURRENT_TIMESTAMP
+WHERE NOT EXISTS (
+    SELECT 1 FROM personal_profiles WHERE user_id = '11111111-1111-1111-1111-111111111111'
+);
+
+INSERT INTO users (
+    user_id,
+    email,
+    nickname,
+    password_hash,
+    kind,
+    account_status,
+    activated_at,
+    created_at,
+    updated_at
+)
+SELECT
+    '22222222-2222-2222-2222-222222222222',
+    'test_peer@mayoistar.qa',
+    'test_peer',
+    '$2a$12$g3nyUsNqI4r05zuYuDLAJudclhYEgucK0ivxZPijRRZrTRAl9hvCe',
+    'personal',
+    'active',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+WHERE NOT EXISTS (
+    SELECT 1 FROM users WHERE user_id = '22222222-2222-2222-2222-222222222222'
+);
+
+INSERT INTO personal_profiles (
+    user_id,
+    gender,
+    signature,
+    interest_tags,
+    reputation_score,
+    updated_at
+)
+SELECT
+    '22222222-2222-2222-2222-222222222222',
+    'unspecified',
+    'QA 默认好友用户',
+    NULL,
+    100,
+    CURRENT_TIMESTAMP
+WHERE NOT EXISTS (
+    SELECT 1 FROM personal_profiles WHERE user_id = '22222222-2222-2222-2222-222222222222'
+);
+
+INSERT INTO admins (
+    admin_id,
+    username,
+    password_hash,
+    created_at,
+    updated_at
+)
+SELECT
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'admin',
+    '$2a$12$E0vHRZGDlx0ZhLSWzGuZc.j6UHQh22z.1XJUpfOV1qwWwsiOcJM/C',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+WHERE NOT EXISTS (
+    SELECT 1 FROM admins WHERE admin_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+);

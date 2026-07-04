@@ -23,7 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 /**
  * QA 种子账号迁移测试。
  *
- * <p>类职责：验证 Flyway 种子迁移（V3__seed_qa_accounts.sql）创建的 Yaak 调试账号
+ * <p>类职责：验证 Flyway 初始迁移（V1__initial_schema.sql）中的 QA 调试账号种子数据
  * 可被后端认证服务正常使用。
  *
  * <p>类不变量：测试只依赖 Flyway 初始化后的 H2 数据库，不连接外部服务。
