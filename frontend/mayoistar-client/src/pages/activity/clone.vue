@@ -152,9 +152,9 @@ onLoad(() => {
             @click="cloneExistingActivity(activity)"
           >
             <image
-              v-if="activity.coverImage?.url"
+              v-if="activity.coverImage?.signedUrl"
               class="activity-cover"
-              :src="activity.coverImage.url"
+              :src="activity.coverImage.signedUrl"
               mode="aspectFill"
             />
             <view v-else class="activity-cover cover-placeholder">
