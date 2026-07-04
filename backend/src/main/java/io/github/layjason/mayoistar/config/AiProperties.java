@@ -18,6 +18,8 @@ public class AiProperties {
 
     private Clip clip = new Clip();
 
+    private ContentReview contentReview = new ContentReview();
+
     private RateLimit rateLimit = new RateLimit();
 
     /**
@@ -31,6 +33,28 @@ public class AiProperties {
 
         /** HTTP 请求超时时间（秒） */
         private int timeoutSeconds = 60;
+    }
+
+    /**
+     * AI 内容安全审核配置。
+     */
+    @Data
+    public static class ContentReview {
+
+        /** 内容审核服务端点 */
+        private String endpoint = "";
+
+        /** 内容审核 AccessKey ID，默认由 ALIBABA_CLOUD_ACCESS_KEY_ID 注入 */
+        private String accessKeyId = "";
+
+        /** 内容审核 AccessKey Secret，默认由 ALIBABA_CLOUD_ACCESS_KEY_SECRET 注入 */
+        private String accessKeySecret = "";
+
+        /** 文本审核标签 */
+        private java.util.List<String> textLabels = java.util.List.of("ad");
+
+        /** 图片审核场景 */
+        private java.util.List<String> imageScenes = java.util.List.of("porn", "logo");
     }
 
     /**
