@@ -71,8 +71,7 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> updateDraft(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.ActivityDraftUpsertRequest request) {
         String userId = securityUtils.getCurrentUserId();
-        return ResponseEntity.ok(
-                ApiResponse.success(activityDraftService.updateDraft(userId, activityId, request)));
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.updateDraft(userId, activityId, request)));
     }
 
     @GetMapping("/feed")
@@ -144,8 +143,7 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.RegisteredActivitySummary>>> listMyRegistrations(
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
         String userId = securityUtils.getCurrentUserId();
-        return ResponseEntity.ok(
-                ApiResponse.success(activityQueryService.listMyRegistrations(userId, page, pageSize)));
+        return ResponseEntity.ok(ApiResponse.success(activityQueryService.listMyRegistrations(userId, page, pageSize)));
     }
 
     @GetMapping("/search")
@@ -194,8 +192,8 @@ public class ActivityController {
     @GetMapping("/{activityId}")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> getActivity(@PathVariable String activityId) {
         String userId = securityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(
-                activityQueryService.getActivity(Optional.of(userId), activityId)));
+        return ResponseEntity.ok(
+                ApiResponse.success(activityQueryService.getActivity(Optional.of(userId), activityId)));
     }
 
     @PostMapping("/{activityId}/check-in-qrcode")
