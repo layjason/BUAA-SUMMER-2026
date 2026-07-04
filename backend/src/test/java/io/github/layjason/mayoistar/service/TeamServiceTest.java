@@ -6,15 +6,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
 import io.github.layjason.mayoistar.config.TestStorageConfiguration;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
+import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
 import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
+import io.github.layjason.mayoistar.entity.social.TeamMediaFile;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.TeamJoinRequestRepository;
+import io.github.layjason.mayoistar.repository.TeamMediaFileRepository;
 import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
@@ -51,6 +58,12 @@ class TeamServiceTest {
 
     @Autowired
     private TeamJoinRequestRepository teamJoinRequestRepository;
+
+    @Autowired
+    private MediaFileRepository mediaFileRepository;
+
+    @Autowired
+    private TeamMediaFileRepository teamMediaFileRepository;
 
     @Nested
     @DisplayName("小队创建")
@@ -423,6 +436,63 @@ class TeamServiceTest {
             assertThat(result.getItems().get(0).getRank()).isEqualTo(1);
             assertThat(result.getItems().get(0).getNickname()).isEqualTo("燈");
             assertThat(result.getItems().get(0).getPoints()).isEqualTo(0);
+        }
+    }
+
+    @Nested
+    @DisplayName("群文件列表排序")
+    class TeamFileSorting {
+
+        private User saki;
+        private String teamId;
+
+        @BeforeEach
+        void setUp() {
+            saki = createUser("saki@mygo.band", "咲希");
+            SocialDtos.TeamCreateRequest req = createRequest("CRYCHIC ファイル共有", TeamJoinMode.publicJoin);
+            teamId = teamService.createTeam(saki.getUserId(), req).getTeamId();
+        }
+
+        @Test
+        @DisplayName("群文件列表按id降序排列，翻页结果稳定")
+        void listTeamFilesOrderedByIdDesc() {
+            // 按升序插入三个群文件: id-a < id-b < id-c
+            UUID idA = UUID.fromString("00000000-0000-0000-0000-000000000001");
+            UUID idB = UUID.fromString("00000000-0000-0000-0000-000000000002");
+            UUID idC = UUID.fromString("00000000-0000-0000-0000-000000000003");
+            List<UUID> idsInOrder = List.of(idA, idB, idC);
+
+            for (UUID mediaId : idsInOrder) {
+                MediaFile mf = MediaFile.builder()
+                        .mediaId(mediaId)
+                        .fileName("file-" + mediaId)
+                        .contentType("application/octet-stream")
+                        .sizeBytes(100L)
+                        .usage(MediaUsage.teamFile)
+                        .storagePath("/tmp/" + mediaId)
+                        .visibility(MediaVisibility.privateVisible)
+                        .accessPolicy(MediaAccessPolicy.owner)
+                        .accessVersion(1L)
+                        .uploadedBy(saki.getUserId())
+                        .build();
+                mediaFileRepository.save(mf);
+
+                TeamMediaFile tmf = TeamMediaFile.builder()
+                        .id(mediaId) // 用相同UUID，保证id排序与插入顺序一致
+                        .teamId(teamId)
+                        .mediaId(mediaId)
+                        .build();
+                teamMediaFileRepository.save(tmf);
+            }
+
+            var result = teamService.listTeamFiles(teamId, saki.getUserId(), 1, 20);
+
+            assertThat(result.getItems()).hasSize(3);
+            List<UUID> returnedIds = result.getItems().stream()
+                    .map(io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile::getMediaId)
+                    .collect(java.util.stream.Collectors.toList());
+            // 应降序: c, b, a
+            assertThat(returnedIds).containsExactly(idC, idB, idA);
         }
     }
 

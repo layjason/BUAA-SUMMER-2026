@@ -754,7 +754,9 @@ public class TeamService {
     public PageResult<CommonDtos.MediaFile> listTeamFiles(String teamId, String userId, int page, int pageSize) {
         requireTeamMember(teamId, userId);
 
-        var tmPage = teamMediaFileRepository.findByTeamId(teamId, PageRequest.of(page - 1, pageSize));
+        var tmPage = teamMediaFileRepository.findByTeamIdAndMediaUsage(
+                teamId, MediaUsage.teamFile,
+                PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "id")));
         List<UUID> mediaIds =
                 tmPage.getContent().stream().map(TeamMediaFile::getMediaId).collect(Collectors.toList());
 
@@ -763,7 +765,7 @@ public class TeamService {
 
         List<CommonDtos.MediaFile> items = mediaIds.stream()
                 .map(fileMap::get)
-                .filter(f -> f != null && f.getUsage() == MediaUsage.teamFile)
+                .filter(f -> f != null)
                 .map(this::toMediaFileDto)
                 .collect(Collectors.toList());
 
@@ -830,7 +832,9 @@ public class TeamService {
     public PageResult<CommonDtos.MediaFile> listTeamAlbumImages(String teamId, String userId, int page, int pageSize) {
         requireTeamMember(teamId, userId);
 
-        var tmPage = teamMediaFileRepository.findByTeamId(teamId, PageRequest.of(page - 1, pageSize));
+        var tmPage = teamMediaFileRepository.findByTeamIdAndMediaUsage(
+                teamId, MediaUsage.teamAlbum,
+                PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "id")));
         List<UUID> mediaIds =
                 tmPage.getContent().stream().map(TeamMediaFile::getMediaId).collect(Collectors.toList());
 
@@ -839,7 +843,7 @@ public class TeamService {
 
         List<CommonDtos.MediaFile> items = mediaIds.stream()
                 .map(fileMap::get)
-                .filter(f -> f != null && f.getUsage() == MediaUsage.teamAlbum)
+                .filter(f -> f != null)
                 .map(this::toMediaFileDto)
                 .collect(Collectors.toList());
 
