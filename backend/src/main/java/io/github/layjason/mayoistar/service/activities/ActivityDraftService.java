@@ -22,6 +22,7 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityTemplateRepository;
 import io.github.layjason.mayoistar.service.ai.AiContentReviewSnapshotMapper;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
@@ -57,6 +58,7 @@ public class ActivityDraftService {
     private final ActivityRepository activityRepository;
     private final ActivityImageRepository activityImageRepository;
     private final ActivityRegistrationRepository activityRegistrationRepository;
+    private final ActivityTemplateRepository activityTemplateRepository;
     private final ActivityReviewRecordRepository activityReviewRecordRepository;
     private final MediaFileRepository mediaFileRepository;
     private final UserRepository userRepository;
@@ -151,6 +153,29 @@ public class ActivityDraftService {
                 resolvedPage,
                 resolvedPageSize,
                 result.getTotal());
+        return result;
+    }
+
+    /**
+     * 分页获取活动模板。
+     *
+     * <p>前置条件：分页参数为空时采用默认值。
+     *
+     * <p>后置条件：返回活动模板分页结果，默认封面图会转换为可访问的签名媒体 DTO。
+     *
+     * <p>不变量：不修改模板、媒体文件或活动草稿。
+     *
+     * @param page 页码，从 1 开始
+     * @param pageSize 每页大小
+     * @return 活动模板分页结果
+     */
+    @Transactional(readOnly = true)
+    public PageResult<ActivityDtos.ActivityTemplate> listTemplates(Integer page, Integer pageSize) {
+        int resolvedPage = page == null || page < 1 ? 1 : page;
+        int resolvedPageSize = pageSize == null || pageSize < 1 ? 20 : pageSize;
+        PageResult<ActivityDtos.ActivityTemplate> result = activityDraftMapper.toTemplatePage(
+                activityTemplateRepository.findAll(PageRequest.of(resolvedPage - 1, resolvedPageSize)));
+        log.debug("已查询活动模板列表，page={}, pageSize={}, total={}", resolvedPage, resolvedPageSize, result.getTotal());
         return result;
     }
 

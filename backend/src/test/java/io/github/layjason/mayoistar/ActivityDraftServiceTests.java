@@ -11,6 +11,7 @@ import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.activities.ActivityTemplate;
 import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
@@ -25,6 +26,7 @@ import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityTemplateRepository;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
 import io.github.layjason.mayoistar.service.ai.ContentReviewRisk;
 import io.github.layjason.mayoistar.service.ai.ContentReviewScanResult;
@@ -55,6 +57,9 @@ class ActivityDraftServiceTests {
     private ActivityImageRepository activityImageRepository;
 
     @Autowired
+    private ActivityTemplateRepository activityTemplateRepository;
+
+    @Autowired
     private ActivityReviewRecordRepository activityReviewRecordRepository;
 
     @Autowired
@@ -78,6 +83,7 @@ class ActivityDraftServiceTests {
         activityReviewRecordRepository.deleteAll();
         activityImageRepository.deleteAll();
         activityRepository.deleteAll();
+        activityTemplateRepository.deleteAll();
         mediaFileRepository.deleteAll();
         teamMemberRepository.deleteAll();
         teamRepository.deleteAll();
@@ -178,6 +184,21 @@ class ActivityDraftServiceTests {
 
         assertThat(activityDraftService.listDrafts(organizer.getUserId(), 1, 20).getItems())
                 .hasSize(1);
+    }
+
+    @Test
+    void listTemplatesShouldReturnPersistedTemplates() {
+        saveTemplate("template-a", "桌游模板", "社交", List.of("桌游", "轻松"));
+        saveTemplate("template-b", "徒步模板", "户外", List.of("徒步"));
+
+        ActivityDtos.ActivityTemplate firstTemplate =
+                activityDraftService.listTemplates(1, 1).getItems().getFirst();
+
+        assertThat(firstTemplate.getTemplateId()).isEqualTo("template-a");
+        assertThat(firstTemplate.getName()).isEqualTo("桌游模板");
+        assertThat(firstTemplate.getActivityType()).isEqualTo("社交");
+        assertThat(firstTemplate.getDefaultTags()).containsExactly("桌游", "轻松");
+        assertThat(activityDraftService.listTemplates(1, 1).getTotal()).isEqualTo(2);
     }
 
     @Test
@@ -468,6 +489,18 @@ class ActivityDraftServiceTests {
                 .storagePath("/tmp/" + mediaId)
                 .uploadedBy(userId)
                 .uploadedAt(Instant.now())
+                .build());
+    }
+
+    private ActivityTemplate saveTemplate(String templateId, String name, String activityType, List<String> tags) {
+        return activityTemplateRepository.save(ActivityTemplate.builder()
+                .templateId(templateId)
+                .name(name)
+                .activityType(activityType)
+                .defaultTags(tags)
+                .defaultIntroduction("模板介绍")
+                .defaultSafetyNotice("模板安全须知")
+                .defaultCapacity(12)
                 .build());
     }
 

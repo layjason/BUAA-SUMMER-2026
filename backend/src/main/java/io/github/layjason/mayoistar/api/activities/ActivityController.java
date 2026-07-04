@@ -180,10 +180,8 @@ public class ActivityController {
 
     @GetMapping("/templates")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivityTemplate>>> listTemplates(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.listTemplates(page, pageSize)));
     }
 
     @PostMapping("/templates/{templateId}/drafts")

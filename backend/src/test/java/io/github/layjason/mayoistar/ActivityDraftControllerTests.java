@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
 import io.github.layjason.mayoistar.config.TestStorageConfiguration;
+import io.github.layjason.mayoistar.entity.activities.ActivityTemplate;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
@@ -20,6 +21,7 @@ import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityTemplateRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -52,6 +54,9 @@ class ActivityDraftControllerTests {
     private ActivityImageRepository activityImageRepository;
 
     @Autowired
+    private ActivityTemplateRepository activityTemplateRepository;
+
+    @Autowired
     private ActivityReviewRecordRepository activityReviewRecordRepository;
 
     @Autowired
@@ -71,6 +76,7 @@ class ActivityDraftControllerTests {
         activityReviewRecordRepository.deleteAll();
         activityImageRepository.deleteAll();
         activityRepository.deleteAll();
+        activityTemplateRepository.deleteAll();
         mediaFileRepository.deleteAll();
         teamMemberRepository.deleteAll();
         teamRepository.deleteAll();
@@ -115,6 +121,20 @@ class ActivityDraftControllerTests {
                                 .roles("personal")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1));
+    }
+
+    @Test
+    void listTemplatesShouldReturnPersistedTemplates() throws Exception {
+        saveTemplate("template-a", "桌游模板", "社交", List.of("桌游", "轻松"));
+
+        mockMvc.perform(get("/activities/templates")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].templateId").value("template-a"))
+                .andExpect(jsonPath("$.data.items[0].activityType").value("社交"))
+                .andExpect(jsonPath("$.data.items[0].defaultTags[0]").value("桌游"));
     }
 
     @Test
@@ -223,6 +243,18 @@ class ActivityDraftControllerTests {
                 .storagePath("/tmp/" + mediaId)
                 .uploadedBy(userId)
                 .uploadedAt(Instant.now())
+                .build());
+    }
+
+    private ActivityTemplate saveTemplate(String templateId, String name, String activityType, List<String> tags) {
+        return activityTemplateRepository.save(ActivityTemplate.builder()
+                .templateId(templateId)
+                .name(name)
+                .activityType(activityType)
+                .defaultTags(tags)
+                .defaultIntroduction("模板介绍")
+                .defaultSafetyNotice("模板安全须知")
+                .defaultCapacity(12)
                 .build());
     }
 
