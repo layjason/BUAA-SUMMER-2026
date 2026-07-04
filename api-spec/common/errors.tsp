@@ -187,7 +187,7 @@ namespace QujuApi.Errors.Activities {
 
   @doc("20021：活动要求位置签到，但用户未提供位置信息。")
   model CheckInLocationRequired
-    extends APIErrorResponse<20020, "Check-in location is required"> {}
+    extends APIErrorResponse<20021, "Check-in location is required"> {}
 }
 
 namespace QujuApi.Errors.Ai {

@@ -118,6 +118,10 @@ public class TeamService {
             throw new BusinessException(TEAM_NAME_UNAVAILABLE, "Team name is already taken");
         }
 
+        if (request.getCapacity() == null || request.getCapacity() <= 0) {
+            throw new BusinessException(TEAM_NAME_UNAVAILABLE, "Team capacity must be positive");
+        }
+
         Instant now = Instant.now();
         String teamId = UUID.randomUUID().toString();
         String conversationId = UUID.randomUUID().toString();
@@ -211,9 +215,10 @@ public class TeamService {
                 .map(team -> toTeamProfile(team, (int) teamMemberRepository.countByTeamId(team.getTeamId())))
                 .collect(Collectors.toList());
 
-        long total = hasTags(tags) ? filterByTagsCount(keyword) : dbPage.getTotalElements();
+        long total = hasTags(tags) ? filterByTagsCount(keyword, tags) : dbPage.getTotalElements();
+        int totalPages = (int) Math.ceil((double) total / pageSize);
 
-        return new PageResult<>(items, total, dbPage.getNumber() + 1, dbPage.getSize(), dbPage.getTotalPages());
+        return new PageResult<>(items, total, dbPage.getNumber() + 1, dbPage.getSize(), totalPages);
     }
 
     private boolean hasTags(@Nullable List<String> tags) {
@@ -229,8 +234,22 @@ public class TeamService {
                 .collect(Collectors.toList());
     }
 
-    private long filterByTagsCount(@Nullable String keyword) {
-        return teamRepository.count((root, query, cb) -> {
+    private long filterByTagsCount(@Nullable String keyword, List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return teamRepository.count((root, query, cb) -> {
+                List<Predicate> predicates = new ArrayList<>();
+                predicates.add(cb.notEqual(root.get("status"), TeamStatus.dissolved));
+                predicates.add(cb.notEqual(root.get("status"), TeamStatus.disabled));
+
+                if (keyword != null && !keyword.isBlank()) {
+                    predicates.add(cb.like(cb.lower(root.get("name")), "%" + keyword.toLowerCase() + "%"));
+                }
+
+                return cb.and(predicates.toArray(new Predicate[0]));
+            });
+        }
+
+        List<Team> allMatching = teamRepository.findAll((root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.notEqual(root.get("status"), TeamStatus.dissolved));
             predicates.add(cb.notEqual(root.get("status"), TeamStatus.disabled));
@@ -241,6 +260,8 @@ public class TeamService {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         });
+
+        return filterByTags(allMatching, tags).size();
     }
 
     /**
@@ -477,7 +498,13 @@ public class TeamService {
 
         if (Boolean.TRUE.equals(accepted)) {
             long memberCount = teamMemberRepository.countByTeamId(teamId);
-            Team team = findVisibleTeam(teamId);
+            Team team = teamRepository
+                    .findByIdWithLock(teamId)
+                    .filter(t -> t.getStatus() != TeamStatus.dissolved)
+                    .orElseThrow(() -> {
+                        log.warn("小队不可见: teamId={}", teamId);
+                        return new BusinessException(TEAM_NOT_VISIBLE, "Team is not visible");
+                    });
             if (memberCount >= team.getCapacity()) {
                 throw new BusinessException(TEAM_FULL, "Team is full, cannot accept more members");
             }
@@ -615,31 +642,32 @@ public class TeamService {
     public PageResult<SocialDtos.TeamPointRankItem> getTeamPointRanks(String teamId, int page, int pageSize) {
         findVisibleTeam(teamId);
 
-        var allMembers = teamMemberRepository.findAllByTeamId(teamId).stream()
-                .sorted((a, b) -> b.getPoints().compareTo(a.getPoints()))
-                .collect(Collectors.toList());
+        var dbPage = teamMemberRepository.findByTeamId(
+                teamId,
+                PageRequest.of(
+                        page - 1,
+                        pageSize,
+                        org.springframework.data.domain.Sort.by("points").descending()));
 
-        List<String> userIds = allMembers.stream().map(TeamMember::getUserId).collect(Collectors.toList());
+        List<String> userIds =
+                dbPage.getContent().stream().map(TeamMember::getUserId).collect(Collectors.toList());
         Map<String, String> nicknameMap = userRepository.findAllById(userIds).stream()
                 .collect(Collectors.toMap(User::getUserId, User::getNickname, (a, b) -> a));
 
-        long total = allMembers.size();
-        int fromIndex = (page - 1) * pageSize;
-        int toIndex = Math.min(fromIndex + pageSize, allMembers.size());
-
+        int rankOffset = (page - 1) * pageSize;
         List<SocialDtos.TeamPointRankItem> items = new ArrayList<>();
-        for (int i = fromIndex; i < toIndex; i++) {
-            TeamMember member = allMembers.get(i);
+        for (int i = 0; i < dbPage.getContent().size(); i++) {
+            TeamMember member = dbPage.getContent().get(i);
 
             SocialDtos.TeamPointRankItem item = new SocialDtos.TeamPointRankItem();
-            item.setRank(i + 1);
+            item.setRank(rankOffset + i + 1);
             item.setUserId(member.getUserId());
             item.setNickname(nicknameMap.getOrDefault(member.getUserId(), "未知用户"));
             item.setPoints(member.getPoints());
             items.add(item);
         }
 
-        return new PageResult<>(items, total, page, pageSize, (int) Math.ceil((double) total / pageSize));
+        return new PageResult<>(items, dbPage.getTotalElements(), page, pageSize, dbPage.getTotalPages());
     }
 
     // ========================================
@@ -1130,6 +1158,7 @@ public class TeamService {
         try {
             return Instant.parse(dateString);
         } catch (DateTimeParseException e) {
+            log.warn("日期字符串解析失败: dateString={}", dateString, e);
             return null;
         }
     }

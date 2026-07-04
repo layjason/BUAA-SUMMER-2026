@@ -11,7 +11,8 @@ import java.util.List;
  * <p>类职责：将业务事件（消息发送、撤回、转发、好友申请）转换为客户端通知，
  * 解耦业务逻辑与通信层实现。
  *
- * <p>默认实现为 No-Op，生产环境由 WebSocket 实现替代。
+ * <p>生产环境由 {@link WebSocketNotificationService} 通过 STOMP/WebSocket 推送事件，
+ * 测试 profile 由 {@code CapturingNotificationService} 拦截以供断言。
  */
 public interface NotificationService {
 

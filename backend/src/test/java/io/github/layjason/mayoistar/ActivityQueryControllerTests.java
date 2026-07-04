@@ -34,7 +34,9 @@ import io.github.layjason.mayoistar.service.ActivitySearchService;
 import io.github.layjason.mayoistar.service.CheckInService;
 import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
+import io.github.layjason.mayoistar.service.activities.ActivityFeedService;
 import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
+import io.github.layjason.mayoistar.service.activities.ActivitySummaryReviewService;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -185,9 +187,11 @@ class ActivityQueryControllerTests {
                 mock(MediaFileUploadService.class),
                 mock(ActivityDraftService.class),
                 mock(ActivityQueryService.class),
+                mock(ActivitySummaryReviewService.class),
                 mock(ActivityRegistrationService.class),
                 mock(ActivityRegistrationStateService.class),
-                mock(CheckInService.class));
+                mock(CheckInService.class),
+                mock(ActivityFeedService.class));
 
         assertThatThrownBy(() -> controller.listMyRegistrations(null, null)).isInstanceOf(AccessDeniedException.class);
     }
@@ -238,6 +242,59 @@ class ActivityQueryControllerTests {
                 .andExpect(jsonPath("$.data.items[0].title").value("我的报名活动"))
                 .andExpect(jsonPath("$.data.items[0].registrationStatus").value("waiting"))
                 .andExpect(jsonPath("$.data.items[0].waitingRank").value(3));
+    }
+
+    @Test
+    void listParticipantsShouldReturnActivityRegistrationsForOrganizer() throws Exception {
+        saveUser("organizer");
+        saveUser("participant-a");
+        saveUser("participant-b");
+        Activity activity = saveApprovedActivity("organizer", "参与者列表活动");
+        saveRegistration(
+                activity.getActivityId(),
+                "participant-a",
+                RegistrationStatus.checkedIn,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                null);
+        saveRegistration(
+                activity.getActivityId(),
+                "participant-b",
+                RegistrationStatus.waiting,
+                2,
+                Instant.parse("2026-07-02T09:00:00Z"),
+                null);
+
+        mockMvc.perform(get("/activities/{activityId}/participants", activity.getActivityId())
+                        .with(SecurityMockMvcRequestPostProcessors.user("organizer")
+                                .roles("personal")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(2))
+                .andExpect(jsonPath("$.data.items[0].userId").value("participant-a"))
+                .andExpect(jsonPath("$.data.items[0].nickname").value("nickname-participant-a"))
+                .andExpect(jsonPath("$.data.items[0].registrationStatus").value("checkedIn"))
+                .andExpect(jsonPath("$.data.items[1].waitingRank").value(2));
+    }
+
+    @Test
+    void listParticipantsShouldRejectUnrelatedUser() throws Exception {
+        saveUser("organizer");
+        saveUser("participant");
+        saveUser("viewer");
+        Activity activity = saveApprovedActivity("organizer", "参与者权限活动");
+        saveRegistration(
+                activity.getActivityId(),
+                "participant",
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                null);
+
+        mockMvc.perform(get("/activities/{activityId}/participants", activity.getActivityId())
+                        .with(SecurityMockMvcRequestPostProcessors.user("viewer")
+                                .roles("personal")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(20003));
     }
 
     @Test
