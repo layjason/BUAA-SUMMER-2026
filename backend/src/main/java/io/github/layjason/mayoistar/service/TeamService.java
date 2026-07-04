@@ -211,9 +211,10 @@ public class TeamService {
                 .map(team -> toTeamProfile(team, (int) teamMemberRepository.countByTeamId(team.getTeamId())))
                 .collect(Collectors.toList());
 
-        long total = hasTags(tags) ? filterByTagsCount(keyword) : dbPage.getTotalElements();
+        long total = hasTags(tags) ? filterByTagsCount(keyword, tags) : dbPage.getTotalElements();
+        int totalPages = (int) Math.ceil((double) total / pageSize);
 
-        return new PageResult<>(items, total, dbPage.getNumber() + 1, dbPage.getSize(), dbPage.getTotalPages());
+        return new PageResult<>(items, total, dbPage.getNumber() + 1, dbPage.getSize(), totalPages);
     }
 
     private boolean hasTags(@Nullable List<String> tags) {
@@ -229,8 +230,22 @@ public class TeamService {
                 .collect(Collectors.toList());
     }
 
-    private long filterByTagsCount(@Nullable String keyword) {
-        return teamRepository.count((root, query, cb) -> {
+    private long filterByTagsCount(@Nullable String keyword, List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return teamRepository.count((root, query, cb) -> {
+                List<Predicate> predicates = new ArrayList<>();
+                predicates.add(cb.notEqual(root.get("status"), TeamStatus.dissolved));
+                predicates.add(cb.notEqual(root.get("status"), TeamStatus.disabled));
+
+                if (keyword != null && !keyword.isBlank()) {
+                    predicates.add(cb.like(cb.lower(root.get("name")), "%" + keyword.toLowerCase() + "%"));
+                }
+
+                return cb.and(predicates.toArray(new Predicate[0]));
+            });
+        }
+
+        List<Team> allMatching = teamRepository.findAll((root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.notEqual(root.get("status"), TeamStatus.dissolved));
             predicates.add(cb.notEqual(root.get("status"), TeamStatus.disabled));
@@ -241,6 +256,8 @@ public class TeamService {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         });
+
+        return filterByTags(allMatching, tags).size();
     }
 
     /**
