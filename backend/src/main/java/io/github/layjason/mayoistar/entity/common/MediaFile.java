@@ -56,9 +56,6 @@ public class MediaFile {
     @Column(name = "storage_path", nullable = false, length = 500)
     private String storagePath;
 
-    @Column(length = 500)
-    private String url;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default

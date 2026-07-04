@@ -137,7 +137,7 @@ model PublicUserProfile {
   @doc("用户展示昵称。")
   nickname: string;
 
-  @doc("用户头像媒体文件。")
+  @doc("用户头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("用户性别。")
@@ -209,7 +209,7 @@ model MerchantProfile {
   @doc("商家全平台唯一昵称，与个人昵称共享唯一约束。")
   nickname: string;
 
-  @doc("商家头像媒体文件。")
+  @doc("商家头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("商家关注或经营的活动领域。")
@@ -272,7 +272,7 @@ model QualificationSubmitRequest {
 interface IdentityOperations {
   @post
   @route("/media/license")
-  @doc("上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于后续资质提交的 mediaId，不得返回存储凭据。")
+  @doc("上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于后续资质提交的 mediaId，不得返回存储凭据。返回的 signedUrl 为 owner 私有地址，仅上传者本人与管理员可访问，属敏感资料，客户端不应持久缓存。")
   uploadMerchantLicense(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
 
@@ -282,7 +282,7 @@ interface IdentityOperations {
 
   @post
   @route("/media/avatar")
-  @doc("上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。")
+  @doc("上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。返回的 signedUrl 为公开稳定地址，可直接使用并公共缓存。")
   uploadAvatar(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
 

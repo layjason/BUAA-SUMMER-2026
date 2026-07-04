@@ -12,8 +12,10 @@ import io.github.layjason.mayoistar.entity.activities.ActivityImage;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
@@ -312,6 +314,70 @@ class AdminActivityServiceTests {
         assertThat(records.getFirst().getReason()).isEqualTo("管理员恢复活动");
     }
 
+    /* ========== 图片访问策略随审核状态翻转 ========== */
+
+    @Test
+    void reviewActivityApprovedShouldPublishImages() {
+        User organizer = saveUser("user-a");
+        Activity activity = savePendingActivity(organizer.getUserId(), "待审核");
+        MediaFile image = saveMediaFileWithPolicy(
+                UUID.randomUUID(),
+                organizer.getUserId(),
+                MediaAccessPolicy.activityOwner,
+                MediaVisibility.privateVisible,
+                activity.getActivityId());
+        saveActivityImage(activity.getActivityId(), image.getMediaId(), 1);
+
+        adminActivityService.reviewActivity(activity.getActivityId(), ReviewStatus.approved, null);
+
+        MediaFile published = mediaFileRepository.findById(image.getMediaId()).orElseThrow();
+        assertThat(published.getAccessPolicy()).isEqualTo(MediaAccessPolicy.publicAccess);
+        assertThat(published.getVisibility()).isEqualTo(MediaVisibility.publicVisible);
+        assertThat(published.getAccessScopeId()).isEqualTo("");
+        assertThat(published.getAccessVersion()).isEqualTo(2L);
+    }
+
+    @Test
+    void takeDownActivityShouldRestrictImages() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "已发布");
+        MediaFile image = saveMediaFileWithPolicy(
+                UUID.randomUUID(),
+                organizer.getUserId(),
+                MediaAccessPolicy.publicAccess,
+                MediaVisibility.publicVisible,
+                "");
+        saveActivityImage(activity.getActivityId(), image.getMediaId(), 1);
+
+        adminActivityService.takeDownActivity(activity.getActivityId(), "违规内容");
+
+        MediaFile restricted = mediaFileRepository.findById(image.getMediaId()).orElseThrow();
+        assertThat(restricted.getAccessPolicy()).isEqualTo(MediaAccessPolicy.activityOwner);
+        assertThat(restricted.getVisibility()).isEqualTo(MediaVisibility.privateVisible);
+        assertThat(restricted.getAccessScopeId()).isEqualTo(activity.getActivityId());
+        assertThat(restricted.getAccessVersion()).isEqualTo(2L);
+    }
+
+    @Test
+    void restoreActivityShouldPublishImages() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveTakenDownActivity(organizer.getUserId());
+        MediaFile image = saveMediaFileWithPolicy(
+                UUID.randomUUID(),
+                organizer.getUserId(),
+                MediaAccessPolicy.activityOwner,
+                MediaVisibility.privateVisible,
+                activity.getActivityId());
+        saveActivityImage(activity.getActivityId(), image.getMediaId(), 1);
+
+        adminActivityService.restoreActivity(activity.getActivityId());
+
+        MediaFile published = mediaFileRepository.findById(image.getMediaId()).orElseThrow();
+        assertThat(published.getAccessPolicy()).isEqualTo(MediaAccessPolicy.publicAccess);
+        assertThat(published.getVisibility()).isEqualTo(MediaVisibility.publicVisible);
+        assertThat(published.getAccessVersion()).isEqualTo(2L);
+    }
+
     /* ========== listActivities ========== */
 
     @Test
@@ -455,7 +521,24 @@ class AdminActivityServiceTests {
                 .sizeBytes(1L)
                 .usage(MediaUsage.activityImage)
                 .storagePath("/tmp/" + mediaId)
-                .url("https://example.com/" + mediaId)
+                .uploadedBy(userId)
+                .uploadedAt(Instant.now())
+                .build());
+    }
+
+    private MediaFile saveMediaFileWithPolicy(
+            UUID mediaId, String userId, MediaAccessPolicy policy, MediaVisibility visibility, String scope) {
+        return mediaFileRepository.save(MediaFile.builder()
+                .mediaId(mediaId)
+                .fileName("img.png")
+                .contentType("image/png")
+                .sizeBytes(1L)
+                .usage(MediaUsage.activityImage)
+                .storagePath("/tmp/" + mediaId)
+                .visibility(visibility)
+                .accessPolicy(policy)
+                .accessScopeId(scope)
+                .accessVersion(1L)
                 .uploadedBy(userId)
                 .uploadedAt(Instant.now())
                 .build());

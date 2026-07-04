@@ -11,5 +11,7 @@ public interface TeamAnnouncementReadRepository extends JpaRepository<TeamAnnoun
 
     Optional<TeamAnnouncementRead> findByAnnouncementIdAndUserId(String announcementId, String userId);
 
+    List<TeamAnnouncementRead> findByAnnouncementIdInAndUserId(List<String> announcementIds, String userId);
+
     List<TeamAnnouncementRead> findByAnnouncementId(String announcementId);
 }

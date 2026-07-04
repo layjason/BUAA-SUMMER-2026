@@ -1,5 +1,6 @@
 package io.github.layjason.mayoistar.api.activities;
 
+import io.github.layjason.mayoistar.api.ai.AiDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
@@ -205,6 +206,7 @@ public final class ActivityDtos {
         private String organizerName;
         private List<CommonDtos.MediaFile> images;
         private Integer waitingCount;
+        private AiDtos.AiContentReviewResult aiContentReview;
         private Boolean manualReviewRequired;
         private String feeDescription;
         private Integer minAge;
