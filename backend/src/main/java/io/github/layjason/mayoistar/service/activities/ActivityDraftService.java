@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.service.activities;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
+import io.github.layjason.mayoistar.api.ai.AiDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
@@ -21,6 +22,7 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
+import io.github.layjason.mayoistar.service.ai.AiContentReviewSnapshotMapper;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -61,6 +63,8 @@ public class ActivityDraftService {
     private final ActivityDraftMapper activityDraftMapper;
     private final SubmitActivityValidator submitActivityValidator;
     private final MediaAccessService mediaAccessService;
+    private final ActivityContentReviewService activityContentReviewService;
+    private final AiContentReviewSnapshotMapper aiContentReviewSnapshotMapper;
 
     /**
      * 保存新的活动草稿。
@@ -223,7 +227,7 @@ public class ActivityDraftService {
      * 活动所有必填字段完整且合法。
      *
      * <p>后置条件：活动 reviewStatus 更新为 pending；创建一条审核记录（初始结果为 pending）；
-     * 若容量达到人工审核阈值则标记 manualReviewRequired。
+     * AI 低风险且无需人工审核时直接通过；否则标记 manualReviewRequired 并进入 pending。
      *
      * <p>不变量：organizerId 不变；runtimeStatus 不变。
      *
@@ -236,13 +240,23 @@ public class ActivityDraftService {
         validateUserExists(organizerId);
         Activity activity = findActivityForSubmit(organizerId, activityId);
         submitActivityValidator.validateForSubmission(activity);
+        List<MediaFile> mediaFiles =
+                loadMediaFiles(activityImageRepository.findByActivityIdOrderBySortOrderAsc(activity.getActivityId()));
+        AiDtos.AiContentReviewResult aiReview = activityContentReviewService.reviewActivity(activity, mediaFiles);
 
-        activity.setReviewStatus(ActivityReviewStatus.pending);
-        activity.setManualReviewRequired(shouldManualReview(activity));
+        boolean manualReviewRequired = shouldManualReview(activity) || requiresManualReview(aiReview);
+        ReviewStatus initialReviewResult = manualReviewRequired ? ReviewStatus.pending : ReviewStatus.approved;
+        activity.setReviewStatus(manualReviewRequired ? ActivityReviewStatus.pending : ActivityReviewStatus.approved);
+        if (!manualReviewRequired) {
+            activity.setRuntimeStatus(ActivityRuntimeStatus.notStarted);
+        }
+        activity.setManualReviewRequired(manualReviewRequired);
+        activity.setAiContentReviewJson(aiContentReviewSnapshotMapper.toJson(aiReview));
         activity.setUpdatedAt(Instant.now());
         Activity savedActivity = activityRepository.save(activity);
 
-        ActivityReviewRecord reviewRecord = createInitialReviewRecord(savedActivity.getActivityId());
+        ActivityReviewRecord reviewRecord = createInitialReviewRecord(
+                savedActivity.getActivityId(), initialReviewResult, buildAiReviewReason(aiReview));
         activityReviewRecordRepository.save(reviewRecord);
 
         log.info(
@@ -281,25 +295,47 @@ public class ActivityDraftService {
         return activity.getCapacity() != null && activity.getCapacity() >= 50;
     }
 
+    private boolean requiresManualReview(AiDtos.AiContentReviewResult aiReview) {
+        return aiReview == null
+                || !"succeeded".equals(aiReview.getStatus())
+                || aiReview.getSuggestedReviewStatus() != ReviewStatus.approved
+                || !"low".equals(aiReview.getRiskLevel());
+    }
+
     /**
      * 创建初始审核记录。
      *
-     * <p>前置条件：activityId 非空。
+     * <p>前置条件：activityId 非空，result 为本次自动审核后的初始结果。
      *
-     * <p>后置条件：返回一条 result=pending、reviewerId 为空的审核记录。
+     * <p>后置条件：返回一条 reviewerId 为空的审核记录。
      *
      * <p>不变量：不修改活动实体，不执行除创建外的其他持久化操作。
      *
      * @param activityId 活动 ID
+     * @param result 初始审核结果
+     * @param reason AI 审核理由
      * @return 初始审核记录
      */
-    private ActivityReviewRecord createInitialReviewRecord(String activityId) {
+    private ActivityReviewRecord createInitialReviewRecord(String activityId, ReviewStatus result, String reason) {
         return ActivityReviewRecord.builder()
                 .recordId(UUID.randomUUID().toString())
                 .activityId(activityId)
-                .result(ReviewStatus.pending)
+                .result(result)
+                .reason(reason)
                 .reviewedAt(Instant.now())
                 .build();
+    }
+
+    private String buildAiReviewReason(AiDtos.AiContentReviewResult aiReview) {
+        if (aiReview == null) {
+            return "AI 内容安全审核未返回结果，转入人工审核";
+        }
+        String reasons = aiReview.getReasons() == null ? "" : String.join("；", aiReview.getReasons());
+        if (aiReview.getFriendlyErrorMessage() != null
+                && !aiReview.getFriendlyErrorMessage().isBlank()) {
+            return "AI 内容安全审核：" + reasons + "；" + aiReview.getFriendlyErrorMessage();
+        }
+        return "AI 内容安全审核：" + reasons;
     }
 
     /**

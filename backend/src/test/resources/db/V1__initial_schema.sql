@@ -225,6 +225,7 @@ CREATE TABLE activities (
     review_status           VARCHAR(30)   NOT NULL,
     runtime_status          VARCHAR(30)   NOT NULL,
     manual_review_required  BOOLEAN       NOT NULL DEFAULT FALSE,
+    ai_content_review_json  TEXT,
     require_location_check  BOOLEAN       NOT NULL DEFAULT FALSE,
     created_at              TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at              TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -262,6 +263,7 @@ COMMENT ON COLUMN activities.registration_deadline IS '报名截止时间，UTC 
 COMMENT ON COLUMN activities.review_status IS '审核状态。不变量：非空，值为 draft / pending / approved / rejected / changeRequired 之一。前置条件：创建活动时初始值为 draft';
 COMMENT ON COLUMN activities.runtime_status IS '运行状态。不变量：非空。notStarted — 未开始；registering — 报名中；registrationClosed — 报名结束；ongoing — 进行中；ended — 已结束；takenDown — 已下架';
 COMMENT ON COLUMN activities.manual_review_required IS '是否需要人工审核，默认 false。为 true 时即使 AI 审核通过也需要管理员确认';
+COMMENT ON COLUMN activities.ai_content_review_json IS 'AI 内容安全审核结果快照 JSON。前置条件：活动提交审核时由服务端生成；后置条件：活动详情可回显最近一次 AI 审核结果。';
 COMMENT ON COLUMN activities.created_at IS '创建时间，UTC 时区';
 COMMENT ON COLUMN activities.updated_at IS '最后更新时间，UTC 时区';
 
