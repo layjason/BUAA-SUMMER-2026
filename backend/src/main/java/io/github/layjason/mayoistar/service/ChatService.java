@@ -108,7 +108,16 @@ public class ChatService {
             throw new BusinessException(CONVERSATION_MEMBER_REQUIRED, "Conversation membership is required");
         }
 
-        validateMessageContent(request);
+        // 预加载图片媒体：校验存在性，同时供后续策略更新和 DTO 填充复用，避免重复查库
+        io.github.layjason.mayoistar.entity.common.MediaFile imageMedia = null;
+        if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
+            imageMedia = mediaFileRepository
+                    .findById(request.getImageMediaId())
+                    .orElseThrow(() -> new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid"));
+            // 图片消息需将访问策略从默认 owner 提升为 conversationMember，使会话所有成员可查看
+            mediaAccessService.updateAccessPolicy(
+                    request.getImageMediaId(), MediaAccessPolicy.conversationMember, conversationId);
+        }
 
         // 图片消息需校验发送者为文件上传者，防止劫持他人上传的图片
         if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
@@ -164,20 +173,11 @@ public class ChatService {
                 conversationId,
                 request.getKind());
 
-        // 图片消息需将访问策略从默认 owner 提升为 conversationMember，使会话所有成员可查看
-        if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
-            mediaAccessService.updateAccessPolicy(
-                    request.getImageMediaId(), MediaAccessPolicy.conversationMember, conversationId, senderId);
-        }
-
         initializeReadStatus(savedMessage.getMessageId(), conversationId, senderId);
 
         ChatDtos.ChatMessage result = toChatMessageDto(savedMessage, MessageReadStatus.read);
-        if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
-            mediaFileRepository
-                    .findById(request.getImageMediaId())
-                    .map(this::toMediaFileDto)
-                    .ifPresent(result::setImage);
+        if (imageMedia != null) {
+            result.setImage(toMediaFileDto(imageMedia));
         }
         notificationService.notifyMessageCreated(result, getRecipientUserIds(conversationId, senderId));
         return result;
@@ -448,13 +448,17 @@ public class ChatService {
             }
 
             // 为图片消息创建目标会话独立的 MediaFile 副本，各会话权限互不干扰
-            UUID targetImageMediaId;
+            // 若原始媒体文件已被删除，转发后图片字段置空而非复用已失效的 mediaId
+            UUID targetImageMediaId = null;
             if (originalImage != null) {
                 var copiedImage = mediaAccessService.copyForScope(
                         originalImage, senderId, MediaAccessPolicy.conversationMember, targetId);
                 targetImageMediaId = copiedImage.getMediaId();
-            } else {
-                targetImageMediaId = original.getImageMediaId();
+            } else if (original.getImageMediaId() != null) {
+                log.warn(
+                        "转发消息时原始媒体文件不存在: originalMessageId={}, mediaId={}",
+                        originalMessageId,
+                        original.getImageMediaId());
             }
 
             ChatMessage forwarded = ChatMessage.builder()
@@ -587,6 +591,155 @@ public class ChatService {
 
         boolean readByCurrentUser = read.map(r -> r.getReadAt() != null).orElse(false);
         return toTeamAnnouncementDto(announcement, readByCurrentUser);
+    }
+
+    /**
+     * 分页获取群公告列表，按发布时间降序排列，含当前用户已读状态。
+     *
+     * <p>前置条件：{@code userId} 是 {@code teamId} 小队的成员。
+     *
+     * <p>后置条件：返回分页公告列表。
+     */
+    @Transactional(readOnly = true)
+    public PageResult<ChatDtos.TeamAnnouncement> listAnnouncements(
+            String teamId, String userId, int page, int pageSize) {
+        if (!teamMemberRepository.findByTeamIdAndUserId(teamId, userId).isPresent()) {
+            throw new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        }
+
+        var announcementPage = teamAnnouncementRepository.findByTeamIdOrderByPublishedAtDesc(
+                teamId, PageRequest.of(page - 1, pageSize));
+
+        List<String> annIds = announcementPage.getContent().stream()
+                .map(TeamAnnouncement::getAnnouncementId)
+                .collect(Collectors.toList());
+        Map<String, Boolean> readStatusMap;
+        if (annIds.isEmpty()) {
+            readStatusMap = Map.of();
+        } else {
+            readStatusMap = teamAnnouncementReadRepository.findByAnnouncementIdInAndUserId(annIds, userId).stream()
+                    .collect(Collectors.toMap(
+                            TeamAnnouncementRead::getAnnouncementId, r -> r.getReadAt() != null, (a, b) -> a));
+        }
+
+        List<ChatDtos.TeamAnnouncement> items = announcementPage.getContent().stream()
+                .map(a -> toTeamAnnouncementDto(a, readStatusMap.getOrDefault(a.getAnnouncementId(), false)))
+                .collect(Collectors.toList());
+
+        return new PageResult<>(
+                items,
+                announcementPage.getTotalElements(),
+                announcementPage.getNumber() + 1,
+                announcementPage.getSize(),
+                announcementPage.getTotalPages());
+    }
+
+    /**
+     * 获取单条群公告详情，含当前用户已读状态。
+     *
+     * <p>前置条件：{@code userId} 是 {@code teamId} 小队的成员，公告属于该小队。
+     *
+     * <p>后置条件：返回公告详情。
+     */
+    @Transactional(readOnly = true)
+    public ChatDtos.TeamAnnouncement getAnnouncement(String teamId, String announcementId, String userId) {
+        if (!teamMemberRepository.findByTeamIdAndUserId(teamId, userId).isPresent()) {
+            throw new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        }
+
+        TeamAnnouncement announcement = teamAnnouncementRepository
+                .findById(announcementId)
+                .orElseThrow(() -> new BusinessException(
+                        ANNOUNCEMENT_NOT_VISIBLE, "Announcement " + announcementId + " is not visible"));
+
+        if (!announcement.getTeamId().equals(teamId)) {
+            throw new BusinessException(ANNOUNCEMENT_NOT_VISIBLE, "Announcement does not belong to this team");
+        }
+
+        boolean readByCurrentUser = teamAnnouncementReadRepository
+                .findByAnnouncementIdAndUserId(announcementId, userId)
+                .map(r -> r.getReadAt() != null)
+                .orElse(false);
+
+        return toTeamAnnouncementDto(announcement, readByCurrentUser);
+    }
+
+    /**
+     * 编辑群公告，仅发布者或小队管理员可操作。
+     *
+     * <p>前置条件：{@code userId} 是公告发布者或小队管理员，公告属于该小队。
+     *
+     * <p>后置条件：公告内容已更新。
+     */
+    public ChatDtos.TeamAnnouncement updateAnnouncement(
+            String teamId, String announcementId, String userId, String content) {
+        TeamAnnouncement announcement = teamAnnouncementRepository
+                .findById(announcementId)
+                .orElseThrow(() -> new BusinessException(
+                        ANNOUNCEMENT_NOT_VISIBLE, "Announcement " + announcementId + " is not visible"));
+
+        if (!announcement.getTeamId().equals(teamId)) {
+            throw new BusinessException(ANNOUNCEMENT_NOT_VISIBLE, "Announcement does not belong to this team");
+        }
+
+        var member = teamMemberRepository.findByTeamIdAndUserId(teamId, userId).orElseThrow(() -> {
+            log.warn("非小队成员尝试编辑公告: teamId={}, userId={}", teamId, userId);
+            return new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        });
+
+        boolean isPublisher = announcement.getPublisherId().equals(userId);
+        boolean isAdmin = member.getRole() == TeamMemberRole.leader || member.getRole() == TeamMemberRole.admin;
+
+        if (!isPublisher && !isAdmin) {
+            log.warn("非发布者/管理员尝试编辑公告: announcementId={}, userId={}", announcementId, userId);
+            throw new BusinessException(ANNOUNCEMENT_PERMISSION_DENIED, "Announcement operation is not allowed");
+        }
+
+        announcement.setContent(content);
+        teamAnnouncementRepository.save(announcement);
+        log.info("群公告已更新: announcementId={}, teamId={}", announcementId, teamId);
+
+        boolean readByCurrentUser = teamAnnouncementReadRepository
+                .findByAnnouncementIdAndUserId(announcementId, userId)
+                .map(r -> r.getReadAt() != null)
+                .orElse(false);
+        return toTeamAnnouncementDto(announcement, readByCurrentUser);
+    }
+
+    /**
+     * 删除群公告，仅发布者或小队管理员可操作。硬删除公告及关联已读记录。
+     *
+     * <p>前置条件：{@code userId} 是公告发布者或小队管理员。
+     *
+     * <p>后置条件：公告和所有已读记录已删除。
+     */
+    public void deleteAnnouncement(String teamId, String announcementId, String userId) {
+        TeamAnnouncement announcement = teamAnnouncementRepository
+                .findById(announcementId)
+                .orElseThrow(() -> new BusinessException(
+                        ANNOUNCEMENT_NOT_VISIBLE, "Announcement " + announcementId + " is not visible"));
+
+        if (!announcement.getTeamId().equals(teamId)) {
+            throw new BusinessException(ANNOUNCEMENT_NOT_VISIBLE, "Announcement does not belong to this team");
+        }
+
+        var member = teamMemberRepository.findByTeamIdAndUserId(teamId, userId).orElseThrow(() -> {
+            log.warn("非小队成员尝试删除公告: teamId={}, userId={}", teamId, userId);
+            return new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        });
+
+        boolean isPublisher = announcement.getPublisherId().equals(userId);
+        boolean isAdmin = member.getRole() == TeamMemberRole.leader || member.getRole() == TeamMemberRole.admin;
+
+        if (!isPublisher && !isAdmin) {
+            log.warn("非发布者/管理员尝试删除公告: announcementId={}, userId={}", announcementId, userId);
+            throw new BusinessException(ANNOUNCEMENT_PERMISSION_DENIED, "Announcement operation is not allowed");
+        }
+
+        var readRecords = teamAnnouncementReadRepository.findByAnnouncementId(announcementId);
+        teamAnnouncementReadRepository.deleteAll(readRecords);
+        teamAnnouncementRepository.delete(announcement);
+        log.info("群公告已删除: announcementId={}, teamId={}", announcementId, teamId);
     }
 
     // ========================================
@@ -732,6 +885,58 @@ public class ChatService {
     }
 
     /**
+     * 分页获取群投票列表，按创建时间降序排列，含各选项票数。
+     *
+     * <p>前置条件：{@code userId} 是 {@code teamId} 小队的成员。
+     *
+     * <p>后置条件：返回分页投票列表。
+     */
+    @Transactional(readOnly = true)
+    public PageResult<ChatDtos.TeamPoll> listPolls(String teamId, String userId, int page, int pageSize) {
+        if (!teamMemberRepository.findByTeamIdAndUserId(teamId, userId).isPresent()) {
+            throw new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        }
+
+        var pollPage = teamPollRepository.findByTeamIdOrderByCreatedAtDesc(teamId, PageRequest.of(page - 1, pageSize));
+
+        List<ChatDtos.TeamPoll> items = toTeamPollDtoBatch(pollPage.getContent());
+
+        return new PageResult<>(
+                items,
+                pollPage.getTotalElements(),
+                pollPage.getNumber() + 1,
+                pollPage.getSize(),
+                pollPage.getTotalPages());
+    }
+
+    /**
+     * 获取单个群投票详情，含各选项票数和当前用户的选择。
+     *
+     * <p>前置条件：{@code userId} 是 {@code teamId} 小队的成员。
+     *
+     * <p>后置条件：返回带用户选择的投票详情。
+     */
+    @Transactional(readOnly = true)
+    public ChatDtos.TeamPoll getPoll(String teamId, String pollId, String userId) {
+        if (!teamMemberRepository.findByTeamIdAndUserId(teamId, userId).isPresent()) {
+            throw new BusinessException(TEAM_MEMBER_REQUIRED, "Team membership is required");
+        }
+
+        TeamPoll poll = teamPollRepository.findByPollIdAndTeamId(pollId, teamId).orElseThrow(() -> {
+            log.warn("投票不存在: pollId={}, teamId={}", pollId, teamId);
+            return new BusinessException(POLL_UNAVAILABLE, "Poll is not available");
+        });
+
+        ChatDtos.TeamPoll result = toTeamPollDto(poll);
+
+        pollVoteRepository
+                .findByPollIdAndUserId(pollId, userId)
+                .ifPresent(v -> result.setVotedOptionId(v.getOptionId()));
+
+        return result;
+    }
+
+    /**
      * 将 TeamPoll 实体转换为 DTO，含各选项票数。
      *
      * <p>前置条件：{@code entity} 已持久化。
@@ -762,6 +967,54 @@ public class ChatService {
         dto.setDeadline(entity.getDeadline() != null ? entity.getDeadline().toString() : null);
         dto.setCreatedAt(entity.getCreatedAt().toString());
         return dto;
+    }
+
+    /**
+     * 批量将 TeamPoll 实体转换为 DTO，一次性加载所有 options 和 votes，
+     * 避免 forEach 调用 toTeamPollDto 产生的 N+1 查询。
+     */
+    private List<ChatDtos.TeamPoll> toTeamPollDtoBatch(List<TeamPoll> polls) {
+        if (polls.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> pollIds = polls.stream().map(TeamPoll::getPollId).collect(Collectors.toList());
+
+        Map<String, List<PollOption>> optionsByPollId = pollOptionRepository.findByPollIdIn(pollIds).stream()
+                .collect(Collectors.groupingBy(PollOption::getPollId));
+        Map<String, Map<String, Long>> voteCountsByPollId = pollVoteRepository.findByPollIdIn(pollIds).stream()
+                .collect(Collectors.groupingBy(
+                        PollVote::getPollId, Collectors.groupingBy(PollVote::getOptionId, Collectors.counting())));
+
+        return polls.stream()
+                .map(poll -> {
+                    ChatDtos.TeamPoll dto = new ChatDtos.TeamPoll();
+                    dto.setPollId(poll.getPollId());
+                    dto.setTeamId(poll.getTeamId());
+                    dto.setTitle(poll.getTitle());
+                    dto.setDeadline(
+                            poll.getDeadline() != null ? poll.getDeadline().toString() : null);
+                    dto.setCreatedAt(poll.getCreatedAt().toString());
+
+                    List<PollOption> options = optionsByPollId.getOrDefault(poll.getPollId(), List.of());
+                    Map<String, Long> voteCounts = voteCountsByPollId.getOrDefault(poll.getPollId(), Map.of());
+
+                    List<ChatDtos.TeamPollOption> optionDtos = options.stream()
+                            .map(opt -> {
+                                ChatDtos.TeamPollOption optDto = new ChatDtos.TeamPollOption();
+                                optDto.setOptionId(opt.getOptionId());
+                                optDto.setContent(opt.getContent());
+                                optDto.setVoteCount(voteCounts
+                                        .getOrDefault(opt.getOptionId(), 0L)
+                                        .intValue());
+                                return optDto;
+                            })
+                            .collect(Collectors.toList());
+                    dto.setOptions(optionDtos);
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     /**

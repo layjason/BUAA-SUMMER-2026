@@ -12,4 +12,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface PollOptionRepository extends JpaRepository<PollOption, String> {
 
     List<PollOption> findByPollId(String pollId);
+
+    List<PollOption> findByPollIdIn(List<String> pollIds);
 }

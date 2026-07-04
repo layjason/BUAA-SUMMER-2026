@@ -180,6 +180,45 @@ class ChatServicePollTest {
         assertThat(result.getOptions().get(1).getVoteCount()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("分页获取群投票列表，按创建时间降序")
+    void listPolls() {
+        var request = new ChatDtos.TeamPollCreateRequest();
+        request.setTitle("次の練習時間");
+        request.setOptions(List.of("午前", "午後"));
+        chatService.createPoll(teamId, taki.getUserId(), request);
+
+        var result = chatService.listPolls(teamId, anon.getUserId(), 1, 20);
+
+        assertThat(result.getItems()).hasSize(2);
+        assertThat(result.getItems().get(0).getTitle()).isEqualTo("次の練習時間");
+        assertThat(result.getItems().get(1).getTitle()).isEqualTo("合宿の行き先");
+    }
+
+    @Test
+    @DisplayName("获取投票详情，含当前用户选择")
+    void getPoll() {
+        var options = pollOptionRepository.findByPollId(pollId);
+        var voteReq = new ChatDtos.VotePollRequest();
+        voteReq.setOptionId(options.get(0).getOptionId());
+        chatService.votePoll(teamId, pollId, anon.getUserId(), voteReq);
+
+        var result = chatService.getPoll(teamId, pollId, anon.getUserId());
+
+        assertThat(result.getPollId()).isEqualTo(pollId);
+        assertThat(result.getVotedOptionId()).isEqualTo(options.get(0).getOptionId());
+        assertThat(result.getOptions()).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("获取未投票的投票详情，votedOptionId 为空")
+    void getPollWithoutVote() {
+        var result = chatService.getPoll(teamId, pollId, taki.getUserId());
+
+        assertThat(result.getPollId()).isEqualTo(pollId);
+        assertThat(result.getVotedOptionId()).isNull();
+    }
+
     private User createUser(String email, String nickname) {
         User user = User.builder()
                 .userId(UUID.randomUUID().toString())

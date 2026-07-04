@@ -15,4 +15,6 @@ public interface PollVoteRepository extends JpaRepository<PollVote, String> {
     Optional<PollVote> findByPollIdAndUserId(String pollId, String userId);
 
     List<PollVote> findByPollId(String pollId);
+
+    List<PollVote> findByPollIdIn(List<String> pollIds);
 }

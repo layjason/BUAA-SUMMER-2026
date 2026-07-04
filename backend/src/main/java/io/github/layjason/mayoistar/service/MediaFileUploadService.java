@@ -197,8 +197,7 @@ public class MediaFileUploadService {
         return switch (usage) {
             // activityImage 上传时活动尚不存在，初态仅上传者可预览，绑定草稿/发布后再升级
             case avatar, summaryImage, activityReviewImage -> MediaVisibility.publicVisible;
-            case merchantLicense, chatImage, teamFile, teamAlbum, activityImage ->
-                MediaVisibility.privateVisible;
+            case merchantLicense, chatImage, teamFile, teamAlbum, activityImage -> MediaVisibility.privateVisible;
         };
     }
 
@@ -206,8 +205,7 @@ public class MediaFileUploadService {
         return switch (usage) {
             // activityImage 初态为 owner，绑定草稿升级为 activityOwner，审核通过后升级为 publicAccess
             case avatar, summaryImage, activityReviewImage -> MediaAccessPolicy.publicAccess;
-            case merchantLicense, chatImage, teamFile, teamAlbum, activityImage ->
-                MediaAccessPolicy.owner;
+            case merchantLicense, chatImage, teamFile, teamAlbum, activityImage -> MediaAccessPolicy.owner;
         };
     }
 

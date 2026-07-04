@@ -9,16 +9,19 @@ import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
 import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
+import io.github.layjason.mayoistar.entity.social.TeamMediaFile;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.TeamJoinRequestRepository;
+import io.github.layjason.mayoistar.repository.TeamMediaFileRepository;
 import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
@@ -58,6 +61,9 @@ class TeamServiceTest {
 
     @Autowired
     private MediaFileRepository mediaFileRepository;
+
+    @Autowired
+    private TeamMediaFileRepository teamMediaFileRepository;
 
     @Nested
     @DisplayName("小队创建")
@@ -541,6 +547,134 @@ class TeamServiceTest {
             assertThat(updated.getAccessPolicy()).isEqualTo(MediaAccessPolicy.teamMember);
             assertThat(updated.getAccessScopeId()).isEqualTo(teamId);
             assertThat(updated.getAccessVersion()).isEqualTo(2L);
+        }
+
+        @Test
+        @DisplayName("上传同名群文件应拒绝——同一小队不可有同名文件")
+        void uploadTeamFileDuplicateNameRejected() {
+            UUID mediaId1 = UUID.randomUUID();
+            MediaFile mf1 =
+                    persistMediaFile(mediaId1, tomori.getUserId(), MediaUsage.teamFile, MediaAccessPolicy.owner);
+            teamService.uploadTeamFile(teamId, tomori.getUserId(), mediaId1);
+
+            UUID mediaId2 = UUID.randomUUID();
+            MediaFile mf2 = MediaFile.builder()
+                    .mediaId(mediaId2)
+                    .fileName("test.txt")
+                    .contentType("text/plain")
+                    .sizeBytes(2048L)
+                    .usage(MediaUsage.teamFile)
+                    .storagePath("test/" + mediaId2 + "_test.txt")
+                    .visibility(MediaVisibility.privateVisible)
+                    .accessPolicy(MediaAccessPolicy.owner)
+                    .accessScopeId(tomori.getUserId())
+                    .accessVersion(1L)
+                    .uploadedBy(tomori.getUserId())
+                    .uploadedAt(Instant.now())
+                    .build();
+            mediaFileRepository.save(mf2);
+
+            assertThatThrownBy(() -> teamService.uploadTeamFile(teamId, tomori.getUserId(), mediaId2))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("same name");
+        }
+    }
+
+    @Nested
+    @DisplayName("群文件列表排序")
+    class TeamFileSorting {
+
+        private User saki;
+        private String teamId;
+
+        @BeforeEach
+        void setUp() {
+            saki = createUser("saki@mygo.band", "咲希");
+            SocialDtos.TeamCreateRequest req = createRequest("CRYCHIC ファイル共有", TeamJoinMode.publicJoin);
+            teamId = teamService.createTeam(saki.getUserId(), req).getTeamId();
+        }
+
+        @Test
+        @DisplayName("群文件列表按id降序排列，翻页结果稳定")
+        void listTeamFilesOrderedByIdDesc() {
+            // 按升序插入三个群文件: id-a < id-b < id-c
+            UUID idA = UUID.fromString("00000000-0000-0000-0000-000000000001");
+            UUID idB = UUID.fromString("00000000-0000-0000-0000-000000000002");
+            UUID idC = UUID.fromString("00000000-0000-0000-0000-000000000003");
+            List<UUID> idsInOrder = List.of(idA, idB, idC);
+
+            for (UUID mediaId : idsInOrder) {
+                MediaFile mf = MediaFile.builder()
+                        .mediaId(mediaId)
+                        .fileName("file-" + mediaId)
+                        .contentType("application/octet-stream")
+                        .sizeBytes(100L)
+                        .usage(MediaUsage.teamFile)
+                        .storagePath("/tmp/" + mediaId)
+                        .visibility(MediaVisibility.privateVisible)
+                        .accessPolicy(MediaAccessPolicy.owner)
+                        .accessVersion(1L)
+                        .uploadedBy(saki.getUserId())
+                        .build();
+                mediaFileRepository.save(mf);
+
+                TeamMediaFile tmf = TeamMediaFile.builder()
+                        .id(mediaId) // 用相同UUID，保证id排序与插入顺序一致
+                        .teamId(teamId)
+                        .mediaId(mediaId)
+                        .build();
+                teamMediaFileRepository.save(tmf);
+            }
+
+            var result = teamService.listTeamFiles(teamId, saki.getUserId(), 1, 20);
+
+            assertThat(result.getItems()).hasSize(3);
+            List<UUID> returnedIds = result.getItems().stream()
+                    .map(io.github.layjason.mayoistar.api.common.CommonDtos.MediaFile::getMediaId)
+                    .collect(java.util.stream.Collectors.toList());
+            // 应降序: c, b, a
+            assertThat(returnedIds).containsExactly(idC, idB, idA);
+        }
+    }
+
+    @Nested
+    @DisplayName("群文件上传与可见性")
+    class TeamFileUpload {
+
+        private User mutsuki;
+        private String teamId;
+
+        @BeforeEach
+        void setUp() {
+            mutsuki = createUser("mutsuki@mygo.band", "睦月");
+            SocialDtos.TeamCreateRequest req = createRequest("CRYCHIC ファイル倉庫", TeamJoinMode.publicJoin);
+            teamId = teamService.createTeam(mutsuki.getUserId(), req).getTeamId();
+        }
+
+        @Test
+        @DisplayName("上传群文件后访问策略从 owner 更新为 teamMember")
+        void uploadTeamFileUpdatesAccessPolicy() {
+            UUID mediaId = UUID.randomUUID();
+            MediaFile mf = MediaFile.builder()
+                    .mediaId(mediaId)
+                    .fileName("setlist.pdf")
+                    .contentType("application/pdf")
+                    .sizeBytes(1024L)
+                    .usage(MediaUsage.teamFile)
+                    .storagePath("/tmp/setlist.pdf")
+                    .visibility(MediaVisibility.privateVisible)
+                    .accessPolicy(MediaAccessPolicy.owner)
+                    .accessScopeId(mutsuki.getUserId())
+                    .accessVersion(1L)
+                    .uploadedBy(mutsuki.getUserId())
+                    .build();
+            mediaFileRepository.save(mf);
+
+            var result = teamService.uploadTeamFile(teamId, mutsuki.getUserId(), mediaId);
+
+            assertThat(result.getMediaId()).isEqualTo(mediaId);
+            assertThat(result.getSignedUrl()).contains("policy=teamMember");
+            assertThat(result.getSignedUrl()).contains("scope=" + teamId);
         }
     }
 
