@@ -45,8 +45,8 @@ export function getCheckIns(activityId: string, page = 1, pageSize = 100) {
 }
 
 /** 导出活动签到数据（返回二进制表格文件） */
-export function exportCheckIns(activityId: string) {
+export function exportCheckIns(activityId: string): Promise<unknown> {
   return get('/activities/{activityId}/check-ins/export', {
     path: { activityId },
-  })
+  }) as Promise<unknown>
 }
