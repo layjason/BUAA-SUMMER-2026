@@ -662,8 +662,8 @@ async function handleSaveDraft(): Promise<void> {
  * 后置条件：formRequireLocationCheck 与开关状态一致。
  * 不变量：仅写入 OpenAPI 已定义的 requireLocationCheck 字段。
  */
-function onRequireLocationCheckChange(event: { detail: { value: boolean } }): void {
-  formRequireLocationCheck.value = event.detail.value
+function onRequireLocationCheckChange(event: Event): void {
+  formRequireLocationCheck.value = (event as CustomEvent<{ value: boolean }>).detail.value
 }
 
 // ================= 提交审核 =================

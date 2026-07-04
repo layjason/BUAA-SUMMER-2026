@@ -616,8 +616,9 @@ onLoad((query) => {
   const pages = getCurrentPages()
   const currentPage = pages.length > 0 ? pages[pages.length - 1] : null
   eventChannel =
-    ((currentPage as unknown as Record<string, unknown> | null)?.getOpenerEventChannel?.() as
-      UniApp.EventChannel | undefined) ?? null
+    ((
+      currentPage as unknown as { getOpenerEventChannel?: () => UniApp.EventChannel } | null
+    )?.getOpenerEventChannel?.() as UniApp.EventChannel | undefined) ?? null
 
   setTimeout(() => {
     void (async () => {

@@ -91,7 +91,7 @@ const markers = computed<ActivityMarker[]>(() => {
         width: selectedId.value === item.activityId ? 56 : 48,
         height: selectedId.value === item.activityId ? 56 : 48,
         anchor: { x: 0.5, y: 1 },
-      }
+      } as ActivityMarker
     })
     .filter((item): item is ActivityMarker => item != null)
   return [...currentMarker, ...activityMarkers]
