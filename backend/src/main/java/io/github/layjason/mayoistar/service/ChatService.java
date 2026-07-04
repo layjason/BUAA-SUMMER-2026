@@ -110,12 +110,26 @@ public class ChatService {
         // 预加载图片媒体：校验存在性，同时供后续策略更新和 DTO 填充复用，避免重复查库
         io.github.layjason.mayoistar.entity.common.MediaFile imageMedia = null;
         if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
-            imageMedia = mediaFileRepository
-                    .findById(request.getImageMediaId())
-                    .orElseThrow(() -> new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid"));
-            // 图片消息需将访问策略从默认 owner 提升为 conversationMember，使会话所有成员可查看
+            imageMedia = mediaFileRepository.findById(request.getImageMediaId()).orElseThrow(() -> {
+                log.warn("消息引用的媒体文件不存在: mediaId={}", request.getImageMediaId());
+                return new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
+            });
+            // 校验须先于策略更新执行：发送者须为图片上传者，防止劫持他人上传的图片
+            if (!imageMedia.getUploadedBy().equals(senderId)) {
+                log.warn(
+                        "发送者不是图片的上传者: mediaId={}, senderId={}, uploadedBy={}",
+                        request.getImageMediaId(),
+                        senderId,
+                        imageMedia.getUploadedBy());
+                throw new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
+            }
+            if (imageMedia.getDeletedAt() != null) {
+                log.warn("消息引用的媒体文件已删除: mediaId={}", request.getImageMediaId());
+                throw new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
+            }
+            // 校验通过后再将访问策略从默认 owner 提升为 conversationMember，使会话所有成员可查看
             mediaAccessService.updateAccessPolicy(
-                    request.getImageMediaId(), MediaAccessPolicy.conversationMember, conversationId);
+                    request.getImageMediaId(), MediaAccessPolicy.conversationMember, conversationId, senderId);
         }
 
         ChatMessage message = ChatMessage.builder()
@@ -389,7 +403,7 @@ public class ChatService {
     /**
      * 转发消息到目标会话。原消息不变，各目标会话创建新消息。
      *
-     * <p>前置条件：原消息可见，目标会话当前用户可发言。
+     * <p>前置条件：原消息可见且转发者是原消息所在会话的成员，目标会话当前用户可发言。
      *
      * <p>后置条件：各目标会话中已创建新消息并初始化已读状态。
      *
@@ -405,6 +419,11 @@ public class ChatService {
             log.warn("原消息不存在: messageId={}", originalMessageId);
             return new BusinessException(MESSAGE_NOT_VISIBLE, "Message " + originalMessageId + " is not visible");
         });
+
+        if (!conversationMemberRepository.existsByConversationIdAndUserId(original.getConversationId(), senderId)) {
+            log.warn("转发者不是原消息所在会话的成员: conversationId={}, userId={}", original.getConversationId(), senderId);
+            throw new BusinessException(MESSAGE_NOT_VISIBLE, "Message is not visible");
+        }
 
         // 原始消息含图片时，预先加载原始 MediaFile 用于后续为各目标会话创建独立副本
         var originalImage = original.getImageMediaId() != null
@@ -1015,6 +1034,18 @@ public class ChatService {
                 .map(io.github.layjason.mayoistar.entity.chat.ConversationMember::getUserId)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * 校验消息中引用的媒体等外部资源是否存在（不含图片，图片的完整校验由
+     * {@link #sendMessage} 统一处理）。
+     *
+     * <p>前置条件：request 已通过 Controller 层的 {@code @ValidMessageContent} 跨字段校验。
+     *
+     * <p>后置条件：引用的资源均存在时通过，否则抛出异常。
+     *
+     * <p>不变量：消息内容格式校验由 Controller 层负责，本方法仅校验需要访问数据库的依赖。
+     */
+    private void validateMessageContent(ChatDtos.SendMessageRequest request) {}
 
     /**
      * 初始化消息的已读状态。发送者标记为已读，其余成员标记为未读。

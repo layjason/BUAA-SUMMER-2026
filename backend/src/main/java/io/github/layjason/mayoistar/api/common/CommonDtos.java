@@ -58,9 +58,6 @@ public final class CommonDtos {
         private MediaUsage usage;
 
         @Nullable
-        private String url;
-
-        @Nullable
         private String signedUrl;
 
         private MediaVisibility visibility;

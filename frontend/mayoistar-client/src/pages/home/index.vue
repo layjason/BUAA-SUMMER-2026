@@ -39,9 +39,9 @@
         >
           <view class="card-inner">
             <image
-              v-if="item.coverImage?.url"
+              v-if="item.coverImage?.signedUrl"
               class="card-cover"
-              :src="item.coverImage.url"
+              :src="item.coverImage.signedUrl"
               mode="aspectFill"
             />
             <view v-else class="card-cover card-cover-placeholder">
@@ -146,7 +146,7 @@ interface ActivityItem {
     placeName: string | null
     point: { longitude: number; latitude: number }
   }
-  coverImage: { url: string; mediaId: string } | null
+  coverImage: { signedUrl: string; mediaId: string } | null
   feeAmount?: number | null
   capacity: number
   registeredCount: number

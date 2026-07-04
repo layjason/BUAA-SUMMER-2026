@@ -155,7 +155,6 @@ class AdminServiceTest {
             var result = adminService.getMerchantForAdmin(userId);
 
             assertThat(result.getAvatar()).isSameAs(signedAvatar);
-            assertThat(result.getAvatar().getUrl()).isNull();
             assertThat(result.getAvatar().getSignedUrl()).isEqualTo("/common/media/" + avatarMediaId + "?sig=test");
             verify(mediaAccessService).toSignedDto(avatar);
         }
@@ -763,7 +762,6 @@ class AdminServiceTest {
                 .sizeBytes(1024L)
                 .usage(MediaUsage.avatar)
                 .storagePath("avatars/" + avatarMediaId + ".png")
-                .url("https://legacy.example.com/avatar.png")
                 .visibility(MediaVisibility.privateVisible)
                 .uploadedBy(userId)
                 .uploadedAt(Instant.now())

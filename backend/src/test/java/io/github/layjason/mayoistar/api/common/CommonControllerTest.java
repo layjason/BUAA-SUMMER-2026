@@ -41,7 +41,7 @@ class CommonControllerTest {
         MediaAccessDescriptor descriptor = buildDescriptor(mediaId, "image/png", 4L);
 
         when(mediaAccessService.loadDescriptor(mediaId)).thenReturn(descriptor);
-        when(mediaAccessService.openSignedContent(mediaId, 1L, MediaAccessPolicy.publicAccess, "", "sig", null))
+        when(mediaAccessService.openSignedContent(descriptor, 1L, MediaAccessPolicy.publicAccess, "", "sig", null))
                 .thenReturn(new ByteArrayInputStream(new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47}));
 
         ResponseEntity<InputStreamResource> response =
@@ -52,7 +52,7 @@ class CommonControllerTest {
         assertThat(response.getHeaders().getContentLength()).isEqualTo(4L);
         assertThat(response.getBody()).isNotNull();
         verify(mediaAccessService).loadDescriptor(mediaId);
-        verify(mediaAccessService).openSignedContent(mediaId, 1L, MediaAccessPolicy.publicAccess, "", "sig", null);
+        verify(mediaAccessService).openSignedContent(descriptor, 1L, MediaAccessPolicy.publicAccess, "", "sig", null);
     }
 
     @Test
@@ -62,7 +62,7 @@ class CommonControllerTest {
         MediaAccessDescriptor descriptor = buildDescriptor(mediaId, "image/jpeg", 2L);
 
         when(mediaAccessService.loadDescriptor(mediaId)).thenReturn(descriptor);
-        when(mediaAccessService.openSignedContent(mediaId, 1L, MediaAccessPolicy.publicAccess, "", "sig", null))
+        when(mediaAccessService.openSignedContent(descriptor, 1L, MediaAccessPolicy.publicAccess, "", "sig", null))
                 .thenReturn(new ByteArrayInputStream(new byte[] {(byte) 0xFF, (byte) 0xD8}));
 
         ResponseEntity<InputStreamResource> response =

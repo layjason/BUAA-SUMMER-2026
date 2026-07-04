@@ -440,6 +440,147 @@ class TeamServiceTest {
     }
 
     @Nested
+    @DisplayName("群文件与相册上传")
+    class TeamFileAndAlbumUpload {
+
+        private User tomori;
+        private User raana;
+        private String teamId;
+
+        @BeforeEach
+        void setUp() {
+            tomori = createUser("tomori5@mygo.band", "燈");
+            raana = createUser("raana3@mygo.band", "楽奈");
+
+            SocialDtos.TeamCreateRequest req = createRequest("CRYCHIC ファイル共有", TeamJoinMode.publicJoin);
+            teamId = teamService.createTeam(tomori.getUserId(), req).getTeamId();
+        }
+
+        @Test
+        @DisplayName("燈上传群文件——访问策略更新为 teamMember，签名 URL 包含 group 签名")
+        void uploadTeamFileUpdatesAccessPolicy() {
+            MediaFile file = persistMediaFile(
+                    UUID.randomUUID(), tomori.getUserId(), MediaUsage.teamFile, MediaAccessPolicy.owner);
+
+            var result = teamService.uploadTeamFile(teamId, tomori.getUserId(), file.getMediaId());
+
+            assertThat(result).isNotNull();
+            assertThat(result.getSignedUrl()).contains("policy=teamMember");
+            assertThat(result.getSignedUrl()).contains("scope=" + teamId);
+
+            var updated = mediaFileRepository.findById(file.getMediaId()).orElseThrow();
+            assertThat(updated.getAccessPolicy()).isEqualTo(MediaAccessPolicy.teamMember);
+            assertThat(updated.getAccessScopeId()).isEqualTo(teamId);
+            assertThat(updated.getAccessVersion()).isEqualTo(2L);
+        }
+
+        @Test
+        @DisplayName("非成员上传群文件应拒绝")
+        void nonMemberUploadTeamFileRejected() {
+            MediaFile file = persistMediaFile(
+                    UUID.randomUUID(), raana.getUserId(), MediaUsage.teamFile, MediaAccessPolicy.owner);
+
+            assertThatThrownBy(() -> teamService.uploadTeamFile(teamId, raana.getUserId(), file.getMediaId()))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("membership is required");
+        }
+
+        @Test
+        @DisplayName("成员引用他人的文件上传应拒绝")
+        void uploadTeamFileNotOwnedByMemberRejected() {
+            MediaFile file = persistMediaFile(
+                    UUID.randomUUID(), raana.getUserId(), MediaUsage.teamFile, MediaAccessPolicy.owner);
+
+            assertThatThrownBy(() -> teamService.uploadTeamFile(teamId, tomori.getUserId(), file.getMediaId()))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("Media file not found");
+        }
+
+        @Test
+        @DisplayName("队长软删除群文件——deletedAt 非空，accessVersion 递增，列表不再返回")
+        void deleteTeamFileSoftDeletes() {
+            MediaFile file = persistMediaFile(
+                    UUID.randomUUID(), tomori.getUserId(), MediaUsage.teamFile, MediaAccessPolicy.owner);
+            var uploaded = teamService.uploadTeamFile(teamId, tomori.getUserId(), file.getMediaId());
+
+            teamService.deleteTeamFiles(teamId, tomori.getUserId(), List.of(uploaded.getMediaId()));
+
+            var deleted = mediaFileRepository.findById(uploaded.getMediaId()).orElseThrow();
+            assertThat(deleted.getDeletedAt()).isNotNull();
+            assertThat(deleted.getAccessVersion()).isGreaterThan(2L);
+
+            var listResult = teamService.listTeamFiles(teamId, tomori.getUserId(), 1, 20);
+            assertThat(listResult.getItems()).noneMatch(f -> f.getMediaId().equals(uploaded.getMediaId()));
+        }
+
+        @Test
+        @DisplayName("队长软删除相册图片——deletedAt 非空，列表不再返回")
+        void deleteTeamAlbumImageSoftDeletes() {
+            MediaFile file = persistMediaFile(
+                    UUID.randomUUID(), tomori.getUserId(), MediaUsage.chatImage, MediaAccessPolicy.owner);
+            var uploaded = teamService.uploadTeamAlbumImage(teamId, tomori.getUserId(), file.getMediaId());
+
+            teamService.deleteTeamAlbumImages(teamId, tomori.getUserId(), List.of(uploaded.getMediaId()));
+
+            var deleted = mediaFileRepository.findById(uploaded.getMediaId()).orElseThrow();
+            assertThat(deleted.getDeletedAt()).isNotNull();
+            assertThat(deleted.getAccessVersion()).isGreaterThan(2L);
+
+            var listResult = teamService.listTeamAlbumImages(teamId, tomori.getUserId(), 1, 20);
+            assertThat(listResult.getItems()).noneMatch(f -> f.getMediaId().equals(uploaded.getMediaId()));
+        }
+
+        @Test
+        @DisplayName("燈上传相册图片——访问策略更新为 teamMember，usage 更新为 teamAlbum")
+        void uploadTeamAlbumImageUpdatesAccessPolicy() {
+            MediaFile file = persistMediaFile(
+                    UUID.randomUUID(), tomori.getUserId(), MediaUsage.chatImage, MediaAccessPolicy.owner);
+
+            var result = teamService.uploadTeamAlbumImage(teamId, tomori.getUserId(), file.getMediaId());
+
+            assertThat(result).isNotNull();
+            assertThat(result.getSignedUrl()).contains("policy=teamMember");
+            assertThat(result.getSignedUrl()).contains("scope=" + teamId);
+
+            var updated = mediaFileRepository.findById(file.getMediaId()).orElseThrow();
+            assertThat(updated.getUsage()).isEqualTo(MediaUsage.teamAlbum);
+            assertThat(updated.getAccessPolicy()).isEqualTo(MediaAccessPolicy.teamMember);
+            assertThat(updated.getAccessScopeId()).isEqualTo(teamId);
+            assertThat(updated.getAccessVersion()).isEqualTo(2L);
+        }
+
+        @Test
+        @DisplayName("上传同名群文件应拒绝——同一小队不可有同名文件")
+        void uploadTeamFileDuplicateNameRejected() {
+            UUID mediaId1 = UUID.randomUUID();
+            MediaFile mf1 =
+                    persistMediaFile(mediaId1, tomori.getUserId(), MediaUsage.teamFile, MediaAccessPolicy.owner);
+            teamService.uploadTeamFile(teamId, tomori.getUserId(), mediaId1);
+
+            UUID mediaId2 = UUID.randomUUID();
+            MediaFile mf2 = MediaFile.builder()
+                    .mediaId(mediaId2)
+                    .fileName("test.txt")
+                    .contentType("text/plain")
+                    .sizeBytes(2048L)
+                    .usage(MediaUsage.teamFile)
+                    .storagePath("test/" + mediaId2 + "_test.txt")
+                    .visibility(MediaVisibility.privateVisible)
+                    .accessPolicy(MediaAccessPolicy.owner)
+                    .accessScopeId(tomori.getUserId())
+                    .accessVersion(1L)
+                    .uploadedBy(tomori.getUserId())
+                    .uploadedAt(Instant.now())
+                    .build();
+            mediaFileRepository.save(mf2);
+
+            assertThatThrownBy(() -> teamService.uploadTeamFile(teamId, tomori.getUserId(), mediaId2))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("same name");
+        }
+    }
+
+    @Nested
     @DisplayName("群文件列表排序")
     class TeamFileSorting {
 
@@ -535,47 +676,23 @@ class TeamServiceTest {
             assertThat(result.getSignedUrl()).contains("policy=teamMember");
             assertThat(result.getSignedUrl()).contains("scope=" + teamId);
         }
+    }
 
-        @Test
-        @DisplayName("上传同名群文件应拒绝——同一小队不可有同名文件")
-        void uploadTeamFileDuplicateNameRejected() {
-            UUID mediaId1 = UUID.randomUUID();
-            MediaFile mf1 = MediaFile.builder()
-                    .mediaId(mediaId1)
-                    .fileName("setlist.pdf")
-                    .contentType("application/pdf")
-                    .sizeBytes(1024L)
-                    .usage(MediaUsage.teamFile)
-                    .storagePath("/tmp/setlist1.pdf")
-                    .visibility(MediaVisibility.privateVisible)
-                    .accessPolicy(MediaAccessPolicy.owner)
-                    .accessScopeId(mutsuki.getUserId())
-                    .accessVersion(1L)
-                    .uploadedBy(mutsuki.getUserId())
-                    .build();
-            mediaFileRepository.save(mf1);
-            teamService.uploadTeamFile(teamId, mutsuki.getUserId(), mediaId1);
-
-            UUID mediaId2 = UUID.randomUUID();
-            MediaFile mf2 = MediaFile.builder()
-                    .mediaId(mediaId2)
-                    .fileName("setlist.pdf")
-                    .contentType("application/pdf")
-                    .sizeBytes(2048L)
-                    .usage(MediaUsage.teamFile)
-                    .storagePath("/tmp/setlist2.pdf")
-                    .visibility(MediaVisibility.privateVisible)
-                    .accessPolicy(MediaAccessPolicy.owner)
-                    .accessScopeId(mutsuki.getUserId())
-                    .accessVersion(1L)
-                    .uploadedBy(mutsuki.getUserId())
-                    .build();
-            mediaFileRepository.save(mf2);
-
-            assertThatThrownBy(() -> teamService.uploadTeamFile(teamId, mutsuki.getUserId(), mediaId2))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("same name");
-        }
+    private MediaFile persistMediaFile(UUID mediaId, String userId, MediaUsage usage, MediaAccessPolicy policy) {
+        MediaFile file = MediaFile.builder()
+                .mediaId(mediaId)
+                .fileName("test.txt")
+                .contentType("text/plain")
+                .sizeBytes(100L)
+                .usage(usage)
+                .storagePath("test/" + mediaId + "_test.txt")
+                .accessPolicy(policy)
+                .accessScopeId(userId)
+                .accessVersion(1L)
+                .uploadedBy(userId)
+                .uploadedAt(Instant.now())
+                .build();
+        return mediaFileRepository.save(file);
     }
 
     private User createUser(String email, String nickname) {

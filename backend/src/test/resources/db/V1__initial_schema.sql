@@ -15,7 +15,6 @@ CREATE TABLE media_files (
     size_bytes      BIGINT       NOT NULL,
     usage           VARCHAR(50)  NOT NULL,
     storage_path    VARCHAR(500) NOT NULL,
-    url             VARCHAR(500),
     visibility      VARCHAR(30)  NOT NULL DEFAULT 'privateVisible',
     access_policy   VARCHAR(50)  NOT NULL DEFAULT 'owner',
     access_scope_id VARCHAR(100),
@@ -39,7 +38,6 @@ COMMENT ON COLUMN media_files.content_type IS 'MIME 类型，如 image/png、ima
 COMMENT ON COLUMN media_files.size_bytes IS '文件字节数';
 COMMENT ON COLUMN media_files.usage IS '用途分类。avatar / merchantLicense / activityImage / chatImage / teamFile / teamAlbum / summaryImage / activityReviewImage';
 COMMENT ON COLUMN media_files.storage_path IS '存储服务中的路径';
-COMMENT ON COLUMN media_files.url IS '历史访问地址字段。新实现中客户端应使用 signedUrl，不应长期依赖该字段';
 COMMENT ON COLUMN media_files.visibility IS '媒体可见性。publicVisible / privateVisible';
 COMMENT ON COLUMN media_files.access_policy IS '媒体访问策略。publicAccess / owner / conversationMember / teamMember / activityOwner / adminOnly';
 COMMENT ON COLUMN media_files.access_scope_id IS '访问策略作用域标识，例如 conversationId、teamId、activityId 或 ownerId';

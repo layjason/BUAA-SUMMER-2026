@@ -19,10 +19,15 @@
             circular
           >
             <swiper-item v-for="img in activity.images" :key="img.mediaId">
-              <image class="swiper-image" :src="img.url" mode="aspectFill" />
+              <image class="swiper-image" :src="img.signedUrl" mode="aspectFill" />
             </swiper-item>
           </swiper>
-          <image v-else class="single-image" :src="activity.images[0].url" mode="aspectFill" />
+          <image
+            v-else
+            class="single-image"
+            :src="activity.images[0].signedUrl"
+            mode="aspectFill"
+          />
         </view>
         <view v-else class="image-placeholder">
           <text class="placeholder-icon">📷</text>

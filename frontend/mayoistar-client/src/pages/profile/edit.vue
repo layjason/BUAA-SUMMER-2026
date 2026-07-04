@@ -293,10 +293,10 @@ async function handleAvatarClick(): Promise<void> {
     try {
       const result = (await api.upload('/identity/media/avatar', tempPath)) as {
         mediaId: string
-        url: string
+        signedUrl: string
       }
       avatarMediaId.value = result.mediaId
-      avatarUrl.value = result.url
+      avatarUrl.value = result.signedUrl
     } catch {
       formError.value = t('editProfile.avatarUploadFailed')
     }
@@ -329,7 +329,7 @@ async function loadProfile(): Promise<void> {
       const profile = await api.get('/identity/me/merchant-profile')
       formNickname.value = profile.nickname
       formMerchantName.value = profile.merchantName
-      if (profile.avatar?.url) avatarUrl.value = profile.avatar.url
+      if (profile.avatar?.signedUrl) avatarUrl.value = profile.avatar.signedUrl
       if (profile.interestedActivityFields?.length) {
         selectedTags.value = new Set(profile.interestedActivityFields)
       }
@@ -342,7 +342,7 @@ async function loadProfile(): Promise<void> {
     } else {
       const profile = await api.get('/identity/me/profile')
       formNickname.value = profile.nickname
-      if (profile.avatar?.url) avatarUrl.value = profile.avatar.url
+      if (profile.avatar?.signedUrl) avatarUrl.value = profile.avatar.signedUrl
       if (profile.gender) formGender.value = profile.gender as typeof formGender.value
       if (profile.birthday) formBirthday.value = profile.birthday
       if (profile.signature) formSignature.value = profile.signature

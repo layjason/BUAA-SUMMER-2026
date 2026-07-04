@@ -150,7 +150,7 @@ model ActivitySummary {
   @doc("活动地点。")
   location: LocationInfo;
 
-  @doc("活动封面图片。")
+  @doc("活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。")
   coverImage?: MediaFile;
 
   @doc("活动费用金额。")
@@ -238,7 +238,7 @@ model ActivityDetail {
   @doc("活动发起人展示名称。")
   organizerName: string;
 
-  @doc("活动图片列表。")
+  @doc("活动图片列表。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。")
   images: MediaFile[];
 
   @doc("当前候补人数（含候补排队与候补待确认），候补待确认占用名额。")
@@ -298,7 +298,7 @@ model ActivityDraftDetail {
   @doc("是否要求签到用户提供位置信息进行位置校验。")
   requireLocationCheck?: boolean;
 
-  @doc("活动图片列表。")
+  @doc("活动图片列表。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。")
   images: MediaFile[];
 
   @doc("活动审核状态。")
@@ -352,7 +352,7 @@ model ActivityTemplate {
   @doc("模板默认人数上限。")
   defaultCapacity: int32;
 
-  @doc("模板默认活动封面图片。")
+  @doc("模板默认活动封面图片。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   defaultCoverImage: MediaFile;
 }
 
@@ -455,7 +455,7 @@ model ActivityParticipant {
   @doc("参与者昵称。")
   nickname: string;
 
-  @doc("参与者头像。")
+  @doc("参与者头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("当前报名或签到状态。")
@@ -554,7 +554,7 @@ model ActivitySummaryPost {
   @doc("活动总结正文。")
   content: string;
 
-  @doc("活动总结图片列表。")
+  @doc("活动总结图片列表。签名 URL 用途为 summaryImage，对外消费路径待实现。")
   images: MediaFile[];
 
   @doc("活动总结图片标签。")
@@ -625,7 +625,7 @@ model MyActivitySummaryResult {
 interface ActivityOperations {
   @post
   @route("/media/images")
-  @doc("上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。")
+  @doc("上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。返回的 signedUrl 为 owner 预览地址，绑定草稿后升级为 activityOwner、审核发布后升级为 publicAccess 并因 accessVersion 递增而失效，客户端应从活动接口获取当前 URL。")
   uploadActivityImage(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
 
@@ -635,7 +635,7 @@ interface ActivityOperations {
 
   @post
   @route("/media/review-images")
-  @doc("上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。")
+  @doc("上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。返回的 signedUrl 为 owner 私有地址，仅上传者本人与管理员可访问，对外消费路径待实现。")
   uploadActivityReviewImage(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
 
