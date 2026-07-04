@@ -4,3 +4,8 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
+
+mayoistar:
+  media:
+    access:
+      signing-secret: ${MAYOISTAR_MEDIA_SIGNING_SECRET}

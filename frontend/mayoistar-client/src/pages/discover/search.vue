@@ -34,7 +34,7 @@ interface SearchResultItem {
     address: string
     placeName: string | null
   }
-  coverImage: { signedUrl?: string; url?: string; mediaId: string } | null
+  coverImage: { signedUrl: string; mediaId: string } | null
   feeAmount?: number | null
   capacity: number
   registeredCount: number
@@ -196,11 +196,6 @@ function getStatusText(status: string): string {
 function displayOccupiedCount(item: SearchResultItem): number {
   return item.occupiedCount ?? item.registeredCount
 }
-
-/** 获取活动封面可展示地址 */
-function getCoverUrl(item: SearchResultItem): string {
-  return item.coverImage?.signedUrl ?? item.coverImage?.url ?? ''
-}
 </script>
 
 <template>
@@ -328,8 +323,8 @@ function getCoverUrl(item: SearchResultItem): string {
         @tap="goDetail(item.activityId)"
       >
         <view class="result-card-inner">
-          <view v-if="getCoverUrl(item)" class="result-cover">
-            <image :src="getCoverUrl(item)" mode="aspectFill" class="cover-img" />
+          <view v-if="item.coverImage?.signedUrl" class="result-cover">
+            <image :src="item.coverImage.signedUrl" mode="aspectFill" class="cover-img" />
           </view>
           <view v-else class="result-cover result-cover-placeholder">
             <text class="placeholder-icon">📌</text>

@@ -5,11 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
+import io.github.layjason.mayoistar.config.TestContentReviewConfiguration;
 import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
 import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
@@ -24,6 +26,8 @@ import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
+import io.github.layjason.mayoistar.service.ai.ContentReviewRisk;
+import io.github.layjason.mayoistar.service.ai.ContentReviewScanResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -36,7 +40,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Import({TestSecurityConfiguration.class, TestStorageConfiguration.class})
+@Import({TestSecurityConfiguration.class, TestStorageConfiguration.class, TestContentReviewConfiguration.class})
 class ActivityDraftServiceTests {
 
     private static final UUID IMAGE_A_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -65,8 +69,12 @@ class ActivityDraftServiceTests {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private TestContentReviewConfiguration.FakeContentReviewClient contentReviewClient;
+
     @AfterEach
     void tearDown() {
+        contentReviewClient.reset();
         activityReviewRecordRepository.deleteAll();
         activityImageRepository.deleteAll();
         activityRepository.deleteAll();
@@ -91,6 +99,49 @@ class ActivityDraftServiceTests {
         assertThat(savedActivity.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.notStarted);
         assertThat(draftDetail.getImages()).hasSize(1);
         assertThat(draftDetail.getImages().getFirst().getMediaId()).isEqualTo(image.getMediaId());
+    }
+
+    @Test
+    void saveDraftShouldUpgradeImageToActivityOwner() {
+        User organizer = saveUser("user-a");
+        MediaFile image = saveMediaFile(IMAGE_A_ID, organizer.getUserId());
+
+        ActivityDtos.ActivityDraftDetail draftDetail =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of(image.getMediaId())));
+
+        MediaFile upgraded = mediaFileRepository.findById(image.getMediaId()).orElseThrow();
+        assertThat(upgraded.getAccessPolicy()).isEqualTo(MediaAccessPolicy.activityOwner);
+        assertThat(upgraded.getAccessScopeId()).isEqualTo(draftDetail.getActivityId());
+        assertThat(upgraded.getAccessVersion()).isEqualTo(2L);
+        assertThat(upgraded.getDeletedAt()).isNull();
+    }
+
+    @Test
+    void updateDraftShouldSoftDeleteRemovedImage() {
+        User organizer = saveUser("user-a");
+        MediaFile image = saveMediaFile(IMAGE_A_ID, organizer.getUserId());
+        ActivityDtos.ActivityDraftDetail created =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of(image.getMediaId())));
+
+        activityDraftService.updateDraft(organizer.getUserId(), created.getActivityId(), createDraftRequest(List.of()));
+
+        MediaFile removed = mediaFileRepository.findById(image.getMediaId()).orElseThrow();
+        assertThat(removed.getDeletedAt()).isNotNull();
+        assertThat(removed.getAccessVersion()).isEqualTo(3L);
+        assertThat(activityImageRepository.findByActivityIdOrderBySortOrderAsc(created.getActivityId()))
+                .isEmpty();
+    }
+
+    @Test
+    void saveDraftShouldRejectBindingOthersMedia() {
+        User organizer = saveUser("user-a");
+        saveUser("user-b");
+        MediaFile othersImage = saveMediaFile(IMAGE_A_ID, "user-b");
+
+        assertThatThrownBy(() -> activityDraftService.saveDraft(
+                        organizer.getUserId(), createDraftRequest(List.of(othersImage.getMediaId()))))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("存在不可用的活动图片");
     }
 
     @Test
@@ -130,7 +181,7 @@ class ActivityDraftServiceTests {
     }
 
     @Test
-    void submitActivityShouldTransitionFromDraftToPending() {
+    void submitActivityShouldAutoApproveLowRiskActivity() {
         User organizer = saveUser("user-a");
         ActivityDtos.ActivityDraftDetail draft =
                 activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
@@ -138,16 +189,19 @@ class ActivityDraftServiceTests {
         ActivityDtos.ActivityDetail detail =
                 activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId());
 
-        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.pending);
+        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
+        assertThat(detail.getAiContentReview()).isNotNull();
+        assertThat(detail.getAiContentReview().getRiskLevel()).isEqualTo("low");
         assertThat(detail.getOrganizerName()).isEqualTo(organizer.getNickname());
         assertThat(detail.getReviewRecords()).hasSize(1);
         assertThat(detail.getReviewRecords().getFirst().getResult())
-                .isEqualTo(io.github.layjason.mayoistar.entity.common.ReviewStatus.pending);
+                .isEqualTo(io.github.layjason.mayoistar.entity.common.ReviewStatus.approved);
 
         Activity savedActivity =
                 activityRepository.findById(draft.getActivityId()).orElseThrow();
-        assertThat(savedActivity.getReviewStatus()).isEqualTo(ActivityReviewStatus.pending);
+        assertThat(savedActivity.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
         assertThat(savedActivity.getManualReviewRequired()).isFalse();
+        assertThat(savedActivity.getAiContentReviewJson()).contains("\"riskLevel\":\"low\"");
     }
 
     @Test
@@ -160,10 +214,63 @@ class ActivityDraftServiceTests {
         ActivityDtos.ActivityDetail detail =
                 activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId());
 
+        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.pending);
         assertThat(detail.getManualReviewRequired()).isTrue();
         Activity savedActivity =
                 activityRepository.findById(draft.getActivityId()).orElseThrow();
         assertThat(savedActivity.getManualReviewRequired()).isTrue();
+    }
+
+    @Test
+    void submitActivityShouldTriggerManualReviewForTextRisk() {
+        contentReviewClient.setTextResult(
+                new ContentReviewScanResult(ContentReviewRisk.review, List.of("文本命中广告引流风险"), null));
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+
+        ActivityDtos.ActivityDetail detail =
+                activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId());
+
+        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.pending);
+        assertThat(detail.getManualReviewRequired()).isTrue();
+        assertThat(detail.getAiContentReview().getRiskLevel()).isEqualTo("uncertain");
+        assertThat(detail.getReviewRecords().getFirst().getReason()).contains("文本命中广告引流风险");
+    }
+
+    @Test
+    void submitActivityShouldTriggerManualReviewForImageRisk() {
+        contentReviewClient.setImageResult(
+                new ContentReviewScanResult(ContentReviewRisk.block, List.of("图片命中违规标识"), null));
+        User organizer = saveUser("user-a");
+        MediaFile image = saveMediaFile(IMAGE_A_ID, organizer.getUserId());
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of(image.getMediaId())));
+
+        ActivityDtos.ActivityDetail detail =
+                activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId());
+
+        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.pending);
+        assertThat(detail.getManualReviewRequired()).isTrue();
+        assertThat(detail.getAiContentReview().getRiskLevel()).isEqualTo("high");
+        assertThat(detail.getAiContentReview().getSuggestedReviewStatus())
+                .isEqualTo(io.github.layjason.mayoistar.entity.common.ReviewStatus.rejected);
+    }
+
+    @Test
+    void submitActivityShouldTriggerManualReviewWhenAiReviewFails() {
+        contentReviewClient.setTextResult(ContentReviewScanResult.failed("阿里云文本内容审核失败"));
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+
+        ActivityDtos.ActivityDetail detail =
+                activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId());
+
+        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.pending);
+        assertThat(detail.getManualReviewRequired()).isTrue();
+        assertThat(detail.getAiContentReview().getStatus()).isEqualTo("failed");
+        assertThat(detail.getAiContentReview().getFriendlyErrorMessage()).contains("阿里云文本内容审核失败");
     }
 
     @Test
@@ -196,7 +303,7 @@ class ActivityDraftServiceTests {
 
         assertThatThrownBy(() -> activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId()))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("已在审核中");
+                .hasMessageContaining("已审核通过");
     }
 
     @Test
@@ -286,7 +393,7 @@ class ActivityDraftServiceTests {
         ActivityDtos.ActivityDetail detail =
                 activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId());
 
-        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.pending);
+        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
     }
 
     @Test
@@ -359,7 +466,6 @@ class ActivityDraftServiceTests {
                 .sizeBytes(1L)
                 .usage(MediaUsage.activityImage)
                 .storagePath("/tmp/" + mediaId)
-                .url("https://example.com/" + mediaId)
                 .uploadedBy(userId)
                 .uploadedAt(Instant.now())
                 .build());

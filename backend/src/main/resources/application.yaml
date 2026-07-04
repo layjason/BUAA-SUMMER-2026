@@ -58,11 +58,20 @@ mayoistar:
       bucket: ${MAYOISTAR_S3_BUCKET:mayoistar-media}
   media:
     access:
-      signing-secret: ${MAYOISTAR_MEDIA_SIGNING_SECRET:${MAYOISTAR_JWT_SECRET:dev-media-signing-secret-change-me}}
+      signing-secret: ${MAYOISTAR_MEDIA_SIGNING_SECRET}
   ai:
     clip:
       endpoint: ${MAYOISTAR_CLIP_ENDPOINT:http://localhost:8000}
       timeout-seconds: 60
+    content-review:
+      endpoint: ${MAYOISTAR_ALIYUN_IMAGEAUDIT_ENDPOINT:}
+      access-key-id: ${ALIBABA_CLOUD_ACCESS_KEY_ID:}
+      access-key-secret: ${ALIBABA_CLOUD_ACCESS_KEY_SECRET:}
+      text-labels:
+        - ad
+      image-scenes:
+        - porn
+        - logo
     rate-limit:
       max-requests-per-minute: 20
   check-in:

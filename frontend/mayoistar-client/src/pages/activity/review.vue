@@ -143,7 +143,7 @@ async function handleAddReviewImage(): Promise<void> {
     try {
       const results = await uploadReviewImages(res.tempFilePaths as string[])
       for (const r of results) {
-        const imageUrl = r.signedUrl ?? r.url ?? ''
+        const imageUrl = r.signedUrl || ''
         imageUrls.value.push(imageUrl)
         if (content.value) content.value += '\n'
         content.value += `![评价图片](${imageUrl})`

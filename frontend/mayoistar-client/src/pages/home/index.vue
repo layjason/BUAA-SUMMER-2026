@@ -44,9 +44,9 @@
         >
           <view class="card-inner">
             <image
-              v-if="getCoverUrl(item)"
+              v-if="item.coverImage?.signedUrl"
               class="card-cover"
-              :src="getCoverUrl(item)"
+              :src="item.coverImage.signedUrl"
               mode="aspectFill"
             />
             <view v-else class="card-cover card-cover-placeholder">
@@ -154,7 +154,7 @@ interface ActivityItem {
     placeName: string | null
     point: { longitude: number; latitude: number }
   }
-  coverImage: { signedUrl?: string; url?: string; mediaId: string } | null
+  coverImage: { signedUrl: string; mediaId: string } | null
   feeAmount?: number | null
   capacity: number
   registeredCount: number
@@ -164,11 +164,6 @@ interface ActivityItem {
 
 function getStatusText(status: string): string {
   return runtimeStatusText(status, t)
-}
-
-/** 获取活动封面可展示地址 */
-function getCoverUrl(item: ActivityItem): string {
-  return item.coverImage?.signedUrl ?? item.coverImage?.url ?? ''
 }
 
 /** 确保附近 Tab 使用真实定位参数

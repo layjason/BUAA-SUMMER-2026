@@ -230,11 +230,6 @@ const qualification = ref<{
 const licenseMediaIds = ref<string[]>([])
 const licensePreviewUrls = ref<string[]>([])
 
-/** 读取媒体文件可展示地址，优先使用签名 URL */
-function getMediaPreviewUrl(media: { signedUrl?: string; url?: string } | undefined): string {
-  return media?.signedUrl ?? media?.url ?? ''
-}
-
 /** 是否允许提交或重新提交商家资质 */
 const canSubmitQualification = computed(() => {
   const status = qualification.value?.status ?? 'not_submitted'
@@ -340,7 +335,7 @@ async function handleAvatarClick(): Promise<void> {
     try {
       const result = await uploadAvatar(tempPath)
       avatarMediaId.value = result.mediaId
-      avatarUrl.value = getMediaPreviewUrl(result) || tempPath
+      avatarUrl.value = result.signedUrl || tempPath
     } catch {
       formError.value = t('editProfile.avatarUploadFailed')
     }
@@ -369,7 +364,7 @@ async function chooseLicenseImages(): Promise<void> {
     for (const filePath of res.tempFilePaths) {
       const result = await uploadMerchantLicense(filePath)
       licenseMediaIds.value.push(result.mediaId)
-      licensePreviewUrls.value.push(getMediaPreviewUrl(result) || filePath)
+      licensePreviewUrls.value.push(result.signedUrl || filePath)
     }
   } catch {
     formError.value = '营业凭证上传失败或已取消'
@@ -440,8 +435,7 @@ async function loadProfile(): Promise<void> {
       const profile = await getMerchantProfile()
       formNickname.value = profile.nickname
       formMerchantName.value = profile.merchantName
-      const avatarPreviewUrl = getMediaPreviewUrl(profile.avatar)
-      if (avatarPreviewUrl) avatarUrl.value = avatarPreviewUrl
+      if (profile.avatar?.signedUrl) avatarUrl.value = profile.avatar.signedUrl
       if (profile.interestedActivityFields?.length) {
         selectedTags.value = new Set(profile.interestedActivityFields)
       }
@@ -452,8 +446,7 @@ async function loadProfile(): Promise<void> {
     } else {
       const profile = await getMyProfile()
       formNickname.value = profile.nickname
-      const avatarPreviewUrl = getMediaPreviewUrl(profile.avatar)
-      if (avatarPreviewUrl) avatarUrl.value = avatarPreviewUrl
+      if (profile.avatar?.signedUrl) avatarUrl.value = profile.avatar.signedUrl
       if (profile.gender) formGender.value = profile.gender as typeof formGender.value
       if (profile.birthday) formBirthday.value = profile.birthday
       if (profile.signature) formSignature.value = profile.signature

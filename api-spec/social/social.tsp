@@ -162,7 +162,7 @@ model FriendItem {
   @doc("好友昵称。")
   nickname: string;
 
-  @doc("好友头像。")
+  @doc("好友头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("当前用户为该好友设置的备注。")
@@ -207,7 +207,7 @@ model FollowItem {
   @doc("用户昵称。")
   nickname: string;
 
-  @doc("用户头像。")
+  @doc("用户头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("关注时间。")
@@ -225,7 +225,7 @@ model BlacklistItem {
   @doc("被屏蔽用户昵称。")
   nickname: string;
 
-  @doc("被屏蔽用户头像。")
+  @doc("被屏蔽用户头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("屏蔽时间。")
@@ -304,7 +304,7 @@ model TeamProfile {
   @doc("小队简介。")
   description?: string;
 
-  @doc("小队头像媒体文件。")
+  @doc("小队头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("小队状态。")
@@ -328,7 +328,7 @@ model TeamMember {
   @doc("成员昵称。")
   nickname: string;
 
-  @doc("成员头像。")
+  @doc("成员头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("成员在小队中的角色。")

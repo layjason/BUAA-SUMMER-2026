@@ -3,6 +3,7 @@ package io.github.layjason.mayoistar.service;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.BLACKLIST_RELATION_EXISTS;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.DUPLICATE_TEAM_JOIN_REQUEST;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_ACTIVITY_NOT_VISIBLE;
+import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_FILE_DUPLICATE;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_FULL;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_JOIN_REQUEST_STATE_INVALID;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_LEADER_CANNOT_LEAVE;
@@ -26,6 +27,7 @@ import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.chat.Conversation;
 import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.chat.ConversationMember;
+import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.User;
@@ -573,7 +575,14 @@ public class TeamService {
     public void dissolveTeam(String teamId, String operatorId) {
         Team team = findVisibleTeam(teamId);
 
-        if (!team.getLeaderId().equals(operatorId)) {
+        TeamMember member = teamMemberRepository
+                .findByTeamIdAndUserId(teamId, operatorId)
+                .orElseThrow(() -> {
+                    log.warn("操作人不是小队成员: teamId={}, userId={}", teamId, operatorId);
+                    return new BusinessException(TEAM_MEMBER_NOT_FOUND, "Team membership is required");
+                });
+
+        if (member.getRole() != TeamMemberRole.leader) {
             log.warn("非队长尝试解散小队: teamId={}, userId={}", teamId, operatorId);
             throw new BusinessException(TEAM_PERMISSION_DENIED, "Only the team leader can dissolve the team");
         }
@@ -713,16 +722,17 @@ public class TeamService {
     // ========================================
 
     /**
-     * 上传群文件，将文件关联到小队。
+     * 上传群文件，将文件关联到小队，并将访问策略从默认 owner 提升为 teamMember。
      *
      * <p>前置条件：{@code userId} 是小队成员，文件实体已保存。
      *
-     * <p>后置条件：小队-媒体关联已建立。
+     * <p>后置条件：小队-媒体关联已建立，访问策略更新为 teamMember，小队所有成员均可通过签名 URL
+     * 访问该文件。
      *
      * @param teamId  小队 ID
      * @param userId  上传者 ID
      * @param mediaId 已保存的媒体文件 ID
-     * @return 更新后的媒体文件 DTO
+     * @return 更新后的媒体文件 DTO（含 teamMember 策略签名 URL）
      * @throws BusinessException 非小队成员
      */
     public CommonDtos.MediaFile uploadTeamFile(String teamId, String userId, UUID mediaId) {
@@ -732,12 +742,25 @@ public class TeamService {
                 .findById(mediaId)
                 .orElseThrow(() -> new BusinessException(TEAM_MEDIA_NOT_FOUND, "Media file not found"));
 
+        if (!file.getUploadedBy().equals(userId)) {
+            log.warn("调用者不是文件上传者: mediaId={}, userId={}, uploadedBy={}", mediaId, userId, file.getUploadedBy());
+            throw new BusinessException(TEAM_MEDIA_NOT_FOUND, "Media file not found");
+        }
+
+        // 同名文件去重：在校验通过前不更新访问策略，避免缓存与数据库状态不一致
+        if (teamMediaFileRepository.existsByTeamIdAndFileNameAndUsage(
+                teamId, file.getFileName(), MediaUsage.teamFile)) {
+            throw new BusinessException(TEAM_FILE_DUPLICATE, "A file with the same name already exists in this team");
+        }
+
         TeamMediaFile teamMedia = TeamMediaFile.builder()
                 .id(UUID.randomUUID())
                 .teamId(teamId)
                 .mediaId(mediaId)
                 .build();
         teamMediaFileRepository.save(teamMedia);
+
+        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.teamMember, teamId, userId);
 
         log.info("群文件已上传: teamId={}, mediaId={}, uploadedBy={}", teamId, mediaId, userId);
         return toMediaFileDto(file);
@@ -754,7 +777,8 @@ public class TeamService {
     public PageResult<CommonDtos.MediaFile> listTeamFiles(String teamId, String userId, int page, int pageSize) {
         requireTeamMember(teamId, userId);
 
-        var tmPage = teamMediaFileRepository.findByTeamId(teamId, PageRequest.of(page - 1, pageSize));
+        var tmPage = teamMediaFileRepository.findByTeamIdAndMediaUsage(
+                teamId, MediaUsage.teamFile, PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "id")));
         List<UUID> mediaIds =
                 tmPage.getContent().stream().map(TeamMediaFile::getMediaId).collect(Collectors.toList());
 
@@ -763,7 +787,7 @@ public class TeamService {
 
         List<CommonDtos.MediaFile> items = mediaIds.stream()
                 .map(fileMap::get)
-                .filter(f -> f != null && f.getUsage() == MediaUsage.teamFile)
+                .filter(f -> f != null && f.getDeletedAt() == null && f.getUsage() == MediaUsage.teamFile)
                 .map(this::toMediaFileDto)
                 .collect(Collectors.toList());
 
@@ -772,11 +796,12 @@ public class TeamService {
     }
 
     /**
-     * 批量删除群文件，仅队长和管理员可操作。
+     * 批量软删除群文件，仅队长和管理员可操作。
      *
      * <p>前置条件：{@code userId} 是队长或管理员，指定文件均属于该小队。
      *
-     * <p>后置条件：关联记录和媒体文件均已删除。
+     * <p>后置条件：关联记录已删除，媒体文件标记为软删除，旧签名 URL 因 accessVersion
+     * 递增而失效。
      */
     public void deleteTeamFiles(String teamId, String userId, List<UUID> mediaIds) {
         requireTeamAdmin(teamId, userId);
@@ -788,16 +813,21 @@ public class TeamService {
 
         teamMediaFileRepository.deleteAll(teamMedias);
         List<MediaFile> files = mediaFileRepository.findByMediaIdIn(mediaIds);
-        mediaFileRepository.deleteAll(files);
-        log.info("群文件已删除: teamId={}, count={}", teamId, mediaIds.size());
+        for (MediaFile file : files) {
+            if (file.getDeletedAt() == null) {
+                mediaAccessService.softDelete(file.getMediaId());
+            }
+        }
+        log.info("群文件已软删除: teamId={}, count={}", teamId, mediaIds.size());
     }
 
     /**
-     * 上传小队相册图片。
+     * 上传小队相册图片，将访问策略从默认 owner 提升为 teamMember。
      *
      * <p>前置条件：{@code userId} 是小队成员，图片实体已保存。
      *
-     * <p>后置条件：小队-媒体关联已建立，usage 更新为 teamAlbum。
+     * <p>后置条件：小队-媒体关联已建立，usage 更新为 teamAlbum，访问策略更新为
+     * teamMember，小队所有成员均可访问。
      */
     public CommonDtos.MediaFile uploadTeamAlbumImage(String teamId, String userId, UUID mediaId) {
         requireTeamMember(teamId, userId);
@@ -805,6 +835,12 @@ public class TeamService {
         MediaFile file = mediaFileRepository
                 .findById(mediaId)
                 .orElseThrow(() -> new BusinessException(TEAM_MEDIA_NOT_FOUND, "Media file not found"));
+
+        if (!file.getUploadedBy().equals(userId)) {
+            log.warn("调用者不是文件上传者: mediaId={}, userId={}, uploadedBy={}", mediaId, userId, file.getUploadedBy());
+            throw new BusinessException(TEAM_MEDIA_NOT_FOUND, "Media file not found");
+        }
+
         file.setUsage(MediaUsage.teamAlbum);
         mediaFileRepository.save(file);
 
@@ -814,6 +850,8 @@ public class TeamService {
                 .mediaId(mediaId)
                 .build();
         teamMediaFileRepository.save(teamMedia);
+
+        mediaAccessService.updateAccessPolicy(mediaId, MediaAccessPolicy.teamMember, teamId, userId);
 
         log.info("小队相册图片已上传: teamId={}, mediaId={}, uploadedBy={}", teamId, mediaId, userId);
         return toMediaFileDto(file);
@@ -830,7 +868,8 @@ public class TeamService {
     public PageResult<CommonDtos.MediaFile> listTeamAlbumImages(String teamId, String userId, int page, int pageSize) {
         requireTeamMember(teamId, userId);
 
-        var tmPage = teamMediaFileRepository.findByTeamId(teamId, PageRequest.of(page - 1, pageSize));
+        var tmPage = teamMediaFileRepository.findByTeamIdAndMediaUsage(
+                teamId, MediaUsage.teamAlbum, PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "id")));
         List<UUID> mediaIds =
                 tmPage.getContent().stream().map(TeamMediaFile::getMediaId).collect(Collectors.toList());
 
@@ -839,7 +878,7 @@ public class TeamService {
 
         List<CommonDtos.MediaFile> items = mediaIds.stream()
                 .map(fileMap::get)
-                .filter(f -> f != null && f.getUsage() == MediaUsage.teamAlbum)
+                .filter(f -> f != null && f.getDeletedAt() == null && f.getUsage() == MediaUsage.teamAlbum)
                 .map(this::toMediaFileDto)
                 .collect(Collectors.toList());
 
@@ -848,11 +887,12 @@ public class TeamService {
     }
 
     /**
-     * 批量删除小队相册图片，仅队长和管理员可操作。
+     * 批量软删除小队相册图片，仅队长和管理员可操作。
      *
      * <p>前置条件：{@code userId} 是队长或管理员，指定图片均属于该小队相册。
      *
-     * <p>后置条件：关联记录和媒体文件均已删除。
+     * <p>后置条件：关联记录已删除，媒体文件标记为软删除，旧签名 URL 因 accessVersion
+     * 递增而失效。
      */
     public void deleteTeamAlbumImages(String teamId, String userId, List<UUID> mediaIds) {
         requireTeamAdmin(teamId, userId);
@@ -864,8 +904,12 @@ public class TeamService {
 
         teamMediaFileRepository.deleteAll(teamMedias);
         List<MediaFile> files = mediaFileRepository.findByMediaIdIn(mediaIds);
-        mediaFileRepository.deleteAll(files);
-        log.info("小队相册图片已删除: teamId={}, count={}", teamId, mediaIds.size());
+        for (MediaFile file : files) {
+            if (file.getDeletedAt() == null) {
+                mediaAccessService.softDelete(file.getMediaId());
+            }
+        }
+        log.info("小队相册图片已软删除: teamId={}, count={}", teamId, mediaIds.size());
     }
 
     // ========================================

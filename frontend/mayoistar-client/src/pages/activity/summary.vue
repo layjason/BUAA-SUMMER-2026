@@ -137,11 +137,6 @@ const unclassifiedImageIds = computed(() =>
   imageIds.value.filter((id) => !imageClassifications.value.has(id)),
 )
 
-/** 获取媒体文件可展示地址 */
-function getMediaUrl(media: { signedUrl?: string; url?: string }): string {
-  return media.signedUrl ?? media.url ?? ''
-}
-
 /**
  * 添加图片并调用 AI 分类
  *
@@ -158,7 +153,7 @@ async function handleAddImage(): Promise<void> {
       const newMediaIds: string[] = []
       for (const r of results) {
         const mediaId = r.mediaId
-        const url = getMediaUrl(r)
+        const url = r.signedUrl
         if (!mediaId) continue
         imageIds.value.push(mediaId)
         imagePreviews.value.push(url || '')

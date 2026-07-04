@@ -18,7 +18,7 @@ interface RecommendItem {
   tags: string[]
   startAt: string
   location: { city: string; address: string; placeName: string | null }
-  coverImage: { signedUrl?: string; url?: string; mediaId: string } | null
+  coverImage: { signedUrl: string; mediaId: string } | null
   feeAmount?: number | null
   capacity: number
   registeredCount: number
@@ -71,11 +71,6 @@ function getStatusText(status: string): string {
   }
   return map[status] ?? status
 }
-
-/** 获取推荐活动封面可展示地址 */
-function getCoverUrl(item: RecommendItem): string {
-  return item.coverImage?.signedUrl ?? item.coverImage?.url ?? ''
-}
 </script>
 
 <template>
@@ -124,8 +119,8 @@ function getCoverUrl(item: RecommendItem): string {
               @tap="goDetail(item.activityId)"
             >
               <view class="recommend-inner">
-                <view v-if="getCoverUrl(item)" class="recommend-cover">
-                  <image :src="getCoverUrl(item)" mode="aspectFill" class="cover-img" />
+                <view v-if="item.coverImage?.signedUrl" class="recommend-cover">
+                  <image :src="item.coverImage.signedUrl" mode="aspectFill" class="cover-img" />
                 </view>
                 <view v-else class="recommend-cover recommend-cover-placeholder">
                   <text class="placeholder-icon">📌</text>

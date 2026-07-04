@@ -364,9 +364,9 @@ export const Teams: React.FC = () => {
           <div className="space-y-6 text-xs text-slate-600 leading-relaxed font-semibold">
             {/* Header branding */}
             <div className="flex items-start gap-4 p-5 bg-slate-50 border border-slate-100 rounded-2xl text-left">
-              {selectedTeam.avatar?.url ? (
+              {selectedTeam.avatar?.signedUrl ? (
                 <img
-                  src={selectedTeam.avatar.url}
+                  src={selectedTeam.avatar.signedUrl}
                   referrerPolicy="no-referrer"
                   className="h-12 w-12 rounded-2xl object-cover border border-slate-200 shrink-0"
                   alt="群头像"

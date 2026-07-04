@@ -1022,11 +1022,30 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** @description 查询群公告，调用方为小队成员，分页返回该小队的群公告列表。 */
+    get: operations['ChatOperations_listAnnouncements'];
     put?: never;
     /** @description 发布群公告，调用方为队长或管理员，小队公告更新并通知成员，普通成员不可发布公告。 */
     post: operations['ChatOperations_publishAnnouncement'];
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/chat/teams/{teamId}/announcements/{announcementId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** @description 编辑群公告，调用方为队长或管理员，仅限修改公告内容。 */
+    put: operations['ChatOperations_updateAnnouncement'];
+    post?: never;
+    /** @description 删除群公告，调用方为队长或管理员，公告删除后不可恢复。 */
+    delete: operations['ChatOperations_deleteAnnouncement'];
     options?: never;
     head?: never;
     patch?: never;
@@ -1075,10 +1094,28 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** @description 查看群投票列表，调用方为小队成员，可分页查看小队中已创建的投票。 */
+    get: operations['ChatOperations_listPolls'];
     put?: never;
     /** @description 创建群投票，调用方为小队成员，创建投票，投票选项至少两个。 */
     post: operations['ChatOperations_createPoll'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/chat/teams/{teamId}/polls/{pollId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 查看群投票结果，调用方为小队成员，返回投票详情及各选项当前票数。 */
+    get: operations['ChatOperations_getPoll'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -3486,7 +3523,7 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
-    /** @description 50011：调用方无权发布群公告。 */
+    /** @description 50011：调用方无权执行该群公告操作。 */
     'Errors.Chat.AnnouncementPermissionDenied': {
       /**
        * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
@@ -3666,6 +3703,21 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
+    /** @description 50019：投票不存在。 */
+    'Errors.Chat.PollNotFound': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 50019;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'Poll does not exist';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
     /** @description 50012：投票选项不满足业务规则。 */
     'Errors.Chat.PollOptionsInvalid': {
       /**
@@ -3681,7 +3733,7 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
-    /** @description 50013：投票不存在、已截止或调用方不可参与。 */
+    /** @description 50013：投票已截止或调用方不可参与。 */
     'Errors.Chat.PollUnavailable': {
       /**
        * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
@@ -4638,8 +4690,6 @@ export interface components {
       sizeBytes: number;
       /** @description 媒体用途。 */
       usage: components['schemas']['MediaUsage'];
-      /** @description 访问地址。 */
-      url?: string;
       /** @description 签名访问地址，客户端不得作为永久地址保存。 */
       signedUrl?: string;
       /** @description 媒体可见性。 */
@@ -8598,6 +8648,76 @@ export interface operations {
       };
     };
   };
+  ChatOperations_listAnnouncements: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Chat.TeamAnnouncement'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Chat.TeamNotVisible']
+            | components['schemas']['Errors.Chat.TeamMemberRequired'];
+        };
+      };
+    };
+  };
   ChatOperations_publishAnnouncement: {
     parameters: {
       query?: never;
@@ -8640,6 +8760,98 @@ export interface operations {
             | components['schemas']['InternalServerErrorResponse']
             | components['schemas']['Errors.Chat.TeamNotVisible']
             | components['schemas']['Errors.Chat.AnnouncementPermissionDenied'];
+        };
+      };
+    };
+  };
+  ChatOperations_updateAnnouncement: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+        announcementId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Chat.TeamAnnouncementRequest'];
+      };
+    };
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Chat.TeamAnnouncement'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Chat.TeamNotVisible']
+            | components['schemas']['Errors.Chat.AnnouncementPermissionDenied']
+            | components['schemas']['Errors.Chat.AnnouncementNotVisible'];
+        };
+      };
+    };
+  };
+  ChatOperations_deleteAnnouncement: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+        announcementId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['EmptyData'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Chat.TeamNotVisible']
+            | components['schemas']['Errors.Chat.AnnouncementPermissionDenied']
+            | components['schemas']['Errors.Chat.AnnouncementNotVisible'];
         };
       };
     };
@@ -8851,6 +9063,76 @@ export interface operations {
       };
     };
   };
+  ChatOperations_listPolls: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Chat.TeamPoll'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Chat.TeamNotVisible']
+            | components['schemas']['Errors.Chat.TeamMemberRequired'];
+        };
+      };
+    };
+  };
   ChatOperations_createPoll: {
     parameters: {
       query?: never;
@@ -8894,6 +9176,50 @@ export interface operations {
             | components['schemas']['Errors.Chat.TeamNotVisible']
             | components['schemas']['Errors.Chat.TeamMemberRequired']
             | components['schemas']['Errors.Chat.PollOptionsInvalid'];
+        };
+      };
+    };
+  };
+  ChatOperations_getPoll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+        pollId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Chat.TeamPoll'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Chat.TeamNotVisible']
+            | components['schemas']['Errors.Chat.TeamMemberRequired']
+            | components['schemas']['Errors.Chat.PollNotFound'];
         };
       };
     };
