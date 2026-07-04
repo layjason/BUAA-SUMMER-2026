@@ -46,7 +46,7 @@ public class ActivityDraftMapper {
     public ActivityDtos.ActivityDraftSummary toDraftSummary(Activity activity) {
         ActivityDtos.ActivityDraftSummary dto = new ActivityDtos.ActivityDraftSummary();
         dto.setActivityId(activity.getActivityId());
-        dto.setTitle(activity.getTitle());
+        dto.setTitle(toDraftTitle(activity.getTitle()));
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setUpdatedAt(formatInstant(activity.getUpdatedAt()));
         dto.setCreatedAt(formatInstant(activity.getCreatedAt()));
@@ -82,14 +82,14 @@ public class ActivityDraftMapper {
             Activity activity, Collection<MediaFile> mediaFiles, Function<UUID, Integer> imageSortOrderProvider) {
         ActivityDtos.ActivityDraftDetail dto = new ActivityDtos.ActivityDraftDetail();
         dto.setActivityId(activity.getActivityId());
-        dto.setTitle(activity.getTitle());
+        dto.setTitle(toDraftTitle(activity.getTitle()));
         dto.setTags(activity.getTags() == null ? List.of() : List.copyOf(activity.getTags()));
         dto.setIntroduction(activity.getIntroduction());
-        dto.setStartAt(formatInstant(activity.getStartAt()));
-        dto.setEndAt(formatInstant(activity.getEndAt()));
+        dto.setStartAt(formatDraftInstant(activity.getStartAt()));
+        dto.setEndAt(formatDraftInstant(activity.getEndAt()));
         dto.setLocation(toLocationInfo(activity));
         dto.setSafetyNotice(activity.getSafetyNotice());
-        dto.setCapacity(activity.getCapacity());
+        dto.setCapacity(toDraftCapacity(activity.getCapacity()));
         dto.setRegistrationDeadline(formatInstant(activity.getRegistrationDeadline()));
         dto.setFeeAmount(activity.getFeeAmount());
         dto.setFeeDescription(activity.getFeeDescription());
@@ -233,5 +233,17 @@ public class ActivityDraftMapper {
 
     private String formatInstant(Instant instant) {
         return instant == null ? null : instant.toString();
+    }
+
+    private String formatDraftInstant(Instant instant) {
+        return ActivityDraftPlaceholders.isTimePlaceholder(instant) ? null : formatInstant(instant);
+    }
+
+    private String toDraftTitle(String title) {
+        return ActivityDraftPlaceholders.isTitlePlaceholder(title) ? null : title;
+    }
+
+    private Integer toDraftCapacity(Integer capacity) {
+        return ActivityDraftPlaceholders.isCapacityPlaceholder(capacity) ? null : capacity;
     }
 }
