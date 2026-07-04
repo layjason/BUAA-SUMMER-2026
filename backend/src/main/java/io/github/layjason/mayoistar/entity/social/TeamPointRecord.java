@@ -3,6 +3,8 @@ package io.github.layjason.mayoistar.entity.social;
 import io.github.layjason.mayoistar.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -16,6 +18,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.springframework.lang.Nullable;
 
 /**
  * 小队积分变动记录，记录成员积分增减的历史明细。
@@ -60,6 +63,14 @@ public class TeamPointRecord {
 
     @Column(nullable = false, length = 50)
     private String reason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private TeamPointChangeSource source;
+
+    @Nullable
+    @Column(name = "reference_id", length = 36)
+    private String referenceId;
 
     @Column(name = "created_at", nullable = false)
     @Builder.Default
