@@ -748,9 +748,10 @@ interface SocialOperations {
   adjustTeamMemberPoints(
     @path teamId: EntityId,
     @path userId: EntityId,
-    @body request: ManualPointAdjustmentRequest
+    @body request: ManualPointAdjustmentRequest,
   ): APIResult<
     EmptyData,
+
       | QujuApi.Errors.Social.TeamNotVisible
       | QujuApi.Errors.Social.TeamMemberNotFound
       | QujuApi.Errors.Social.TeamPermissionDenied
@@ -762,9 +763,10 @@ interface SocialOperations {
   getTeamMemberPointHistory(
     @path teamId: EntityId,
     @path userId: EntityId,
-    ...PageQuery
+    ...PageQuery,
   ): APIResult<
     PageResult<TeamPointRecordItem>,
+
       | QujuApi.Errors.Social.TeamNotVisible
       | QujuApi.Errors.Social.TeamMemberNotFound
   >;
