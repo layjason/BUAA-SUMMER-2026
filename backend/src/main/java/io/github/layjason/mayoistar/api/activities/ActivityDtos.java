@@ -135,6 +135,7 @@ public final class ActivityDtos {
 
     @Data
     public static class ActivityReviewRequest {
+        @NotNull
         @Min(1)
         @Max(5)
         private Integer rating;
@@ -331,5 +332,21 @@ public final class ActivityDtos {
         private String content;
         private List<String> tags;
         private String createdAt;
+    }
+
+    @Data
+    @EqualsAndHashCode(callSuper = true)
+    public static class ActivityReviewListItem extends ActivityReview {
+        private String nickname;
+    }
+
+    @Data
+    public static class MyActivityReviewResult {
+        private ActivityReview review;
+    }
+
+    @Data
+    public static class MyActivitySummaryResult {
+        private ActivitySummaryPost summary;
     }
 }
