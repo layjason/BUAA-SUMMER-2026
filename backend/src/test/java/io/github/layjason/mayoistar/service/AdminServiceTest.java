@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.layjason.mayoistar.api.admin.AdminDtos;
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
@@ -14,6 +15,9 @@ import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.admin.Admin;
 import io.github.layjason.mayoistar.entity.admin.BanRecord;
 import io.github.layjason.mayoistar.entity.admin.TeamModerationRecord;
+import io.github.layjason.mayoistar.entity.common.MediaFile;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.MerchantProfile;
@@ -107,6 +111,7 @@ class AdminServiceTest {
     private final String teamId = UUID.randomUUID().toString();
     private final String activityId = UUID.randomUUID().toString();
     private final String reportId = UUID.randomUUID().toString();
+    private final UUID avatarMediaId = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
@@ -126,6 +131,34 @@ class AdminServiceTest {
                 reportService,
                 activityRegistrationCountService,
                 mediaAccessService);
+    }
+
+    @Nested
+    @DisplayName("管理员查看商家资料")
+    class GetMerchantForAdmin {
+
+        @Test
+        @DisplayName("返回头像签名 URL")
+        void shouldReturnSignedAvatarUrl() {
+            User user = buildMerchantUser();
+            MerchantProfile profile = buildMerchantProfile();
+            profile.setAvatarMediaId(avatarMediaId);
+            MediaFile avatar = buildAvatarMediaFile();
+            CommonDtos.MediaFile signedAvatar = buildSignedAvatarDto();
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(merchantProfileRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
+            when(qualificationRepository.findByUserId(userId)).thenReturn(Optional.empty());
+            when(mediaFileRepository.findById(avatarMediaId)).thenReturn(Optional.of(avatar));
+            when(mediaAccessService.toSignedDto(avatar)).thenReturn(signedAvatar);
+
+            var result = adminService.getMerchantForAdmin(userId);
+
+            assertThat(result.getAvatar()).isSameAs(signedAvatar);
+            assertThat(result.getAvatar().getUrl()).isNull();
+            assertThat(result.getAvatar().getSignedUrl()).isEqualTo("/common/media/" + avatarMediaId + "?sig=test");
+            verify(mediaAccessService).toSignedDto(avatar);
+        }
     }
 
     // ======================== 商家审核 ========================
@@ -720,6 +753,34 @@ class AdminServiceTest {
                 .merchantName("测试商家")
                 .updatedAt(Instant.now())
                 .build();
+    }
+
+    private MediaFile buildAvatarMediaFile() {
+        return MediaFile.builder()
+                .mediaId(avatarMediaId)
+                .fileName("avatar.png")
+                .contentType("image/png")
+                .sizeBytes(1024L)
+                .usage(MediaUsage.avatar)
+                .storagePath("avatars/" + avatarMediaId + ".png")
+                .url("https://legacy.example.com/avatar.png")
+                .visibility(MediaVisibility.privateVisible)
+                .uploadedBy(userId)
+                .uploadedAt(Instant.now())
+                .build();
+    }
+
+    private CommonDtos.MediaFile buildSignedAvatarDto() {
+        CommonDtos.MediaFile dto = new CommonDtos.MediaFile();
+        dto.setMediaId(avatarMediaId);
+        dto.setFileName("avatar.png");
+        dto.setContentType("image/png");
+        dto.setSizeBytes(1024L);
+        dto.setUsage(MediaUsage.avatar);
+        dto.setVisibility(MediaVisibility.privateVisible);
+        dto.setSignedUrl("/common/media/" + avatarMediaId + "?sig=test");
+        dto.setUploadedAt(Instant.now().toString());
+        return dto;
     }
 
     private Qualification buildPendingQualification() {

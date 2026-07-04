@@ -227,6 +227,24 @@ class MediaFileUploadServiceTest {
             assertThat(captor.getValue().getAccessPolicy()).isEqualTo(MediaAccessPolicy.owner);
             assertThat(captor.getValue().getAccessScopeId()).isEqualTo("user1");
         }
+
+        @Test
+        @DisplayName("活动审核图片上传后设置 publicAccess 策略")
+        void shouldSaveActivityReviewImageWithPublicPolicy() {
+            MultipartFile file = mockFile("image/jpeg", 100L, "review.jpg");
+
+            when(fileStorageService.store(anyString(), any(InputStream.class), eq("image/jpeg"), eq(100L)))
+                    .thenReturn("activityReviewImage/user1/mock-id_review.jpg");
+
+            CommonDtos.MediaFile result =
+                    mediaFileUploadService.upload("user1", file, MediaUsage.activityReviewImage);
+
+            assertThat(result.getVisibility()).isEqualTo(MediaVisibility.publicVisible);
+            ArgumentCaptor<MediaFile> captor = ArgumentCaptor.forClass(MediaFile.class);
+            verify(mediaFileRepository).save(captor.capture());
+            assertThat(captor.getValue().getAccessPolicy()).isEqualTo(MediaAccessPolicy.publicAccess);
+            assertThat(captor.getValue().getAccessScopeId()).isEmpty();
+        }
     }
 
     @Nested
