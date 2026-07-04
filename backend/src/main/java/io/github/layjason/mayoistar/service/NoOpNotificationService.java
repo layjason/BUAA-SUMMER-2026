@@ -1,5 +1,6 @@
 package io.github.layjason.mayoistar.service;
 
+import io.github.layjason.mayoistar.api.ai.AiDtos;
 import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import java.util.List;
@@ -49,5 +50,10 @@ public class NoOpNotificationService implements NotificationService {
                 request.getRequestId(),
                 request.getRequesterId(),
                 request.getTargetUserId());
+    }
+
+    @Override
+    public void notifyImageClassificationCompleted(AiDtos.ImageClassificationCompletedEvent event, String userId) {
+        log.info("图片分类完成通知（No-Op）: taskId={}, status={}, userId={}", event.getTaskId(), event.getStatus(), userId);
     }
 }

@@ -1,5 +1,6 @@
 package io.github.layjason.mayoistar.service;
 
+import io.github.layjason.mayoistar.api.ai.AiDtos;
 import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import java.util.ArrayList;
@@ -34,6 +35,9 @@ public class CapturingNotificationService implements NotificationService {
     @Getter
     private final List<SocialDtos.FriendRequest> friendRequests = new ArrayList<>();
 
+    @Getter
+    private final List<CapturedAiEvent> aiEvents = new ArrayList<>();
+
     @Override
     public void notifyMessageCreated(ChatDtos.ChatMessage message, List<String> recipientUserIds) {
         log.info("测试通知: messageCreated messageId={}, recipients={}", message.getMessageId(), recipientUserIds);
@@ -58,5 +62,13 @@ public class CapturingNotificationService implements NotificationService {
         friendRequests.add(request);
     }
 
+    @Override
+    public void notifyImageClassificationCompleted(AiDtos.ImageClassificationCompletedEvent event, String userId) {
+        log.info("测试通知: imageClassificationCompleted taskId={}, status={}", event.getTaskId(), event.getStatus());
+        aiEvents.add(new CapturedAiEvent(event, userId));
+    }
+
     public record CapturedRecall(String messageId, String conversationId, List<String> recipientUserIds) {}
+
+    public record CapturedAiEvent(AiDtos.ImageClassificationCompletedEvent event, String userId) {}
 }

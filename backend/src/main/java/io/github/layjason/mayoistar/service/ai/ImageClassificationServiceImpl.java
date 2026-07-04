@@ -1,33 +1,34 @@
 package io.github.layjason.mayoistar.service.ai;
 
+import io.github.layjason.mayoistar.api.ai.AiDtos.ClassifyTaskQueryResponse;
+import io.github.layjason.mayoistar.api.ai.AiDtos.ClassifyTaskSubmitResponse;
 import io.github.layjason.mayoistar.api.ai.AiDtos.ImageClassificationItem;
-import io.github.layjason.mayoistar.api.ai.AiDtos.ImageClassificationResult;
-import io.github.layjason.mayoistar.entity.common.MediaFile;
-import io.github.layjason.mayoistar.exception.BusinessException;
-import io.github.layjason.mayoistar.exception.ErrorCodes;
-import io.github.layjason.mayoistar.service.MediaFileUploadService;
-import io.github.layjason.mayoistar.service.ai.ClipModels.ClipClassifyItem;
-import io.github.layjason.mayoistar.service.ai.ClipModels.ClipClassifyResponse;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import io.github.layjason.mayoistar.api.ai.AiDtos.MediaClassificationResponse;
+import io.github.layjason.mayoistar.config.AiProperties;
+import io.github.layjason.mayoistar.entity.ai.AiClassificationResult;
+import io.github.layjason.mayoistar.service.ai.ClipTaskResultStore.TaskStatus;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 /**
- * 图片分类服务实现。
+ * 图片分类服务实现（Kafka 异步模式）。
  *
- * <p>类职责：协调媒体文件下载、CLIP 服务调用和结果映射，完成图片分类业务流程。
+ * <p>类职责：协调缓存检查、Kafka 消息发送、任务状态查询和结果组装。
  *
- * <p>类不变量：分类类别标签映射关系固定，不随运行时变化。
+ * <p>类不变量：分类类别标签映射关系固定；任务超时由 AiProperties 中的配置决定。
  */
 @Slf4j
 @Service
+@ConditionalOnBean(ClipTaskResultStore.class)
 public class ImageClassificationServiceImpl implements ImageClassificationService {
 
     /**
@@ -40,82 +41,139 @@ public class ImageClassificationServiceImpl implements ImageClassificationServic
             "supplies", "物资",
             "achievement", "成果展示");
 
-    private final MediaFileUploadService mediaFileUploadService;
-    private final ClipServiceClient clipServiceClient;
+    private final ClassificationResultCache resultCache;
+    private final ClipTaskResultStore taskResultStore;
+    private final KafkaClipProducer kafkaClipProducer;
+    private final int requestTimeoutSeconds;
 
-    /**
-     * @param mediaFileUploadService 媒体文件服务
-     * @param clipServiceClient       CLIP HTTP 客户端
-     */
     public ImageClassificationServiceImpl(
-            MediaFileUploadService mediaFileUploadService, ClipServiceClient clipServiceClient) {
-        this.mediaFileUploadService = mediaFileUploadService;
-        this.clipServiceClient = clipServiceClient;
+            ClassificationResultCache resultCache,
+            ClipTaskResultStore taskResultStore,
+            KafkaClipProducer kafkaClipProducer,
+            AiProperties aiProperties) {
+        this.resultCache = resultCache;
+        this.taskResultStore = taskResultStore;
+        this.kafkaClipProducer = kafkaClipProducer;
+        this.requestTimeoutSeconds = aiProperties.getClip().getRequestTimeoutSeconds();
     }
 
     /**
-     * 对指定媒体文件进行分类。
+     * 提交图片分类任务。
      *
-     * <p>前置条件：mediaIds 非空，每个 mediaId 对应的媒体文件已上传至 S3。
+     * <p>前置条件：mediaIds 非空，userId 为当前认证用户。
      *
-     * <p>后置条件：返回逐图片分类结果，包含建议标签和置信度；
-     * 若某张图片下载或处理失败，则该图片分类结果为 failed 状态。
-     *
-     * <p>不变量：该方法不修改已上传的媒体文件，仅读取下载。
+     * <p>后置条件：缓存命中的 media 不发送 Kafka；
+     * 未缓存的 media 发往 Kafka；任务状态写入 Redis。
      *
      * @param mediaIds 待分类的媒体文件 ID 列表
-     * @return 图片分类结果
+     * @param userId   发起任务的用户 ID
+     * @return 任务提交响应
      */
     @Override
-    public ImageClassificationResult classifyImages(@NonNull List<UUID> mediaIds) {
+    public ClassifyTaskSubmitResponse submitClassifyTask(@NonNull List<UUID> mediaIds, @NonNull String userId) {
         if (mediaIds.isEmpty()) {
-            ImageClassificationResult result = new ImageClassificationResult();
-            result.setStatus("succeeded");
-            result.setItems(List.of());
-            return result;
+            ClassifyTaskSubmitResponse response = new ClassifyTaskSubmitResponse();
+            response.setTaskId(null);
+            response.setStatus("succeeded");
+            return response;
         }
 
-        // 下載並編碼所有圖片
-        List<UUID> validMediaIds = new ArrayList<>();
-        List<String> encodedImages = new ArrayList<>();
+        UUID taskId = UUID.randomUUID();
 
-        for (UUID mediaId : mediaIds) {
-            try {
-                MediaFile mediaFile = mediaFileUploadService.getMediaFile(mediaId);
-                byte[] imageBytes = readAllBytes(mediaFileUploadService.retrieveContent(mediaId));
-                String base64Image = ClipServiceClient.encodeImage(imageBytes, mediaFile.getContentType());
-                validMediaIds.add(mediaId);
-                encodedImages.add(base64Image);
-            } catch (BusinessException e) {
-                log.warn("媒体文件不可用，跳过分类: mediaId={}, reason={}", mediaId, e.getBusinessMessage());
-            } catch (IOException e) {
-                log.warn("读取媒体文件失败，跳过分类: mediaId={}", mediaId, e);
+        // 筛出已缓存的 mediaId
+        List<UUID> cachedMediaIds = resultCache.findCachedMediaIds(mediaIds);
+        List<UUID> uncachedMediaIds =
+                mediaIds.stream().filter(id -> !cachedMediaIds.contains(id)).toList();
+
+        // 创建任务状态
+        taskResultStore.createTask(taskId, userId, mediaIds);
+
+        if (uncachedMediaIds.isEmpty()) {
+            // 全部命中缓存，无需调用 GPU
+            taskResultStore.markCompleted(taskId, "succeeded", null);
+            log.info("分类任务全部命中缓存: taskId={}, mediaCount={}", taskId, mediaIds.size());
+            ClassifyTaskSubmitResponse response = new ClassifyTaskSubmitResponse();
+            response.setTaskId(taskId);
+            response.setStatus("succeeded");
+            return response;
+        }
+
+        // 发送未缓存的到 Kafka
+        kafkaClipProducer.send(taskId, uncachedMediaIds);
+        log.info(
+                "分类任务已提交: taskId={}, total={}, cached={}, toClassify={}",
+                taskId,
+                mediaIds.size(),
+                cachedMediaIds.size(),
+                uncachedMediaIds.size());
+
+        ClassifyTaskSubmitResponse response = new ClassifyTaskSubmitResponse();
+        response.setTaskId(taskId);
+        response.setStatus("pending");
+        return response;
+    }
+
+    /**
+     * 查询分类任务结果。
+     *
+     * <p>前置条件：taskId 由 submitClassifyTask 返回。
+     *
+     * <p>后置条件：返回当前任务状态。pending 时仅状态；succeeded 时含全部结果。
+     *
+     * @param taskId 任务 ID
+     * @return 任务查询响应
+     */
+    @Override
+    public ClassifyTaskQueryResponse getClassifyTaskResult(@NonNull UUID taskId) {
+        TaskStatus status = taskResultStore.getStatus(taskId);
+        if (status == null) {
+            throw new io.github.layjason.mayoistar.exception.BusinessException(
+                    io.github.layjason.mayoistar.exception.ErrorCodes.AI_TASK_NOT_FOUND,
+                    "Classification task not found");
+        }
+
+        if ("pending".equals(status.getStatus())) {
+            // 检查超时
+            Instant createdAt = Instant.parse(status.getCreatedAt());
+            int timeoutSeconds = requestTimeoutSeconds;
+            if (Duration.between(createdAt, Instant.now()).getSeconds() > timeoutSeconds) {
+                taskResultStore.markCompleted(taskId, "failed", "Task timed out after " + timeoutSeconds + " seconds");
+                ClassifyTaskQueryResponse response = new ClassifyTaskQueryResponse();
+                response.setStatus("timeout");
+                response.setErrorMessage("Task timed out");
+                return response;
             }
+
+            ClassifyTaskQueryResponse response = new ClassifyTaskQueryResponse();
+            response.setStatus("pending");
+            return response;
         }
 
-        if (encodedImages.isEmpty()) {
-            throw new BusinessException(ErrorCodes.IMAGE_MEDIA_UNAVAILABLE, "Image media is unavailable");
+        if ("failed".equals(status.getStatus())) {
+            ClassifyTaskQueryResponse response = new ClassifyTaskQueryResponse();
+            response.setStatus("failed");
+            response.setErrorMessage(status.getErrorMessage());
+            return response;
         }
 
-        // 调用 CLIP 服务进行分类
-        ClipClassifyResponse clipResponse = clipServiceClient.classify(encodedImages);
+        // succeeded — 从 DB 获取该任务所有 mediaIds 的分类结果
+        List<UUID> mediaIds = status.getMediaIds();
+        List<AiClassificationResult> results = resultCache.findByMediaIds(mediaIds);
 
-        // 组装结果
         List<ImageClassificationItem> items = new ArrayList<>();
-        List<ClipClassifyItem> clipItems = clipResponse.getItems();
-
-        for (int i = 0; i < validMediaIds.size(); i++) {
-            UUID mediaId = validMediaIds.get(i);
+        for (UUID mediaId : mediaIds) {
             ImageClassificationItem item = new ImageClassificationItem();
             item.setMediaId(mediaId);
 
-            if (i < clipItems.size()) {
-                ClipClassifyItem clipItem = clipItems.get(i);
-                String label = CATEGORY_LABELS.getOrDefault(clipItem.getCategory(), clipItem.getCategory());
+            Optional<AiClassificationResult> matchingResult =
+                    results.stream().filter(r -> r.getMediaId().equals(mediaId)).findFirst();
+
+            if (matchingResult.isPresent()) {
+                AiClassificationResult cr = matchingResult.get();
+                String label = CATEGORY_LABELS.getOrDefault(cr.getCategory(), cr.getCategory());
                 item.setSuggestedTags(List.of(label));
-                item.setConfidence(clipItem.getConfidence());
+                item.setConfidence(cr.getConfidence());
             } else {
-                log.warn("CLIP 服务返回结果数量不匹配: expected={}, actual={}", validMediaIds.size(), clipItems.size());
                 item.setSuggestedTags(List.of());
                 item.setConfidence(0.0);
             }
@@ -123,33 +181,33 @@ public class ImageClassificationServiceImpl implements ImageClassificationServic
             items.add(item);
         }
 
-        ImageClassificationResult result = new ImageClassificationResult();
-        result.setStatus("succeeded");
-        result.setItems(items);
-        return result;
+        ClassifyTaskQueryResponse response = new ClassifyTaskQueryResponse();
+        response.setStatus("succeeded");
+        response.setItems(items);
+        return response;
     }
 
     /**
-     * 将输入流完整读取为字节数组。
+     * 按 mediaId 查询单个图片的分类缓存。
      *
-     * <p>前置条件：inputStream 处于可读取状态。
-     *
-     * <p>后置条件：返回完整的字节数组，输入流被消费完毕。
-     *
-     * <p>不变量：调用方负责关闭输入流。
-     *
-     * @param inputStream 输入流
-     * @return 字节数组
-     * @throws IOException 读取失败
+     * @param mediaId 媒体文件 ID
+     * @return 分类结果，未分类时为 null
      */
-    private byte[] readAllBytes(InputStream inputStream) throws IOException {
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        byte[] data = new byte[8192];
-        int bytesRead;
-        while ((bytesRead = inputStream.read(data, 0, data.length)) != -1) {
-            buffer.write(data, 0, bytesRead);
+    @Override
+    public MediaClassificationResponse getClassificationByMediaId(@NonNull UUID mediaId) {
+        Optional<AiClassificationResult> result = resultCache.findByMediaId(mediaId);
+        if (result.isEmpty()) {
+            return null;
         }
-        buffer.flush();
-        return buffer.toByteArray();
+
+        AiClassificationResult cr = result.get();
+        String label = CATEGORY_LABELS.getOrDefault(cr.getCategory(), cr.getCategory());
+
+        MediaClassificationResponse response = new MediaClassificationResponse();
+        response.setMediaId(cr.getMediaId());
+        response.setSuggestedTags(List.of(label));
+        response.setConfidence(cr.getConfidence());
+        response.setClassifiedAt(cr.getClassifiedAt().toString());
+        return response;
     }
 }

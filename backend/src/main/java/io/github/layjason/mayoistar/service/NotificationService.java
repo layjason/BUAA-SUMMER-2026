@@ -1,5 +1,6 @@
 package io.github.layjason.mayoistar.service;
 
+import io.github.layjason.mayoistar.api.ai.AiDtos;
 import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import java.util.List;
@@ -61,4 +62,17 @@ public interface NotificationService {
      * @param request 已创建的好友申请
      */
     void notifyFriendRequestCreated(SocialDtos.FriendRequest request);
+
+    /**
+     * 通知图片分类任务完成事件（成功或失败）。
+     *
+     * <p>前置条件：分类任务已在 ClipTaskResultStore 中标记为最终状态，
+     * 且分类结果已写入 ai_classification_results 表。
+     *
+     * <p>后置条件：目标用户通过 /queue/ai-events 收到实时通知。
+     *
+     * @param event  分类完成事件
+     * @param userId 目标用户 ID
+     */
+    void notifyImageClassificationCompleted(AiDtos.ImageClassificationCompletedEvent event, String userId);
 }
