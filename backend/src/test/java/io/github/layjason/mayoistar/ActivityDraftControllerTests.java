@@ -8,6 +8,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
 import io.github.layjason.mayoistar.config.TestStorageConfiguration;
+import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
+import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityTemplate;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
@@ -164,6 +167,33 @@ class ActivityDraftControllerTests {
     }
 
     @Test
+    void cloneActivityShouldReturnDraftForOrganizer() throws Exception {
+        saveUser("user-a");
+        Activity source = saveSubmittedActivity("user-a", "原活动");
+
+        mockMvc.perform(post("/activities/{activityId}/clone", source.getActivityId())
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.activityId").isNotEmpty())
+                .andExpect(jsonPath("$.data.title").value("原活动"))
+                .andExpect(jsonPath("$.data.reviewStatus").value("draft"));
+    }
+
+    @Test
+    void cloneActivityShouldRejectNonOrganizer() throws Exception {
+        saveUser("user-a");
+        saveUser("user-b");
+        Activity source = saveSubmittedActivity("user-a", "原活动");
+
+        mockMvc.perform(post("/activities/{activityId}/clone", source.getActivityId())
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-b")
+                                .roles("personal")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(20003));
+    }
+
+    @Test
     void updateDraftShouldRefreshTitle() throws Exception {
         saveUser("user-a");
         String responseBody = mockMvc.perform(post("/activities/drafts")
@@ -269,6 +299,32 @@ class ActivityDraftControllerTests {
                 .storagePath("/tmp/" + mediaId)
                 .uploadedBy(userId)
                 .uploadedAt(Instant.now())
+                .build());
+    }
+
+    private Activity saveSubmittedActivity(String organizerId, String title) {
+        return activityRepository.save(Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizerId)
+                .title(title)
+                .tags(List.of("社交", "桌游"))
+                .introduction("原活动简介")
+                .startAt(Instant.parse("2026-07-02T10:00:00Z"))
+                .endAt(Instant.parse("2026-07-02T12:00:00Z"))
+                .pointLon(116.397)
+                .pointLat(39.907)
+                .city("北京")
+                .address("海淀区某街道")
+                .placeName("活动中心")
+                .safetyNotice("原活动安全须知")
+                .capacity(8)
+                .registrationDeadline(Instant.parse("2026-07-01T12:00:00Z"))
+                .reviewStatus(ActivityReviewStatus.approved)
+                .runtimeStatus(ActivityRuntimeStatus.ended)
+                .manualReviewRequired(false)
+                .requireLocationCheck(false)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
                 .build());
     }
 

@@ -2,6 +2,10 @@ package io.github.layjason.mayoistar;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
@@ -9,6 +13,7 @@ import io.github.layjason.mayoistar.config.TestContentReviewConfiguration;
 import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
 import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityImage;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityTemplate;
@@ -30,6 +35,8 @@ import io.github.layjason.mayoistar.repository.activities.ActivityTemplateReposi
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
 import io.github.layjason.mayoistar.service.ai.ContentReviewRisk;
 import io.github.layjason.mayoistar.service.ai.ContentReviewScanResult;
+import io.github.layjason.mayoistar.service.storage.FileStorageService;
+import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -64,6 +71,9 @@ class ActivityDraftServiceTests {
 
     @Autowired
     private MediaFileRepository mediaFileRepository;
+
+    @Autowired
+    private FileStorageService fileStorageService;
 
     @Autowired
     private TeamRepository teamRepository;
@@ -229,6 +239,53 @@ class ActivityDraftServiceTests {
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
                 .isEqualTo(20001);
+    }
+
+    @Test
+    void cloneActivityShouldCopyActivityFieldsAndImagesAsDraft() {
+        User organizer = saveUser("user-a");
+        MediaFile sourceImage = saveMediaFile(IMAGE_A_ID, organizer.getUserId());
+        Activity source = saveSubmittedActivity(organizer.getUserId(), "原活动");
+        saveActivityImage(source.getActivityId(), sourceImage.getMediaId(), 0);
+        when(fileStorageService.retrieve(sourceImage.getStoragePath()))
+                .thenReturn(new ByteArrayInputStream(new byte[] {1}));
+        when(fileStorageService.store(anyString(), any(), anyString(), anyLong()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ActivityDtos.ActivityDraftDetail cloned =
+                activityDraftService.cloneActivity(organizer.getUserId(), source.getActivityId());
+
+        Activity savedClone =
+                activityRepository.findById(cloned.getActivityId()).orElseThrow();
+        assertThat(savedClone.getActivityId()).isNotEqualTo(source.getActivityId());
+        assertThat(savedClone.getReviewStatus()).isEqualTo(ActivityReviewStatus.draft);
+        assertThat(savedClone.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.notStarted);
+        assertThat(savedClone.getTitle()).isEqualTo(source.getTitle());
+        assertThat(savedClone.getTags()).containsExactlyElementsOf(source.getTags());
+        assertThat(savedClone.getRequireLocationCheck()).isEqualTo(source.getRequireLocationCheck());
+        assertThat(cloned.getImages()).hasSize(1);
+        assertThat(cloned.getImages().getFirst().getMediaId()).isNotEqualTo(sourceImage.getMediaId());
+
+        MediaFile clonedImage = mediaFileRepository
+                .findById(cloned.getImages().getFirst().getMediaId())
+                .orElseThrow();
+        assertThat(clonedImage.getUploadedBy()).isEqualTo(organizer.getUserId());
+        assertThat(clonedImage.getAccessPolicy()).isEqualTo(MediaAccessPolicy.activityOwner);
+        assertThat(clonedImage.getAccessScopeId()).isEqualTo(savedClone.getActivityId());
+        assertThat(activityImageRepository.findByActivityIdOrderBySortOrderAsc(source.getActivityId()))
+                .hasSize(1);
+    }
+
+    @Test
+    void cloneActivityShouldRejectNonOrganizer() {
+        saveUser("user-a");
+        saveUser("user-b");
+        Activity source = saveSubmittedActivity("user-a", "原活动");
+
+        assertThatThrownBy(() -> activityDraftService.cloneActivity("user-b", source.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(20003);
     }
 
     @Test
@@ -519,6 +576,43 @@ class ActivityDraftServiceTests {
                 .storagePath("/tmp/" + mediaId)
                 .uploadedBy(userId)
                 .uploadedAt(Instant.now())
+                .build());
+    }
+
+    private Activity saveSubmittedActivity(String organizerId, String title) {
+        return activityRepository.save(Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizerId)
+                .title(title)
+                .tags(List.of("社交", "桌游"))
+                .introduction("原活动简介")
+                .startAt(Instant.parse("2026-07-02T10:00:00Z"))
+                .endAt(Instant.parse("2026-07-02T12:00:00Z"))
+                .pointLon(116.397)
+                .pointLat(39.907)
+                .city("北京")
+                .address("海淀区某街道")
+                .placeName("活动中心")
+                .safetyNotice("原活动安全须知")
+                .capacity(8)
+                .feeDescription("AA")
+                .minAge(18)
+                .registrationDeadline(Instant.parse("2026-07-01T12:00:00Z"))
+                .reviewStatus(ActivityReviewStatus.approved)
+                .runtimeStatus(ActivityRuntimeStatus.ended)
+                .requireLocationCheck(true)
+                .manualReviewRequired(false)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build());
+    }
+
+    private ActivityImage saveActivityImage(String activityId, UUID mediaId, int sortOrder) {
+        return activityImageRepository.save(ActivityImage.builder()
+                .imageId(UUID.randomUUID().toString())
+                .activityId(activityId)
+                .mediaId(mediaId)
+                .sortOrder(sortOrder)
                 .build());
     }
 

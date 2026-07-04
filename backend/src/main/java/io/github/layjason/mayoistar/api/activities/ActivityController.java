@@ -235,7 +235,8 @@ public class ActivityController {
     @PostMapping("/{activityId}/clone")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> cloneActivity(
             @PathVariable String activityId) {
-        return responseFactory.activityDraftDetail();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.cloneActivity(userId, activityId)));
     }
 
     @GetMapping("/{activityId}/participants")
