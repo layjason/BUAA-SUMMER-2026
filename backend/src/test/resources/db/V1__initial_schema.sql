@@ -692,6 +692,14 @@ CREATE INDEX idx_team_media_files_team  ON team_media_files (team_id);
 CREATE INDEX idx_team_media_files_media ON team_media_files (media_id);
 CREATE UNIQUE INDEX uq_team_media_files_pair ON team_media_files (team_id, media_id);
 
+ALTER TABLE team_media_files
+    ADD CONSTRAINT fk_team_media_files_team
+        FOREIGN KEY (team_id) REFERENCES teams (team_id) ON DELETE CASCADE;
+
+ALTER TABLE team_media_files
+    ADD CONSTRAINT fk_team_media_files_media
+        FOREIGN KEY (media_id) REFERENCES media_files (media_id) ON DELETE CASCADE;
+
 COMMENT ON TABLE team_media_files IS '小队与媒体文件的关联，记录小队拥有的群文件和相册图片，解耦 media_files 表与小队业务。';
 
 COMMENT ON COLUMN team_media_files.id IS '关联记录唯一标识，UUID 格式';
