@@ -12,7 +12,7 @@ import { BusinessError } from '@/api'
 import { cloneActivity, getMyActivities, type ActivitySummary } from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
-import { reviewStatusText, runtimeStatusText } from '@/utils/status'
+import { runtimeStatusText } from '@/utils/status'
 
 const loading = ref(true)
 const actioningId = ref('')
@@ -121,6 +121,23 @@ function formatLocation(activity: ActivitySummary): string {
   return [activity.location.city, place].filter(Boolean).join(' · ')
 }
 
+/**
+ * 获取克隆来源活动封面图。
+ *
+ * 前置条件：activity 来自我的活动列表。
+ * 后置条件：优先使用接口返回的封面图，无封面时使用稳定的活动图片兜底。
+ * 不变量：只生成展示 URL，不修改活动数据。
+ *
+ * @param activity 活动列表项
+ * @returns 图片地址
+ */
+function getActivityCoverUrl(activity: ActivitySummary): string {
+  return (
+    activity.coverImage?.signedUrl ||
+    `https://picsum.photos/seed/activity${activity.activityId}/400/225`
+  )
+}
+
 onLoad(() => {
   void loadActivities()
 })
@@ -151,15 +168,7 @@ onLoad(() => {
             hover-class="card-hover"
             @click="cloneExistingActivity(activity)"
           >
-            <image
-              v-if="activity.coverImage?.signedUrl"
-              class="activity-cover"
-              :src="activity.coverImage.signedUrl"
-              mode="aspectFill"
-            />
-            <view v-else class="activity-cover cover-placeholder">
-              <text class="cover-text">{{ activity.title.slice(0, 1) }}</text>
-            </view>
+            <image class="activity-cover" :src="getActivityCoverUrl(activity)" mode="aspectFill" />
 
             <view class="activity-main">
               <view class="title-row">
@@ -171,9 +180,6 @@ onLoad(() => {
               <text class="meta">{{ formatDate(activity.startAt) }}</text>
               <text class="meta">{{ formatLocation(activity) }}</text>
               <view class="footer-row">
-                <text class="review-tag">{{
-                  reviewStatusText(activity.reviewStatus, translateStatus)
-                }}</text>
                 <text class="clone-action">
                   {{ actioningId === activity.activityId ? '克隆中' : '克隆为草稿' }}
                 </text>
@@ -282,27 +288,11 @@ onLoad(() => {
   background-color: #e8f7f0;
 }
 
-.cover-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cover-text {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 36rpx;
-  background-color: #5ec8a7;
-  color: #fff;
-  font-size: 34rpx;
-  font-weight: 700;
-  line-height: 72rpx;
-  text-align: center;
-}
-
 .activity-main {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .title-row,
@@ -324,8 +314,7 @@ onLoad(() => {
   white-space: nowrap;
 }
 
-.runtime-tag,
-.review-tag {
+.runtime-tag {
   flex-shrink: 0;
   padding: 4rpx 12rpx;
   border-radius: 999rpx;
@@ -346,7 +335,8 @@ onLoad(() => {
 }
 
 .footer-row {
-  margin-top: 18rpx;
+  margin-top: auto;
+  justify-content: flex-end;
 }
 
 .clone-action {
