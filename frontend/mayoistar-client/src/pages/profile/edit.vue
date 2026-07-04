@@ -99,8 +99,8 @@
                 {{ t('editProfile.qualificationStatus') }}:
                 {{ qualificationStatusText }}
               </text>
-              <text v-if="qualification.rejectReason" class="qualification-reject">
-                {{ t('editProfile.rejectReason') }}: {{ qualification.rejectReason }}
+              <text v-if="qualificationRejectReason" class="qualification-reject">
+                {{ t('editProfile.rejectReason') }}: {{ qualificationRejectReason }}
               </text>
             </view>
             <view v-if="canSubmitQualification" class="qualification-upload">
@@ -246,6 +246,11 @@ const qualificationStatusText = computed(() => {
     rejected: t('editProfile.qualStatusRejected'),
   }
   return map[status] ?? status
+})
+
+/** 商家资质驳回原因，空字符串表示当前无可展示原因 */
+const qualificationRejectReason = computed(() => {
+  return qualification.value?.rejectReason ?? ''
 })
 
 // ================= 性别选项 =================
