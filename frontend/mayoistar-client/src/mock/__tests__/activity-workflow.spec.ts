@@ -349,9 +349,7 @@ describe('活动 mock workflow 契约对齐', () => {
     })
     expect(getActivityDetail(25)).toMatchObject({
       reviewStatus: 'rejected',
-      reviewRecords: expect.arrayContaining([
-        expect.objectContaining({ result: 'rejected' }),
-      ]),
+      reviewRecords: expect.arrayContaining([expect.objectContaining({ result: 'rejected' })]),
     })
     expect(getActivityDetail(26)).toMatchObject({
       reviewStatus: 'changeRequired',

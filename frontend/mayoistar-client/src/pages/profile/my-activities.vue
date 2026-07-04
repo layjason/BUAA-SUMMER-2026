@@ -285,7 +285,9 @@ function getUnpublishedActionText(item: UnpublishedActivityItem): string {
  */
 function getUnpublishedTimeText(item: UnpublishedActivityItem): string {
   if (item.source === 'draft') return `更新于 ${formatDate(item.updatedAt)}`
-  return item.startAt ? `活动时间 ${formatDate(item.startAt)}` : `创建于 ${formatDate(item.createdAt)}`
+  return item.startAt
+    ? `活动时间 ${formatDate(item.startAt)}`
+    : `创建于 ${formatDate(item.createdAt)}`
 }
 
 /**
@@ -392,9 +394,7 @@ onShow(() => {
             <text class="meta">{{ getUnpublishedTimeText(item) }}</text>
           </view>
           <view class="card-row">
-            <text class="meta">{{
-              item.source === 'draft' ? '草稿箱' : '审核流程'
-            }}</text>
+            <text class="meta">{{ item.source === 'draft' ? '草稿箱' : '审核流程' }}</text>
             <text class="edit-action">{{ getUnpublishedActionText(item) }}</text>
           </view>
         </view>

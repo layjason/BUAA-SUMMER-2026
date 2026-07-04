@@ -145,8 +145,7 @@ const filteredItems = computed(() => {
   if (statusFilter.value === 'waiting') {
     return items.value.filter(
       (item) =>
-        item.registrationStatus === 'waiting' ||
-        item.registrationStatus === 'waitingConfirmation',
+        item.registrationStatus === 'waiting' || item.registrationStatus === 'waitingConfirmation',
     )
   }
   return items.value.filter((item) => item.registrationStatus === statusFilter.value)
@@ -167,8 +166,7 @@ const waitingCount = computed(
   () =>
     items.value.filter(
       (item) =>
-        item.registrationStatus === 'waiting' ||
-        item.registrationStatus === 'waitingConfirmation',
+        item.registrationStatus === 'waiting' || item.registrationStatus === 'waitingConfirmation',
     ).length,
 )
 
