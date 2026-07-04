@@ -201,6 +201,9 @@ public final class ErrorCodes {
     /** 同名群文件已存在 */
     public static final int TEAM_FILE_DUPLICATE = 50015;
 
+    /** 成员积分不足以扣减 */
+    public static final int TEAM_POINTS_INSUFFICIENT = 50016;
+
     /** 调用方缺少小队媒体管理权限 */
     public static final int TEAM_MEDIA_PERMISSION_DENIED = 50014;
 
