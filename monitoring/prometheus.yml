@@ -1,0 +1,51 @@
+# Prometheus 监控配置 - 迷星群聚 (MayoiStar)
+#
+# 启动方式: docker run -d -p 9090:9090 -v ./prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
+# 或在 docker-compose 中添加 prometheus 服务
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Java 后端 Actuator 指标（需引入 spring-boot-starter-actuator + micrometer-registry-prometheus）
+  - job_name: "mayoistar-backend"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets:
+          - "java-server:8080"
+        labels:
+          component: "backend"
+
+  # Python CLIP 服务指标（由 metrics.py 暴露，FastAPI /metrics 端点）
+  - job_name: "clip-service-gpu"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+          - "gpu-machine-1:8000"
+          - "gpu-machine-2:8000"
+          - "gpu-machine-3:8000"
+        labels:
+          component: "clip-gpu"
+
+  # NVIDIA DCGM Exporter（每台 GPU 机器需安装）
+  # https://github.com/NVIDIA/dcgm-exporter
+  - job_name: "nvidia-dcgm"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+          - "gpu-machine-1:9400"
+          - "gpu-machine-2:9400"
+          - "gpu-machine-3:9400"
+        labels:
+          component: "gpu-hardware"
+
+  # Kafka JMX Exporter
+  # 需要修改 Kafka broker 启动参数或使用 JMX exporter agent
+  - job_name: "kafka-jmx"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+          - "java-server:5556"
+        labels:
+          component: "kafka-broker"

@@ -206,6 +206,14 @@ namespace QujuApi.Errors.Ai {
   @doc("30003：图片媒体文件不存在或不支持 AI 分类。")
   model ImageMediaUnavailable
     extends APIErrorResponse<30003, "Image media is unavailable"> {}
+
+  @doc("30004：分类任务不存在或已过期（含 mediaId 未分类时）。")
+  model AiTaskNotFound
+    extends APIErrorResponse<30004, "Classification task not found"> {}
+
+  @doc("30005：分类任务超时，GPU 服务在 30 秒内未响应。")
+  model AiTaskTimeout
+    extends APIErrorResponse<30005, "Classification task timed out"> {}
 }
 
 namespace QujuApi.Errors.Social {
