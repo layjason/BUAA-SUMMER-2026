@@ -7,9 +7,12 @@ describe('商家资料资质提交 UI', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
 
     expect(source).toContain('submitMerchantQualification')
+    expect(source).toContain('uploadMerchantLicense')
     expect(source).toContain('chooseLicenseImages')
     expect(source).toContain('canSubmitQualification')
     expect(source).toContain('licenseMediaIds')
     expect(source).toContain('qualificationStatusText')
+    expect(source).toContain('profile.qualification?.status ?? profile.qualificationStatus')
+    expect(source).not.toContain('v-if="isMerchant && qualification"')
   })
 })

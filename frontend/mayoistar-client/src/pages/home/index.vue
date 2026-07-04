@@ -1,14 +1,19 @@
 <template>
   <view class="page">
-    <view class="tab-bar">
-      <view
-        v-for="tab in tabs"
-        :key="tab.key"
-        class="tab"
-        :class="{ active: activeTab === tab.key }"
-        @click="switchTab(tab.key)"
-      >
-        <text>{{ tab.label }}</text>
+    <view class="top-bar">
+      <view class="tab-bar">
+        <view
+          v-for="tab in tabs"
+          :key="tab.key"
+          class="tab"
+          :class="{ active: activeTab === tab.key }"
+          @click="switchTab(tab.key)"
+        >
+          <text>{{ tab.label }}</text>
+        </view>
+      </view>
+      <view class="filter-entry" @click="goSearch">
+        <text>筛选</text>
       </view>
     </view>
 
@@ -39,9 +44,9 @@
         >
           <view class="card-inner">
             <image
-              v-if="item.coverImage?.url"
+              v-if="getCoverUrl(item)"
               class="card-cover"
-              :src="item.coverImage.url"
+              :src="getCoverUrl(item)"
               mode="aspectFill"
             />
             <view v-else class="card-cover card-cover-placeholder">
@@ -108,9 +113,10 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
-import { getFeed } from '@/api/modules/activities'
+import { getFeed, type FeedActivitiesParams } from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
+import { getCurrentLocation } from '@/utils/location'
 import { runtimeStatusText } from '@/utils/status'
 
 const { t } = useI18n()
@@ -133,7 +139,8 @@ const loadError = ref(false)
 const noMoreData = ref(false)
 const currentPage = ref(1)
 const pageSize = 10
-const defaultNearbyLocation = { longitude: 116.46, latitude: 39.908, distanceMeters: 10000 }
+const nearbyFallbackLocation = { longitude: 116.46, latitude: 39.908, distanceMeters: 10000 }
+const nearbyLocation = ref<typeof nearbyFallbackLocation | null>(null)
 
 interface ActivityItem {
   activityId: string
@@ -147,7 +154,7 @@ interface ActivityItem {
     placeName: string | null
     point: { longitude: number; latitude: number }
   }
-  coverImage: { url: string; mediaId: string } | null
+  coverImage: { signedUrl?: string; url?: string; mediaId: string } | null
   feeAmount?: number | null
   capacity: number
   registeredCount: number
@@ -159,6 +166,28 @@ function getStatusText(status: string): string {
   return runtimeStatusText(status, t)
 }
 
+/** 获取活动封面可展示地址 */
+function getCoverUrl(item: ActivityItem): string {
+  return item.coverImage?.signedUrl ?? item.coverImage?.url ?? ''
+}
+
+/** 确保附近 Tab 使用真实定位参数
+ *
+ * 前置条件：用户正在请求附近信息流。
+ * 后置条件：nearbyLocation 保存真实定位；定位失败时保存演示 fallback 坐标。
+ * 副作用：可能触发定位授权弹窗，失败时展示轻提示。
+ */
+async function ensureNearbyLocation(): Promise<void> {
+  if (nearbyLocation.value) return
+  const location = await getCurrentLocation()
+  if (location) {
+    nearbyLocation.value = { ...location, distanceMeters: 10000 }
+    return
+  }
+  nearbyLocation.value = nearbyFallbackLocation
+  uni.showToast({ title: '无法获取当前位置，已使用默认位置展示附近活动', icon: 'none' })
+}
+
 /** 构建信息流查询参数
  *
  * 前置条件：activeTab 已表示当前首页 Tab。
@@ -168,10 +197,10 @@ function getStatusText(status: string): string {
  * @param page 要加载的页码
  * @returns 首页 Feed 查询参数
  */
-function buildFeedParams(page: number) {
+function buildFeedParams(page: number): FeedActivitiesParams {
   const base = { page, pageSize }
   if (activeTab.value !== 'nearby') return base
-  return { ...base, ...defaultNearbyLocation }
+  return { ...base, ...(nearbyLocation.value ?? nearbyFallbackLocation) }
 }
 
 async function loadFeed(): Promise<void> {
@@ -180,6 +209,7 @@ async function loadFeed(): Promise<void> {
   noMoreData.value = false
   currentPage.value = 1
   try {
+    if (activeTab.value === 'nearby') await ensureNearbyLocation()
     const result = await getFeed(activeTab.value, buildFeedParams(1))
     items.value = (result.items ?? []) as ActivityItem[]
     noMoreData.value = (result.totalPages ?? 1) <= 1
@@ -200,6 +230,7 @@ async function onRefresh(): Promise<void> {
   noMoreData.value = false
   currentPage.value = 1
   try {
+    if (activeTab.value === 'nearby') await ensureNearbyLocation()
     const result = await getFeed(activeTab.value, buildFeedParams(1))
     items.value = (result.items ?? []) as ActivityItem[]
     noMoreData.value = (result.totalPages ?? 1) <= 1
@@ -216,6 +247,7 @@ async function loadMore(): Promise<void> {
   loadError.value = false
   const nextPage = currentPage.value + 1
   try {
+    if (activeTab.value === 'nearby') await ensureNearbyLocation()
     const result = await getFeed(activeTab.value, buildFeedParams(nextPage))
     const newItems = (result.items ?? []) as ActivityItem[]
     if (newItems.length === 0) {
@@ -250,6 +282,10 @@ function goDetail(activityId: string): void {
 function goCreate(): void {
   uni.navigateTo({ url: '/pages/activity/templates' })
 }
+
+function goSearch(): void {
+  uni.navigateTo({ url: '/pages/discover/search' })
+}
 </script>
 
 <style scoped>
@@ -261,12 +297,18 @@ function goCreate(): void {
   overflow: hidden;
 }
 
-.tab-bar {
+.top-bar {
   display: flex;
   background-color: #fff;
-  padding: 0 32rpx;
   border-bottom: 1rpx solid #ebedf0;
   flex-shrink: 0;
+  align-items: center;
+}
+
+.tab-bar {
+  flex: 1;
+  display: flex;
+  padding-left: 32rpx;
 }
 
 .tab {
@@ -282,6 +324,12 @@ function goCreate(): void {
   color: #5ec8a7;
   border-bottom-color: #5ec8a7;
   font-weight: 600;
+}
+
+.filter-entry {
+  padding: 0 32rpx;
+  font-size: 26rpx;
+  color: #5ec8a7;
 }
 
 .scroll-area {

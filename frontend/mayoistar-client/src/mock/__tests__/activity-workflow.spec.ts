@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetMockDb } from '@/mock/database'
+import { handleMockRequest } from '@/mock/mockServer'
 import {
   cancelRegistration,
   checkIn,
@@ -222,6 +223,20 @@ describe('活动 mock workflow 契约对齐', () => {
     expect(after.qualification).toMatchObject({
       status: 'pending',
       licenseImageUrls: expect.arrayContaining([expect.stringContaining('media_license_1')]),
+    })
+  })
+
+  it('商家营业凭证上传应使用专用媒体用途', async () => {
+    const response = await handleMockRequest('POST', '/identity/media/license', {
+      filePath: '/tmp/license.jpg',
+    })
+
+    expect(response).toMatchObject({
+      code: 200,
+      data: {
+        usage: 'merchantLicense',
+        signedUrl: expect.stringContaining('https://picsum.photos/seed/'),
+      },
     })
   })
 })

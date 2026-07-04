@@ -19,10 +19,15 @@
             circular
           >
             <swiper-item v-for="img in activity.images" :key="img.mediaId">
-              <image class="swiper-image" :src="img.url" mode="aspectFill" />
+              <image class="swiper-image" :src="getMediaUrl(img)" mode="aspectFill" />
             </swiper-item>
           </swiper>
-          <image v-else class="single-image" :src="activity.images[0].url" mode="aspectFill" />
+          <image
+            v-else
+            class="single-image"
+            :src="getMediaUrl(activity.images[0])"
+            mode="aspectFill"
+          />
         </view>
         <view v-else class="image-placeholder">
           <text class="placeholder-icon">📷</text>
@@ -213,6 +218,7 @@ import {
   type ActivityReviewListItem,
   type ActivitySummaryPost,
   type RegistrationResult,
+  type MediaFile,
 } from '@/api/modules/activities'
 import {
   registerForActivity,
@@ -244,6 +250,11 @@ const hasReviewed = ref(false)
 
 function getRuntimeStatusText(status: string): string {
   return runtimeStatusText(status, t)
+}
+
+/** 获取媒体文件可展示地址 */
+function getMediaUrl(media: MediaFile): string {
+  return media.signedUrl ?? media.url ?? ''
 }
 
 /**

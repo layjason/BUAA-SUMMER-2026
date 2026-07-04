@@ -10,5 +10,8 @@ describe('活动总结 AI 分类人工确认 UI', () => {
     expect(source).toContain('toggleConfirmedImageTag')
     expect(source).toContain('isImageTagConfirmed')
     expect(source).toContain('confirmedImageTags')
+    expect(source).toContain('confirmedEmptyImageIds')
+    expect(source).toContain('confirmImageAsEmpty')
+    expect(source).toContain('isImageTagSelectionConfirmed')
   })
 })

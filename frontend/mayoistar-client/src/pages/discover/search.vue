@@ -10,11 +10,13 @@
 import { ref } from 'vue'
 import { searchActivities } from '@/api/modules/activities'
 import { formatDate } from '@/utils/date'
+import { getCurrentLocation } from '@/utils/location'
 import {
   buildSearchActivitiesQuery,
   hasSearchFilters,
   type ActivityTypeFilter,
   type CityFilter,
+  type DistanceFilter,
   type FeeFilter,
   type SearchFilterSelection,
   type TimeFilter,
@@ -32,7 +34,7 @@ interface SearchResultItem {
     address: string
     placeName: string | null
   }
-  coverImage: { url: string; mediaId: string } | null
+  coverImage: { signedUrl?: string; url?: string; mediaId: string } | null
   feeAmount?: number | null
   capacity: number
   registeredCount: number
@@ -51,6 +53,12 @@ const TIME_OPTIONS: { value: TimeFilter; label: string }[] = [
   { value: 'week', label: '本周' },
   { value: 'month', label: '本月' },
 ]
+const DISTANCE_OPTIONS: { value: DistanceFilter; label: string }[] = [
+  { value: 1000, label: '1km' },
+  { value: 3000, label: '3km' },
+  { value: 5000, label: '5km' },
+  { value: 10000, label: '10km' },
+]
 
 const keyword = ref('')
 const searchResults = ref<SearchResultItem[]>([])
@@ -58,20 +66,24 @@ const isSearching = ref(false)
 const hasSearched = ref(false)
 const totalCount = ref(0)
 
-const selectedType = ref<ActivityTypeFilter | null>(null)
+const selectedTypes = ref<ActivityTypeFilter[]>([])
 const selectedCity = ref<CityFilter | null>(null)
 const selectedFee = ref<FeeFilter | null>(null)
 const selectedTime = ref<TimeFilter | null>(null)
+const selectedDistance = ref<DistanceFilter | null>(null)
+const currentLocation = ref<{ longitude: number; latitude: number } | null>(null)
 
 /**
  * 获取当前筛选选择
  */
 function getFilterSelection(): SearchFilterSelection {
   return {
-    activityType: selectedType.value,
+    activityTypes: selectedTypes.value,
     city: selectedCity.value,
     fee: selectedFee.value,
     time: selectedTime.value,
+    distanceMeters: selectedDistance.value,
+    location: currentLocation.value,
   }
 }
 
@@ -85,7 +97,9 @@ function refreshSearchIfNeeded(): void {
 }
 
 function toggleTypeFilter(type: ActivityTypeFilter): void {
-  selectedType.value = selectedType.value === type ? null : type
+  selectedTypes.value = selectedTypes.value.includes(type)
+    ? selectedTypes.value.filter((item) => item !== type)
+    : [...selectedTypes.value, type]
   refreshSearchIfNeeded()
 }
 
@@ -101,6 +115,34 @@ function toggleFeeFilter(fee: FeeFilter): void {
 
 function toggleTimeFilter(time: TimeFilter): void {
   selectedTime.value = selectedTime.value === time ? null : time
+  refreshSearchIfNeeded()
+}
+
+/** 切换距离范围筛选
+ *
+ * 前置条件：distance 为页面预设的距离半径。
+ * 后置条件：选中距离时优先获取当前位置，定位失败则取消距离筛选。
+ * 副作用：可能触发系统定位授权弹窗，并在失败时展示 toast。
+ *
+ * @param distance 距离筛选半径，单位米
+ */
+async function toggleDistanceFilter(distance: DistanceFilter): Promise<void> {
+  if (selectedDistance.value === distance) {
+    selectedDistance.value = null
+    refreshSearchIfNeeded()
+    return
+  }
+
+  const location = await getCurrentLocation()
+  if (!location) {
+    selectedDistance.value = null
+    currentLocation.value = null
+    uni.showToast({ title: '无法获取当前位置，已取消距离筛选', icon: 'none' })
+    return
+  }
+
+  currentLocation.value = location
+  selectedDistance.value = distance
   refreshSearchIfNeeded()
 }
 
@@ -154,6 +196,11 @@ function getStatusText(status: string): string {
 function displayOccupiedCount(item: SearchResultItem): number {
   return item.occupiedCount ?? item.registeredCount
 }
+
+/** 获取活动封面可展示地址 */
+function getCoverUrl(item: SearchResultItem): string {
+  return item.coverImage?.signedUrl ?? item.coverImage?.url ?? ''
+}
 </script>
 
 <template>
@@ -182,7 +229,7 @@ function displayOccupiedCount(item: SearchResultItem): number {
             v-for="type in TYPE_OPTIONS"
             :key="type"
             class="filter-chip"
-            :class="{ active: selectedType === type }"
+            :class="{ active: selectedTypes.includes(type) }"
             @tap="toggleTypeFilter(type)"
           >
             {{ type }}
@@ -234,6 +281,21 @@ function displayOccupiedCount(item: SearchResultItem): number {
           </text>
         </view>
       </view>
+
+      <view class="filter-group">
+        <text class="filter-label">距离</text>
+        <view class="filter-chips">
+          <text
+            v-for="distance in DISTANCE_OPTIONS"
+            :key="distance.value"
+            class="filter-chip"
+            :class="{ active: selectedDistance === distance.value }"
+            @tap="toggleDistanceFilter(distance.value)"
+          >
+            {{ distance.label }}
+          </text>
+        </view>
+      </view>
     </view>
 
     <!-- 搜索提示（未搜索时） -->
@@ -266,8 +328,8 @@ function displayOccupiedCount(item: SearchResultItem): number {
         @tap="goDetail(item.activityId)"
       >
         <view class="result-card-inner">
-          <view v-if="item.coverImage?.url" class="result-cover">
-            <image :src="item.coverImage.url" mode="aspectFill" class="cover-img" />
+          <view v-if="getCoverUrl(item)" class="result-cover">
+            <image :src="getCoverUrl(item)" mode="aspectFill" class="cover-img" />
           </view>
           <view v-else class="result-cover result-cover-placeholder">
             <text class="placeholder-icon">📌</text>

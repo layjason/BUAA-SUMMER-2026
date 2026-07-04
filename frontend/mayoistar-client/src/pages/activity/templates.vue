@@ -20,9 +20,9 @@
               @click="selectTemplate(tpl)"
             >
               <image
-                v-if="tpl.defaultCoverImage?.url"
+                v-if="getTemplateCoverUrl(tpl)"
                 class="card-cover"
-                :src="tpl.defaultCoverImage.url"
+                :src="getTemplateCoverUrl(tpl)"
                 mode="aspectFill"
               />
               <view v-else class="card-cover card-cover-placeholder">
@@ -112,6 +112,11 @@ const myActivities = ref<ActivitySummary[]>([])
 
 function getStatusText(status: string): string {
   return getRuntimeStatusText(status, t)
+}
+
+/** 获取模板封面可展示地址 */
+function getTemplateCoverUrl(tpl: ActivityTemplate): string {
+  return tpl.defaultCoverImage?.signedUrl ?? tpl.defaultCoverImage?.url ?? ''
 }
 
 async function loadTemplates(): Promise<void> {

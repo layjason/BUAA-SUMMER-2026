@@ -48,6 +48,20 @@
           </view>
         </view>
 
+        <view v-if="unclassifiedImageIds.length > 0" class="form-item">
+          <text class="label">未识别图片确认</text>
+          <view v-for="mediaId in unclassifiedImageIds" :key="mediaId" class="classification-row">
+            <text class="classification-media">{{ mediaId.slice(0, 8) + '...' }}</text>
+            <text
+              class="tag-chip"
+              :class="{ 'tag-chip--active': isImageConfirmedAsEmpty(mediaId) }"
+              @click="confirmImageAsEmpty(mediaId)"
+            >
+              确认为无标签
+            </text>
+          </view>
+        </view>
+
         <!-- 总结标题 -->
         <view class="form-item">
           <text class="label">{{ t('activitySummary.summaryTitle') }}</text>
@@ -90,7 +104,7 @@
  * 前置条件：用户已登录且为活动发起人，activityId 通过 query 传入
  * 后置条件：提交成功后返回上一页
  */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
@@ -116,6 +130,17 @@ const formError = ref('')
 // AI 图片分类结果：mediaId -> tags
 const imageClassifications = ref<Map<string, string[]>>(new Map())
 const confirmedImageTagMap = ref<Map<string, Set<string>>>(new Map())
+const confirmedEmptyImageIds = ref<Set<string>>(new Set())
+
+/** 尚未获得 AI 标签的图片标识 */
+const unclassifiedImageIds = computed(() =>
+  imageIds.value.filter((id) => !imageClassifications.value.has(id)),
+)
+
+/** 获取媒体文件可展示地址 */
+function getMediaUrl(media: { signedUrl?: string; url?: string }): string {
+  return media.signedUrl ?? media.url ?? ''
+}
 
 /**
  * 添加图片并调用 AI 分类
@@ -133,7 +158,7 @@ async function handleAddImage(): Promise<void> {
       const newMediaIds: string[] = []
       for (const r of results) {
         const mediaId = r.mediaId
-        const url = r.url
+        const url = getMediaUrl(r)
         if (!mediaId) continue
         imageIds.value.push(mediaId)
         imagePreviews.value.push(url || '')
@@ -170,6 +195,9 @@ function removeImage(index: number): void {
   imagePreviews.value.splice(index, 1)
   imageClassifications.value.delete(removedId)
   confirmedImageTagMap.value.delete(removedId)
+  const nextEmpty = new Set(confirmedEmptyImageIds.value)
+  nextEmpty.delete(removedId)
+  confirmedEmptyImageIds.value = nextEmpty
 }
 
 /** 判断图片标签是否已被人工确认
@@ -201,6 +229,38 @@ function toggleConfirmedImageTag(mediaId: string, tag: string): void {
   }
   next.set(mediaId, tags)
   confirmedImageTagMap.value = next
+
+  const nextEmpty = new Set(confirmedEmptyImageIds.value)
+  nextEmpty.delete(mediaId)
+  confirmedEmptyImageIds.value = nextEmpty
+}
+
+/** 判断图片是否已人工确认为无标签 */
+function isImageConfirmedAsEmpty(mediaId: string): boolean {
+  return confirmedEmptyImageIds.value.has(mediaId)
+}
+
+/** 将未识别图片确认为无标签
+ *
+ * 前置条件：mediaId 属于当前已上传图片，且未获得 AI 分类标签。
+ * 后置条件：该图片提交时会携带空标签，并被视为已人工确认。
+ * 副作用：更新本地 confirmedEmptyImageIds。
+ *
+ * @param mediaId 图片媒体文件标识
+ */
+function confirmImageAsEmpty(mediaId: string): void {
+  const next = new Set(confirmedEmptyImageIds.value)
+  if (next.has(mediaId)) {
+    next.delete(mediaId)
+  } else {
+    next.add(mediaId)
+  }
+  confirmedEmptyImageIds.value = next
+}
+
+/** 判断图片标签是否已完成人工确认 */
+function isImageTagSelectionConfirmed(mediaId: string): boolean {
+  return confirmedImageTagMap.value.has(mediaId) || confirmedEmptyImageIds.value.has(mediaId)
 }
 
 /**
@@ -216,6 +276,10 @@ async function handleSubmit(): Promise<void> {
   }
   if (!summaryContent.value.trim()) {
     formError.value = t('activitySummary.contentRequired')
+    return
+  }
+  if (imageIds.value.some((id) => !isImageTagSelectionConfirmed(id))) {
+    formError.value = '请先确认每张图片的 AI 分类标签'
     return
   }
   formError.value = ''

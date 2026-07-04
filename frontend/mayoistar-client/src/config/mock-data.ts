@@ -30,7 +30,7 @@ export const mockData: Record<string, MockResponse> = {
     },
   },
 
-  'PUT /identity/me/profile': {
+  'PATCH /identity/me/profile': {
     code: 200,
     message: 'For Super Earth!',
     data: {
@@ -53,7 +53,7 @@ export const mockData: Record<string, MockResponse> = {
     data: {
       userId: '10001',
       avatar: null,
-      merchantNickname: '趣聚咖啡',
+      nickname: '趣聚咖啡',
       merchantName: '趣聚咖啡（北京）有限公司',
       interestedActivityFields: ['美食餐饮', '城市探索'],
       accountStatus: 'active',
@@ -68,13 +68,13 @@ export const mockData: Record<string, MockResponse> = {
     },
   },
 
-  'PUT /identity/me/merchant-profile': {
+  'PATCH /identity/me/merchant-profile': {
     code: 200,
     message: 'For Super Earth!',
     data: {
       userId: '10001',
       avatar: null,
-      merchantNickname: '趣聚咖啡',
+      nickname: '趣聚咖啡',
       merchantName: '趣聚咖啡（北京）有限公司',
       interestedActivityFields: ['美食餐饮', '城市探索'],
       accountStatus: 'active',
@@ -121,12 +121,26 @@ export const mockData: Record<string, MockResponse> = {
     message: 'For Super Earth!',
     data: {
       mediaId: '9001',
-      url: 'https://picsum.photos/200',
+      signedUrl: 'https://picsum.photos/200',
       contentType: 'image/jpeg',
       fileName: 'avatar.jpg',
       sizeBytes: 102400,
       uploadedAt: '2026-07-01T12:00:00Z',
       usage: 'avatar',
+    },
+  },
+
+  'POST /identity/media/license': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      mediaId: 'license-9001',
+      signedUrl: 'https://picsum.photos/400/300?random=license',
+      contentType: 'image/jpeg',
+      fileName: 'merchant-license.jpg',
+      sizeBytes: 204800,
+      uploadedAt: '2026-07-01T12:00:00Z',
+      usage: 'merchantLicense',
     },
   },
 

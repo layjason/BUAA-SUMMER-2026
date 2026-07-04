@@ -91,8 +91,8 @@
             <text v-else class="hint">{{ t('editProfile.loadingTags') }}</text>
           </view>
 
-          <!-- 商家资质（只读） -->
-          <view v-if="isMerchant && qualification" class="form-item">
+          <!-- 商家资质 -->
+          <view v-if="isMerchant" class="form-item">
             <text class="label">{{ t('editProfile.qualification') }}</text>
             <view class="qualification-status">
               <text class="qualification-text">
@@ -105,18 +105,13 @@
             </view>
             <view v-if="canSubmitQualification" class="qualification-upload">
               <view class="license-grid">
-                <view
-                  v-for="(url, index) in licensePreviewUrls"
-                  :key="url"
-                  class="license-preview"
-                  @click="removeLicenseImage(index)"
-                >
+                <view v-for="(url, index) in licensePreviewUrls" :key="url" class="license-preview">
                   <image class="license-image" :src="url" mode="aspectFill" />
-                  <text class="license-remove">×</text>
+                  <text class="license-remove" @click.stop="removeLicenseImage(index)">×</text>
                 </view>
                 <view class="license-add" @click="chooseLicenseImages">
                   <text class="license-add-icon">+</text>
-                  <text class="license-add-text">营业凭证</text>
+                  <text class="license-add-text">营业执照/凭证</text>
                 </view>
               </view>
               <button
@@ -128,7 +123,7 @@
                 提交商家资质审核
               </button>
               <text class="qualification-hint">
-                提交后状态将变为审核中，审核通过后获得商家身份展示。
+                请上传营业执照或营业凭证，提交后状态将变为审核中。
               </text>
             </view>
           </view>
@@ -164,6 +159,7 @@ import {
   updateMerchantProfile,
   updateMyProfile,
   uploadAvatar,
+  uploadMerchantLicense,
 } from '@/api/modules/profile'
 import { getErrorMessage } from '@/utils/error'
 import { FormInput, FormError, SubmitButton } from '@/components'
@@ -234,6 +230,11 @@ const qualification = ref<{
 const licenseMediaIds = ref<string[]>([])
 const licensePreviewUrls = ref<string[]>([])
 
+/** 读取媒体文件可展示地址，优先使用签名 URL */
+function getMediaPreviewUrl(media: { signedUrl?: string; url?: string } | undefined): string {
+  return media?.signedUrl ?? media?.url ?? ''
+}
+
 /** 是否允许提交或重新提交商家资质 */
 const canSubmitQualification = computed(() => {
   const status = qualification.value?.status ?? 'not_submitted'
@@ -242,14 +243,14 @@ const canSubmitQualification = computed(() => {
 
 /** 资质状态文本映射 */
 const qualificationStatusText = computed(() => {
-  if (!qualification.value) return ''
+  const status = qualification.value?.status ?? 'not_submitted'
   const map: Record<string, string> = {
     not_submitted: t('editProfile.qualStatusNotSubmitted'),
     pending: t('editProfile.qualStatusPending'),
     approved: t('editProfile.qualStatusApproved'),
     rejected: t('editProfile.qualStatusRejected'),
   }
-  return map[qualification.value.status] ?? qualification.value.status
+  return map[status] ?? status
 })
 
 // ================= 性别选项 =================
@@ -339,7 +340,7 @@ async function handleAvatarClick(): Promise<void> {
     try {
       const result = await uploadAvatar(tempPath)
       avatarMediaId.value = result.mediaId
-      avatarUrl.value = result.url
+      avatarUrl.value = getMediaPreviewUrl(result) || tempPath
     } catch {
       formError.value = t('editProfile.avatarUploadFailed')
     }
@@ -351,21 +352,24 @@ async function handleAvatarClick(): Promise<void> {
 /** 选择并上传营业执照或营业凭证图片
  *
  * 前置条件：当前用户为商家且资质处于未提交或驳回状态。
- * 后置条件：上传成功的 mediaId 会进入 licenseMediaIds，图片 URL 用于页面预览。
+ * 后置条件：上传成功的 mediaId 会进入 licenseMediaIds，签名 URL 用于页面预览。
  * 副作用：调用媒体上传接口，失败时写入 formError。
  */
 async function chooseLicenseImages(): Promise<void> {
   if (!canSubmitQualification.value) return
+  formError.value = ''
   try {
+    const remaining = 3 - licenseMediaIds.value.length
+    if (remaining <= 0) return
     const res = await uni.chooseImage({
-      count: Math.max(1, 3 - licenseMediaIds.value.length),
+      count: remaining,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
     })
     for (const filePath of res.tempFilePaths) {
-      const result = await uploadAvatar(filePath)
+      const result = await uploadMerchantLicense(filePath)
       licenseMediaIds.value.push(result.mediaId)
-      licensePreviewUrls.value.push(result.url ?? filePath)
+      licensePreviewUrls.value.push(getMediaPreviewUrl(result) || filePath)
     }
   } catch {
     formError.value = '营业凭证上传失败或已取消'
@@ -436,20 +440,20 @@ async function loadProfile(): Promise<void> {
       const profile = await getMerchantProfile()
       formNickname.value = profile.nickname
       formMerchantName.value = profile.merchantName
-      if (profile.avatar?.url) avatarUrl.value = profile.avatar.url
+      const avatarPreviewUrl = getMediaPreviewUrl(profile.avatar)
+      if (avatarPreviewUrl) avatarUrl.value = avatarPreviewUrl
       if (profile.interestedActivityFields?.length) {
         selectedTags.value = new Set(profile.interestedActivityFields)
       }
-      if (profile.qualification) {
-        qualification.value = {
-          status: profile.qualification.status,
-          rejectReason: profile.qualification.rejectReason,
-        }
+      qualification.value = {
+        status: profile.qualification?.status ?? profile.qualificationStatus ?? 'not_submitted',
+        rejectReason: profile.qualification?.rejectReason,
       }
     } else {
       const profile = await getMyProfile()
       formNickname.value = profile.nickname
-      if (profile.avatar?.url) avatarUrl.value = profile.avatar.url
+      const avatarPreviewUrl = getMediaPreviewUrl(profile.avatar)
+      if (avatarPreviewUrl) avatarUrl.value = avatarPreviewUrl
       if (profile.gender) formGender.value = profile.gender as typeof formGender.value
       if (profile.birthday) formBirthday.value = profile.birthday
       if (profile.signature) formSignature.value = profile.signature
