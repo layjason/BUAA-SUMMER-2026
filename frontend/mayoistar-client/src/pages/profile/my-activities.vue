@@ -6,7 +6,7 @@
  * 后置条件：已发布 Tab 展示审核通过活动，未发布 Tab 展示草稿和仍在审核流程中的活动。
  * 不变量：草稿入口页与未发布 Tab 的定位不同，本页会保留审核中活动供用户追踪流程。
  */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { BusinessError } from '@/api'
 import {
@@ -20,13 +20,33 @@ import { formatDate } from '@/utils/date'
 import { reviewStatusText, runtimeStatusText } from '@/utils/status'
 
 type ActivityTab = 'published' | 'unpublished'
+type UnpublishedSource = 'draft' | 'activity'
+type UnpublishedActivityItem = {
+  activityId: string
+  title?: string
+  reviewStatus: ActivityDraftSummary['reviewStatus']
+  createdAt: string
+  updatedAt: string
+  source: UnpublishedSource
+  runtimeStatus?: ActivitySummary['runtimeStatus']
+  startAt?: string
+}
 
 const activeTab = ref<ActivityTab>('published')
 const loading = ref(true)
 const refreshing = ref(false)
 const errorMsg = ref('')
 const activities = ref<ActivitySummary[]>([])
-const unpublishedActivities = ref<ActivityDraftSummary[]>([])
+const unpublishedActivities = ref<UnpublishedActivityItem[]>([])
+
+const unpublishedCountText = computed(() => {
+  const draftCount = unpublishedActivities.value.filter(
+    (item) => item.reviewStatus === 'draft',
+  ).length
+  const reviewCount = unpublishedActivities.value.length - draftCount
+  if (unpublishedActivities.value.length === 0) return ''
+  return `${draftCount} 个草稿 · ${reviewCount} 个审核中/待处理`
+})
 
 /**
  * 简易状态翻译函数。
@@ -84,9 +104,31 @@ async function loadPublishedActivities(): Promise<void> {
  */
 async function loadUnpublishedActivities(): Promise<void> {
   try {
-    const result = await getDrafts()
-    unpublishedActivities.value = (result.items ?? []).filter(
-      (item) => item.reviewStatus !== 'approved',
+    const [draftResult, activityResult] = await Promise.all([getDrafts(), getMyActivities()])
+    const draftItems: UnpublishedActivityItem[] = (draftResult.items ?? [])
+      .filter((item) => item.reviewStatus === 'draft')
+      .map((item) => ({
+        activityId: item.activityId,
+        title: item.title,
+        reviewStatus: item.reviewStatus,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        source: 'draft',
+      }))
+    const reviewingItems: UnpublishedActivityItem[] = (activityResult.items ?? [])
+      .filter((item) => item.reviewStatus !== 'approved')
+      .map((item) => ({
+        activityId: item.activityId,
+        title: item.title,
+        reviewStatus: item.reviewStatus,
+        createdAt: item.startAt,
+        updatedAt: item.startAt,
+        source: 'activity',
+        runtimeStatus: item.runtimeStatus,
+        startAt: item.startAt,
+      }))
+    unpublishedActivities.value = [...draftItems, ...reviewingItems].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     )
   } catch (error) {
     if (error instanceof BusinessError) {
@@ -203,10 +245,47 @@ function getRuntimeStatusText(status: string): string {
  * 后置条件：进入编辑页，供草稿继续编辑或查看审核结果。
  * 不变量：不直接改变审核状态。
  *
- * @param activityId 活动标识
+ * @param item 未发布列表项
  */
-function goEdit(activityId: string): void {
-  uni.navigateTo({ url: `/pages/activity/edit?activityId=${activityId}` })
+function goUnpublished(item: UnpublishedActivityItem): void {
+  if (item.source === 'draft') {
+    uni.navigateTo({ url: `/pages/activity/edit?activityId=${item.activityId}` })
+    return
+  }
+  uni.navigateTo({ url: `/pages/activity/detail?activityId=${item.activityId}` })
+}
+
+/**
+ * 获取未发布活动的操作文案。
+ *
+ * 前置条件：item 来自未发布列表。
+ * 后置条件：返回与当前审核状态匹配的简短操作提示。
+ * 不变量：不改变活动状态。
+ *
+ * @param item 未发布列表项
+ * @returns 操作文案
+ */
+function getUnpublishedActionText(item: UnpublishedActivityItem): string {
+  if (item.source === 'draft') return '继续编辑'
+  if (item.reviewStatus === 'pending') return '查看进度'
+  if (item.reviewStatus === 'changeRequired') return '查看修改意见'
+  if (item.reviewStatus === 'rejected') return '查看驳回原因'
+  return '查看详情'
+}
+
+/**
+ * 获取未发布活动的辅助时间文案。
+ *
+ * 前置条件：item 来自未发布列表。
+ * 后置条件：草稿展示更新时间，审核流活动展示活动时间。
+ * 不变量：不会修改时间值。
+ *
+ * @param item 未发布列表项
+ * @returns 时间文案
+ */
+function getUnpublishedTimeText(item: UnpublishedActivityItem): string {
+  if (item.source === 'draft') return `更新于 ${formatDate(item.updatedAt)}`
+  return item.startAt ? `活动时间 ${formatDate(item.startAt)}` : `创建于 ${formatDate(item.createdAt)}`
 }
 
 /**
@@ -268,13 +347,12 @@ onShow(() => {
         >
           <view class="card-header">
             <text class="card-title">{{ item.title }}</text>
-            <text class="status-tag status-approved">已发布</text>
-          </view>
-          <view class="card-row">
-            <text class="tag">{{ formatTags(item.tags) }}</text>
             <text class="status-tag" :class="'runtime-' + item.runtimeStatus">
               {{ getRuntimeStatusText(item.runtimeStatus) }}
             </text>
+          </view>
+          <view class="card-row">
+            <text class="tag">{{ formatTags(item.tags) }}</text>
           </view>
           <view class="card-row">
             <text class="meta">{{ formatDate(item.startAt) }}</text>
@@ -284,13 +362,14 @@ onShow(() => {
       </view>
 
       <view v-else class="list-content">
+        <view v-if="unpublishedCountText" class="list-hint">{{ unpublishedCountText }}</view>
         <view v-if="unpublishedActivities.length === 0" class="empty-text">暂无未发布活动</view>
         <view
           v-for="item in unpublishedActivities"
           :key="item.activityId"
           class="card card-unpublished"
           hover-class="card-hover"
-          @click="goEdit(item.activityId)"
+          @click="goUnpublished(item)"
         >
           <view class="card-header">
             <text class="card-title">{{ item.title || '未命名活动' }}</text>
@@ -310,10 +389,13 @@ onShow(() => {
             }}
           </text>
           <view class="card-row">
-            <text class="meta">更新于 {{ formatDate(item.updatedAt) }}</text>
-            <text class="edit-action">{{
-              item.reviewStatus === 'pending' ? '查看' : '继续编辑'
+            <text class="meta">{{ getUnpublishedTimeText(item) }}</text>
+          </view>
+          <view class="card-row">
+            <text class="meta">{{
+              item.source === 'draft' ? '草稿箱' : '审核流程'
             }}</text>
+            <text class="edit-action">{{ getUnpublishedActionText(item) }}</text>
           </view>
         </view>
       </view>
@@ -375,6 +457,12 @@ onShow(() => {
 
 .list-content {
   padding: 16rpx 0 32rpx;
+}
+
+.list-hint {
+  margin: 8rpx 32rpx 4rpx;
+  color: #969799;
+  font-size: 24rpx;
 }
 
 .card {
@@ -443,8 +531,6 @@ onShow(() => {
   font-weight: 600;
 }
 
-.status-approved,
-.review-approved,
 .runtime-registering,
 .runtime-ongoing {
   background-color: #e8f7f0;
