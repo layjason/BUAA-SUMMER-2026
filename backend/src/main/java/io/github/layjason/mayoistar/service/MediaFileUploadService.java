@@ -196,22 +196,22 @@ public class MediaFileUploadService {
 
     private static MediaVisibility defaultVisibility(MediaUsage usage) {
         return switch (usage) {
-            case avatar, activityImage, summaryImage -> MediaVisibility.publicVisible;
-            case merchantLicense, chatImage, teamFile, teamAlbum, activityReviewImage -> MediaVisibility.privateVisible;
+            case avatar, activityImage, summaryImage, activityReviewImage -> MediaVisibility.publicVisible;
+            case merchantLicense, chatImage, teamFile, teamAlbum -> MediaVisibility.privateVisible;
         };
     }
 
     private static MediaAccessPolicy defaultAccessPolicy(MediaUsage usage) {
         return switch (usage) {
-            case avatar, activityImage, summaryImage -> MediaAccessPolicy.publicAccess;
-            case merchantLicense, chatImage, teamFile, teamAlbum, activityReviewImage -> MediaAccessPolicy.owner;
+            case avatar, activityImage, summaryImage, activityReviewImage -> MediaAccessPolicy.publicAccess;
+            case merchantLicense, chatImage, teamFile, teamAlbum -> MediaAccessPolicy.owner;
         };
     }
 
     private static String defaultAccessScope(String userId, MediaUsage usage) {
         return switch (usage) {
-            case avatar, activityImage, summaryImage -> "";
-            case merchantLicense, chatImage, teamFile, teamAlbum, activityReviewImage -> userId;
+            case avatar, activityImage, summaryImage, activityReviewImage -> "";
+            case merchantLicense, chatImage, teamFile, teamAlbum -> userId;
         };
     }
 
