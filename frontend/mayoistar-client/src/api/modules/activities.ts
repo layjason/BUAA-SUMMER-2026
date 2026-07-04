@@ -43,6 +43,13 @@ export type SearchActivitiesParams = {
   maxFee?: number
 }
 
+/** 地图模式活动查询参数（与 OpenAPI ActivityOperations_getMapPoints query 对齐） */
+export type MapActivitiesParams = Omit<SearchActivitiesParams, 'page' | 'pageSize'> & {
+  longitude: number
+  latitude: number
+  distanceMeters: number
+}
+
 /** 获取活动信息流（首页 Feed） */
 export function getFeed(tab: ActivityFeedTab, page: number, pageSize: number) {
   return get('/activities/feed', {
@@ -58,9 +65,14 @@ export function searchActivities(params: SearchActivitiesParams) {
 }
 
 /** 获取地图范围内的活动列表 */
-export function getMapActivities(longitude: number, latitude: number, distanceMeters: number) {
+export function getMapActivities(
+  longitude: number,
+  latitude: number,
+  distanceMeters: number,
+  filters?: Omit<MapActivitiesParams, 'longitude' | 'latitude' | 'distanceMeters'>,
+) {
   return get('/activities/map', {
-    query: { longitude, latitude, distanceMeters },
+    query: { ...filters, longitude, latitude, distanceMeters },
   })
 }
 

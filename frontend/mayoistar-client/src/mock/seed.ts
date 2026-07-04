@@ -1182,44 +1182,63 @@ export function createSeedData(): MockDatabase {
     {
       id: 1,
       name: '运动健身',
+      activityType: '运动',
       coverUrl: `https://picsum.photos/seed/tpl1/400/225`,
       tags: ['运动', '健身'],
       defaultTitle: '运动健身活动',
       defaultIntroduction:
         '欢迎参加本次运动健身活动！请在活动开始前做好热身运动，穿着合适的运动服装和鞋子。',
+      defaultSafetyNotice:
+        '请根据自身身体状况选择适合的运动强度，运动过程中如有不适请立即停止并联系组织者。请自行购买运动意外险。',
+      defaultCapacity: 30,
     },
     {
       id: 2,
       name: '桌游派对',
+      activityType: '社交',
       coverUrl: `https://picsum.photos/seed/tpl2/400/225`,
       tags: ['桌游', '社交'],
       defaultTitle: '桌游派对',
       defaultIntroduction:
         '来参加桌游派对吧！我们会准备多款经典桌游，无论你是新手还是老手都能找到乐趣。',
+      defaultSafetyNotice:
+        '请在活动过程中保管好个人物品，尊重其他玩家，遵守游戏规则。建议提前10分钟到场熟悉环境。',
+      defaultCapacity: 16,
     },
     {
       id: 3,
       name: '户外徒步',
+      activityType: '户外',
       coverUrl: `https://picsum.photos/seed/tpl3/400/225`,
       tags: ['户外', '徒步'],
       defaultTitle: '户外徒步活动',
       defaultIntroduction: '本次户外徒步活动路线已精心规划，请穿着登山鞋或运动鞋，携带足够饮用水。',
+      defaultSafetyNotice:
+        '户外活动存在一定风险，请务必听从领队指挥，不要擅自离队。建议携带防晒用品、雨具和急救药品。如遇恶劣天气活动将延期。',
+      defaultCapacity: 20,
     },
     {
       id: 4,
       name: '学习分享',
+      activityType: '学习',
       coverUrl: `https://picsum.photos/seed/tpl4/400/225`,
       tags: ['学习', '分享'],
       defaultTitle: '学习分享会',
       defaultIntroduction: '本次学习分享会将围绕指定主题展开讨论，欢迎大家积极发言、交流心得。',
+      defaultSafetyNotice: '请保持会场秩序，尊重每一位分享者的发言。活动资料未经允许请勿外传。',
+      defaultCapacity: 50,
     },
     {
       id: 5,
       name: '公益活动',
+      activityType: '公益',
       coverUrl: `https://picsum.photos/seed/tpl5/400/225`,
       tags: ['公益', '志愿'],
       defaultTitle: '公益活动',
       defaultIntroduction: '感谢你的善心参与！本次公益活动旨在为社会贡献一份力量，请遵守活动规则。',
+      defaultSafetyNotice:
+        '请服从活动组织安排，注意个人安全。如需志愿服务时长证明，请在活动结束后联系组织者。',
+      defaultCapacity: 100,
     },
   ]
 

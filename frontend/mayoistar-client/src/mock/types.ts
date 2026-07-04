@@ -51,6 +51,14 @@ export interface MockActivity {
     suggestedReviewStatus: 'pending' | 'approved' | 'rejected' | 'changeRequired'
     reasons: string[]
   }
+  /** 审核记录列表，由 submitActivity 或管理员操作设置 */
+  reviewRecords?: Array<{
+    reviewId: string
+    result: 'pending' | 'approved' | 'rejected' | 'changeRequired'
+    reason?: string
+    reviewedAt: string
+    reviewerId?: string
+  }>
   /** 是否要求签到时校验位置；未设置时 mock 默认视为 false */
   requireLocationCheck?: boolean
 }
@@ -215,10 +223,16 @@ export interface MockInterestTag {
 export interface MockTemplate {
   id: number
   name: string
+  /** 模板所属活动类型（如 运动、桌游、户外、学习、公益），对应 OpenAPI activityType */
+  activityType: string
   coverUrl: string
   tags: string[]
   defaultTitle: string
   defaultIntroduction: string
+  /** 模板默认安全须知，对应 OpenAPI defaultSafetyNotice */
+  defaultSafetyNotice: string
+  /** 模板默认人数上限，对应 OpenAPI defaultCapacity */
+  defaultCapacity: number
 }
 
 /** Mock API 响应格式 */

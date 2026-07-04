@@ -7,11 +7,14 @@ import {
   createReview,
   createSummary,
   getCheckIns,
+  getMapActivities,
   getMyActivities,
   getMyActivityReview,
+  getMyRegistrations,
   getParticipationState,
   listActivityReviews,
   listActivitySummaries,
+  registerForActivity,
   submitActivity,
 } from '@/mock/workflow'
 
@@ -109,6 +112,19 @@ describe('活动 mock workflow 契约对齐', () => {
     })
   })
 
+  it('我的报名列表应包含候补队列记录', () => {
+    registerForActivity(1, 10001, { acceptedSafetyNotice: true })
+
+    const result = getMyRegistrations(10001, 1, 100)
+    const waiting = result.items.find((item) => item.activityId === '1')
+
+    expect(waiting).toMatchObject({
+      registrationStatus: 'waiting',
+      waitingRank: expect.any(Number),
+      requireLocationCheck: false,
+    })
+  })
+
   it('扫码签到应返回 OpenAPI CheckInRecord 必填字段', () => {
     const result = checkIn(6, 10001, { qrCodeToken: 'qr_test_token' })
 
@@ -120,6 +136,44 @@ describe('活动 mock workflow 契约对齐', () => {
       checkedInAt: expect.any(String),
     })
     expect(result).not.toHaveProperty('activityId')
+  })
+
+  it('开启位置校验的活动签到必须提供现场附近坐标', () => {
+    const draft = createDraft(10001, {
+      title: '带位置校验的晨跑',
+      tags: ['跑步', '运动'],
+      introduction: '用于测试签到位置校验。',
+      safetyNotice: '请按时到达集合点。',
+      startAt: '2026-08-02T07:00:00+08:00',
+      endAt: '2026-08-02T08:00:00+08:00',
+      registrationDeadline: '2026-08-01T20:00:00+08:00',
+      location: {
+        city: '北京',
+        address: '朝阳区奥林匹克森林公园南门',
+        placeName: '奥林匹克森林公园',
+        point: { longitude: 116.397, latitude: 40.02 },
+      },
+      capacity: 10,
+      requireLocationCheck: true,
+    })
+    const activity = submitActivity(Number(draft.activityId))
+    registerForActivity(Number(activity.activityId), 10001, { acceptedSafetyNotice: true })
+
+    expect(() =>
+      checkIn(Number(activity.activityId), 10001, { qrCodeToken: 'qr_test_token' }),
+    ).toThrow('活动要求位置校验')
+    expect(() =>
+      checkIn(Number(activity.activityId), 10001, {
+        qrCodeToken: 'qr_test_token',
+        currentLocation: { longitude: 121.47, latitude: 31.23 },
+      }),
+    ).toThrow('当前位置距离活动地点过远')
+
+    const result = checkIn(Number(activity.activityId), 10001, {
+      qrCodeToken: 'qr_test_token',
+      currentLocation: { longitude: 116.397, latitude: 40.02 },
+    })
+    expect(result.registrationStatus).toBe('checkedIn')
   })
 
   it('已结束且已签到用户应可提交活动评价', () => {
@@ -204,5 +258,21 @@ describe('活动 mock workflow 契约对齐', () => {
         }),
       ]),
     )
+  })
+
+  it('地图点位查询应复用搜索筛选条件', () => {
+    const results = getMapActivities(116.4, 39.9, 20000, {
+      keyword: '夜跑',
+      activityTypes: ['跑步'],
+      city: '北京',
+    })
+
+    expect(results).toEqual([
+      expect.objectContaining({
+        activityId: '6',
+        title: expect.stringContaining('夜跑'),
+        point: { longitude: 116.397, latitude: 40.02 },
+      }),
+    ])
   })
 })
