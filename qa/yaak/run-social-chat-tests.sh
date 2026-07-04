@@ -529,7 +529,7 @@ assert_jq_non_empty "$response" '.data.messageId'
 assert_jq_equals "$response" '.data.conversationId' "$conversation_id"
 assert_jq_equals "$response" '.data.senderId' "$TEST_USER_ID"
 assert_jq_equals "$response" '.data.kind' "image"
-assert_jq_equals "$response" '.data.imageMediaId' "$chat_image_media_id"
+assert_jq_equals "$response" '.data.image.mediaId' "$chat_image_media_id"
 assert_jq_equals "$response" '.data.recalled' "false"
 pass_test
 
