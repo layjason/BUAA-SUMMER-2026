@@ -178,9 +178,7 @@ interface AiOperations {
     taskId: EntityId,
   ): APIResult<
     ImageClassificationTaskQueryResponse,
-
-      | QujuApi.Errors.Ai.AiTaskNotFound
-      | QujuApi.Errors.Ai.AiTaskTimeout
+    QujuApi.Errors.Ai.AiTaskNotFound | QujuApi.Errors.Ai.AiTaskTimeout
   >;
 
   @get
@@ -190,9 +188,5 @@ interface AiOperations {
     @path
     @doc("媒体文件 ID。")
     mediaId: EntityId,
-  ): APIResult<
-    MediaClassificationResponse,
-
-      | QujuApi.Errors.Ai.AiTaskNotFound
-  >;
+  ): APIResult<MediaClassificationResponse, QujuApi.Errors.Ai.AiTaskNotFound>;
 }
