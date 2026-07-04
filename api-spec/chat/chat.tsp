@@ -28,6 +28,7 @@ enum ChatRealtimeEventKind {
   messageCreated,
   messageRecalled,
   messageForwarded,
+
   @doc("单聊中对方已读发送方消息时推送，用于发送方气泡旁已读状态实时更新。")
   messagePeerRead,
 }
@@ -364,16 +365,16 @@ interface ChatOperations {
   @route("/ws/messages")
   @doc("""
     聊天消息实时 WebSocket 端点（OpenAPI 以 GET 占位描述 Upgrade 入口）。
-
+    
     **连接**
     - 将 `GET /chat/ws/messages` 升级为 WebSocket；生产环境使用 `wss://`。
     - Upgrade 请求携带 `Authorization: Bearer {accessToken}`，鉴权规则与 REST 一致。
     - 单用户维持一条长连接；断线后客户端应指数退避重连。
-
+    
     **数据帧**
     - 服务端 → 客户端：每个 Text 帧为 `ChatWebSocketFrame`（即 `ChatRealtimeEvent`）JSON，不包裹 `{ code, message, data }`。
     - 客户端 → 服务端：本版本无业务帧；心跳由网关或基础设施处理。
-
+    
     **推送触发（实现参考）**
     - `sendMessage`：向会话内除发送方外的成员推送 `messageCreated`。
     - `markMessagesRead`：单聊中向被已读消息的原发送方推送 `messagePeerRead`（可逐条推送）。
