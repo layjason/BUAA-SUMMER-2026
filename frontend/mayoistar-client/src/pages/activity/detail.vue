@@ -80,18 +80,85 @@
           <text class="section-body">{{ activity.safetyNotice }}</text>
         </view>
 
-        <!-- AI 内容审核 -->
-        <view v-if="activity.aiContentReview" class="section card">
-          <text class="section-title">{{ t('aiReview.title') }}</text>
-          <view class="info-row">
-            <text class="info-label">{{ t('aiReview.riskLevel') }}</text>
-            <text class="info-value" :class="'risk-' + activity.aiContentReview.riskLevel">{{
-              riskLevelText(activity.aiContentReview.riskLevel)
-            }}</text>
+        <!-- 审核进度（仅发起人可见） -->
+        <view v-if="showReviewProgress" class="section card review-progress-card">
+          <text class="section-title">{{ t('reviewProgress.title') }}</text>
+
+          <!-- 进度步骤 -->
+          <view class="review-steps">
+            <!-- 步骤 1: 提交审核 -->
+            <view class="review-step">
+              <view class="step-dot step-dot-done">
+                <text class="step-dot-icon">&#10003;</text>
+              </view>
+              <text class="step-label step-label-done">{{ t('reviewProgress.stepSubmit') }}</text>
+            </view>
+            <view class="step-connector" :class="stepConnectorClass"></view>
+            <!-- 步骤 2: 内容审核 -->
+            <view class="review-step">
+              <view
+                class="step-dot"
+                :class="activity.reviewStatus === 'pending' ? 'step-dot-active' : 'step-dot-done'"
+              >
+                <text class="step-dot-icon">{{ step2Icon }}</text>
+              </view>
+              <text
+                class="step-label"
+                :class="
+                  activity.reviewStatus === 'pending' ? 'step-label-active' : 'step-label-done'
+                "
+                >{{ t('reviewProgress.stepReview') }}</text
+              >
+            </view>
+            <view class="step-connector" :class="stepConnectorClass"></view>
+            <!-- 步骤 3: 审核结果 -->
+            <view class="review-step">
+              <view class="step-dot" :class="step3DotClass">
+                <text class="step-dot-icon">{{ step3Icon }}</text>
+              </view>
+              <text class="step-label" :class="step3LabelClass">{{
+                t('reviewProgress.stepResult')
+              }}</text>
+            </view>
           </view>
-          <view v-if="activity.aiContentReview.reasons.length" class="info-row">
-            <text class="info-label">{{ t('aiReview.reason') }}</text>
-            <text class="info-value">{{ activity.aiContentReview.reasons.join('; ') }}</text>
+
+          <!-- 状态标签 -->
+          <view class="review-status-row">
+            <text class="review-status-badge" :class="'review-badge-' + activity.reviewStatus">
+              {{ reviewStatusText(activity.reviewStatus, t) }}
+            </text>
+          </view>
+
+          <!-- AI 审核结果 -->
+          <view v-if="activity.aiContentReview" class="ai-review-summary">
+            <view class="ai-review-header">
+              <text class="ai-review-section-title">{{ t('reviewProgress.aiReviewResult') }}</text>
+              <text
+                class="review-risk-tag"
+                :class="'review-risk-' + activity.aiContentReview.riskLevel"
+                >{{ riskLevelText(activity.aiContentReview.riskLevel) }}</text
+              >
+            </view>
+            <view v-if="activity.aiContentReview.reasons.length" class="ai-review-detail">
+              <text class="review-risk-reason">{{
+                activity.aiContentReview.reasons.join('; ')
+              }}</text>
+            </view>
+          </view>
+
+          <!-- 人工审核提示 -->
+          <view
+            v-if="activity.manualReviewRequired && activity.reviewStatus === 'pending'"
+            class="review-tip"
+          >
+            <text class="tip-icon">&#9200;</text>
+            <text class="tip-text">{{ t('reviewProgress.manualReviewNote') }}</text>
+          </view>
+
+          <!-- 驳回/修改原因 -->
+          <view v-if="reviewReason" class="review-reason-card">
+            <text class="reason-label">{{ reasonLabel }}</text>
+            <text class="reason-text">{{ reviewReason }}</text>
           </view>
         </view>
 
@@ -106,15 +173,11 @@
 
         <!-- 活动评价 -->
         <view v-if="publishedReviews.length > 0" class="section card">
-          <text class="section-title">{{
-            t('activityDetail.reviewsSection', { count: publishedReviews.length })
-          }}</text>
+          <text class="section-title">{{ reviewsSectionText }}</text>
           <view v-for="item in publishedReviews" :key="item.reviewId" class="published-block">
             <view class="review-header">
               <text class="published-title">{{ item.nickname }}</text>
-              <text class="review-rating">{{
-                t('activityDetail.reviewStars', { rating: item.rating })
-              }}</text>
+              <text class="review-rating">{{ formatReviewRating(item.rating) }}</text>
             </view>
             <view v-if="item.tags.length > 0" class="tag-row">
               <text v-for="tag in item.tags" :key="tag" class="tag-chip">{{ tag }}</text>
@@ -147,7 +210,7 @@
           >
             {{ buttonText }}
           </button>
-          <view class="action-row">
+          <view v-if="hasSecondaryActions" class="action-row">
             <button
               v-if="
                 isOrganizer &&
@@ -224,7 +287,7 @@ import { BottomActionBar } from '@/components'
 import { isActivityAtCapacity } from '@/utils/activity-capacity'
 import { getErrorMessage } from '@/utils/error'
 import { formatDateTime, formatTimeRange } from '@/utils/date'
-import { runtimeStatusText } from '@/utils/status'
+import { runtimeStatusText, reviewStatusText } from '@/utils/status'
 import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
@@ -245,6 +308,83 @@ const hasReviewed = ref(false)
 function getRuntimeStatusText(status: string): string {
   return runtimeStatusText(status, t)
 }
+
+/** 是否显示活动审核进度（发起人且已提交审核的活动） */
+const showReviewProgress = computed(() => {
+  return (
+    isOrganizer.value && activity.value?.reviewStatus && activity.value?.reviewStatus !== 'draft'
+  )
+})
+
+/** 审核拒绝/修改原因，从 reviewRecords 中提取 */
+const reviewReason = computed(() => {
+  const records = activity.value?.reviewRecords ?? []
+  const lastRecord = records[records.length - 1]
+  return lastRecord?.reason ?? ''
+})
+
+/** 审核拒绝/修改原因的标签 */
+const reasonLabel = computed(() => {
+  if (activity.value?.reviewStatus === 'rejected') {
+    return '驳回原因'
+  }
+  if (activity.value?.reviewStatus === 'changeRequired') {
+    return '修改意见'
+  }
+  return ''
+})
+
+/** 步骤连接线类名 */
+const stepConnectorClass = computed(() => {
+  if (activity.value?.reviewStatus === 'pending') {
+    return 'step-connector step-connector-active'
+  }
+  return 'step-connector step-connector-done'
+})
+
+/** 步骤2（内容审核）图标 */
+const step2Icon = computed(() => {
+  if (activity.value?.reviewStatus === 'pending') {
+    return String.fromCharCode(8226)
+  }
+  return String.fromCharCode(10003)
+})
+
+/** 步骤3（审核结果）图标 */
+const step3Icon = computed(() => {
+  if (activity.value?.reviewStatus === 'approved') {
+    return String.fromCharCode(10003)
+  }
+  const s = activity.value?.reviewStatus
+  if (s === 'rejected' || s === 'changeRequired') {
+    return String.fromCharCode(10007)
+  }
+  return ''
+})
+
+/** 步骤 3（审核结果）圆点类名 */
+const step3DotClass = computed(() => {
+  if (activity.value?.reviewStatus === 'approved') {
+    return 'step-dot step-dot-done'
+  }
+  const s = activity.value?.reviewStatus
+  if (s === 'rejected' || s === 'changeRequired') {
+    return 'step-dot step-dot-error'
+  }
+  return 'step-dot'
+})
+
+/** 步骤 3（审核结果）标签类名 */
+const step3LabelClass = computed(() => {
+  if (activity.value?.reviewStatus === 'approved') {
+    return 'step-label step-label-done'
+  }
+  const s = activity.value?.reviewStatus
+  if (s === 'rejected' || s === 'changeRequired') {
+    return 'step-label step-label-error'
+  }
+  return 'step-label'
+})
 
 /**
  * 风险等级文本映射
@@ -267,12 +407,30 @@ const feeText = computed(() => {
   if (activity.value.feeAmount == null || activity.value.feeAmount === 0) {
     return t('activityDetail.free')
   }
-  return t('activityDetail.feeAmount', { amount: activity.value.feeAmount })
+  return `¥${activity.value.feeAmount}`
 })
 
 const tagsLabel = computed(() => {
   return t('activityDetail.tags')
 })
+
+/** 活动评价区标题 */
+const reviewsSectionText = computed(() => {
+  return `活动评价（${publishedReviews.value.length}）`
+})
+
+/**
+ * 格式化评价分数。
+ *
+ * 前置条件：rating 来自 OpenAPI 活动评价列表，为数字评分。
+ * 后置条件：返回不依赖 i18n 插值的评分展示文本。
+ * 不变量：不修改评价列表状态。
+ *
+ * @param rating 评价分数
+ */
+function formatReviewRating(rating: number): string {
+  return `${rating} 分`
+}
 
 /** 当前用户是否为活动发起人 */
 const isOrganizer = computed(() => {
@@ -309,6 +467,26 @@ const showSummaryPostedStatus = computed(() => {
     isOrganizer.value &&
     activity.value?.runtimeStatus === 'ended' &&
     publishedSummaries.value.length > 0
+  )
+})
+
+/**
+ * 底部操作栏是否需要展示第二行操作。
+ *
+ * 前置条件：activity、participation、评价与总结状态已按当前页面数据同步。
+ * 后置条件：存在任一次级按钮或状态标记时返回 true，否则返回 false。
+ * 不变量：该计算属性只决定布局与渲染，不触发导航、请求或状态写入。
+ */
+const hasSecondaryActions = computed(() => {
+  const act = activity.value
+  const organizerRuntimeAction =
+    isOrganizer.value && (act?.runtimeStatus === 'registering' || act?.runtimeStatus === 'ongoing')
+  return (
+    organizerRuntimeAction ||
+    canReview.value ||
+    showReviewedStatus.value ||
+    canPostSummary.value ||
+    showSummaryPostedStatus.value
   )
 })
 
@@ -369,15 +547,12 @@ const buttonText = computed(() => {
   if (p.canRegister) {
     const act = activity.value!
     if (isAtCapacity.value) {
-      return t('activityDetail.registerFull', { count: act.waitingCount ?? 0 })
+      return `加入候补 (候补${act.waitingCount ?? 0}人)`
     }
-    return t('activityDetail.registerNow', {
-      count: act.occupiedCount,
-      total: act.capacity,
-    })
+    return `立即报名 (${act.occupiedCount}/${act.capacity})`
   }
   if (p.status === 'waiting') {
-    return t('activityDetail.waitingRank', { rank: p.waitingRank ?? '?' })
+    return `等待中 (排位第${p.waitingRank ?? '?'})`
   }
   if (p.status === 'checkedIn') return t('activityDetail.checkedInTag')
   return t('activityDetail.disabledTag')
@@ -496,7 +671,10 @@ async function handleCheckIn(): Promise<void> {
   }
 
   try {
-    await checkIn(activityId.value, qrCodeToken)
+    const currentLocation = activity.value?.requireLocationCheck
+      ? await getCheckInLocation()
+      : undefined
+    await checkIn(activityId.value, qrCodeToken, currentLocation)
     uni.showToast({ title: '签到成功', icon: 'success' })
     await loadData()
   } catch (error) {
@@ -507,6 +685,21 @@ async function handleCheckIn(): Promise<void> {
     }
   } finally {
     actioning.value = false
+  }
+}
+
+/**
+ * 获取签到位置
+ *
+ * 前置条件：活动开启位置校验，调用方即将发起签到请求。
+ * 后置条件：返回 OpenAPI GeoPoint 结构，定位失败时向外抛出错误中止签到。
+ * 不变量：仅使用 uni.getLocation 获取跨端定位，不直接访问平台私有定位 SDK。
+ */
+async function getCheckInLocation(): Promise<{ longitude: number; latitude: number }> {
+  const location = await uni.getLocation({ type: 'gcj02' })
+  return {
+    longitude: location.longitude,
+    latitude: location.latitude,
   }
 }
 
@@ -690,7 +883,7 @@ onShow(() => {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
-  padding-bottom: calc(260rpx + env(safe-area-inset-bottom));
+  padding-bottom: 24rpx;
 }
 
 .swiper-wrapper {
@@ -1007,6 +1200,222 @@ onShow(() => {
 .menu-arrow {
   font-size: 28rpx;
   color: #c8c9cc;
+}
+
+/* ========== 审核进度条 ========== */
+.review-progress-card {
+  margin-top: 16rpx;
+}
+
+.review-steps {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  margin: 20rpx 0;
+  padding: 0 20rpx;
+}
+
+.review-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.step-dot {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background-color: #ebedf0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8rpx;
+}
+
+.step-dot-done {
+  background-color: #07c160;
+}
+
+.step-dot-active {
+  background-color: #5ec8a7;
+}
+
+.step-dot-error {
+  background-color: #ee0a24;
+}
+
+.step-dot-icon {
+  font-size: 20rpx;
+  color: #fff;
+  font-weight: 700;
+}
+
+.step-label {
+  font-size: 22rpx;
+  color: #969799;
+  text-align: center;
+}
+
+.step-label-done {
+  color: #07c160;
+}
+
+.step-label-active {
+  color: #5ec8a7;
+}
+
+.step-label-error {
+  color: #ee0a24;
+}
+
+.step-connector {
+  flex: 0.6;
+  height: 2rpx;
+  background-color: #ebedf0;
+  margin-top: 20rpx;
+  align-self: flex-start;
+}
+
+.step-connector-done {
+  background-color: #07c160;
+}
+
+.step-connector-active {
+  background-color: #5ec8a7;
+}
+
+.review-status-row {
+  text-align: center;
+  margin: 16rpx 0 8rpx;
+}
+
+.review-status-badge {
+  display: inline-block;
+  font-size: 24rpx;
+  padding: 6rpx 20rpx;
+  border-radius: 4rpx;
+  font-weight: 600;
+}
+
+.review-badge-pending {
+  background-color: #e8f7f0;
+  color: #5ec8a7;
+}
+
+.review-badge-approved {
+  background-color: #e8f7f0;
+  color: #07c160;
+}
+
+.review-badge-rejected {
+  background-color: #fff2f0;
+  color: #ee0a24;
+}
+
+.review-badge-changeRequired {
+  background-color: #fff7e6;
+  color: #ed6a0c;
+}
+
+.review-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  margin: 12rpx 0;
+  padding: 12rpx 20rpx;
+  background-color: #f0f9ff;
+  border-radius: 8rpx;
+}
+
+.tip-icon {
+  font-size: 28rpx;
+}
+
+.tip-text {
+  font-size: 24rpx;
+  color: #5ec8a7;
+}
+
+.review-reason-card {
+  margin-top: 12rpx;
+  padding: 16rpx 20rpx;
+  background-color: #fff7e6;
+  border-radius: 8rpx;
+}
+
+.reason-label {
+  display: block;
+  font-size: 22rpx;
+  color: #ed6a0c;
+  font-weight: 600;
+  margin-bottom: 6rpx;
+}
+
+.reason-text {
+  display: block;
+  font-size: 24rpx;
+  color: #323233;
+  line-height: 1.5;
+}
+
+/* ========== AI review results ========== */
+.ai-review-summary {
+  margin-top: 16rpx;
+  padding: 16rpx 20rpx;
+  background-color: #f8f9fc;
+  border-radius: 8rpx;
+}
+
+.ai-review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+}
+
+.ai-review-section-title {
+  font-size: 24rpx;
+  color: #969799;
+  font-weight: 600;
+}
+
+.review-risk-tag {
+  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 4rpx;
+  font-weight: 600;
+}
+
+.review-risk-low {
+  background-color: #e8f7f0;
+  color: #07c160;
+}
+
+.review-risk-medium {
+  background-color: #fff7e6;
+  color: #ed6a0c;
+}
+
+.review-risk-high {
+  background-color: #fff2f0;
+  color: #ee0a24;
+}
+
+.review-risk-uncertain {
+  background-color: #f2f3f5;
+  color: #969799;
+}
+
+.ai-review-detail {
+  margin-top: 4rpx;
+}
+
+.review-risk-reason {
+  font-size: 24rpx;
+  color: #646566;
+  line-height: 1.6;
 }
 </style>
 

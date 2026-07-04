@@ -2,20 +2,25 @@
 /**
  * 底部操作栏组件
  *
- * 固定在页面底部的操作栏，支持安全区域适配和玻璃拟态风格。
+ * 放置在页面底部的操作栏，支持安全区域适配和玻璃拟态风格。
  * 用于活动创建、草稿编辑、评价提交等长表单页面。
  *
- * 使用方式：在页面底部放置此组件，通过默认插槽传入按钮内容。
- * 表单内容区需预留足够的 padding-bottom（至少 180rpx + safe-area）。
+ * 使用方式：在 flex column 页面中作为 scroll-view 的兄弟节点放置，通过默认插槽传入按钮内容。
+ * 默认参与普通布局；确实需要覆盖页面时再传入 fixed。
  */
 defineProps<{
   /** 操作栏上方是否有阴影，默认 true */
   shadow?: boolean
+  /** 是否固定到视口底部，默认 false */
+  fixed?: boolean
 }>()
 </script>
 
 <template>
-  <view class="bottom-action-bar" :class="{ 'bar-shadow': shadow !== false }">
+  <view
+    class="bottom-action-bar"
+    :class="{ 'bar-shadow': shadow !== false, 'bottom-action-bar--fixed': fixed }"
+  >
     <view class="bar-inner">
       <slot />
     </view>
@@ -26,11 +31,7 @@ defineProps<{
 @import '@/styles/theme.scss';
 
 .bottom-action-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 99;
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
@@ -40,6 +41,14 @@ defineProps<{
   padding-bottom: constant(safe-area-inset-bottom);
   /* 兼容 iOS 11.2+ */
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bottom-action-bar--fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99;
 }
 
 .bar-shadow {
