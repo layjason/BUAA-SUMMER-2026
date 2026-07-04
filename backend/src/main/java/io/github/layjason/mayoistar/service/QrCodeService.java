@@ -5,6 +5,8 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
+import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -92,6 +94,9 @@ public class QrCodeService {
      * @return 令牌中存储的用户标识
      */
     public String parseQrCode(String encodedToken) {
+        if (encodedToken == null || encodedToken.isBlank()) {
+            throw new BusinessException(ErrorCodes.QR_CODE_TOKEN_INVALID, "QR code token is invalid");
+        }
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(secretKey)
@@ -103,10 +108,10 @@ public class QrCodeService {
             return userId;
         } catch (ExpiredJwtException e) {
             log.warn("二维码令牌已过期");
-            throw new IllegalArgumentException("QR code token has expired");
+            throw new BusinessException(ErrorCodes.QR_CODE_TOKEN_INVALID, "QR code token has expired");
         } catch (JwtException e) {
             log.warn("二维码令牌签名校验失败");
-            throw new IllegalArgumentException("QR code token is invalid");
+            throw new BusinessException(ErrorCodes.QR_CODE_TOKEN_INVALID, "QR code token is invalid");
         }
     }
 

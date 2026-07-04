@@ -10,6 +10,7 @@ import com.google.zxing.Result;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
 import io.github.layjason.mayoistar.AbstractIntegrationTest;
+import io.github.layjason.mayoistar.exception.BusinessException;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import javax.imageio.ImageIO;
@@ -97,13 +98,13 @@ class QrCodeServiceTest extends AbstractIntegrationTest {
      *
      * <p>前置条件：无。
      *
-     * <p>后置条件：抛出 IllegalArgumentException。
+     * <p>后置条件：抛出 BusinessException。
      */
     @Test
     @DisplayName("解析无效令牌 - 抛出异常")
     void parseQrCode_invalidTokenThrows() {
         assertThatThrownBy(() -> qrCodeService.parseQrCode("not-a-valid-token"))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("invalid");
     }
 
@@ -112,12 +113,12 @@ class QrCodeServiceTest extends AbstractIntegrationTest {
      *
      * <p>前置条件：无。
      *
-     * <p>后置条件：抛出 IllegalArgumentException。
+     * <p>后置条件：抛出 BusinessException。
      */
     @Test
     @DisplayName("解析空令牌 - 抛出异常")
     void parseQrCode_emptyTokenThrows() {
-        assertThatThrownBy(() -> qrCodeService.parseQrCode("")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> qrCodeService.parseQrCode("")).isInstanceOf(BusinessException.class);
     }
 
     /**
