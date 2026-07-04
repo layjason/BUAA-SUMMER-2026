@@ -535,6 +535,47 @@ class TeamServiceTest {
             assertThat(result.getSignedUrl()).contains("policy=teamMember");
             assertThat(result.getSignedUrl()).contains("scope=" + teamId);
         }
+
+        @Test
+        @DisplayName("上传同名群文件应拒绝——同一小队不可有同名文件")
+        void uploadTeamFileDuplicateNameRejected() {
+            UUID mediaId1 = UUID.randomUUID();
+            MediaFile mf1 = MediaFile.builder()
+                    .mediaId(mediaId1)
+                    .fileName("setlist.pdf")
+                    .contentType("application/pdf")
+                    .sizeBytes(1024L)
+                    .usage(MediaUsage.teamFile)
+                    .storagePath("/tmp/setlist1.pdf")
+                    .visibility(MediaVisibility.privateVisible)
+                    .accessPolicy(MediaAccessPolicy.owner)
+                    .accessScopeId(mutsuki.getUserId())
+                    .accessVersion(1L)
+                    .uploadedBy(mutsuki.getUserId())
+                    .build();
+            mediaFileRepository.save(mf1);
+            teamService.uploadTeamFile(teamId, mutsuki.getUserId(), mediaId1);
+
+            UUID mediaId2 = UUID.randomUUID();
+            MediaFile mf2 = MediaFile.builder()
+                    .mediaId(mediaId2)
+                    .fileName("setlist.pdf")
+                    .contentType("application/pdf")
+                    .sizeBytes(2048L)
+                    .usage(MediaUsage.teamFile)
+                    .storagePath("/tmp/setlist2.pdf")
+                    .visibility(MediaVisibility.privateVisible)
+                    .accessPolicy(MediaAccessPolicy.owner)
+                    .accessScopeId(mutsuki.getUserId())
+                    .accessVersion(1L)
+                    .uploadedBy(mutsuki.getUserId())
+                    .build();
+            mediaFileRepository.save(mf2);
+
+            assertThatThrownBy(() -> teamService.uploadTeamFile(teamId, mutsuki.getUserId(), mediaId2))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("same name");
+        }
     }
 
     private User createUser(String email, String nickname) {

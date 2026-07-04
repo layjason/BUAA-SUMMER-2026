@@ -192,6 +192,9 @@ public final class ErrorCodes {
     /** 小队媒体文件不存在 */
     public static final int TEAM_MEDIA_NOT_FOUND = 50003;
 
+    /** 同名群文件已存在 */
+    public static final int TEAM_FILE_DUPLICATE = 50015;
+
     /** 调用方缺少小队媒体管理权限 */
     public static final int TEAM_MEDIA_PERMISSION_DENIED = 50014;
 

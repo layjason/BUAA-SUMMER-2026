@@ -3,6 +3,7 @@ package io.github.layjason.mayoistar.service;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.BLACKLIST_RELATION_EXISTS;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.DUPLICATE_TEAM_JOIN_REQUEST;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_ACTIVITY_NOT_VISIBLE;
+import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_FILE_DUPLICATE;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_FULL;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_JOIN_REQUEST_STATE_INVALID;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.TEAM_LEADER_CANNOT_LEAVE;
@@ -732,6 +733,12 @@ public class TeamService {
                 .findById(mediaId)
                 .orElseThrow(() -> new BusinessException(TEAM_MEDIA_NOT_FOUND, "Media file not found"));
 
+        // 同名文件去重：在校验通过前不更新访问策略，避免缓存与数据库状态不一致
+        if (teamMediaFileRepository.existsByTeamIdAndFileNameAndUsage(
+                teamId, file.getFileName(), io.github.layjason.mayoistar.entity.common.MediaUsage.teamFile)) {
+            throw new BusinessException(TEAM_FILE_DUPLICATE, "A file with the same name already exists in this team");
+        }
+
         // 将访问策略从默认 owner 提升为 teamMember，使全队成员可查看
         mediaAccessService.updateAccessPolicy(
                 mediaId, io.github.layjason.mayoistar.entity.common.MediaAccessPolicy.teamMember, teamId);
@@ -759,8 +766,7 @@ public class TeamService {
         requireTeamMember(teamId, userId);
 
         var tmPage = teamMediaFileRepository.findByTeamIdAndMediaUsage(
-                teamId, MediaUsage.teamFile,
-                PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "id")));
+                teamId, MediaUsage.teamFile, PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "id")));
         List<UUID> mediaIds =
                 tmPage.getContent().stream().map(TeamMediaFile::getMediaId).collect(Collectors.toList());
 
@@ -837,8 +843,7 @@ public class TeamService {
         requireTeamMember(teamId, userId);
 
         var tmPage = teamMediaFileRepository.findByTeamIdAndMediaUsage(
-                teamId, MediaUsage.teamAlbum,
-                PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "id")));
+                teamId, MediaUsage.teamAlbum, PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "id")));
         List<UUID> mediaIds =
                 tmPage.getContent().stream().map(TeamMediaFile::getMediaId).collect(Collectors.toList());
 
