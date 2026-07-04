@@ -37,15 +37,6 @@ public class ActivityRegistrationService {
     private final ActivityRegistrationRepository activityRegistrationRepository;
     private final ReputationService reputationService;
 
-    public ActivityRegistrationService(
-            ActivityRepository activityRepository,
-            ActivityRegistrationRepository activityRegistrationRepository,
-            ReputationService reputationService) {
-        this.activityRepository = activityRepository;
-        this.activityRegistrationRepository = activityRegistrationRepository;
-        this.reputationService = reputationService;
-    }
-
     @Transactional
     public ActivityDtos.RegistrationResult registerActivity(
             String activityId, String userId, ActivityDtos.RegisterActivityRequest request) {
