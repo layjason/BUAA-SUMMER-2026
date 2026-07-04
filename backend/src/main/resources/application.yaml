@@ -63,6 +63,15 @@ mayoistar:
     clip:
       endpoint: ${MAYOISTAR_CLIP_ENDPOINT:http://localhost:8000}
       timeout-seconds: 60
+    content-review:
+      endpoint: ${MAYOISTAR_ALIYUN_IMAGEAUDIT_ENDPOINT:}
+      access-key-id: ${ALIBABA_CLOUD_ACCESS_KEY_ID:}
+      access-key-secret: ${ALIBABA_CLOUD_ACCESS_KEY_SECRET:}
+    activity-planning:
+      endpoint: ${MAYOISTAR_ACTIVITY_PLANNING_ENDPOINT:}
+      model: ${MAYOISTAR_ACTIVITY_PLANNING_MODEL:}
+      api-key: ${MAYOISTAR_ACTIVITY_PLANNING_API_KEY:}
+      timeout-seconds: ${MAYOISTAR_ACTIVITY_PLANNING_TIMEOUT_SECONDS:60}
     rate-limit:
       max-requests-per-minute: 20
   check-in:

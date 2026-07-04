@@ -18,6 +18,10 @@ public class AiProperties {
 
     private Clip clip = new Clip();
 
+    private ContentReview contentReview = new ContentReview();
+
+    private ActivityPlanning activityPlanning = new ActivityPlanning();
+
     private RateLimit rateLimit = new RateLimit();
 
     /**
@@ -28,6 +32,41 @@ public class AiProperties {
 
         /** CLIP 服务端点地址 */
         private String endpoint = "http://localhost:8000";
+
+        /** HTTP 请求超时时间（秒） */
+        private int timeoutSeconds = 60;
+    }
+
+    /**
+     * AI 内容审核服务配置。
+     */
+    @Data
+    public static class ContentReview {
+
+        /** 内容审核服务端点 */
+        private String endpoint = "";
+
+        /** 内容审核 AccessKey ID */
+        private String accessKeyId = "";
+
+        /** 内容审核 AccessKey Secret */
+        private String accessKeySecret = "";
+    }
+
+    /**
+     * AI 活动策划大模型服务配置。
+     */
+    @Data
+    public static class ActivityPlanning {
+
+        /** OpenAI-compatible Chat Completions 完整接口地址 */
+        private String endpoint = "";
+
+        /** 模型名称，由实际供应商决定 */
+        private String model = "";
+
+        /** API Token，仅从环境变量或外部配置注入 */
+        private String apiKey = "";
 
         /** HTTP 请求超时时间（秒） */
         private int timeoutSeconds = 60;
