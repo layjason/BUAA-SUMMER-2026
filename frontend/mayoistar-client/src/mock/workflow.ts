@@ -883,8 +883,7 @@ export function updateDraft(draftId: number, data: MockDraftUpsertInput): Activi
   if (!draft) {
     const activity = db.activities.find(
       (a) =>
-        a.id === draftId &&
-        (a.reviewStatus === 'rejected' || a.reviewStatus === 'changeRequired'),
+        a.id === draftId && (a.reviewStatus === 'rejected' || a.reviewStatus === 'changeRequired'),
     )
     if (!activity) {
       throw new MockBusinessError(20004, '草稿不存在')
@@ -985,8 +984,7 @@ export function submitActivity(draftId: number): ActivityDetail {
   if (draftIdx === -1) {
     const activity = db.activities.find(
       (a) =>
-        a.id === draftId &&
-        (a.reviewStatus === 'rejected' || a.reviewStatus === 'changeRequired'),
+        a.id === draftId && (a.reviewStatus === 'rejected' || a.reviewStatus === 'changeRequired'),
     )
     if (!activity) {
       throw new MockBusinessError(20004, '草稿不存在')
@@ -1839,8 +1837,7 @@ export function getDraft(draftId: number): ActivityDraftDetail {
   if (!draft) {
     const activity = db.activities.find(
       (a) =>
-        a.id === draftId &&
-        (a.reviewStatus === 'rejected' || a.reviewStatus === 'changeRequired'),
+        a.id === draftId && (a.reviewStatus === 'rejected' || a.reviewStatus === 'changeRequired'),
     )
     if (!activity) {
       throw new MockBusinessError(20004, '草稿不存在')
@@ -1989,13 +1986,14 @@ export function getCheckIns(
     )
     .map((w) => {
       const user = db.users.find((u) => u.id === w.userId)
-      const registrationStatus =
+      const registrationStatus: 'waiting' | 'waitingConfirmation' =
         w.status === 'waitingConfirmation' ? 'waitingConfirmation' : 'waiting'
       return {
         userId: String(w.userId),
         nickname: user?.nickname ?? '未知',
         registrationId: String(w.id),
         registrationStatus,
+        checkedInAt: undefined,
       }
     })
   items.push(...waitItems)

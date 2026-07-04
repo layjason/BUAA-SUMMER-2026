@@ -204,8 +204,8 @@ const canGenerateQrCode = computed(() => {
   const status = activity.value?.runtimeStatus
   return Boolean(
     isOrganizer.value &&
-      activity.value?.reviewStatus === 'approved' &&
-      (status === 'registering' || status === 'ongoing'),
+    activity.value?.reviewStatus === 'approved' &&
+    (status === 'registering' || status === 'ongoing'),
   )
 })
 
@@ -248,12 +248,12 @@ const buttonText = computed(() => {
 
   if (canReview.value) return '写评价'
   if (showReviewedStatus.value) return '已评价'
-  if (p.canCheckIn) return '扫码签到'
-  if (p.status === 'checkedIn') return '已签到'
   if (p.status === 'registered' && p.canCancelRegistration) {
     return `取消报名 (${participantCountText.value})`
   }
   if (p.status === 'registered') return `待签到 (${participantCountText.value})`
+  if (p.canCheckIn) return '扫码签到'
+  if (p.status === 'checkedIn') return '已签到'
   if (p.status === 'waiting' && p.canCancelRegistration) {
     return `取消候补 (候补${act.waitingCount}人)`
   }
