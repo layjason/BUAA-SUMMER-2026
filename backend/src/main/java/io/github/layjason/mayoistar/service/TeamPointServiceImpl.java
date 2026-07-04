@@ -1,8 +1,11 @@
 package io.github.layjason.mayoistar.service;
 
+import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.social.TeamMember;
+import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.entity.social.TeamPointChangeSource;
 import io.github.layjason.mayoistar.entity.social.TeamPointRecord;
 import io.github.layjason.mayoistar.exception.BusinessException;
@@ -15,6 +18,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -164,5 +169,81 @@ public class TeamPointServiceImpl implements TeamPointService {
         }
 
         log.info("活动 {} 爽约扣分完成，处理 {} 人", activityId, processedCount);
+    }
+
+    /**
+     * 队长或管理员手动调整成员积分。
+     *
+     * <p>前置条件：operatorId 对应的操作人角色为 leader/admin，目标成员在队内。
+     *
+     * <p>后置条件：目标成员积分已调整，流水已记录。
+     *
+     * @param teamId      小队 ID
+     * @param userId      目标用户 ID
+     * @param pointChange 积分变动量
+     * @param operatorId  操作人用户 ID
+     * @param reason      调整原因
+     */
+    @Override
+    @Transactional
+    public void adjustPoints(String teamId, String userId, int pointChange, String operatorId, String reason) {
+        TeamMember operator = teamMemberRepository
+                .findByTeamIdAndUserId(teamId, operatorId)
+                .orElseThrow(() -> {
+                    log.warn("操作人不是小队成员: teamId={}, operatorId={}", teamId, operatorId);
+                    return new BusinessException(ErrorCodes.TEAM_MEMBER_NOT_FOUND, "操作人不在该小队中");
+                });
+
+        if (operator.getRole() != TeamMemberRole.leader && operator.getRole() != TeamMemberRole.admin) {
+            log.warn("非队长/管理员尝试调整积分: teamId={}, operatorId={}", teamId, operatorId);
+            throw new BusinessException(ErrorCodes.TEAM_PERMISSION_DENIED, "仅队长和管理员可以调整成员积分");
+        }
+
+        addPoints(teamId, userId, pointChange, TeamPointChangeSource.manual, UUID.randomUUID().toString(), reason);
+    }
+
+    /**
+     * 查询成员积分变动历史。
+     *
+     * <p>前置条件：成员在校验成功的小队内。
+     *
+     * <p>后置条件：返回分页的积分变动记录。
+     *
+     * @param teamId   小队 ID
+     * @param userId   用户 ID
+     * @param page     页码（从 1 开始）
+     * @param pageSize 每页条数
+     * @return 分页积分变动记录
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<SocialDtos.TeamPointRecordItem> getPointHistory(
+            String teamId, String userId, int page, int pageSize) {
+        var pageRequest = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        var dbPage = teamPointRecordRepository.findByTeamIdAndUserIdOrderByCreatedAtDesc(teamId, userId, pageRequest);
+
+        var items = dbPage.getContent().stream()
+                .map(this::toDto)
+                .toList();
+
+        return new PageResult<>(
+                items,
+                dbPage.getTotalElements(),
+                page,
+                pageSize,
+                (int) Math.ceil((double) dbPage.getTotalElements() / pageSize));
+    }
+
+    private SocialDtos.TeamPointRecordItem toDto(TeamPointRecord record) {
+        var dto = new SocialDtos.TeamPointRecordItem();
+        dto.setRecordId(record.getRecordId());
+        dto.setUserId(record.getUserId());
+        dto.setNickname(record.getUser() != null ? record.getUser().getNickname() : "");
+        dto.setPointChange(record.getPointChange());
+        dto.setSource(record.getSource());
+        dto.setReferenceId(record.getReferenceId());
+        dto.setReason(record.getReason());
+        dto.setCreatedAt(record.getCreatedAt() != null ? record.getCreatedAt().toString() : null);
+        return dto;
     }
 }
