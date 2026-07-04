@@ -2100,8 +2100,12 @@ export interface components {
             canConfirmWaitingSeat: boolean;
             /** @description 当前用户是否可以发起报名。 */
             canRegister: boolean;
+            /** @description 当前用户是否可以评价该活动。由后端根据活动结束时间、签到状态、是否已评价、评价窗口是否过期等规则计算。 */
+            canReview: boolean;
             /** @description 当前登录用户候补确认截止时间，仅候补待确认时返回。 */
             confirmationDeadline?: components["schemas"]["DateTimeString"];
+            /** @description 评价入口关闭时间。仅 canReview 为 true 或用户满足评价基础条件时返回，用于前端展示剩余时间。 */
+            reviewWindowEndsAt?: components["schemas"]["DateTimeString"];
             /** @description 当前登录用户在该活动中的报名状态，未报名时为空。 */
             status?: components["schemas"]["Activities.RegistrationStatus"];
             /**
