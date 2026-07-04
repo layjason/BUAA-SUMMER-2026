@@ -83,7 +83,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。 */
+    /** @description 上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。返回的 signedUrl 为 owner 预览地址，绑定草稿后升级为 activityOwner、审核发布后升级为 publicAccess 并因 accessVersion 递增而失效，客户端应从活动接口获取当前 URL。 */
     post: operations['ActivityOperations_uploadActivityImage'];
     delete?: never;
     options?: never;
@@ -100,7 +100,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。 */
+    /** @description 上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。返回的 signedUrl 为 owner 私有地址，仅上传者本人与管理员可访问，对外消费路径待实现。 */
     post: operations['ActivityOperations_uploadActivityReviewImage'];
     delete?: never;
     options?: never;
@@ -920,7 +920,7 @@ export interface paths {
     /** @description 获取会话消息，调用方属于会话，分页返回消息，撤回消息只展示撤回状态。 */
     get: operations['ChatOperations_listMessages'];
     put?: never;
-    /** @description 发送消息，调用方属于会话且消息内容合法，创建消息并通知接收方，位置消息必须包含完整地点信息。 */
+    /** @description 发送消息，调用方属于会话且消息内容合法，创建消息并通知接收方，位置消息必须包含完整地点信息。成功后应向会话内其他成员推送 messageCreated 实时事件。 */
     post: operations['ChatOperations_sendMessage'];
     delete?: never;
     options?: never;
@@ -937,7 +937,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 上传聊天图片，请求为 multipart/form-data，返回可发送的图片 mediaId，上传不等于发送消息。 */
+    /** @description 上传聊天图片，请求为 multipart/form-data，返回可发送的图片 mediaId，上传不等于发送消息。返回的 signedUrl 为 owner 预览地址，发送消息后策略升级为 conversationMember 并因 accessVersion 递增而失效，客户端应在发送后从消息接口获取新的会话签名 URL。 */
     post: operations['ChatOperations_uploadChatImage'];
     delete?: never;
     options?: never;
@@ -954,7 +954,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 批量标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。 */
+    /** @description 批量标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。标记成功后服务端应向原消息发送方推送 messagePeerRead 事件（单聊）。 */
     post: operations['ChatOperations_markMessagesRead'];
     delete?: never;
     options?: never;
@@ -971,7 +971,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 转发消息，原消息可见且目标会话可发送，目标会话生成新消息，不会修改原消息。 */
+    /** @description 转发消息，原消息可见且目标会话可发送，目标会话生成新消息，不会修改原消息。成功后应向各目标会话内其他成员推送 messageForwarded 实时事件。 */
     post: operations['ChatOperations_forwardMessage'];
     delete?: never;
     options?: never;
@@ -988,7 +988,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 撤回消息，调用方为发送者且发送未超过 2 分钟，消息进入撤回状态，撤回不删除审计记录。 */
+    /** @description 撤回消息，调用方为发送者且发送未超过 2 分钟，消息进入撤回状态，撤回不删除审计记录。成功后应向会话内其他成员推送 messageRecalled 实时事件。 */
     post: operations['ChatOperations_recallMessage'];
     delete?: never;
     options?: never;
@@ -1006,7 +1006,7 @@ export interface paths {
     /** @description 查看小队相册图片，小队成员可分页查看已上传到相册的图片。 */
     get: operations['ChatOperations_listTeamAlbumImages'];
     put?: never;
-    /** @description 上传小队相册图片，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队相册的图片 mediaId。 */
+    /** @description 上传小队相册图片，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队相册的图片 mediaId。返回的 signedUrl 已是 teamMember 终态地址，小队成员均可访问。 */
     post: operations['ChatOperations_uploadTeamAlbumImage'];
     /** @description 批量删除小队相册图片，队长或管理员可传入相册图片媒体标识列表删除指定图片。 */
     delete: operations['ChatOperations_deleteTeamAlbumImages'];
@@ -1078,7 +1078,7 @@ export interface paths {
     /** @description 查看群文件，小队成员可分页查看群文件列表。 */
     get: operations['ChatOperations_listTeamFiles'];
     put?: never;
-    /** @description 上传群文件，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队的文件 mediaId。 */
+    /** @description 上传群文件，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队的文件 mediaId。返回的 signedUrl 已是 teamMember 终态地址，小队成员均可访问。 */
     post: operations['ChatOperations_uploadTeamFile'];
     /** @description 批量删除群文件，队长或管理员可传入群文件媒体标识列表删除指定文件。 */
     delete: operations['ChatOperations_deleteTeamFiles'];
@@ -1146,7 +1146,25 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description 聊天消息实时 WebSocket 占位端点。实际调用时客户端以 Bearer Token 完成鉴权并发起 WebSocket Upgrade，连接建立后服务端按 ChatRealtimeEvent 推送当前用户可见会话中的新消息；普通 JSON API 统一响应规则不适用于升级后的 WebSocket 数据帧。 */
+    /**
+     * @description 聊天消息实时 WebSocket 端点（OpenAPI 以 GET 占位描述 Upgrade 入口）。
+     *
+     *     **连接**
+     *     - 将 `GET /chat/ws/messages` 升级为 WebSocket；生产环境使用 `wss://`。
+     *     - Upgrade 请求携带 `Authorization: Bearer {accessToken}`，鉴权规则与 REST 一致。
+     *     - 单用户维持一条长连接；断线后客户端应指数退避重连。
+     *
+     *     **数据帧**
+     *     - 服务端 → 客户端：每个 Text 帧为 `ChatWebSocketFrame`（即 `ChatRealtimeEvent`）JSON，不包裹 `{ code, message, data }`。
+     *     - 客户端 → 服务端：本版本无业务帧；心跳由网关或基础设施处理。
+     *
+     *     **推送触发（实现参考）**
+     *     - `sendMessage`：向会话内除发送方外的成员推送 `messageCreated`。
+     *     - `markMessagesRead`：单聊中向被已读消息的原发送方推送 `messagePeerRead`（可逐条推送）。
+     *     - `recallMessage`：向会话内除撤回方外的成员推送 `messageRecalled`。
+     *     - `forwardMessage`：向各目标会话内除转发方外的成员推送 `messageForwarded`。
+     *     - 仅推送给当前在线且有权查看该会话的用户；离线用户通过 REST 拉取补偿。
+     */
     get: operations['ChatOperations_connectMessageWebSocket'];
     put?: never;
     post?: never;
@@ -1405,7 +1423,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。 */
+    /** @description 上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。返回的 signedUrl 为公开稳定地址，可直接使用并公共缓存。 */
     post: operations['IdentityOperations_uploadAvatar'];
     delete?: never;
     options?: never;
@@ -1422,7 +1440,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于后续资质提交的 mediaId，不得返回存储凭据。 */
+    /** @description 上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于后续资质提交的 mediaId，不得返回存储凭据。返回的 signedUrl 为 owner 私有地址，仅上传者本人与管理员可访问，属敏感资料，客户端不应持久缓存。 */
     post: operations['IdentityOperations_uploadMerchantLicense'];
     delete?: never;
     options?: never;
@@ -1897,7 +1915,7 @@ export interface components {
       endAt: components['schemas']['DateTimeString'];
       /** @description 活动地点。 */
       location: components['schemas']['LocationInfo'];
-      /** @description 活动封面图片。 */
+      /** @description 活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。 */
       coverImage?: components['schemas']['MediaFile'];
       /**
        * Format: double
@@ -1935,7 +1953,7 @@ export interface components {
       organizerId: components['schemas']['EntityId'];
       /** @description 活动发起人展示名称。 */
       organizerName: string;
-      /** @description 活动图片列表。 */
+      /** @description 活动图片列表。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。 */
       images: components['schemas']['MediaFile'][];
       /**
        * Format: int32
@@ -1988,7 +2006,7 @@ export interface components {
       minAge?: number;
       /** @description 是否要求签到用户提供位置信息进行位置校验。 */
       requireLocationCheck?: boolean;
-      /** @description 活动图片列表。 */
+      /** @description 活动图片列表。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。 */
       images: components['schemas']['MediaFile'][];
       /** @description 活动审核状态。 */
       reviewStatus: components['schemas']['Activities.ActivityReviewStatus'];
@@ -2076,7 +2094,7 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 参与者昵称。 */
       nickname: string;
-      /** @description 参与者头像。 */
+      /** @description 参与者头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 当前报名或签到状态。 */
       registrationStatus: components['schemas']['Activities.RegistrationStatus'];
@@ -2190,7 +2208,7 @@ export interface components {
       endAt: components['schemas']['DateTimeString'];
       /** @description 活动地点。 */
       location: components['schemas']['LocationInfo'];
-      /** @description 活动封面图片。 */
+      /** @description 活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。 */
       coverImage?: components['schemas']['MediaFile'];
       /**
        * Format: double
@@ -2229,7 +2247,7 @@ export interface components {
       title: string;
       /** @description 活动总结正文。 */
       content: string;
-      /** @description 活动总结图片列表。 */
+      /** @description 活动总结图片列表。签名 URL 用途为 summaryImage，对外消费路径待实现。 */
       images: components['schemas']['MediaFile'][];
       /** @description 活动总结图片标签。 */
       imageTags: components['schemas']['Activities.ImageTagConfirmation'][];
@@ -2266,7 +2284,7 @@ export interface components {
        * @description 模板默认人数上限。
        */
       defaultCapacity: number;
-      /** @description 模板默认活动封面图片。 */
+      /** @description 模板默认活动封面图片。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       defaultCoverImage: components['schemas']['MediaFile'];
     };
     /** @description 活动基础信息请求，地点来自地图选点，时间范围合法，可用于草稿保存或提交审核，费用字段只表达信息，不触发支付。 */
@@ -2376,7 +2394,7 @@ export interface components {
       endAt: components['schemas']['DateTimeString'];
       /** @description 活动地点。 */
       location: components['schemas']['LocationInfo'];
-      /** @description 活动封面图片。 */
+      /** @description 活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。 */
       coverImage?: components['schemas']['MediaFile'];
       /**
        * Format: double
@@ -2531,7 +2549,7 @@ export interface components {
       memberCount: number;
       /** @description 小队简介。 */
       description?: string;
-      /** @description 小队头像媒体文件。 */
+      /** @description 小队头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 小队状态。 */
       status: components['schemas']['Social.TeamStatus'];
@@ -2740,7 +2758,7 @@ export interface components {
       kind: components['schemas']['Chat.MessageKind'];
       /** @description 文本消息内容。 */
       text?: string;
-      /** @description 图片消息媒体文件。 */
+      /** @description 图片消息媒体文件。签名 URL 为会话成员可见，会话内稳定；被移出会话后访问失效。 */
       image?: components['schemas']['MediaFile'];
       /** @description 位置共享消息地点。 */
       location?: components['schemas']['LocationInfo'];
@@ -2748,8 +2766,10 @@ export interface components {
       mentionedUserIds?: components['schemas']['EntityId'][];
       /** @description 该消息是否 @ 所有人。 */
       mentionAll?: boolean;
-      /** @description 消息读取状态。 */
+      /** @description 当前用户作为接收方时，自己是否已读该消息。本人发送的消息对本人恒为 read。 */
       readStatus: components['schemas']['Chat.MessageReadStatus'];
+      /** @description 单聊中发送方可见的对方已读状态：对方全部已读时为 read，否则 unread。仅本人发送的消息返回；群聊暂不返回。 */
+      peerReadStatus?: components['schemas']['Chat.MessageReadStatus'];
       /** @description 消息是否已撤回。 */
       recalled: boolean;
       /** @description 消息发送时间。 */
@@ -2761,11 +2781,12 @@ export interface components {
       kind: components['schemas']['Chat.ChatRealtimeEventKind'];
       /** @description 发生事件的会话标识。 */
       conversationId: components['schemas']['EntityId'];
-      /** @description 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload。 */
+      /** @description 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload，kind=messagePeerRead 时为 MessagePeerReadPayload。 */
       payload:
         | components['schemas']['Chat.MessageCreatedPayload']
         | components['schemas']['Chat.MessageRecalledPayload']
-        | components['schemas']['Chat.MessageForwardedPayload'];
+        | components['schemas']['Chat.MessageForwardedPayload']
+        | components['schemas']['Chat.MessagePeerReadPayload'];
       /** @description 事件发生时间。 */
       occurredAt: components['schemas']['DateTimeString'];
     };
@@ -2773,7 +2794,23 @@ export interface components {
      * @description 聊天实时事件类型。friendRequestCreated 事件通过 /queue/social-events 推送，不在此枚举内。
      * @enum {string}
      */
-    'Chat.ChatRealtimeEventKind': 'messageCreated' | 'messageRecalled' | 'messageForwarded';
+    'Chat.ChatRealtimeEventKind':
+      'messageCreated' | 'messageRecalled' | 'messageForwarded' | 'messagePeerRead';
+    /** @description 聊天 WebSocket 数据帧。服务端向客户端推送的每个 Text 帧为 UTF-8 JSON，结构与本模型一致，不包裹 APIResult 统一响应外壳。 */
+    'Chat.ChatWebSocketFrame': {
+      /** @description 实时事件类型。 */
+      kind: components['schemas']['Chat.ChatRealtimeEventKind'];
+      /** @description 发生事件的会话标识。 */
+      conversationId: components['schemas']['EntityId'];
+      /** @description 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload，kind=messagePeerRead 时为 MessagePeerReadPayload。 */
+      payload:
+        | components['schemas']['Chat.MessageCreatedPayload']
+        | components['schemas']['Chat.MessageRecalledPayload']
+        | components['schemas']['Chat.MessageForwardedPayload']
+        | components['schemas']['Chat.MessagePeerReadPayload'];
+      /** @description 事件发生时间。 */
+      occurredAt: components['schemas']['DateTimeString'];
+    };
     /**
      * @description 会话类型。
      * @enum {string}
@@ -2787,7 +2824,7 @@ export interface components {
       kind: components['schemas']['Chat.ConversationKind'];
       /** @description 会话标题。 */
       title: string;
-      /** @description 会话头像。 */
+      /** @description 会话头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 最后一条消息的摘要文本。 */
       lastMessagePreview?: string;
@@ -2844,6 +2881,15 @@ export interface components {
      * @enum {string}
      */
     'Chat.MessageKind': 'text' | 'image' | 'location';
+    /** @description 单聊对方已读事件负载，接收方为原消息发送者。 */
+    'Chat.MessagePeerReadPayload': {
+      /** @description 会话标识。 */
+      conversationId: components['schemas']['EntityId'];
+      /** @description 已被对方阅读的消息标识。 */
+      messageId: components['schemas']['EntityId'];
+      /** @description 对方已读后的状态，恒为 read。 */
+      peerReadStatus: components['schemas']['Chat.MessageReadStatus'];
+    };
     /**
      * @description 消息读取状态。
      * @enum {string}
@@ -3034,7 +3080,7 @@ export interface components {
        * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
        * @enum {number}
        */
-      code: 20020;
+      code: 20021;
       /**
        * @description 平台错误消息，业务错误使用英文模板文案。
        * @enum {string}
@@ -4504,7 +4550,7 @@ export interface components {
       merchantName: string;
       /** @description 商家全平台唯一昵称，与个人昵称共享唯一约束。 */
       nickname: string;
-      /** @description 商家头像媒体文件。 */
+      /** @description 商家头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 商家关注或经营的活动领域。 */
       interestedActivityFields: string[];
@@ -4551,7 +4597,7 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 用户展示昵称。 */
       nickname: string;
-      /** @description 用户头像媒体文件。 */
+      /** @description 用户头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 用户性别。 */
       gender?: components['schemas']['Identity.Gender'];
@@ -4690,7 +4736,7 @@ export interface components {
       sizeBytes: number;
       /** @description 媒体用途。 */
       usage: components['schemas']['MediaUsage'];
-      /** @description 签名访问地址，客户端不得作为永久地址保存。 */
+      /** @description 签名访问地址，是资源当前状态的派生地址而非永久地址：accessVersion 变化后立即失效，客户端不得长期保存。生命周期随 usage 而定（头像、已发布活动图片为公开稳定可缓存；聊天图片、群文件、相册为私有成员可见；未发布活动图片仅组织者可见并随活动状态翻转；商家资质为私有仅本人与管理员）。详见 docs/media-access-control.md 的「URL 生命周期与缓存策略」。 */
       signedUrl?: string;
       /** @description 媒体可见性。 */
       visibility?: components['schemas']['MediaVisibility'];
@@ -4753,7 +4799,7 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 被屏蔽用户昵称。 */
       nickname: string;
-      /** @description 被屏蔽用户头像。 */
+      /** @description 被屏蔽用户头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 屏蔽时间。 */
       blockedAt: components['schemas']['DateTimeString'];
@@ -4764,7 +4810,7 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 用户昵称。 */
       nickname: string;
-      /** @description 用户头像。 */
+      /** @description 用户头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 关注时间。 */
       followedAt: components['schemas']['DateTimeString'];
@@ -4788,7 +4834,7 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 好友昵称。 */
       nickname: string;
-      /** @description 好友头像。 */
+      /** @description 好友头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 当前用户为该好友设置的备注。 */
       remark?: string;
@@ -4949,7 +4995,7 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 成员昵称。 */
       nickname: string;
-      /** @description 成员头像。 */
+      /** @description 成员头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 成员在小队中的角色。 */
       role: components['schemas']['Social.TeamMemberRole'];
@@ -5010,7 +5056,7 @@ export interface components {
       memberCount: number;
       /** @description 小队简介。 */
       description?: string;
-      /** @description 小队头像媒体文件。 */
+      /** @description 小队头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 小队状态。 */
       status: components['schemas']['Social.TeamStatus'];
@@ -9300,7 +9346,7 @@ export interface operations {
                  */
                 message: 'For Super Earth!';
                 /** @description 响应数据。 */
-                data: components['schemas']['Chat.ChatRealtimeEvent'];
+                data: components['schemas']['Chat.ChatWebSocketFrame'];
               }
             | components['schemas']['BadRequestResponse']
             | components['schemas']['UnauthorizedResponse']

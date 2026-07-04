@@ -152,6 +152,28 @@ public class WebSocketNotificationService implements NotificationService {
     }
 
     /**
+     * 通知单聊对方已读事件。
+     *
+     * <p>前置条件：接收方已调用 markMessagesRead 标记消息已读。
+     *
+     * <p>后置条件：原消息发送方收到 ChatRealtimeEvent kind=messagePeerRead。
+     *
+     * @param conversationId 会话标识
+     * @param messageId      已被对方阅读的消息标识
+     * @param senderUserId   原消息发送方用户 ID
+     */
+    @Override
+    public void notifyMessagePeerRead(String conversationId, String messageId, String senderUserId) {
+        ChatDtos.ChatRealtimeEvent event = buildChatEvent("messagePeerRead", conversationId, null, null);
+        ChatDtos.MessagePeerReadPayload payload = (ChatDtos.MessagePeerReadPayload) event.getPayload();
+        payload.setConversationId(conversationId);
+        payload.setMessageId(messageId);
+        payload.setPeerReadStatus(MessageReadStatus.read.name());
+        sendToUser(senderUserId, CHAT_EVENTS_DEST, event);
+        log.info("单聊已读通知已推送: messageId={}, to={}", messageId, senderUserId);
+    }
+
+    /**
      * 计算用户在指定会话中的未读消息数。
      *
      * <p>前置条件：userId 为会话成员。
@@ -187,7 +209,7 @@ public class WebSocketNotificationService implements NotificationService {
      * @return ChatRealtimeEvent
      */
     private ChatDtos.ChatRealtimeEvent buildChatEvent(
-            String kind, String conversationId, ChatDtos.ChatMessage message, @Nullable Integer unreadCount) {
+            String kind, String conversationId, @Nullable ChatDtos.ChatMessage message, @Nullable Integer unreadCount) {
         ChatDtos.ChatRealtimeEventPayload payload;
         switch (kind) {
             case "messageCreated":
@@ -206,6 +228,9 @@ public class WebSocketNotificationService implements NotificationService {
                 forwardedPayload.setMessage(message);
                 forwardedPayload.setConversationUnreadCount(unreadCount != null ? unreadCount : 0);
                 payload = forwardedPayload;
+                break;
+            case "messagePeerRead":
+                payload = new ChatDtos.MessagePeerReadPayload();
                 break;
             default:
                 throw new IllegalArgumentException("未知事件类型: " + kind);
