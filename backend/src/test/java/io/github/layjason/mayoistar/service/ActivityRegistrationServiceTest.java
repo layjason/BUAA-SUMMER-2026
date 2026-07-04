@@ -27,8 +27,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @DataJpaTest
 @ActiveProfiles("test")
@@ -48,6 +52,9 @@ class ActivityRegistrationServiceTest {
     @Autowired
     private ActivityRegistrationService activityRegistrationService;
 
+    @MockBean
+    private ReputationService reputationService;
+
     private String organizerId;
     private String participantId;
 
@@ -58,6 +65,7 @@ class ActivityRegistrationServiceTest {
         userRepository.deleteAll();
         organizerId = createUser("organizer");
         participantId = createUser("participant");
+        when(reputationService.canRegisterForActivity(any())).thenReturn(true);
     }
 
     @Test
