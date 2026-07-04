@@ -71,8 +71,8 @@ const markers = computed<ActivityMarker[]>(() => {
             longitude: currentLongitude.value,
             title: '我的位置',
             iconPath: myLocationMarkerIcon,
-            width: 24,
-            height: 24,
+            width: 40,
+            height: 40,
             anchor: { x: 0.5, y: 0.5 },
           },
         ]
@@ -88,8 +88,8 @@ const markers = computed<ActivityMarker[]>(() => {
         longitude: point.longitude,
         title: item.title,
         iconPath: locationMarkerIcon,
-        width: selectedId.value === item.activityId ? 36 : 32,
-        height: selectedId.value === item.activityId ? 36 : 32,
+        width: selectedId.value === item.activityId ? 56 : 48,
+        height: selectedId.value === item.activityId ? 56 : 48,
         anchor: { x: 0.5, y: 1 },
       }
     })
@@ -137,10 +137,17 @@ function readRouteFilters(query: Record<string, string | undefined>): void {
  * 前置条件：页面需要初始化地图中心或用户点击定位。
  * 后置条件：定位成功返回 GCJ-02 坐标，失败返回默认北京中心点。
  * 不变量：失败不会阻断地图活动加载。
+ *
+ * 在 H5 端，浏览器 Geolocation API 在非 HTTPS 环境下可能永不回调（不触发 success
+ * 也不触发 error），因此必须设置 timeout 避免 Promise 永久悬挂。
  */
 async function getCurrentCenter(): Promise<{ longitude: number; latitude: number }> {
   try {
-    const location = await uni.getLocation({ type: 'gcj02' })
+    const location = await uni.getLocation({
+      type: 'gcj02',
+      /* H5 兼容：防止非 HTTPS 环境下 geolocation 永不回调导致页面卡死 */
+      timeout: 8000,
+    })
     currentLongitude.value = location.longitude
     currentLatitude.value = location.latitude
     return { longitude: location.longitude, latitude: location.latitude }
@@ -195,9 +202,33 @@ async function loadMapActivities(): Promise<void> {
 }
 
 /**
- * 定位到当前位置并刷新点位
+ * 初始化页面：先以默认中心加载活动，再异步尝试定位。
  *
- * 前置条件：用户点击定位按钮或页面初始化。
+ * 前置条件：页面由 onLoad 触发。
+ * 后置条件：活动列表在默认中心加载完成；定位成功后移动地图并刷新。
+ * 不变量：定位失败或超时不会阻塞首次数据展示。
+ *
+ * H5 端关键修复：浏览器 Geolocation API 在非 HTTPS 环境下可能永久不回调，
+ * 因此先加载默认位置的活动数据，再将定位作为可选增强，确保页面不会白屏。
+ */
+async function initializePage(): Promise<void> {
+  // 立刻以默认中心加载活动点位，避免等待定位导致白屏/卡死
+  await loadMapActivities()
+  // 异步尝试获取用户位置，成功则移动地图并重新加载
+  const center = await getCurrentCenter()
+  if (
+    center.longitude !== DEFAULT_CENTER.longitude ||
+    center.latitude !== DEFAULT_CENTER.latitude
+  ) {
+    moveMapTo(center.longitude, center.latitude)
+    await loadMapActivities()
+  }
+}
+
+/**
+ * 定位到当前位置并刷新点位（用户点击"定位"按钮时触发）
+ *
+ * 前置条件：用户点击定位按钮。
  * 后置条件：地图中心移动到当前位置并重新加载附近活动。
  * 不变量：定位失败使用默认中心点继续演示。
  */
@@ -285,7 +316,7 @@ function getStatusText(status: string): string {
 
 onLoad((query) => {
   readRouteFilters((query ?? {}) as Record<string, string | undefined>)
-  void locateAndLoad()
+  void initializePage()
 })
 </script>
 
