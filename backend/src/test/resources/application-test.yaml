@@ -21,3 +21,6 @@ mayoistar:
   media:
     access:
       signing-secret: test-media-signing-secret
+  ai:
+    clip:
+      kafka-enabled: false

@@ -9,7 +9,7 @@ import io.github.layjason.mayoistar.service.ai.ImageClassificationService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,11 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/ai")
-@ConditionalOnBean(ImageClassificationService.class)
 public class AiController {
 
     private final DefaultApiResponseFactory responseFactory;
-    private final ImageClassificationService imageClassificationService;
+    private final ObjectProvider<ImageClassificationService> imageClassificationServiceProvider;
     private final SecurityUtils securityUtils;
 
     @PostMapping("/activity-plans")
@@ -46,7 +45,7 @@ public class AiController {
             @Valid @RequestBody AiDtos.ImageClassificationRequest request) {
         String userId = securityUtils.getCurrentUserId();
         AiDtos.ClassifyTaskSubmitResponse result =
-                imageClassificationService.submitClassifyTask(request.getMediaIds(), userId);
+                getImageClassificationService().submitClassifyTask(request.getMediaIds(), userId);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -60,7 +59,7 @@ public class AiController {
     @GetMapping("/image-classifications/{taskId}")
     public ResponseEntity<ApiResponse<AiDtos.ClassifyTaskQueryResponse>> getClassifyTaskResult(
             @PathVariable UUID taskId) {
-        AiDtos.ClassifyTaskQueryResponse result = imageClassificationService.getClassifyTaskResult(taskId);
+        AiDtos.ClassifyTaskQueryResponse result = getImageClassificationService().getClassifyTaskResult(taskId);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -75,10 +74,18 @@ public class AiController {
     @GetMapping("/image-classifications/media/{mediaId}")
     public ResponseEntity<ApiResponse<AiDtos.MediaClassificationResponse>> getClassificationByMediaId(
             @PathVariable UUID mediaId) {
-        AiDtos.MediaClassificationResponse result = imageClassificationService.getClassificationByMediaId(mediaId);
+        AiDtos.MediaClassificationResponse result = getImageClassificationService().getClassificationByMediaId(mediaId);
         if (result == null) {
             throw new BusinessException(ErrorCodes.AI_TASK_NOT_FOUND, "No classification cached for this media");
         }
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    private ImageClassificationService getImageClassificationService() {
+        ImageClassificationService service = imageClassificationServiceProvider.getIfAvailable();
+        if (service == null) {
+            throw new BusinessException(ErrorCodes.AI_SERVICE_UNAVAILABLE, "AI image classification service is unavailable");
+        }
+        return service;
     }
 }
