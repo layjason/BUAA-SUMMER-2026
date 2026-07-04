@@ -7,6 +7,8 @@ import {
   createReview,
   createSummary,
   getCheckIns,
+  getActivityDetail,
+  getDraft,
   getMapActivities,
   getMyActivities,
   getMyActivityReview,
@@ -16,6 +18,7 @@ import {
   listActivitySummaries,
   registerForActivity,
   submitActivity,
+  updateDraft,
 } from '@/mock/workflow'
 
 vi.stubGlobal('uni', {
@@ -274,5 +277,124 @@ describe('活动 mock workflow 契约对齐', () => {
         point: { longitude: 116.397, latitude: 40.02 },
       }),
     ])
+  })
+
+  it('演示种子数据应覆盖详情页底部主按钮状态', () => {
+    expect(getParticipationState(13, 10001)).toMatchObject({
+      canRegister: true,
+    })
+
+    const fullActivity = getActivityDetail(14)
+    expect(fullActivity).toMatchObject({
+      registeredCount: 2,
+      capacity: 2,
+      waitingCount: 0,
+    })
+    expect(getParticipationState(14, 10001)).toMatchObject({
+      canRegister: true,
+    })
+    expect(getParticipationState(15, 10001)).toMatchObject({
+      status: 'waiting',
+      canCancelRegistration: true,
+      waitingRank: 1,
+    })
+    expect(getParticipationState(16, 10001)).toMatchObject({
+      status: 'waitingConfirmation',
+      canConfirmWaitingSeat: true,
+      canCancelRegistration: true,
+    })
+    expect(getParticipationState(19, 10001)).toMatchObject({
+      status: 'registered',
+      canCheckIn: true,
+    })
+    expect(getParticipationState(20, 10001)).toMatchObject({
+      status: 'checkedIn',
+      canCheckIn: false,
+    })
+  })
+
+  it('演示种子数据应覆盖发起人审核、总结、评价状态', () => {
+    expect(getActivityDetail(21)).toMatchObject({
+      reviewStatus: 'approved',
+      runtimeStatus: 'ended',
+      organizerId: '10001',
+    })
+    expect(getParticipationState(21, 10001)).toMatchObject({
+      status: 'checkedIn',
+    })
+    expect(getMyActivityReview(21, 10001)).toEqual({})
+    expect(listActivitySummaries(21, 1, 10).items).toHaveLength(0)
+
+    expect(getActivityDetail(22)).toMatchObject({
+      reviewStatus: 'approved',
+      runtimeStatus: 'ended',
+      organizerId: '10001',
+    })
+    expect(getParticipationState(22, 10001)).toMatchObject({
+      status: 'checkedIn',
+    })
+    expect(getMyActivityReview(22, 10001).review).toMatchObject({
+      activityId: '22',
+      userId: '10001',
+    })
+    expect(listActivitySummaries(22, 1, 10).items).toEqual([
+      expect.objectContaining({ activityId: '22' }),
+    ])
+
+    expect(getActivityDetail(24)).toMatchObject({
+      reviewStatus: 'pending',
+      registeredCount: 0,
+      capacity: 120,
+      reviewRecords: expect.any(Array),
+    })
+    expect(getActivityDetail(25)).toMatchObject({
+      reviewStatus: 'rejected',
+      reviewRecords: expect.arrayContaining([
+        expect.objectContaining({ result: 'rejected' }),
+      ]),
+    })
+    expect(getActivityDetail(26)).toMatchObject({
+      reviewStatus: 'changeRequired',
+      reviewRecords: expect.arrayContaining([
+        expect.objectContaining({ result: 'changeRequired' }),
+      ]),
+    })
+    expect(getActivityDetail(27)).toMatchObject({
+      runtimeStatus: 'takenDown',
+    })
+  })
+
+  it('驳回或需修改活动应可按草稿形态回填并重新提交', () => {
+    const draft = getDraft(25)
+    expect(draft).toMatchObject({
+      activityId: '25',
+      title: '演示：审核驳回需要重新提交',
+      reviewStatus: 'rejected',
+      location: expect.objectContaining({
+        point: expect.objectContaining({
+          longitude: expect.any(Number),
+          latitude: expect.any(Number),
+        }),
+      }),
+    })
+
+    const updated = updateDraft(25, {
+      title: '演示：已补充安全说明后重新提交',
+      introduction: '已补充活动安全保障措施、现场联系人和应急方案。',
+      capacity: 30,
+    })
+    expect(updated).toMatchObject({
+      activityId: '25',
+      title: '演示：已补充安全说明后重新提交',
+      reviewStatus: 'rejected',
+    })
+
+    const submitted = submitActivity(25)
+    expect(submitted).toMatchObject({
+      activityId: '25',
+      title: '演示：已补充安全说明后重新提交',
+      reviewStatus: 'approved',
+      runtimeStatus: 'registering',
+    })
   })
 })

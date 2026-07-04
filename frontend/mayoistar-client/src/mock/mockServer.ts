@@ -53,6 +53,7 @@ import {
   getMyRegistrations,
   getParticipants,
   getCheckIns,
+  exportCheckInsCsv,
   createReview,
   createSummary,
   listActivityReviews,
@@ -490,6 +491,11 @@ const routes: Route[] = [
       const pageSize = parseInt(query.pageSize ?? '100', 10)
       return ok(getCheckIns(parseInt(params.activityId, 10), page, pageSize))
     },
+  },
+  {
+    method: 'GET',
+    pattern: '/activities/{activityId}/check-ins/export',
+    handler: (params) => ok(exportCheckInsCsv(parseInt(params.activityId, 10))),
   },
 
   /* ===== 评价 / 总结 ===== */
