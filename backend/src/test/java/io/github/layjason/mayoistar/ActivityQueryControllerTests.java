@@ -34,6 +34,7 @@ import io.github.layjason.mayoistar.service.ActivitySearchService;
 import io.github.layjason.mayoistar.service.CheckInService;
 import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
+import io.github.layjason.mayoistar.service.activities.ActivityFeedService;
 import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
 import java.time.Instant;
 import java.util.List;
@@ -187,7 +188,8 @@ class ActivityQueryControllerTests {
                 mock(ActivityQueryService.class),
                 mock(ActivityRegistrationService.class),
                 mock(ActivityRegistrationStateService.class),
-                mock(CheckInService.class));
+                mock(CheckInService.class),
+                mock(ActivityFeedService.class));
 
         assertThatThrownBy(() -> controller.listMyRegistrations(null, null)).isInstanceOf(AccessDeniedException.class);
     }
