@@ -12,6 +12,7 @@ import io.github.layjason.mayoistar.service.ActivitySearchService;
 import io.github.layjason.mayoistar.service.CheckInService;
 import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
+import io.github.layjason.mayoistar.service.activities.ActivityFeedService;
 import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
 import io.github.layjason.mayoistar.service.activities.ActivitySummaryReviewService;
 import jakarta.validation.Valid;
@@ -49,6 +50,7 @@ public class ActivityController {
     private final ActivityRegistrationService activityRegistrationService;
     private final ActivityRegistrationStateService activityRegistrationStateService;
     private final CheckInService checkInService;
+    private final ActivityFeedService activityFeedService;
 
     @PostMapping("/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> saveDraft(
@@ -84,7 +86,8 @@ public class ActivityController {
             @RequestParam(required = false) Double longitude,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+        return ResponseEntity.ok(
+                ApiResponse.success(activityFeedService.getFeed(tab, page, pageSize, latitude, longitude)));
     }
 
     @GetMapping("/map")
