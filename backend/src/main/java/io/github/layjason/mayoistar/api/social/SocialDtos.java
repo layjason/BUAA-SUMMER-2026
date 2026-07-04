@@ -9,6 +9,7 @@ import io.github.layjason.mayoistar.entity.social.ReportTargetType;
 import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
 import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
+import io.github.layjason.mayoistar.entity.social.TeamPointChangeSource;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -222,5 +223,27 @@ public final class SocialDtos {
 
         @Size(max = 500)
         private String message;
+    }
+
+    @Data
+    public static class ManualPointAdjustmentRequest {
+        @NotNull
+        private Integer pointChange;
+
+        @NotBlank
+        @Size(max = 50)
+        private String reason;
+    }
+
+    @Data
+    public static class TeamPointRecordItem {
+        private String recordId;
+        private String userId;
+        private String nickname;
+        private Integer pointChange;
+        private TeamPointChangeSource source;
+        private String referenceId;
+        private String reason;
+        private String createdAt;
     }
 }

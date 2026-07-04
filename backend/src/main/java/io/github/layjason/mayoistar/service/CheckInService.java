@@ -8,6 +8,7 @@ import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
+import io.github.layjason.mayoistar.entity.social.TeamPointChangeSource;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
@@ -43,19 +44,23 @@ public class CheckInService {
     private final CheckInProperties properties;
     private final ActivityRepository activityRepository;
     private final ActivityRegistrationRepository registrationRepository;
+    private final TeamPointService teamPointService;
 
     /**
      * @param properties             签到配置属性
      * @param activityRepository     活动数据访问
      * @param registrationRepository 报名数据访问
+     * @param teamPointService      小队积分服务
      */
     public CheckInService(
             CheckInProperties properties,
             ActivityRepository activityRepository,
-            ActivityRegistrationRepository registrationRepository) {
+            ActivityRegistrationRepository registrationRepository,
+            TeamPointService teamPointService) {
         this.properties = properties;
         this.activityRepository = activityRepository;
         this.registrationRepository = registrationRepository;
+        this.teamPointService = teamPointService;
     }
 
     /**
@@ -181,6 +186,27 @@ public class CheckInService {
                 activityId,
                 userId,
                 registration.getRegistrationId());
+
+        // 小队活动签到加分
+        if (activity.getTeamId() != null) {
+            try {
+                teamPointService.addPoints(
+                        activity.getTeamId(),
+                        userId,
+                        TeamPointService.CHECK_IN_POINTS,
+                        TeamPointChangeSource.checkin,
+                        registration.getRegistrationId(),
+                        "活动签到");
+            } catch (BusinessException e) {
+                log.info(
+                        "签到加分跳过: activityId={}, userId={}, code={}",
+                        activityId,
+                        userId,
+                        e.getCode());
+            } catch (Exception e) {
+                log.warn("签到加分失败: activityId={}, userId={}", activityId, userId, e);
+            }
+        }
 
         return toCheckInRecord(registration);
     }
