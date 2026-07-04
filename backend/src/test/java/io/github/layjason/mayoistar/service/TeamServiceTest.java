@@ -496,6 +496,47 @@ class TeamServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("群文件上传与可见性")
+    class TeamFileUpload {
+
+        private User mutsuki;
+        private String teamId;
+
+        @BeforeEach
+        void setUp() {
+            mutsuki = createUser("mutsuki@mygo.band", "睦月");
+            SocialDtos.TeamCreateRequest req = createRequest("CRYCHIC ファイル倉庫", TeamJoinMode.publicJoin);
+            teamId = teamService.createTeam(mutsuki.getUserId(), req).getTeamId();
+        }
+
+        @Test
+        @DisplayName("上传群文件后访问策略从 owner 更新为 teamMember")
+        void uploadTeamFileUpdatesAccessPolicy() {
+            UUID mediaId = UUID.randomUUID();
+            MediaFile mf = MediaFile.builder()
+                    .mediaId(mediaId)
+                    .fileName("setlist.pdf")
+                    .contentType("application/pdf")
+                    .sizeBytes(1024L)
+                    .usage(MediaUsage.teamFile)
+                    .storagePath("/tmp/setlist.pdf")
+                    .visibility(MediaVisibility.privateVisible)
+                    .accessPolicy(MediaAccessPolicy.owner)
+                    .accessScopeId(mutsuki.getUserId())
+                    .accessVersion(1L)
+                    .uploadedBy(mutsuki.getUserId())
+                    .build();
+            mediaFileRepository.save(mf);
+
+            var result = teamService.uploadTeamFile(teamId, mutsuki.getUserId(), mediaId);
+
+            assertThat(result.getMediaId()).isEqualTo(mediaId);
+            assertThat(result.getSignedUrl()).contains("policy=teamMember");
+            assertThat(result.getSignedUrl()).contains("scope=" + teamId);
+        }
+    }
+
     private User createUser(String email, String nickname) {
         User user = User.builder()
                 .userId(UUID.randomUUID().toString())

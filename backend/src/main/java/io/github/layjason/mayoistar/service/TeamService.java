@@ -732,6 +732,10 @@ public class TeamService {
                 .findById(mediaId)
                 .orElseThrow(() -> new BusinessException(TEAM_MEDIA_NOT_FOUND, "Media file not found"));
 
+        // 将访问策略从默认 owner 提升为 teamMember，使全队成员可查看
+        mediaAccessService.updateAccessPolicy(
+                mediaId, io.github.layjason.mayoistar.entity.common.MediaAccessPolicy.teamMember, teamId);
+
         TeamMediaFile teamMedia = TeamMediaFile.builder()
                 .id(UUID.randomUUID())
                 .teamId(teamId)
