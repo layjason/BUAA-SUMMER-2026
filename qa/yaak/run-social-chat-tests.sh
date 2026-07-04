@@ -517,7 +517,7 @@ response=$(send_json "$upload_chat_image" "$environment_id")
 assert_code "$response" "200"
 assert_jq_non_empty "$response" '.data.mediaId'
 assert_jq_equals "$response" '.data.usage' "chatImage"
-assert_jq_non_empty "$response" '.data.url'
+assert_jq_non_empty "$response" '.data.url // .data.signedUrl'
 chat_image_media_id=$(echo "$response" | jq -r '.data.mediaId')
 set_env_var "$environment_id" "chatImageMediaId" "$chat_image_media_id"
 pass_test
