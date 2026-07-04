@@ -59,7 +59,8 @@ public class AiController {
     @GetMapping("/image-classifications/{taskId}")
     public ResponseEntity<ApiResponse<AiDtos.ClassifyTaskQueryResponse>> getClassifyTaskResult(
             @PathVariable UUID taskId) {
-        AiDtos.ClassifyTaskQueryResponse result = getImageClassificationService().getClassifyTaskResult(taskId);
+        AiDtos.ClassifyTaskQueryResponse result =
+                getImageClassificationService().getClassifyTaskResult(taskId);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -74,7 +75,8 @@ public class AiController {
     @GetMapping("/image-classifications/media/{mediaId}")
     public ResponseEntity<ApiResponse<AiDtos.MediaClassificationResponse>> getClassificationByMediaId(
             @PathVariable UUID mediaId) {
-        AiDtos.MediaClassificationResponse result = getImageClassificationService().getClassificationByMediaId(mediaId);
+        AiDtos.MediaClassificationResponse result =
+                getImageClassificationService().getClassificationByMediaId(mediaId);
         if (result == null) {
             throw new BusinessException(ErrorCodes.AI_TASK_NOT_FOUND, "No classification cached for this media");
         }
@@ -84,7 +86,8 @@ public class AiController {
     private ImageClassificationService getImageClassificationService() {
         ImageClassificationService service = imageClassificationServiceProvider.getIfAvailable();
         if (service == null) {
-            throw new BusinessException(ErrorCodes.AI_SERVICE_UNAVAILABLE, "AI image classification service is unavailable");
+            throw new BusinessException(
+                    ErrorCodes.AI_SERVICE_UNAVAILABLE, "AI image classification service is unavailable");
         }
         return service;
     }

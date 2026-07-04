@@ -16,18 +16,17 @@ class AiControllerTest {
 
     @Test
     void getClassifyTaskResultShouldReportUnavailableWhenServiceMissing() {
-        ObjectProvider<ImageClassificationService> imageClassificationServiceProvider =
-                new ObjectProvider<>() {
-                    @Override
-                    public ImageClassificationService getObject() {
-                        return null;
-                    }
+        ObjectProvider<ImageClassificationService> imageClassificationServiceProvider = new ObjectProvider<>() {
+            @Override
+            public ImageClassificationService getObject() {
+                return null;
+            }
 
-                    @Override
-                    public ImageClassificationService getIfAvailable() {
-                        return null;
-                    }
-                };
+            @Override
+            public ImageClassificationService getIfAvailable() {
+                return null;
+            }
+        };
         AiController controller = new AiController(
                 new DefaultApiResponseFactory(), imageClassificationServiceProvider, mock(SecurityUtils.class));
 
