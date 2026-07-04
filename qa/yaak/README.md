@@ -1,5 +1,7 @@
 # MayoiStar Yaak 测试说明
 
+- Version: 13 20260704 145000
+  - 新增个人二维码生成与扫描测试，mentionAll 权限校验单元测试已覆盖
 - Version: 12 20260703 163000
   - 新增 Postman 集合和环境模板文件，run-media-auth-tests.ps1 重写为 workspace 模式
 - Version: 11 20260703 160000

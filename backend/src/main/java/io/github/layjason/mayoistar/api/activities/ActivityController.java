@@ -12,13 +12,16 @@ import io.github.layjason.mayoistar.service.ActivitySearchService;
 import io.github.layjason.mayoistar.service.CheckInService;
 import io.github.layjason.mayoistar.service.MediaFileUploadService;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
+import io.github.layjason.mayoistar.service.activities.ActivityFeedService;
 import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
+import io.github.layjason.mayoistar.service.activities.ActivitySummaryReviewService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,10 +45,12 @@ public class ActivityController {
 
     private final ActivityDraftService activityDraftService;
     private final ActivityQueryService activityQueryService;
+    private final ActivitySummaryReviewService activitySummaryReviewService;
 
     private final ActivityRegistrationService activityRegistrationService;
     private final ActivityRegistrationStateService activityRegistrationStateService;
     private final CheckInService checkInService;
+    private final ActivityFeedService activityFeedService;
 
     @PostMapping("/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> saveDraft(
@@ -81,7 +86,8 @@ public class ActivityController {
             @RequestParam(required = false) Double longitude,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+        return ResponseEntity.ok(
+                ApiResponse.success(activityFeedService.getFeed(tab, page, pageSize, latitude, longitude)));
     }
 
     @GetMapping("/map")
@@ -177,16 +183,15 @@ public class ActivityController {
 
     @GetMapping("/templates")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivityTemplate>>> listTemplates(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.listTemplates(page, pageSize)));
     }
 
     @PostMapping("/templates/{templateId}/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> createDraftFromTemplate(
             @PathVariable String templateId) {
-        return responseFactory.activityDraftDetail();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.createDraftFromTemplate(userId, templateId)));
     }
 
     @GetMapping("/{activityId}")
@@ -233,16 +238,20 @@ public class ActivityController {
     @PostMapping("/{activityId}/clone")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> cloneActivity(
             @PathVariable String activityId) {
-        return responseFactory.activityDraftDetail();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.cloneActivity(userId, activityId)));
     }
 
     @GetMapping("/{activityId}/participants")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivityParticipant>>> listParticipants(
             @PathVariable String activityId,
-            @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+        String userId = securityUtils.getCurrentUserId();
+        boolean admin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_admin".equals(authority.getAuthority()));
+        return ResponseEntity.ok(
+                ApiResponse.success(activityQueryService.listParticipants(userId, admin, activityId, page, pageSize)));
     }
 
     @GetMapping("/{activityId}/participation-state")
@@ -269,7 +278,25 @@ public class ActivityController {
     @PostMapping("/{activityId}/reviews")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityReview>> reviewActivity(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.ActivityReviewRequest request) {
-        return responseFactory.activityReview();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(
+                ApiResponse.success(activitySummaryReviewService.createReview(userId, activityId, request)));
+    }
+
+    @GetMapping("/{activityId}/reviews")
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivityReviewListItem>>> listReviews(
+            @PathVariable String activityId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        return ResponseEntity.ok(
+                ApiResponse.success(activitySummaryReviewService.listReviews(activityId, page, pageSize)));
+    }
+
+    @GetMapping("/{activityId}/reviews/mine")
+    public ResponseEntity<ApiResponse<ActivityDtos.MyActivityReviewResult>> getMyReview(
+            @PathVariable String activityId) {
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(activitySummaryReviewService.getMyReview(userId, activityId)));
     }
 
     @PostMapping("/{activityId}/submit")
@@ -281,7 +308,25 @@ public class ActivityController {
     @PostMapping("/{activityId}/summaries")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivitySummaryPost>> createSummary(
             @PathVariable String activityId, @Valid @RequestBody ActivityDtos.ActivitySummaryPostRequest request) {
-        return responseFactory.activitySummaryPost();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(
+                ApiResponse.success(activitySummaryReviewService.createSummary(userId, activityId, request)));
+    }
+
+    @GetMapping("/{activityId}/summaries")
+    public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummaryPost>>> listSummaries(
+            @PathVariable String activityId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        return ResponseEntity.ok(
+                ApiResponse.success(activitySummaryReviewService.listSummaries(activityId, page, pageSize)));
+    }
+
+    @GetMapping("/{activityId}/summaries/mine")
+    public ResponseEntity<ApiResponse<ActivityDtos.MyActivitySummaryResult>> getMySummary(
+            @PathVariable String activityId) {
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(activitySummaryReviewService.getMySummary(userId, activityId)));
     }
 
     @PostMapping("/{activityId}/waiting-confirmations")

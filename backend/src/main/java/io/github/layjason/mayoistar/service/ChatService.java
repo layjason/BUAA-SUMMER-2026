@@ -5,6 +5,7 @@ import static io.github.layjason.mayoistar.exception.ErrorCodes.ANNOUNCEMENT_PER
 import static io.github.layjason.mayoistar.exception.ErrorCodes.CONVERSATION_MEMBER_REQUIRED;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.FORWARD_TARGET_UNAVAILABLE;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MEDIA_REFERENCE_INVALID;
+import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_CONTENT_INVALID;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_NOT_VISIBLE;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_RECALL_EXPIRED;
 import static io.github.layjason.mayoistar.exception.ErrorCodes.MESSAGE_SENDER_REQUIRED;
@@ -17,6 +18,7 @@ import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.chat.ChatMessage;
 import io.github.layjason.mayoistar.entity.chat.Conversation;
+import io.github.layjason.mayoistar.entity.chat.ConversationKind;
 import io.github.layjason.mayoistar.entity.chat.MessageKind;
 import io.github.layjason.mayoistar.entity.chat.MessageRead;
 import io.github.layjason.mayoistar.entity.chat.MessageReadStatus;
@@ -39,6 +41,7 @@ import io.github.layjason.mayoistar.repository.TeamAnnouncementReadRepository;
 import io.github.layjason.mayoistar.repository.TeamAnnouncementRepository;
 import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamPollRepository;
+import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Duration;
 import java.time.Instant;
@@ -51,6 +54,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -78,6 +82,7 @@ public class ChatService {
     private final TeamAnnouncementRepository teamAnnouncementRepository;
     private final TeamAnnouncementReadRepository teamAnnouncementReadRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final TeamRepository teamRepository;
     private final TeamPollRepository teamPollRepository;
     private final PollOptionRepository pollOptionRepository;
     private final PollVoteRepository pollVoteRepository;
@@ -105,6 +110,24 @@ public class ChatService {
         if (!conversationMemberRepository.existsByConversationIdAndUserId(conversationId, senderId)) {
             log.warn("用户非会话成员: conversationId={}, userId={}", conversationId, senderId);
             throw new BusinessException(CONVERSATION_MEMBER_REQUIRED, "Conversation membership is required");
+        }
+
+        if (Boolean.TRUE.equals(request.getMentionAll())) {
+            Conversation conversation =
+                    conversationRepository.findById(conversationId).orElse(null);
+            if (conversation != null
+                    && conversation.getKind() == io.github.layjason.mayoistar.entity.chat.ConversationKind.team) {
+                var teamOpt = teamRepository.findByChatId(conversationId);
+                if (teamOpt.isPresent()) {
+                    var member = teamMemberRepository.findByTeamIdAndUserId(
+                            teamOpt.get().getTeamId(), senderId);
+                    if (member.isEmpty() || member.get().getRole() == TeamMemberRole.member) {
+                        log.warn("普通成员无权使用 mentionAll: conversationId={}, userId={}", conversationId, senderId);
+                        throw new BusinessException(
+                                MESSAGE_CONTENT_INVALID, "Only team leader or admin can use mentionAll");
+                    }
+                }
+            }
         }
 
         // 预加载图片媒体：校验存在性，同时供后续策略更新和 DTO 填充复用，避免重复查库
@@ -166,7 +189,9 @@ public class ChatService {
 
         initializeReadStatus(savedMessage.getMessageId(), conversationId, senderId);
 
-        ChatDtos.ChatMessage result = toChatMessageDto(savedMessage, MessageReadStatus.read);
+        String peerReadStatus =
+                getPeerUserId(conversationId, senderId) != null ? MessageReadStatus.unread.name() : null;
+        ChatDtos.ChatMessage result = toChatMessageDto(savedMessage, MessageReadStatus.read, peerReadStatus);
         if (imageMedia != null) {
             result.setImage(toMediaFileDto(imageMedia));
         }
@@ -208,10 +233,25 @@ public class ChatService {
                 messageReadRepository.findByMessageIdInAndUserId(messageIds, userId).stream()
                         .collect(Collectors.toMap(MessageRead::getMessageId, MessageRead::getStatus));
 
+        String peerUserId = getPeerUserId(conversationId, userId);
+        Map<String, MessageReadStatus> peerReadStatusMap;
+        if (peerUserId != null && !messageIds.isEmpty()) {
+            peerReadStatusMap = messageReadRepository.findByMessageIdInAndUserId(messageIds, peerUserId).stream()
+                    .collect(Collectors.toMap(MessageRead::getMessageId, MessageRead::getStatus));
+        } else {
+            peerReadStatusMap = Map.of();
+        }
+
         List<ChatDtos.ChatMessage> items = pageResult.getContent().stream()
                 .map(msg -> {
                     MessageReadStatus status = readStatusMap.getOrDefault(msg.getMessageId(), MessageReadStatus.unread);
-                    return toChatMessageDto(msg, status);
+                    String peerReadStatus = null;
+                    if (msg.getSenderId().equals(userId) && peerUserId != null) {
+                        MessageReadStatus peerStatus =
+                                peerReadStatusMap.getOrDefault(msg.getMessageId(), MessageReadStatus.unread);
+                        peerReadStatus = peerStatus.name();
+                    }
+                    return toChatMessageDto(msg, status, peerReadStatus);
                 })
                 .collect(Collectors.toList());
 
@@ -280,16 +320,7 @@ public class ChatService {
             }
         }
 
-        long unreadCount = 0L;
-        var allMessages = chatMessageRepository.findByConversationIdOrderBySentAtDesc(
-                conv.getConversationId(), PageRequest.of(0, Integer.MAX_VALUE));
-        List<String> messageIds =
-                allMessages.getContent().stream().map(ChatMessage::getMessageId).collect(Collectors.toList());
-        if (!messageIds.isEmpty()) {
-            unreadCount = messageReadRepository.findByMessageIdInAndUserId(messageIds, userId).stream()
-                    .filter(mr -> mr.getStatus() == MessageReadStatus.unread)
-                    .count();
-        }
+        long unreadCount = messageReadRepository.countUnreadByConversationIdAndUserId(conv.getConversationId(), userId);
         summary.setUnreadCount((int) unreadCount);
 
         return summary;
@@ -339,6 +370,20 @@ public class ChatService {
             int updated =
                     messageReadRepository.markAsRead(validMessageIds, userId, MessageReadStatus.read, Instant.now());
             log.info("消息已读标记完成: userId={}, count={}", userId, updated);
+
+            String peerUserId = getPeerUserId(conversationId, userId);
+            if (peerUserId != null) {
+                for (String msgId : validMessageIds) {
+                    String senderId = messages.stream()
+                            .filter(m -> m.getMessageId().equals(msgId))
+                            .findFirst()
+                            .map(ChatMessage::getSenderId)
+                            .orElse(null);
+                    if (senderId != null) {
+                        notificationService.notifyMessagePeerRead(conversationId, msgId, senderId);
+                    }
+                }
+            }
         }
 
         Map<String, MessageReadStatus> readStatusMap = messageReadRepository
@@ -1023,6 +1068,30 @@ public class ChatService {
     }
 
     /**
+     * 获取单聊会话中除指定用户外的对方用户 ID。
+     *
+     * <p>前置条件：{@code conversationId} 为有效会话。
+     *
+     * <p>后置条件：若为 friend 类型会话，返回对方用户 ID；否则返回 null（群聊不适用）。
+     *
+     * @param conversationId 会话 ID
+     * @param excludeUserId  需排除的用户 ID
+     * @return 对方用户 ID，或 null（非单聊时）
+     */
+    @Nullable
+    private String getPeerUserId(String conversationId, String excludeUserId) {
+        Conversation conv = conversationRepository.findById(conversationId).orElse(null);
+        if (conv == null || conv.getKind() != ConversationKind.friend) {
+            return null;
+        }
+        return conversationMemberRepository.findByConversationId(conversationId).stream()
+                .map(io.github.layjason.mayoistar.entity.chat.ConversationMember::getUserId)
+                .filter(id -> !id.equals(excludeUserId))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
      * 获取会话中所有成员 ID 列表。
      *
      * <p>前置条件：{@code conversationId} 为有效会话。
@@ -1074,6 +1143,11 @@ public class ChatService {
     }
 
     private ChatDtos.ChatMessage toChatMessageDto(ChatMessage entity, MessageReadStatus readStatus) {
+        return toChatMessageDto(entity, readStatus, null);
+    }
+
+    private ChatDtos.ChatMessage toChatMessageDto(
+            ChatMessage entity, MessageReadStatus readStatus, @Nullable String peerReadStatus) {
         ChatDtos.ChatMessage dto = new ChatDtos.ChatMessage();
         dto.setMessageId(entity.getMessageId());
         dto.setConversationId(entity.getConversationId());
@@ -1084,6 +1158,7 @@ public class ChatService {
         dto.setMentionedUserIds(entity.getMentionedUserIds());
         dto.setMentionAll(entity.getMentionAll());
         dto.setReadStatus(readStatus != null ? readStatus.name() : MessageReadStatus.unread.name());
+        dto.setPeerReadStatus(peerReadStatus);
 
         if (Boolean.TRUE.equals(entity.getRecalled())) {
             dto.setText(null);

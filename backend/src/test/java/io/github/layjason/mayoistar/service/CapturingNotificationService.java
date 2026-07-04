@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 /**
  * 测试用通知服务，记录所有通知调用以供断言。
  *
- * <p>类职责：在 test profile 下替代 NoOpNotificationService，
+ * <p>类职责：在 test profile 下作为 NotificationService 的 @Primary 实现，
  * 拦截通知调用并保存参数。
  */
 @Component
@@ -33,6 +33,9 @@ public class CapturingNotificationService implements NotificationService {
 
     @Getter
     private final List<SocialDtos.FriendRequest> friendRequests = new ArrayList<>();
+
+    @Getter
+    private final List<CapturedPeerRead> peerReads = new ArrayList<>();
 
     @Override
     public void notifyMessageCreated(ChatDtos.ChatMessage message, List<String> recipientUserIds) {
@@ -58,5 +61,13 @@ public class CapturingNotificationService implements NotificationService {
         friendRequests.add(request);
     }
 
+    @Override
+    public void notifyMessagePeerRead(String conversationId, String messageId, String senderUserId) {
+        log.info("测试通知: messagePeerRead messageId={}, to={}", messageId, senderUserId);
+        peerReads.add(new CapturedPeerRead(conversationId, messageId, senderUserId));
+    }
+
     public record CapturedRecall(String messageId, String conversationId, List<String> recipientUserIds) {}
+
+    public record CapturedPeerRead(String conversationId, String messageId, String senderUserId) {}
 }

@@ -10,7 +10,8 @@ import java.util.List;
  * <p>类职责：将业务事件（消息发送、撤回、转发、好友申请）转换为客户端通知，
  * 解耦业务逻辑与通信层实现。
  *
- * <p>默认实现为 No-Op，生产环境由 WebSocket 实现替代。
+ * <p>生产环境由 {@link WebSocketNotificationService} 通过 STOMP/WebSocket 推送事件，
+ * 测试 profile 由 {@code CapturingNotificationService} 拦截以供断言。
  */
 public interface NotificationService {
 
@@ -50,6 +51,19 @@ public interface NotificationService {
      * @param recipientUserIds 接收方用户 ID 列表
      */
     void notifyMessageForwarded(ChatDtos.ChatMessage message, List<String> recipientUserIds);
+
+    /**
+     * 通知单聊对方已读事件。
+     *
+     * <p>前置条件：接收方已调用 markMessagesRead 标记消息已读。
+     *
+     * <p>后置条件：原消息发送方能收到 messagePeerRead 实时事件。
+     *
+     * @param conversationId 会话标识
+     * @param messageId      已被对方阅读的消息标识
+     * @param senderUserId   原消息发送方用户 ID
+     */
+    void notifyMessagePeerRead(String conversationId, String messageId, String senderUserId);
 
     /**
      * 通知好友申请创建事件。

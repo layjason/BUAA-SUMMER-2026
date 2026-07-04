@@ -48,6 +48,9 @@
             <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+Service" />
             <Class name="~io\.github\.layjason\.mayoistar\.service\.storage\.\w+Service" />
             <Class name="~io\.github\.layjason\.mayoistar\.service\.ai\.\w+Client" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.activities\.\w+Action" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.activities\.\w+Service" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.activities\.\w+Scheduler" />
         </Or>
     </Match>
     <!--
@@ -68,4 +71,5 @@
         <Class name="io.github.layjason.mayoistar.service.ReportServiceImpl" />
         <Bug pattern="NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE" />
     </Match>
+
 </FindBugsFilter>

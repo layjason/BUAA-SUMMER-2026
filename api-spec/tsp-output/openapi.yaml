@@ -3337,7 +3337,7 @@ paths:
         - 即时通讯
     post:
       operationId: ChatOperations_sendMessage
-      description: 发送消息，调用方属于会话且消息内容合法，创建消息并通知接收方，位置消息必须包含完整地点信息。
+      description: 发送消息，调用方属于会话且消息内容合法，创建消息并通知接收方，位置消息必须包含完整地点信息。成功后应向会话内其他成员推送 messageCreated 实时事件。
       parameters:
         - name: conversationId
           in: path
@@ -3438,7 +3438,7 @@ paths:
   /chat/messages/read:
     post:
       operationId: ChatOperations_markMessagesRead
-      description: 批量标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。
+      description: 批量标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。标记成功后服务端应向原消息发送方推送 messagePeerRead 事件（单聊）。
       parameters: []
       responses:
         '200':
@@ -3486,7 +3486,7 @@ paths:
   /chat/messages/{messageId}/forward:
     post:
       operationId: ChatOperations_forwardMessage
-      description: 转发消息，原消息可见且目标会话可发送，目标会话生成新消息，不会修改原消息。
+      description: 转发消息，原消息可见且目标会话可发送，目标会话生成新消息，不会修改原消息。成功后应向各目标会话内其他成员推送 messageForwarded 实时事件。
       parameters:
         - name: messageId
           in: path
@@ -3539,7 +3539,7 @@ paths:
   /chat/messages/{messageId}/recall:
     post:
       operationId: ChatOperations_recallMessage
-      description: 撤回消息，调用方为发送者且发送未超过 2 分钟，消息进入撤回状态，撤回不删除审计记录。
+      description: 撤回消息，调用方为发送者且发送未超过 2 分钟，消息进入撤回状态，撤回不删除审计记录。成功后应向会话内其他成员推送 messageRecalled 实时事件。
       parameters:
         - name: messageId
           in: path
@@ -4468,7 +4468,24 @@ paths:
   /chat/ws/messages:
     get:
       operationId: ChatOperations_connectMessageWebSocket
-      description: 聊天消息实时 WebSocket 占位端点。实际调用时客户端以 Bearer Token 完成鉴权并发起 WebSocket Upgrade，连接建立后服务端按 ChatRealtimeEvent 推送当前用户可见会话中的新消息；普通 JSON API 统一响应规则不适用于升级后的 WebSocket 数据帧。
+      description: |-
+        聊天消息实时 WebSocket 端点（OpenAPI 以 GET 占位描述 Upgrade 入口）。
+
+        **连接**
+        - 将 `GET /chat/ws/messages` 升级为 WebSocket；生产环境使用 `wss://`。
+        - Upgrade 请求携带 `Authorization: Bearer {accessToken}`，鉴权规则与 REST 一致。
+        - 单用户维持一条长连接；断线后客户端应指数退避重连。
+
+        **数据帧**
+        - 服务端 → 客户端：每个 Text 帧为 `ChatWebSocketFrame`（即 `ChatRealtimeEvent`）JSON，不包裹 `{ code, message, data }`。
+        - 客户端 → 服务端：本版本无业务帧；心跳由网关或基础设施处理。
+
+        **推送触发（实现参考）**
+        - `sendMessage`：向会话内除发送方外的成员推送 `messageCreated`。
+        - `markMessagesRead`：单聊中向被已读消息的原发送方推送 `messagePeerRead`（可逐条推送）。
+        - `recallMessage`：向会话内除撤回方外的成员推送 `messageRecalled`。
+        - `forwardMessage`：向各目标会话内除转发方外的成员推送 `messageForwarded`。
+        - 仅推送给当前在线且有权查看该会话的用户；离线用户通过 REST 拉取补偿。
       parameters: []
       responses:
         '200':
@@ -4495,7 +4512,7 @@ paths:
                         description: 平台响应消息，成功响应固定为 For Super Earth!。
                       data:
                         allOf:
-                          - $ref: '#/components/schemas/Chat.ChatRealtimeEvent'
+                          - $ref: '#/components/schemas/Chat.ChatWebSocketFrame'
                         description: 响应数据。
                     description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
                   - $ref: '#/components/schemas/BadRequestResponse'
@@ -7122,6 +7139,144 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Social.TeamMemberRoleUpdate'
+  /social/teams/{teamId}/members/{userId}/points:
+    post:
+      operationId: SocialOperations_adjustTeamMemberPoints
+      description: 手动调整小队成员积分，仅队长和管理员可执行。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/EmptyData'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Social.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Social.TeamMemberNotFound'
+                  - $ref: '#/components/schemas/Errors.Social.TeamPermissionDenied'
+      tags:
+        - 好友社群
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Social.ManualPointAdjustmentRequest'
+  /social/teams/{teamId}/members/{userId}/points/history:
+    get:
+      operationId: SocialOperations_getTeamMemberPointHistory
+      description: 查看小队成员积分变动历史。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Social.TeamPointRecordItem'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Social.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Social.TeamMemberNotFound'
+      tags:
+        - 好友社群
   /social/teams/{teamId}/points:
     get:
       operationId: SocialOperations_getTeamPointRanks
@@ -9037,7 +9192,11 @@ components:
         readStatus:
           allOf:
             - $ref: '#/components/schemas/Chat.MessageReadStatus'
-          description: 消息读取状态。
+          description: 当前用户作为接收方时，自己是否已读该消息。本人发送的消息对本人恒为 read。
+        peerReadStatus:
+          allOf:
+            - $ref: '#/components/schemas/Chat.MessageReadStatus'
+          description: 单聊中发送方可见的对方已读状态：对方全部已读时为 read，否则 unread。仅本人发送的消息返回；群聊暂不返回。
         recalled:
           type: boolean
           description: 消息是否已撤回。
@@ -9067,7 +9226,8 @@ components:
             - $ref: '#/components/schemas/Chat.MessageCreatedPayload'
             - $ref: '#/components/schemas/Chat.MessageRecalledPayload'
             - $ref: '#/components/schemas/Chat.MessageForwardedPayload'
-          description: 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload。
+            - $ref: '#/components/schemas/Chat.MessagePeerReadPayload'
+          description: 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload，kind=messagePeerRead 时为 MessagePeerReadPayload。
         occurredAt:
           allOf:
             - $ref: '#/components/schemas/DateTimeString'
@@ -9079,7 +9239,36 @@ components:
         - messageCreated
         - messageRecalled
         - messageForwarded
+        - messagePeerRead
       description: 聊天实时事件类型。friendRequestCreated 事件通过 /queue/social-events 推送，不在此枚举内。
+    Chat.ChatWebSocketFrame:
+      type: object
+      required:
+        - kind
+        - conversationId
+        - payload
+        - occurredAt
+      properties:
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/Chat.ChatRealtimeEventKind'
+          description: 实时事件类型。
+        conversationId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 发生事件的会话标识。
+        payload:
+          anyOf:
+            - $ref: '#/components/schemas/Chat.MessageCreatedPayload'
+            - $ref: '#/components/schemas/Chat.MessageRecalledPayload'
+            - $ref: '#/components/schemas/Chat.MessageForwardedPayload'
+            - $ref: '#/components/schemas/Chat.MessagePeerReadPayload'
+          description: 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload，kind=messagePeerRead 时为 MessagePeerReadPayload。
+        occurredAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 事件发生时间。
+      description: 聊天 WebSocket 数据帧。服务端向客户端推送的每个 Text 帧为 UTF-8 JSON，结构与本模型一致，不包裹 APIResult 统一响应外壳。
     Chat.ConversationKind:
       type: string
       enum:
@@ -9203,6 +9392,26 @@ components:
         - image
         - location
       description: 消息类型。
+    Chat.MessagePeerReadPayload:
+      type: object
+      required:
+        - conversationId
+        - messageId
+        - peerReadStatus
+      properties:
+        conversationId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 会话标识。
+        messageId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 已被对方阅读的消息标识。
+        peerReadStatus:
+          allOf:
+            - $ref: '#/components/schemas/Chat.MessageReadStatus'
+          description: 对方已读后的状态，恒为 read。
+      description: 单聊对方已读事件负载，接收方为原消息发送者。
     Chat.MessageReadStatus:
       type: string
       enum:
@@ -9546,7 +9755,7 @@ components:
             code:
               type: number
               enum:
-                - 20020
+                - 20021
               description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
             message:
               type: string
@@ -12643,6 +12852,21 @@ components:
           type: string
           description: 入队申请附言。
       description: 加入小队请求，小队存在且未满员未解散，公开小队直接加入，审核小队创建申请，黑名单关系不得加入。
+    Social.ManualPointAdjustmentRequest:
+      type: object
+      required:
+        - pointChange
+        - reason
+      properties:
+        pointChange:
+          type: integer
+          format: int32
+          description: 积分变动值，正数为加、负数为减。
+        reason:
+          type: string
+          maxLength: 50
+          description: 调整原因。
+      description: 手动调整小队成员积分请求。
     Social.Report:
       type: object
       required:
@@ -12862,6 +13086,14 @@ components:
             - $ref: '#/components/schemas/Social.TeamMemberRole'
           description: 调整后的成员角色。
       description: 小队成员角色更新请求。
+    Social.TeamPointChangeSource:
+      type: string
+      enum:
+        - checkin
+        - no_show
+        - summary_post
+        - manual
+      description: 小队积分变动来源枚举。
     Social.TeamPointRankItem:
       type: object
       required:
@@ -12886,6 +13118,48 @@ components:
           format: int32
           description: 成员积分。
       description: 小队积分项。
+    Social.TeamPointRecordItem:
+      type: object
+      required:
+        - recordId
+        - userId
+        - nickname
+        - pointChange
+        - source
+        - reason
+        - createdAt
+      properties:
+        recordId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 记录唯一标识。
+        userId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 成员用户标识。
+        nickname:
+          type: string
+          description: 成员昵称。
+        pointChange:
+          type: integer
+          format: int32
+          description: 积分变动值。
+        source:
+          allOf:
+            - $ref: '#/components/schemas/Social.TeamPointChangeSource'
+          description: 变动来源。
+        referenceId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 关联实体 ID，如报名记录 ID。
+        reason:
+          type: string
+          description: 变动原因。
+        createdAt:
+          type: string
+          format: date-time
+          description: 变动时间。
+      description: 小队积分变动记录项。
     Social.TeamProfile:
       type: object
       required:

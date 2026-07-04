@@ -33,7 +33,7 @@ import org.springframework.test.context.ActiveProfiles;
 @DataJpaTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = Replace.NONE)
-@Import(ActivityRegistrationService.class)
+@Import({ActivityRegistrationService.class, ReputationServiceImpl.class})
 class ActivityRegistrationServiceTest {
 
     @Autowired

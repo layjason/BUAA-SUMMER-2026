@@ -54,6 +54,9 @@ class CheckInServiceTest {
     @Mock
     private ActivityRegistrationRepository registrationRepository;
 
+    @Mock
+    private TeamPointService teamPointService;
+
     private CheckInProperties properties;
     private CheckInService checkInService;
 
@@ -68,7 +71,7 @@ class CheckInServiceTest {
         properties.setSigningSecret("test-checkin-secret-for-unit-tests");
         properties.setTokenExpireSeconds(900);
         properties.setLocationCheckMeters(500);
-        checkInService = new CheckInService(properties, activityRepository, registrationRepository);
+        checkInService = new CheckInService(properties, activityRepository, registrationRepository, teamPointService);
     }
 
     /* ========== 生成签到二维码 ========== */

@@ -254,8 +254,8 @@ login_admin=$(create_request "$workspace_id" "$auth_folder" "登录 admin" "POST
 create_public_team=$(create_request "$workspace_id" "$team_crud_folder" "燈创建MyGO!!!!!" "POST" "${BASE_URL}/social/teams" "userAccessToken" '{"name":"MyGO!!!!!-'"$TS"'","tags":["音楽","バンド"],"joinMode":"publicJoin","capacity":20,"description":"迷子でも、進み続ける。"}')
 create_approval_team=$(create_request "$workspace_id" "$team_crud_folder" "そよ创建秘密CRYCHIC" "POST" "${BASE_URL}/social/teams" "userAccessToken" '{"name":"CRYCHIC-'"$TS"'","tags":["音楽","再結成"],"joinMode":"approvalRequired","capacity":5,"description":"もう一度、あの頃のように。"}')
 create_dup_team=$(create_request "$workspace_id" "$team_crud_folder" "重名MyGO(负例)——世间只有一个MyGO" "POST" "${BASE_URL}/social/teams" "userAccessToken" '{"name":"MyGO!!!!!-'"$TS"'","tags":["a"],"joinMode":"publicJoin","capacity":10}')
-search_by_keyword=$(create_request "$workspace_id" "$team_crud_folder" "搜索MyGO" "GET" "${BASE_URL}"'/social/teams?keyword=MyGO-'"$TS"'&page=1&pageSize=20' "userAccessToken")
-search_by_tag=$(create_request "$workspace_id" "$team_crud_folder" "按标签搜索小队" "GET" "${BASE_URL}/social/teams?tags=户外&page=1&pageSize=20" "userAccessToken")
+search_by_keyword=$(create_request "$workspace_id" "$team_crud_folder" "搜索MyGO" "GET" "${BASE_URL}"'/social/teams?keyword=MyGO!!!!!&page=1&pageSize=20' "userAccessToken")
+search_by_tag=$(create_request "$workspace_id" "$team_crud_folder" "按标签搜索小队" "GET" "${BASE_URL}/social/teams?tags=音楽&page=1&pageSize=20" "userAccessToken")
 search_no_match=$(create_request "$workspace_id" "$team_crud_folder" "搜索无结果" "GET" "${BASE_URL}/social/teams?keyword=不存在的小队&page=1&pageSize=20" "userAccessToken")
 get_team=$(create_request "$workspace_id" "$team_crud_folder" "获取小队详情" "GET" "${BASE_URL}"'/social/teams/${[ teamId ]}' "userAccessToken")
 dissolve_team=$(create_request "$workspace_id" "$team_crud_folder" "解散小队" "DELETE" "${BASE_URL}"'/social/teams/${[ teamId ]}' "userAccessToken")
@@ -310,6 +310,7 @@ get_team_activity=$(create_request "$workspace_id" "$team_activity_folder" "队�
 # 边界用例请求
 # ============================================================================
 create_full_team=$(create_request "$workspace_id" "$team_boundary_folder" "创建满员小队(一人乐队)" "POST" "${BASE_URL}/social/teams" "userAccessToken" '{"name":"ソロバンド-'"$TS"'","tags":["ソロ"],"joinMode":"publicJoin","capacity":1,"description":"一人だけのバンド"}')
+create_capacity_zero_team=$(create_request "$workspace_id" "$team_boundary_folder" "创建capacity=0(负例)" "POST" "${BASE_URL}/social/teams" "userAccessToken" '{"name":"ゼロ人バンド-'"$TS"'","tags":["テスト"],"joinMode":"publicJoin","capacity":0,"description":"誰もいないバンド"}')
 get_nonexistent_team=$(create_request "$workspace_id" "$team_boundary_folder" "获取不存在小队" "GET" "${BASE_URL}/social/teams/00000000-0000-0000-0000-000000000000" "userAccessToken")
 get_dissolved_team=$(create_request "$workspace_id" "$team_boundary_folder" "获取已解散小队" "GET" "${BASE_URL}"'/social/teams/${[ teamId ]}' "userAccessToken")
 search_empty_tags=$(create_request "$workspace_id" "$team_boundary_folder" "搜索不存在的标签" "GET" "${BASE_URL}/social/teams?tags=不存在标签&page=1&pageSize=20" "userAccessToken")
@@ -360,7 +361,7 @@ assert_jq_equals "$response" '.data.capacity' "20"
 assert_jq_equals "$response" '.data.memberCount' "1"
 assert_jq_equals "$response" '.data.status' "active"
 assert_jq_non_empty "$response" '.data.chatId'
-assert_jq_true "$response" '.data.tags | index("测试") != null and index("户外") != null'
+assert_jq_true "$response" '.data.tags | index("音楽") != null and index("バンド") != null'
 set_env_var "$environment_id" "teamId" "$(echo "$response" | jq -r '.data.teamId')"
 pass_test
 
@@ -391,6 +392,7 @@ response=$(send_json "$search_by_tag" "$environment_id")
 assert_code "$response" "200"
 assert_page_result "$response" "1" "20"
 assert_jq_true "$response" '.data.items | any(.name | startswith("MyGO"))'
+assert_jq_equals "$response" '.data.total' "$(echo "$response" | jq '.data.items | length')"
 pass_test
 
 begin_test "搜索无结果——你找不到不存在的バンド"
@@ -634,6 +636,11 @@ pass_test
 begin_test "获取不存在小队——存在しないバンド"
 response=$(send_json "$get_nonexistent_team" "$environment_id")
 assert_code "$response" "40009"
+pass_test
+
+begin_test "创建capacity=0——このバンドには誰もいない"
+response=$(send_json "$create_capacity_zero_team" "$environment_id")
+assert_code "$response" "400"
 pass_test
 
 begin_test "搜索不存在标签——届かない叫び"

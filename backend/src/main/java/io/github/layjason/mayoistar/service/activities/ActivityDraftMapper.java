@@ -5,6 +5,7 @@ import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
+import io.github.layjason.mayoistar.entity.activities.ActivityTemplate;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.service.ai.AiContentReviewSnapshotMapper;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
@@ -49,6 +50,31 @@ public class ActivityDraftMapper {
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setUpdatedAt(formatInstant(activity.getUpdatedAt()));
         dto.setCreatedAt(formatInstant(activity.getCreatedAt()));
+        return dto;
+    }
+
+    public PageResult<ActivityDtos.ActivityTemplate> toTemplatePage(Page<ActivityTemplate> templatePage) {
+        List<ActivityDtos.ActivityTemplate> items =
+                templatePage.getContent().stream().map(this::toTemplate).toList();
+        return new PageResult<>(
+                items,
+                templatePage.getTotalElements(),
+                templatePage.getNumber() + 1,
+                templatePage.getSize(),
+                templatePage.getTotalPages());
+    }
+
+    public ActivityDtos.ActivityTemplate toTemplate(ActivityTemplate template) {
+        ActivityDtos.ActivityTemplate dto = new ActivityDtos.ActivityTemplate();
+        dto.setTemplateId(template.getTemplateId());
+        dto.setName(template.getName());
+        dto.setActivityType(template.getActivityType());
+        dto.setDefaultTags(template.getDefaultTags() == null ? List.of() : List.copyOf(template.getDefaultTags()));
+        dto.setDefaultIntroduction(template.getDefaultIntroduction());
+        dto.setDefaultSafetyNotice(template.getDefaultSafetyNotice());
+        dto.setDefaultCapacity(template.getDefaultCapacity());
+        dto.setDefaultCoverImage(
+                template.getDefaultCoverImage() == null ? null : toMediaFile(template.getDefaultCoverImage()));
         return dto;
     }
 

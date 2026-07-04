@@ -28,6 +28,9 @@ enum ChatRealtimeEventKind {
   messageCreated,
   messageRecalled,
   messageForwarded,
+
+  @doc("单聊中对方已读发送方消息时推送，用于发送方气泡旁已读状态实时更新。")
+  messagePeerRead,
 }
 
 @doc("会话摘要。")
@@ -104,8 +107,11 @@ model ChatMessage {
   @doc("该消息是否 @ 所有人。")
   mentionAll?: boolean;
 
-  @doc("消息读取状态。")
+  @doc("当前用户作为接收方时，自己是否已读该消息。本人发送的消息对本人恒为 read。")
   readStatus: MessageReadStatus;
+
+  @doc("单聊中发送方可见的对方已读状态：对方全部已读时为 read，否则 unread。仅本人发送的消息返回；群聊暂不返回。")
+  peerReadStatus?: MessageReadStatus;
 
   @doc("消息是否已撤回。")
   recalled: boolean;
@@ -138,6 +144,18 @@ model MessageForwardedPayload {
   conversationUnreadCount: int32;
 }
 
+@doc("单聊对方已读事件负载，接收方为原消息发送者。")
+model MessagePeerReadPayload {
+  @doc("会话标识。")
+  conversationId: EntityId;
+
+  @doc("已被对方阅读的消息标识。")
+  messageId: EntityId;
+
+  @doc("对方已读后的状态，恒为 read。")
+  peerReadStatus: MessageReadStatus;
+}
+
 @doc("聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话中的实时事件。")
 model ChatRealtimeEvent {
   @doc("实时事件类型。")
@@ -146,15 +164,19 @@ model ChatRealtimeEvent {
   @doc("发生事件的会话标识。")
   conversationId: EntityId;
 
-  @doc("事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload。")
+  @doc("事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload，kind=messagePeerRead 时为 MessagePeerReadPayload。")
   payload:
     | MessageCreatedPayload
     | MessageRecalledPayload
-    | MessageForwardedPayload;
+    | MessageForwardedPayload
+    | MessagePeerReadPayload;
 
   @doc("事件发生时间。")
   occurredAt: DateTimeString;
 }
+
+@doc("聊天 WebSocket 数据帧。服务端向客户端推送的每个 Text 帧为 UTF-8 JSON，结构与本模型一致，不包裹 APIResult 统一响应外壳。")
+model ChatWebSocketFrame is ChatRealtimeEvent;
 
 @doc("消息转发请求，原消息存在且调用方可见，目标会话生成新消息，转发不会修改原消息。")
 model ForwardMessageRequest {
@@ -341,8 +363,26 @@ interface ChatOperations {
 
   @get
   @route("/ws/messages")
-  @doc("聊天消息实时 WebSocket 占位端点。实际调用时客户端以 Bearer Token 完成鉴权并发起 WebSocket Upgrade，连接建立后服务端按 ChatRealtimeEvent 推送当前用户可见会话中的新消息；普通 JSON API 统一响应规则不适用于升级后的 WebSocket 数据帧。")
-  connectMessageWebSocket(): APIResult<ChatRealtimeEvent>;
+  @doc("""
+    聊天消息实时 WebSocket 端点（OpenAPI 以 GET 占位描述 Upgrade 入口）。
+    
+    **连接**
+    - 将 `GET /chat/ws/messages` 升级为 WebSocket；生产环境使用 `wss://`。
+    - Upgrade 请求携带 `Authorization: Bearer {accessToken}`，鉴权规则与 REST 一致。
+    - 单用户维持一条长连接；断线后客户端应指数退避重连。
+    
+    **数据帧**
+    - 服务端 → 客户端：每个 Text 帧为 `ChatWebSocketFrame`（即 `ChatRealtimeEvent`）JSON，不包裹 `{ code, message, data }`。
+    - 客户端 → 服务端：本版本无业务帧；心跳由网关或基础设施处理。
+    
+    **推送触发（实现参考）**
+    - `sendMessage`：向会话内除发送方外的成员推送 `messageCreated`。
+    - `markMessagesRead`：单聊中向被已读消息的原发送方推送 `messagePeerRead`（可逐条推送）。
+    - `recallMessage`：向会话内除撤回方外的成员推送 `messageRecalled`。
+    - `forwardMessage`：向各目标会话内除转发方外的成员推送 `messageForwarded`。
+    - 仅推送给当前在线且有权查看该会话的用户；离线用户通过 REST 拉取补偿。
+    """)
+  connectMessageWebSocket(): APIResult<ChatWebSocketFrame>;
 
   @get
   @route("/conversations")
@@ -361,7 +401,7 @@ interface ChatOperations {
 
   @post
   @route("/conversations/{conversationId}/messages")
-  @doc("发送消息，调用方属于会话且消息内容合法，创建消息并通知接收方，位置消息必须包含完整地点信息。")
+  @doc("发送消息，调用方属于会话且消息内容合法，创建消息并通知接收方，位置消息必须包含完整地点信息。成功后应向会话内其他成员推送 messageCreated 实时事件。")
   sendMessage(
     @path conversationId: EntityId,
     @body body: SendMessageRequest,
@@ -376,7 +416,7 @@ interface ChatOperations {
 
   @post
   @route("/messages/read")
-  @doc("批量标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。")
+  @doc("批量标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。标记成功后服务端应向原消息发送方推送 messagePeerRead 事件（单聊）。")
   markMessagesRead(@body body: MarkMessagesReadRequest): APIResult<
     ChatMessage[],
 
@@ -386,7 +426,7 @@ interface ChatOperations {
 
   @post
   @route("/messages/{messageId}/recall")
-  @doc("撤回消息，调用方为发送者且发送未超过 2 分钟，消息进入撤回状态，撤回不删除审计记录。")
+  @doc("撤回消息，调用方为发送者且发送未超过 2 分钟，消息进入撤回状态，撤回不删除审计记录。成功后应向会话内其他成员推送 messageRecalled 实时事件。")
   recallMessage(@path messageId: EntityId): APIResult<
     ChatMessage,
 
@@ -397,7 +437,7 @@ interface ChatOperations {
 
   @post
   @route("/messages/{messageId}/forward")
-  @doc("转发消息，原消息可见且目标会话可发送，目标会话生成新消息，不会修改原消息。")
+  @doc("转发消息，原消息可见且目标会话可发送，目标会话生成新消息，不会修改原消息。成功后应向各目标会话内其他成员推送 messageForwarded 实时事件。")
   forwardMessage(
     @path messageId: EntityId,
     @body body: ForwardMessageRequest,

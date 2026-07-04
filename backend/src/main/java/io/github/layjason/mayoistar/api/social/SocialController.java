@@ -12,8 +12,10 @@ import io.github.layjason.mayoistar.service.BlacklistService;
 import io.github.layjason.mayoistar.service.FollowService;
 import io.github.layjason.mayoistar.service.FriendRequestService;
 import io.github.layjason.mayoistar.service.FriendshipService;
+import io.github.layjason.mayoistar.service.QrCodeService;
 import io.github.layjason.mayoistar.service.ReportService;
 import io.github.layjason.mayoistar.service.SocialProfileService;
+import io.github.layjason.mayoistar.service.TeamPointService;
 import io.github.layjason.mayoistar.service.TeamService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -41,6 +43,8 @@ public class SocialController {
     private final FollowService followService;
     private final SocialProfileService socialProfileService;
     private final TeamService teamService;
+    private final TeamPointService teamPointService;
+    private final QrCodeService qrCodeService;
     private final SecurityUtils securityUtils;
 
     /* ========== 黑名单 ========== */
@@ -263,6 +267,26 @@ public class SocialController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
+    @PostMapping("/teams/{teamId}/members/{userId}/points")
+    public ResponseEntity<ApiResponse<EmptyData>> adjustTeamMemberPoints(
+            @PathVariable String teamId,
+            @PathVariable String userId,
+            @Valid @RequestBody SocialDtos.ManualPointAdjustmentRequest request) {
+        String operatorId = securityUtils.getCurrentUserId();
+        teamPointService.adjustPoints(teamId, userId, request.getPointChange(), operatorId, request.getReason());
+        return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
+    }
+
+    @GetMapping("/teams/{teamId}/members/{userId}/points/history")
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamPointRecordItem>>> getTeamMemberPointHistory(
+            @PathVariable String teamId,
+            @PathVariable String userId,
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = teamPointService.getPointHistory(teamId, userId, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
     /* ========== 关注与资料 ========== */
 
     @GetMapping("/followers")
@@ -297,6 +321,27 @@ public class SocialController {
     public ResponseEntity<ApiResponse<io.github.layjason.mayoistar.api.identity.IdentityDtos.PublicUserProfile>>
             getUserProfile(@PathVariable String userId) {
         var result = socialProfileService.getUserProfile(securityUtils.getCurrentUserId(), userId);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /* ========== 二维码 ========== */
+
+    @GetMapping(value = "/qr-code", produces = "image/png")
+    public ResponseEntity<byte[]> generateQrCode() {
+        byte[] pngBytes = qrCodeService.generateQrCode(securityUtils.getCurrentUserId());
+        return ResponseEntity.ok()
+                .header("Content-Type", "image/png")
+                .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                .body(pngBytes);
+    }
+
+    @PostMapping("/qr-code/scan")
+    public ResponseEntity<ApiResponse<SocialDtos.FriendRequest>> scanQrCode(
+            @RequestBody @Valid SocialDtos.QrCodeScanRequest request) {
+        String targetUserId = qrCodeService.parseQrCode(request.getToken());
+        var source = io.github.layjason.mayoistar.entity.social.FriendRequestSource.qrCode;
+        var result = friendRequestService.createFriendRequest(
+                securityUtils.getCurrentUserId(), targetUserId, source, request.getMessage());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

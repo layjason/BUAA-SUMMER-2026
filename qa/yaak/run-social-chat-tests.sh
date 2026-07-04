@@ -99,6 +99,7 @@ create_environment() {
         {name:"friendRequestId", value:""},
         {name:"conversationId", value:""},
         {name:"messageId", value:""},
+        {name:"messageId2", value:""},
         {name:"reportId", value:""},
         {name:"chatImageMediaId", value:""},
         {name:"chatImageFile", value:$chatImageFile}
@@ -315,12 +316,16 @@ list_my_reports=$(create_request "$workspace_id" "$social_folder" "我的举报"
 
 list_conversations=$(create_request "$workspace_id" "$chat_folder" "会话列表" "GET" "${BASE_URL}/chat/conversations?page=1&pageSize=20" "userAccessToken")
 send_text=$(create_request "$workspace_id" "$chat_folder" "发送文字消息" "POST" "${BASE_URL}"'/chat/conversations/${[ conversationId ]}/messages' "userAccessToken" '{"kind":"text","text":"Hello from Yaak CLI"}')
+send_text_as_peer=$(create_request "$workspace_id" "$chat_folder" "对方发送文字消息" "POST" "${BASE_URL}"'/chat/conversations/${[ conversationId ]}/messages' "peerAccessToken" '{"kind":"text","text":"Peer replies"}')
 send_emoji=$(create_request "$workspace_id" "$chat_folder" "发送表情文本消息" "POST" "${BASE_URL}"'/chat/conversations/${[ conversationId ]}/messages' "userAccessToken" '{"kind":"text","text":"😀⭐"}')
 upload_chat_image=$(create_multipart_request "$workspace_id" "$chat_folder" "上传聊天图片" "POST" "${BASE_URL}/chat/media/images" "userAccessToken" "$CHAT_IMAGE_FILE")
 send_image=$(create_request "$workspace_id" "$chat_folder" "发送图片消息" "POST" "${BASE_URL}"'/chat/conversations/${[ conversationId ]}/messages' "userAccessToken" '{"kind":"image","imageMediaId":"${[ chatImageMediaId ]}"}')
-mark_read=$(create_request "$workspace_id" "$chat_folder" "标记已读" "POST" "${BASE_URL}/chat/messages/read" "peerAccessToken" '{"messageIds":["${[ messageId ]}"]}')
+mark_read=$(create_request "$workspace_id" "$chat_folder" "标记已读(对方)" "POST" "${BASE_URL}/chat/messages/read" "peerAccessToken" '{"messageIds":["${[ messageId ]}"]}')
+mark_read_as_user=$(create_request "$workspace_id" "$chat_folder" "标记已读(用户)" "POST" "${BASE_URL}/chat/messages/read" "userAccessToken" '{"messageIds":["${[ messageId2 ]}"]}')
 forward_message=$(create_request "$workspace_id" "$chat_folder" "转发消息" "POST" "${BASE_URL}"'/chat/messages/${[ messageId ]}/forward' "userAccessToken" '{"targetConversationIds":["${[ conversationId ]}"]}')
 recall_message=$(create_request "$workspace_id" "$chat_folder" "撤回消息" "POST" "${BASE_URL}"'/chat/messages/${[ messageId ]}/recall' "userAccessToken")
+list_messages_as_user=$(create_request "$workspace_id" "$chat_folder" "用户端获取消息列表" "GET" "${BASE_URL}"'/chat/conversations/${[ conversationId ]}/messages?page=1&pageSize=20' "userAccessToken")
+list_messages_as_peer=$(create_request "$workspace_id" "$chat_folder" "对方端获取消息列表" "GET" "${BASE_URL}"'/chat/conversations/${[ conversationId ]}/messages?page=1&pageSize=20' "peerAccessToken")
 
 create_report=$(create_request "$workspace_id" "$report_folder" "举报用户" "POST" "${BASE_URL}/social/reports" "userAccessToken" '{"targetType":"user","targetId":"${[ testPeerId ]}","reason":"Yaak CLI smoke report"}')
 admin_list_reports=$(create_request "$workspace_id" "$report_folder" "后台查询举报" "GET" "${BASE_URL}/admin/reports?targetType=user&targetId=${TEST_PEER_ID}&page=1&pageSize=20" "adminAccessToken")
@@ -498,7 +503,14 @@ assert_jq_equals "$response" '.data.kind' "text"
 assert_jq_equals "$response" '.data.text' "Hello from Yaak CLI"
 assert_jq_equals "$response" '.data.readStatus' "read"
 assert_jq_equals "$response" '.data.recalled' "false"
+assert_jq_equals "$response" '.data.peerReadStatus' "unread"
 set_env_var "$environment_id" "messageId" "$(echo "$response" | jq -r '.data.messageId')"
+message_id=$(echo "$response" | jq -r '.data.messageId')
+pass_test
+
+begin_test "发送文字消息返回peerReadStatus"
+assert_jq_non_empty "$response" '.data.messageId'
+assert_jq_equals "$response" '.data.peerReadStatus' "unread"
 pass_test
 
 begin_test "发送表情文本消息"
@@ -512,12 +524,18 @@ assert_jq_equals "$response" '.data.text' "😀⭐"
 assert_jq_equals "$response" '.data.recalled' "false"
 pass_test
 
+begin_test "发送方listMessages查看peerReadStatus=unread"
+response=$(send_json "$list_messages_as_user" "$environment_id")
+assert_code "$response" "200"
+assert_jq_true "$response" ".data.items | any(.messageId == \"$message_id\" and .senderId == \"$TEST_USER_ID\" and .peerReadStatus == \"unread\")"
+pass_test
+
 begin_test "上传聊天图片"
 response=$(send_json "$upload_chat_image" "$environment_id")
 assert_code "$response" "200"
 assert_jq_non_empty "$response" '.data.mediaId'
 assert_jq_equals "$response" '.data.usage' "chatImage"
-assert_jq_non_empty "$response" '.data.url'
+assert_jq_non_empty "$response" '.data.url // .data.signedUrl'
 chat_image_media_id=$(echo "$response" | jq -r '.data.mediaId')
 set_env_var "$environment_id" "chatImageMediaId" "$chat_image_media_id"
 pass_test
@@ -529,7 +547,7 @@ assert_jq_non_empty "$response" '.data.messageId'
 assert_jq_equals "$response" '.data.conversationId' "$conversation_id"
 assert_jq_equals "$response" '.data.senderId' "$TEST_USER_ID"
 assert_jq_equals "$response" '.data.kind' "image"
-assert_jq_equals "$response" '.data.imageMediaId' "$chat_image_media_id"
+assert_jq_equals "$response" '.data.image.mediaId' "$chat_image_media_id"
 assert_jq_equals "$response" '.data.recalled' "false"
 pass_test
 
@@ -538,6 +556,42 @@ response=$(send_json "$mark_read" "$environment_id")
 assert_code "$response" "200"
 message_id=$(echo "$response" | jq -r '.data[0].messageId // empty')
 assert_jq_true "$response" ".data | any(.messageId == \"$message_id\" and .readStatus == \"read\")"
+pass_test
+
+begin_test "标记已读后发送方listMessages查看peerReadStatus=read"
+response=$(send_json "$list_messages_as_user" "$environment_id")
+assert_code "$response" "200"
+assert_jq_true "$response" ".data.items | any(.messageId == \"$message_id\" and .senderId == \"$TEST_USER_ID\" and .peerReadStatus == \"read\")"
+pass_test
+
+begin_test "接收方listMessages不返回peerReadStatus"
+response=$(send_json "$list_messages_as_peer" "$environment_id")
+assert_code "$response" "200"
+assert_jq_true "$response" '.data.items | all(.peerReadStatus == null)'
+pass_test
+
+begin_test "对方发送文字消息并查看peerReadStatus=unread"
+response=$(send_json "$send_text_as_peer" "$environment_id")
+assert_code "$response" "200"
+assert_jq_non_empty "$response" '.data.messageId'
+assert_jq_equals "$response" '.data.senderId' "$TEST_PEER_ID"
+assert_jq_equals "$response" '.data.peerReadStatus' "unread"
+message_id2=$(echo "$response" | jq -r '.data.messageId')
+set_env_var "$environment_id" "messageId2" "$message_id2"
+pass_test
+
+begin_test "用户标记已读后对方listMessages查看peerReadStatus=read"
+response=$(send_json "$mark_read_as_user" "$environment_id")
+assert_code "$response" "200"
+assert_jq_true "$response" ".data | any(.messageId == \"$message_id2\" and .readStatus == \"read\")"
+response=$(send_json "$list_messages_as_peer" "$environment_id")
+assert_code "$response" "200"
+assert_jq_true "$response" ".data.items | any(.messageId == \"$message_id2\" and .senderId == \"$TEST_PEER_ID\" and .peerReadStatus == \"read\")"
+pass_test
+
+begin_test "重复标记已读幂等"
+response=$(send_json "$mark_read" "$environment_id")
+assert_code "$response" "200"
 pass_test
 
 begin_test "转发消息"
