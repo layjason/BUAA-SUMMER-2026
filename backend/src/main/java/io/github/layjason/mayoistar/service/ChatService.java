@@ -113,32 +113,26 @@ public class ChatService {
         if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
             imageMedia = mediaFileRepository
                     .findById(request.getImageMediaId())
-                    .orElseThrow(() -> new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid"));
-            // 图片消息需将访问策略从默认 owner 提升为 conversationMember，使会话所有成员可查看
-            mediaAccessService.updateAccessPolicy(
-                    request.getImageMediaId(), MediaAccessPolicy.conversationMember, conversationId);
-        }
-
-        // 图片消息需校验发送者为文件上传者，防止劫持他人上传的图片
-        if (request.getKind() == MessageKind.image && request.getImageMediaId() != null) {
-            MediaFile mediaFile = mediaFileRepository
-                    .findById(request.getImageMediaId())
                     .orElseThrow(() -> {
                         log.warn("消息引用的媒体文件不存在: mediaId={}", request.getImageMediaId());
                         return new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
                     });
-            if (!mediaFile.getUploadedBy().equals(senderId)) {
+            // 校验须先于策略更新执行：发送者须为图片上传者，防止劫持他人上传的图片
+            if (!imageMedia.getUploadedBy().equals(senderId)) {
                 log.warn(
                         "发送者不是图片的上传者: mediaId={}, senderId={}, uploadedBy={}",
                         request.getImageMediaId(),
                         senderId,
-                        mediaFile.getUploadedBy());
+                        imageMedia.getUploadedBy());
                 throw new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
             }
-            if (mediaFile.getDeletedAt() != null) {
+            if (imageMedia.getDeletedAt() != null) {
                 log.warn("消息引用的媒体文件已删除: mediaId={}", request.getImageMediaId());
                 throw new BusinessException(MEDIA_REFERENCE_INVALID, "Media reference is invalid");
             }
+            // 校验通过后再将访问策略从默认 owner 提升为 conversationMember，使会话所有成员可查看
+            mediaAccessService.updateAccessPolicy(
+                    request.getImageMediaId(), MediaAccessPolicy.conversationMember, conversationId, senderId);
         }
 
         ChatMessage message = ChatMessage.builder()
