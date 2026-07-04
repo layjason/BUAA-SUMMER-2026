@@ -542,15 +542,24 @@ export function getParticipationState(
       ? waitEntry.status
       : undefined
 
+  const canReview =
+    reg?.status === 'checkedIn' &&
+    activity?.runtimeStatus === 'ended' &&
+    !db.reviews.some((r) => r.activityId === activityId && r.userId === userId)
+
   return {
     status,
     canRegister,
     canCancelRegistration: canCancel,
     canCheckIn,
     canConfirmWaitingSeat: canConfirmWaiting,
+    canReview,
     waitingRank: waitEntry?.position,
     confirmationDeadline: canConfirmWaiting
       ? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+      : undefined,
+    reviewWindowEndsAt: canReview
+      ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       : undefined,
   }
 }

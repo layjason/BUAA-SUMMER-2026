@@ -15,6 +15,7 @@ import io.github.layjason.mayoistar.service.FriendshipService;
 import io.github.layjason.mayoistar.service.QrCodeService;
 import io.github.layjason.mayoistar.service.ReportService;
 import io.github.layjason.mayoistar.service.SocialProfileService;
+import io.github.layjason.mayoistar.service.TeamPointService;
 import io.github.layjason.mayoistar.service.TeamService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -42,6 +43,7 @@ public class SocialController {
     private final FollowService followService;
     private final SocialProfileService socialProfileService;
     private final TeamService teamService;
+    private final TeamPointService teamPointService;
     private final QrCodeService qrCodeService;
     private final SecurityUtils securityUtils;
 
@@ -262,6 +264,26 @@ public class SocialController {
             @RequestParam(required = false, defaultValue = "1") Integer page,
             @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
         var result = teamService.getTeamPointRanks(teamId, page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @PostMapping("/teams/{teamId}/members/{userId}/points")
+    public ResponseEntity<ApiResponse<EmptyData>> adjustTeamMemberPoints(
+            @PathVariable String teamId,
+            @PathVariable String userId,
+            @Valid @RequestBody SocialDtos.ManualPointAdjustmentRequest request) {
+        String operatorId = securityUtils.getCurrentUserId();
+        teamPointService.adjustPoints(teamId, userId, request.getPointChange(), operatorId, request.getReason());
+        return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
+    }
+
+    @GetMapping("/teams/{teamId}/members/{userId}/points/history")
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamPointRecordItem>>> getTeamMemberPointHistory(
+            @PathVariable String teamId,
+            @PathVariable String userId,
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = teamPointService.getPointHistory(teamId, userId, page, pageSize);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

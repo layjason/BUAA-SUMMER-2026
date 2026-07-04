@@ -177,4 +177,23 @@ class WebSocketNotificationServiceTest {
         entity.setRecalled(false);
         return entity;
     }
+
+    @Test
+    @DisplayName("单聊已读通知推送到原消息发送方")
+    void notifyMessagePeerReadSendsToSender() {
+        notificationService.notifyMessagePeerRead("conv-1", "msg-1", "sender-1");
+
+        ArgumentCaptor<ChatDtos.ChatRealtimeEvent> eventCaptor =
+                ArgumentCaptor.forClass(ChatDtos.ChatRealtimeEvent.class);
+        verify(messagingTemplate).convertAndSendToUser(eq("sender-1"), eq("/queue/chat-events"), eventCaptor.capture());
+
+        ChatDtos.ChatRealtimeEvent event = eventCaptor.getValue();
+        assertThat(event.getKind()).isEqualTo("messagePeerRead");
+        assertThat(event.getConversationId()).isEqualTo("conv-1");
+        assertThat(event.getPayload()).isInstanceOf(ChatDtos.MessagePeerReadPayload.class);
+        ChatDtos.MessagePeerReadPayload payload = (ChatDtos.MessagePeerReadPayload) event.getPayload();
+        assertThat(payload.getConversationId()).isEqualTo("conv-1");
+        assertThat(payload.getMessageId()).isEqualTo("msg-1");
+        assertThat(payload.getPeerReadStatus()).isEqualTo("read");
+    }
 }

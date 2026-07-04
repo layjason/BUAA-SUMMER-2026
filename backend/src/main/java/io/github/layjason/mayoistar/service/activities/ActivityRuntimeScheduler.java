@@ -4,10 +4,10 @@ import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
+import io.github.layjason.mayoistar.service.TeamPointService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -30,10 +30,15 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class ActivityRuntimeScheduler {
 
     private final ActivityRepository activityRepository;
+    private final TeamPointService teamPointService;
+
+    public ActivityRuntimeScheduler(ActivityRepository activityRepository, TeamPointService teamPointService) {
+        this.activityRepository = activityRepository;
+        this.teamPointService = teamPointService;
+    }
 
     /**
      * 每分钟执行一次运行时状态自动流转。
@@ -54,15 +59,20 @@ public class ActivityRuntimeScheduler {
         for (Activity activity : activities) {
             ActivityRuntimeStatus newStatus = computeTargetStatus(activity, now);
             if (activity.getRuntimeStatus() != newStatus) {
+                ActivityRuntimeStatus oldStatus = activity.getRuntimeStatus();
                 activity.setRuntimeStatus(newStatus);
                 activity.setUpdatedAt(now);
                 activityRepository.save(activity);
                 updatedCount++;
-                log.debug(
-                        "活动运行时状态自动流转，activityId={}, {} → {}",
-                        activity.getActivityId(),
-                        activity.getRuntimeStatus(),
-                        newStatus);
+                log.debug("活动运行时状态自动流转，activityId={}, {} → {}", activity.getActivityId(), oldStatus, newStatus);
+
+                if (newStatus == ActivityRuntimeStatus.ended) {
+                    try {
+                        teamPointService.processNoShows(activity.getActivityId());
+                    } catch (Exception e) {
+                        log.warn("爽约扣分处理失败: activityId={}", activity.getActivityId(), e);
+                    }
+                }
             }
         }
 

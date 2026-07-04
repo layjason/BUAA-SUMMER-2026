@@ -581,6 +581,240 @@ class ChatServiceTest extends AbstractIntegrationTest {
         assertThat(result.getFirst().getImage()).isNotNull();
     }
 
+    @Test
+    @DisplayName("发送消息 - 单聊中返回peerReadStatus=unread")
+    void sendMessage_peerReadStatus_unread() {
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("Hello!");
+        ChatDtos.ChatMessage sent =
+                chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request);
+
+        assertThat(sent.getPeerReadStatus()).isEqualTo("unread");
+    }
+
+    @Test
+    @DisplayName("获取消息列表 - 发送方能看到自己的peerReadStatus=unread")
+    void listMessages_peerReadStatus_unread() {
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("Hello!");
+        chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request);
+
+        var result = chatService.listMessages(conversation.getConversationId(), tomori.getUserId(), 1, 20);
+
+        assertThat(result.getItems()).isNotEmpty();
+        assertThat(result.getItems().getFirst().getSenderId()).isEqualTo(tomori.getUserId());
+        assertThat(result.getItems().getFirst().getPeerReadStatus()).isEqualTo("unread");
+    }
+
+    @Test
+    @DisplayName("获取消息列表 - 接收方消息不返回peerReadStatus")
+    void listMessages_receiverNoPeerReadStatus() {
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("Hello!");
+        chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request);
+
+        var result = chatService.listMessages(conversation.getConversationId(), anon.getUserId(), 1, 20);
+
+        assertThat(result.getItems()).isNotEmpty();
+        assertThat(result.getItems().getFirst().getPeerReadStatus()).isNull();
+    }
+
+    @Test
+    @DisplayName("标记已读 - 单聊触发peerRead通知")
+    void markMessagesRead_triggersPeerReadNotification() {
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("Hello!");
+        ChatDtos.ChatMessage sent =
+                chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request);
+
+        chatService.markMessagesRead(anon.getUserId(), List.of(sent.getMessageId()));
+
+        assertThat(capturingNotification().getPeerReads()).isNotEmpty();
+        assertThat(capturingNotification().getPeerReads().stream()
+                        .anyMatch(r -> r.messageId().equals(sent.getMessageId())
+                                && r.senderUserId().equals(tomori.getUserId())))
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("标记已读后发送方listMessages能看见peerReadStatus=read")
+    void listMessages_peerReadStatus_afterRead() {
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("Hello!");
+        ChatDtos.ChatMessage sent =
+                chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request);
+
+        chatService.markMessagesRead(anon.getUserId(), List.of(sent.getMessageId()));
+
+        var result = chatService.listMessages(conversation.getConversationId(), tomori.getUserId(), 1, 20);
+
+        assertThat(result.getItems()).isNotEmpty();
+        assertThat(result.getItems().getFirst().getSenderId()).isEqualTo(tomori.getUserId());
+        assertThat(result.getItems().getFirst().getPeerReadStatus()).isEqualTo("read");
+    }
+
+    @Test
+    @DisplayName("群聊发送消息不返回peerReadStatus")
+    void sendMessage_teamChat_noPeerReadStatus() {
+        User sakiko = createUser("sakiko@mygo.test", "祥子");
+        Conversation teamConv = Conversation.builder()
+                .conversationId(UUID.randomUUID().toString())
+                .kind(ConversationKind.team)
+                .title("Ave Mujica")
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        conversationRepository.save(teamConv);
+        conversationMemberRepository.save(ConversationMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .conversationId(teamConv.getConversationId())
+                .userId(tomori.getUserId())
+                .joinedAt(Instant.now())
+                .build());
+        conversationMemberRepository.save(ConversationMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .conversationId(teamConv.getConversationId())
+                .userId(anon.getUserId())
+                .joinedAt(Instant.now())
+                .build());
+        conversationMemberRepository.save(ConversationMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .conversationId(teamConv.getConversationId())
+                .userId(sakiko.getUserId())
+                .joinedAt(Instant.now())
+                .build());
+
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("Hello team!");
+        ChatDtos.ChatMessage sent = chatService.sendMessage(teamConv.getConversationId(), tomori.getUserId(), request);
+
+        assertThat(sent.getPeerReadStatus()).isNull();
+    }
+
+    @Test
+    @DisplayName("群聊标记已读不触发peerRead通知")
+    void markMessagesRead_teamChat_noPeerReadNotification() {
+        User sakiko = createUser("sakiko@mygo.test", "祥子");
+        Conversation teamConv = Conversation.builder()
+                .conversationId(UUID.randomUUID().toString())
+                .kind(ConversationKind.team)
+                .title("Ave Mujica")
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        conversationRepository.save(teamConv);
+        conversationMemberRepository.save(ConversationMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .conversationId(teamConv.getConversationId())
+                .userId(tomori.getUserId())
+                .joinedAt(Instant.now())
+                .build());
+        conversationMemberRepository.save(ConversationMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .conversationId(teamConv.getConversationId())
+                .userId(anon.getUserId())
+                .joinedAt(Instant.now())
+                .build());
+        conversationMemberRepository.save(ConversationMember.builder()
+                .memberId(UUID.randomUUID().toString())
+                .conversationId(teamConv.getConversationId())
+                .userId(sakiko.getUserId())
+                .joinedAt(Instant.now())
+                .build());
+
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("Hi team!");
+        ChatDtos.ChatMessage sent = chatService.sendMessage(teamConv.getConversationId(), tomori.getUserId(), request);
+
+        int peerReadsBefore = capturingNotification().getPeerReads().size();
+        chatService.markMessagesRead(anon.getUserId(), List.of(sent.getMessageId()));
+
+        assertThat(capturingNotification().getPeerReads()).hasSize(peerReadsBefore);
+    }
+
+    @Test
+    @DisplayName("重复标记已读幂等推送peerRead通知")
+    void markMessagesRead_alreadyReadMessages_stillTriggersPeerRead() {
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("Hello!");
+        ChatDtos.ChatMessage sent =
+                chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request);
+
+        chatService.markMessagesRead(anon.getUserId(), List.of(sent.getMessageId()));
+        int firstPeerReadCount = capturingNotification().getPeerReads().size();
+
+        chatService.markMessagesRead(anon.getUserId(), List.of(sent.getMessageId()));
+
+        assertThat(capturingNotification().getPeerReads()).hasSize(firstPeerReadCount + 1);
+
+        var result = chatService.listMessages(conversation.getConversationId(), tomori.getUserId(), 1, 20);
+        assertThat(result.getItems().getFirst().getPeerReadStatus()).isEqualTo("read");
+    }
+
+    @Test
+    @DisplayName("对方发消息后查看自己的消息也有peerReadStatus=unread")
+    void listMessages_peerSeesOwnPeerReadStatus() {
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("Hi from Anon!");
+        ChatDtos.ChatMessage sent =
+                chatService.sendMessage(conversation.getConversationId(), anon.getUserId(), request);
+
+        var result = chatService.listMessages(conversation.getConversationId(), anon.getUserId(), 1, 20);
+
+        assertThat(result.getItems()).isNotEmpty();
+        assertThat(result.getItems().stream()
+                        .anyMatch(m ->
+                                m.getMessageId().equals(sent.getMessageId()) && "unread".equals(m.getPeerReadStatus())))
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("双方互发消息后各自看到对方的已读状态")
+    void listMessages_bothSides_eachSeesOwnPeerReadStatus() {
+        ChatDtos.SendMessageRequest request = new ChatDtos.SendMessageRequest();
+        request.setKind(MessageKind.text);
+        request.setText("From Tomori");
+        ChatDtos.ChatMessage tomoriMsg =
+                chatService.sendMessage(conversation.getConversationId(), tomori.getUserId(), request);
+
+        request.setText("From Anon");
+        ChatDtos.ChatMessage anonMsg =
+                chatService.sendMessage(conversation.getConversationId(), anon.getUserId(), request);
+
+        var tomoriView = chatService.listMessages(conversation.getConversationId(), tomori.getUserId(), 1, 20);
+        assertThat(tomoriView.getItems().stream()
+                        .anyMatch(m -> m.getMessageId().equals(tomoriMsg.getMessageId())
+                                && "unread".equals(m.getPeerReadStatus())))
+                .isTrue();
+
+        var anonView = chatService.listMessages(conversation.getConversationId(), anon.getUserId(), 1, 20);
+        assertThat(anonView.getItems().stream()
+                        .anyMatch(m -> m.getMessageId().equals(anonMsg.getMessageId())
+                                && "unread".equals(m.getPeerReadStatus())))
+                .isTrue();
+
+        chatService.markMessagesRead(tomori.getUserId(), List.of(anonMsg.getMessageId()));
+
+        anonView = chatService.listMessages(conversation.getConversationId(), anon.getUserId(), 1, 20);
+        assertThat(anonView.getItems().stream()
+                        .anyMatch(m -> m.getMessageId().equals(anonMsg.getMessageId())
+                                && "read".equals(m.getPeerReadStatus())))
+                .isTrue();
+        assertThat(anonView.getItems().stream()
+                        .anyMatch(m ->
+                                m.getMessageId().equals(tomoriMsg.getMessageId()) && m.getPeerReadStatus() == null))
+                .isTrue();
+    }
+
     // ========================================
     // recallMessage Tests
     // ========================================

@@ -217,6 +217,12 @@ model ActivityParticipationState {
 
   @doc("当前用户是否可以扫码签到。")
   canCheckIn: boolean;
+
+  @doc("当前用户是否可以评价该活动。由后端根据活动结束时间、签到状态、是否已评价、评价窗口是否过期等规则计算。")
+  canReview: boolean;
+
+  @doc("评价入口关闭时间。仅 canReview 为 true 或用户满足评价基础条件时返回，用于前端展示剩余时间。")
+  reviewWindowEndsAt?: DateTimeString;
 }
 
 @doc("活动详情。")
