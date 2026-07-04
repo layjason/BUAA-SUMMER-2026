@@ -9538,7 +9538,7 @@ components:
             code:
               type: number
               enum:
-                - 20020
+                - 20021
               description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
             message:
               type: string
