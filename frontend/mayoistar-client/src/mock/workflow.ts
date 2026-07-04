@@ -6,7 +6,11 @@
  * - 成功时返回业务数据（由 mockServer 包装为 MockApiResponse）
  * - 失败时抛出 MockBusinessError，由 mockServer 捕获并转为错误响应
  */
-import { deliverChatRealtimeEvent, type ChatRealtimeEvent } from './chatRealtimeBus'
+import {
+  deliverChatRealtimeEvent,
+  deliverSocialRealtimeEvent,
+  type ChatRealtimeEvent,
+} from './chatRealtimeBus'
 import { getMockDb, persistMockDb, nextId, repairConversationStore } from './database'
 import type {
   ActivityDetail,
@@ -1106,15 +1110,17 @@ export function sendFriendRequest(fromUserId: number, request: FriendRequestCrea
   db.friendRequests.push(record)
   persistMockDb()
 
-  return {
+  const result = {
     requestId: String(reqId),
     requesterId: String(fromUserId),
     targetUserId: String(toUserId),
-    status: 'pending',
+    status: 'pending' as const,
     source,
     message: message || undefined,
     createdAt,
   }
+  deliverSocialRealtimeEvent(toUserId, result)
+  return result
 }
 
 /* ================================================================

@@ -193,6 +193,7 @@
  */
 import { ref } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
+import { useChatRealtime, type ChatRealtimeEvent } from '@/composables/useChatRealtime'
 import SocialTopBar from '@/components/social/SocialTopBar.vue'
 import SocialQuickCards from '@/components/social/SocialQuickCards.vue'
 import ConversationCard from '@/components/social/ConversationCard.vue'
@@ -208,6 +209,8 @@ import type { components } from '@/api/types/schema'
 type FriendRequest = components['schemas']['Social.FriendRequest']
 type TeamProfile = components['schemas']['Social.TeamProfile']
 type ConversationSummary = components['schemas']['Chat.ConversationSummary']
+type MessageCreatedPayload = components['schemas']['Chat.MessageCreatedPayload']
+type MessageForwardedPayload = components['schemas']['Chat.MessageForwardedPayload']
 
 // User state
 const userAvatar = ref('') // Will be loaded from user store
@@ -399,13 +402,58 @@ async function loadSocialData() {
   }
 }
 
+/** 根据实时聊天事件更新会话列表摘要 */
+function handleChatRealtimeEvent(event: ChatRealtimeEvent) {
+  if (event.kind !== 'messageCreated' && event.kind !== 'messageForwarded') return
+
+  const payload = event.payload as MessageCreatedPayload | MessageForwardedPayload
+  const preview =
+    payload.message.text ??
+    (payload.message.kind === 'image'
+      ? '[图片]'
+      : payload.message.kind === 'location'
+        ? '[位置]'
+        : '')
+
+  const idx = conversations.value.findIndex((c) => c.conversationId === event.conversationId)
+  if (idx >= 0) {
+    const current = conversations.value[idx]
+    conversations.value[idx] = {
+      ...current,
+      lastMessagePreview: preview || current.lastMessagePreview,
+      unreadCount: payload.conversationUnreadCount,
+      updatedAt: event.occurredAt,
+    }
+    conversations.value.sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    )
+    return
+  }
+
+  void loadSocialData()
+}
+
+/** 收到好友申请实时推送时更新待处理数量 */
+function handleSocialRealtimeEvent(request: FriendRequest) {
+  if (request.status === 'pending') {
+    pendingRequestsCount.value += 1
+  }
+}
+
+const { connect: connectRealtime, close: closeRealtime } = useChatRealtime(
+  handleChatRealtimeEvent,
+  handleSocialRealtimeEvent,
+)
+
 onShow(() => {
   closeAllPopups()
   loadSocialData()
+  connectRealtime()
 })
 
 onHide(() => {
   closeAllPopups()
+  closeRealtime()
 })
 </script>
 

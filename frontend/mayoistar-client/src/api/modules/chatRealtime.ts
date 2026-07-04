@@ -1,35 +1,48 @@
 /**
- * 聊天 WebSocket 客户端
+ * 聊天 / 社交实时连接模块
  *
- * Mock 模式走内存事件总线；真实模式连接 `/chat/ws/messages`。
+ * Mock 模式走内存事件总线；真实模式通过 STOMP 连接 `/chat/ws/messages`。
  */
 import { API_BASE_URL, USE_MOCK } from '@/api/config'
 import {
+  connectStompRealtime,
+  type ChatRealtimeEvent,
+  type FriendRequest,
+} from '@/api/stomp/connectStomp'
+import { toStompWebSocketUrl } from '@/api/stomp/uniStompSocket'
+import {
   connectMockChatRealtime,
   subscribeMockChatRealtime,
-  type ChatRealtimeEvent,
+  subscribeMockSocialRealtime,
 } from '@/mock/chatRealtimeBus'
 
-export type { ChatRealtimeEvent }
+export type { ChatRealtimeEvent, FriendRequest }
 
 export type ChatRealtimeHandler = (event: ChatRealtimeEvent) => void
+export type SocialRealtimeHandler = (request: FriendRequest) => void
 
-function toWebSocketUrl(baseUrl: string): string {
-  const normalized = baseUrl.replace(/\/+$/, '')
-  const wsBase = normalized.replace(/^http/i, 'ws')
-  return `${wsBase}/chat/ws/messages`
+export interface RealtimeConnectionHandlers {
+  onChatEvent: ChatRealtimeHandler
+  onSocialEvent?: SocialRealtimeHandler
+}
+
+function normalizeHandlers(
+  handlers: RealtimeConnectionHandlers | ChatRealtimeHandler,
+): RealtimeConnectionHandlers {
+  return typeof handlers === 'function' ? { onChatEvent: handlers } : handlers
 }
 
 /**
- * 建立聊天实时连接
+ * 建立实时连接（mock 总线或 STOMP WebSocket）。
  *
  * @returns disconnect 断开并取消订阅
  */
 export function connectChatRealtime(
   userId: string,
   token: string | null,
-  onEvent: ChatRealtimeHandler,
+  handlers: RealtimeConnectionHandlers | ChatRealtimeHandler,
 ): () => void {
+  const resolved = normalizeHandlers(handlers)
   const numericUserId = Number(userId)
   if (!userId || Number.isNaN(numericUserId)) {
     return () => {}
@@ -37,31 +50,18 @@ export function connectChatRealtime(
 
   if (USE_MOCK) {
     const releaseConnection = connectMockChatRealtime(numericUserId)
-    const unsubscribe = subscribeMockChatRealtime(numericUserId, onEvent)
+    const unsubscribeChat = subscribeMockChatRealtime(numericUserId, resolved.onChatEvent)
+    const unsubscribeSocial = resolved.onSocialEvent
+      ? subscribeMockSocialRealtime(numericUserId, resolved.onSocialEvent)
+      : () => {}
+
     return () => {
-      unsubscribe()
+      unsubscribeChat()
+      unsubscribeSocial()
       releaseConnection()
     }
   }
 
-  const url = toWebSocketUrl(API_BASE_URL)
-  const socket = uni.connectSocket({
-    url,
-    header: token ? { Authorization: `Bearer ${token}` } : {},
-    complete: () => {},
-  })
-
-  socket.onMessage((res) => {
-    try {
-      const raw = typeof res.data === 'string' ? res.data : String(res.data)
-      const event = JSON.parse(raw) as ChatRealtimeEvent
-      onEvent(event)
-    } catch {
-      // 忽略无法解析的帧
-    }
-  })
-
-  return () => {
-    socket.close({})
-  }
+  const wsUrl = toStompWebSocketUrl(API_BASE_URL)
+  return connectStompRealtime(wsUrl, token, resolved)
 }

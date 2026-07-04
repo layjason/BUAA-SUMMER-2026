@@ -3059,7 +3059,7 @@ export interface components {
              * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
              * @enum {number}
              */
-            code: 20020;
+            code: 20021;
             /** @description 错误上下文，默认无额外业务数据。 */
             data: components["schemas"]["EmptyData"];
             /**

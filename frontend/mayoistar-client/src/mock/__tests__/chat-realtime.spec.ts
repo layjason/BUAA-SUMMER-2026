@@ -4,9 +4,10 @@ import {
   connectMockChatRealtime,
   resetMockChatRealtimeBus,
   subscribeMockChatRealtime,
+  subscribeMockSocialRealtime,
   type ChatRealtimeEvent,
 } from '../chatRealtimeBus'
-import { markMessagesRead, sendMessage } from '../workflow'
+import { markMessagesRead, sendFriendRequest, sendMessage } from '../workflow'
 
 function collectEvents(userId: number): ChatRealtimeEvent[] {
   const events: ChatRealtimeEvent[] = []
@@ -59,5 +60,26 @@ describe('mock chat WebSocket bus', () => {
     sendMessage(1, 10006, { kind: 'text', text: '离线用户不应收到' })
 
     expect(listener).not.toHaveBeenCalled()
+  })
+
+  it('pushes friend request to target user on social-events bus', () => {
+    const socialEvents: Array<{ requestId: string; targetUserId: string }> = []
+    connectMockChatRealtime(10008)
+    subscribeMockSocialRealtime(10008, (request) => {
+      socialEvents.push({
+        requestId: request.requestId,
+        targetUserId: request.targetUserId,
+      })
+    })
+
+    sendFriendRequest(10001, {
+      targetUserId: '10008',
+      message: '你好',
+      source: 'profile',
+    })
+
+    expect(socialEvents).toHaveLength(1)
+    expect(socialEvents[0]?.targetUserId).toBe('10008')
+    expect(socialEvents[0]?.requestId).toBeTruthy()
   })
 })
