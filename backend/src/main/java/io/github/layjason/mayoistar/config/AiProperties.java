@@ -28,11 +28,26 @@ public class AiProperties {
     @Data
     public static class Clip {
 
-        /** CLIP 服务端点地址 */
+        /** CLIP 服务端点地址（废弃：Kafka 替代） */
         private String endpoint = "http://localhost:8000";
 
         /** HTTP 请求超时时间（秒） */
         private int timeoutSeconds = 60;
+
+        /** Kafka 请求 Topic 名称 */
+        private String requestTopic = "clip-classify-request";
+
+        /** Kafka 响应 Topic 名称 */
+        private String responseTopic = "clip-classify-response";
+
+        /** Kafka 死信 Topic 名称 */
+        private String requestDlqTopic = "clip-classify-request-dlq";
+
+        /** 任务超时时间（秒） */
+        private int requestTimeoutSeconds = 30;
+
+        /** Kafka consumer 最大重试次数 */
+        private int requestRetryMax = 3;
     }
 
     /**
