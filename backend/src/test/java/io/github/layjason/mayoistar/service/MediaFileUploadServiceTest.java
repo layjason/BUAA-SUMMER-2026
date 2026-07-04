@@ -220,8 +220,7 @@ class MediaFileUploadServiceTest {
             when(fileStorageService.store(anyString(), any(InputStream.class), eq("image/jpeg"), eq(100L)))
                     .thenReturn("activityReviewImage/user1/mock-id_review.jpg");
 
-            CommonDtos.MediaFile result =
-                    mediaFileUploadService.upload("user1", file, MediaUsage.activityReviewImage);
+            CommonDtos.MediaFile result = mediaFileUploadService.upload("user1", file, MediaUsage.activityReviewImage);
 
             assertThat(result.getVisibility()).isEqualTo(MediaVisibility.publicVisible);
             ArgumentCaptor<MediaFile> captor = ArgumentCaptor.forClass(MediaFile.class);
