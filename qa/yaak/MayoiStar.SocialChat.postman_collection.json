@@ -209,6 +209,28 @@
           }
         },
         {
+          "name": "获取个人二维码（test_user）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/social/qr-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "social",
+                "qr-code"
+              ]
+            }
+          }
+        },
+        {
           "name": "查看已发送好友申请",
           "request": {
             "method": "GET",
