@@ -41,9 +41,8 @@
             </view>
           </view>
 
-          <!-- Action icon for leader/admin -->
           <view
-            v-if="canManage && member.role === 'member'"
+            v-if="canManage && member.role !== 'leader' && member.userId !== currentUserId"
             class="member-action"
             @tap.stop="showMemberMenu(member)"
           >
@@ -63,13 +62,21 @@
           <text class="action-sheet__close" @tap="closeMemberMenu">×</text>
         </view>
         <view class="action-sheet__items">
-          <view class="action-sheet__item" @tap="setRole('admin')">
+          <view
+            v-if="selectedMember?.role === 'member'"
+            class="action-sheet__item"
+            @tap="setRole('admin')"
+          >
             <text class="action-sheet__icon">⬆️</text>
             <view class="action-sheet__content">
               <text class="action-sheet__label">设为管理员</text>
             </view>
           </view>
-          <view class="action-sheet__item" @tap="setRole('member')">
+          <view
+            v-if="selectedMember?.role === 'admin'"
+            class="action-sheet__item"
+            @tap="setRole('member')"
+          >
             <text class="action-sheet__icon">⬇️</text>
             <view class="action-sheet__content">
               <text class="action-sheet__label">取消管理员</text>

@@ -60,8 +60,17 @@
           <view v-if="canManage" class="panel-action" @tap="goMembers">
             <text>成员管理</text>
           </view>
+          <view v-else class="panel-action" @tap="goPoints">
+            <text>积分榜</text>
+          </view>
         </view>
       </scroll-view>
+
+      <view v-if="isLeader && team?.status === 'active'" class="dissolve-wrap">
+        <view class="dissolve-btn" @tap="onDissolve">
+          <text class="dissolve-btn-text">解散小队</text>
+        </view>
+      </view>
     </view>
   </uni-popup>
 </template>
@@ -70,9 +79,12 @@
 /**
  * 小队群聊信息弹窗
  *
- * 展示小队基础资料，并提供公告、投票、文件、相册等子功能入口。
+ * 3 行 × 2 列功能入口；队长可解散，普通成员底部显示积分榜。
  */
 import { ref, computed } from 'vue'
+import { BusinessError } from '@/api'
+import { dissolveTeam } from '@/api/modules/teams'
+import { getTeamErrorMessage } from '@/utils/team-error-message'
 import type { components } from '@/api/types/schema'
 
 type TeamProfile = components['schemas']['Social.TeamProfile']
@@ -84,7 +96,6 @@ interface FeatureItem {
   label: string
   path: string
   badge?: string
-  managerOnly?: boolean
 }
 
 const props = defineProps<{
@@ -94,10 +105,15 @@ const props = defineProps<{
   pendingRequestCount?: number
 }>()
 
+const emit = defineEmits<{
+  dissolved: []
+}>()
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const popupRef = ref<any>(null)
 
 const canManage = computed(() => props.myRole === 'leader' || props.myRole === 'admin')
+const isLeader = computed(() => props.myRole === 'leader')
 
 const roleLabel = computed(() => {
   if (props.myRole === 'leader') return '队长'
@@ -106,54 +122,80 @@ const roleLabel = computed(() => {
 })
 
 const featureItems = computed<FeatureItem[]>(() => {
-  const base: FeatureItem[] = [
+  const items: FeatureItem[] = [
     { key: 'announcements', icon: '📢', label: '群公告', path: 'announcements' },
     { key: 'polls', icon: '🗳️', label: '群投票', path: 'polls' },
     { key: 'files', icon: '📁', label: '群文件', path: 'files' },
     { key: 'album', icon: '🖼️', label: '小队相册', path: 'album' },
     { key: 'activities', icon: '📅', label: '队内活动', path: 'activities' },
-    { key: 'points', icon: '🏆', label: '积分榜', path: 'points' },
   ]
+
   if (canManage.value) {
-    base.push({
+    items.push({
       key: 'join-requests',
       icon: '📨',
       label: '入队申请',
       path: 'join-requests',
       badge: props.pendingRequestCount ? String(props.pendingRequestCount) : undefined,
-      managerOnly: true,
     })
+  } else {
+    items.push({ key: 'points', icon: '🏆', label: '积分榜', path: 'points' })
   }
-  return base
+
+  return items
 })
 
-/** 打开弹窗 */
 function open() {
   popupRef.value?.open()
 }
 
-/** 关闭弹窗 */
 function close() {
   popupRef.value?.close()
 }
 
-/** 跳转子功能页 */
 function onFeatureTap(item: FeatureItem) {
   if (!props.teamId) return
   close()
   uni.navigateTo({ url: `/pages/teams/${item.path}?teamId=${props.teamId}` })
 }
 
-/** 跳转小队详情 */
 function goTeamDetail() {
   close()
   uni.navigateTo({ url: `/pages/teams/detail?teamId=${props.teamId}` })
 }
 
-/** 跳转成员管理 */
 function goMembers() {
   close()
   uni.navigateTo({ url: `/pages/teams/members?teamId=${props.teamId}` })
+}
+
+function goPoints() {
+  close()
+  uni.navigateTo({ url: `/pages/teams/points?teamId=${props.teamId}` })
+}
+
+function onDissolve() {
+  close()
+  uni.showModal({
+    title: '解散小队',
+    content: '解散后成员将无法继续使用群聊与小队功能，确定解散吗？',
+    confirmColor: '#e54d42',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await dissolveTeam(props.teamId)
+        uni.showToast({ title: '小队已解散', icon: 'success' })
+        emit('dissolved')
+        setTimeout(() => uni.navigateBack(), 400)
+      } catch (error) {
+        const message =
+          error instanceof BusinessError
+            ? getTeamErrorMessage(error.code, error.message)
+            : '解散失败'
+        uni.showToast({ title: message, icon: 'none' })
+      }
+    },
+  })
 }
 
 defineExpose({ open, close })
@@ -165,7 +207,7 @@ defineExpose({ open, close })
 .panel {
   background: #ffffff;
   border-radius: $radius-xl $radius-xl 0 0;
-  max-height: 78vh;
+  max-height: 82vh;
   display: flex;
   flex-direction: column;
 }
@@ -196,8 +238,9 @@ defineExpose({ open, close })
 
 .panel__scroll {
   flex: 1;
-  max-height: 68vh;
-  padding: $spacing-md;
+  max-height: 70vh;
+  padding: $spacing-md $spacing-lg;
+  box-sizing: border-box;
 }
 
 .info-card {
@@ -240,6 +283,7 @@ defineExpose({ open, close })
   align-items: center;
   gap: $spacing-xs;
   margin-bottom: $spacing-xs;
+  flex-wrap: wrap;
 }
 
 .info-card__name {
@@ -294,7 +338,7 @@ defineExpose({ open, close })
 
 .feature-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: $spacing-sm;
   margin-bottom: $spacing-md;
 }
@@ -304,12 +348,14 @@ defineExpose({ open, close })
   border: 1px solid $color-border-light;
   border-radius: $radius-lg;
   padding: $spacing-md $spacing-sm;
+  min-height: 88px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: $spacing-xs;
   position: relative;
-  box-shadow: $shadow-xs;
+  box-sizing: border-box;
 
   &:active {
     background: #fafafa;
@@ -318,18 +364,20 @@ defineExpose({ open, close })
 
 .feature-card__icon {
   font-size: 24px;
+  line-height: 1;
 }
 
 .feature-card__label {
   font-size: $font-xs;
   color: $color-text;
   text-align: center;
+  line-height: 1.3;
 }
 
 .feature-card__badge {
   position: absolute;
-  top: 6px;
-  right: 8px;
+  top: 8px;
+  right: 10px;
   background: $color-danger;
   color: #fff;
   font-size: 10px;
@@ -345,22 +393,45 @@ defineExpose({ open, close })
 .panel-actions {
   display: flex;
   gap: $spacing-sm;
-  padding-bottom: calc($spacing-md + $safe-bottom);
 }
 
 .panel-action {
   flex: 1;
   background: $color-primary-light;
   border-radius: $radius-full;
-  padding: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
 
   text {
     font-size: $font-sm;
     color: $color-primary;
     font-weight: $weight-medium;
   }
+}
+
+.dissolve-wrap {
+  flex-shrink: 0;
+  padding: $spacing-md $spacing-lg;
+  padding-bottom: calc($spacing-md + $safe-bottom);
+  border-top: 1px solid $color-border-light;
+}
+
+.dissolve-btn {
+  background: #fff;
+  border: 1px solid rgba(229, 77, 66, 0.35);
+  border-radius: $radius-full;
+  padding: $spacing-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dissolve-btn-text {
+  font-size: $font-sm;
+  color: #e54d42;
+  font-weight: $weight-medium;
 }
 </style>

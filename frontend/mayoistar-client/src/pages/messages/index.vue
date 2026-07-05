@@ -16,7 +16,7 @@
       <!-- Quick Cards -->
       <SocialQuickCards
         :team-count="teams.length"
-        team-desc="我的小队和发现小队"
+        team-desc=""
         :pending-team-requests="pendingTeamRequests"
         :companion-count="activityCompanions.length"
         companion-desc="可能认识的活动同伴"
@@ -26,6 +26,7 @@
         @create-team-tap="goToCreateTeam"
         @companions-tap="goToActivityCompanions"
         @friend-requests-tap="goToFriendRequests"
+        @pending-team-requests-tap="goToPendingTeamRequests"
       />
 
       <!-- Conversation List -->
@@ -224,6 +225,7 @@ const loading = ref(false)
 const teams = ref<TeamProfile[]>([])
 const pendingRequestsCount = ref(0)
 const pendingTeamRequests = ref(0)
+const pendingTeamRequestTargets = ref<{ teamId: string; name: string }[]>([])
 const activityCompanions = ref<{ userId: string }[]>([])
 
 // Real conversations from chat API
@@ -336,9 +338,38 @@ function goToCreateTeam() {
   uni.navigateTo({ url: '/pages/teams/create' })
 }
 
+function goToPendingTeamRequests() {
+  const targets = pendingTeamRequestTargets.value
+  if (targets.length === 0) {
+    uni.showToast({ title: '暂无待审核申请', icon: 'none' })
+    return
+  }
+  if (targets.length === 1) {
+    uni.navigateTo({
+      url: `/pages/teams/join-requests?teamId=${targets[0].teamId}`,
+    })
+    return
+  }
+  uni.showActionSheet({
+    itemList: targets.map((target) => target.name),
+    success: (res) => {
+      const target = targets[res.tapIndex]
+      if (!target) return
+      uni.navigateTo({
+        url: `/pages/teams/join-requests?teamId=${target.teamId}`,
+      })
+    },
+  })
+}
+
 function openChat(conv: ConversationSummary) {
+  const matchedTeam =
+    conv.kind === 'team'
+      ? teams.value.find((team) => team.chatId === conv.conversationId)
+      : undefined
+  const teamQuery = matchedTeam ? `&teamId=${matchedTeam.teamId}` : ''
   uni.navigateTo({
-    url: `/pages/messages/chat?conversationId=${conv.conversationId}&kind=${conv.kind}`,
+    url: `/pages/messages/chat?conversationId=${conv.conversationId}&kind=${conv.kind}${teamQuery}`,
   })
 }
 
@@ -364,12 +395,13 @@ function formatTime(isoTime: string): string {
   return `${month}月${day}日`
 }
 
-/** 统计当前用户可审核的待处理入队申请数 */
+/** 统计当前用户可审核的待处理入队申请数，并记录有待审的小队列表 */
 async function countPendingTeamJoinRequests(
   myTeams: TeamProfile[],
   currentUserId: string,
-): Promise<number> {
+): Promise<{ total: number; targets: { teamId: string; name: string }[] }> {
   let total = 0
+  const targets: { teamId: string; name: string }[] = []
   for (const team of myTeams) {
     try {
       const membersResult = await getTeamMembers(team.teamId, 1, 100)
@@ -379,21 +411,29 @@ async function countPendingTeamJoinRequests(
       if (me?.role !== 'leader' && me?.role !== 'admin') continue
 
       const requestsResult = await getTeamJoinRequests(team.teamId)
-      total += extractPageItems<TeamJoinRequest>(requestsResult).filter(
+      const pendingCount = extractPageItems<TeamJoinRequest>(requestsResult).filter(
         (req) => req.status === 'pending',
       ).length
+      if (pendingCount > 0) {
+        targets.push({ teamId: team.teamId, name: team.name })
+      }
+      total += pendingCount
     } catch {
       /* 单个小队查询失败不影响整体统计 */
     }
   }
-  return total
+  return { total, targets }
 }
 
 /** 加载社交数据 */
 async function loadSocialData() {
   loading.value = true
   const authStore = useAuthStore()
-  const currentUserId = authStore.userId || '10001'
+  const currentUserId = authStore.userId ?? ''
+  if (!currentUserId) {
+    loading.value = false
+    return
+  }
 
   try {
     // 并行加载请求、小队、会话、活动同伴
@@ -420,13 +460,20 @@ async function loadSocialData() {
       : (((teamsResult as Record<string, unknown>).items as TeamProfile[]) ?? [])
     teams.value = teamItems
 
-    // 处理会话列表
+    // 处理会话列表（小队会话标题附带成员数）
     const convItems = Array.isArray(conversationsResult)
       ? conversationsResult
       : (((conversationsResult as Record<string, unknown>).items as ConversationSummary[]) ?? [])
-    conversations.value = convItems
+    conversations.value = convItems.map((conv) => {
+      if (conv.kind !== 'team') return conv
+      const matchedTeam = teamItems.find((team) => team.chatId === conv.conversationId)
+      if (!matchedTeam) return conv
+      return { ...conv, title: `${matchedTeam.name} (${matchedTeam.memberCount})` }
+    })
 
-    pendingTeamRequests.value = await countPendingTeamJoinRequests(teamItems, currentUserId)
+    const pendingStats = await countPendingTeamJoinRequests(teamItems, currentUserId)
+    pendingTeamRequests.value = pendingStats.total
+    pendingTeamRequestTargets.value = pendingStats.targets
   } catch (error) {
     console.error('Failed to load social data:', error)
     uni.showToast({ title: '加载失败', icon: 'none' })

@@ -36,23 +36,36 @@
             <text class="search-btn-text">搜索</text>
           </view>
         </view>
-        <scroll-view class="tag-scroll" scroll-x>
-          <view class="tag-row">
-            <view
-              class="tag-chip"
-              :class="{ 'tag-chip--active': selectedTags.size === 0 }"
-              @tap="clearTags"
-            >
-              <text class="tag-chip-text">全部</text>
+        <scroll-view class="tag-scroll" scroll-x :show-scrollbar="false">
+          <view class="tag-scroll-inner">
+            <view class="tag-row">
+              <view
+                class="tag-chip"
+                :class="{ 'tag-chip--active': selectedTags.size === 0 }"
+                @tap="clearTags"
+              >
+                <text class="tag-chip-text">全部</text>
+              </view>
+              <view
+                v-for="tag in tagRow1"
+                :key="tag.name"
+                class="tag-chip"
+                :class="{ 'tag-chip--active': selectedTags.has(tag.name) }"
+                @tap="toggleTag(tag.name)"
+              >
+                <text class="tag-chip-text">{{ tag.name }}</text>
+              </view>
             </view>
-            <view
-              v-for="tag in availableTags"
-              :key="tag.name"
-              class="tag-chip"
-              :class="{ 'tag-chip--active': selectedTags.has(tag.name) }"
-              @tap="toggleTag(tag.name)"
-            >
-              <text class="tag-chip-text">{{ tag.name }}</text>
+            <view class="tag-row">
+              <view
+                v-for="tag in tagRow2"
+                :key="tag.name"
+                class="tag-chip"
+                :class="{ 'tag-chip--active': selectedTags.has(tag.name) }"
+                @tap="toggleTag(tag.name)"
+              >
+                <text class="tag-chip-text">{{ tag.name }}</text>
+              </view>
             </view>
           </view>
         </scroll-view>
@@ -100,7 +113,10 @@
           <view class="team-content">
             <view class="team-header">
               <text class="team-name">{{ team.name }}</text>
-              <view v-if="team.status !== 'active'" class="team-status-badge">
+              <view v-if="isTeamFull(team)" class="team-status-badge">
+                <text class="status-text">已满员</text>
+              </view>
+              <view v-else-if="team.status !== 'active'" class="team-status-badge">
                 <text class="status-text">{{
                   team.status === 'dissolved' ? '已解散' : '已停用'
                 }}</text>
@@ -146,7 +162,7 @@
  *
  * 展示我的小队和发现小队，支持创建小队
  */
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
@@ -163,6 +179,10 @@ const selectedTags = ref(new Set<string>())
 const availableTags = ref<{ name: string }[]>([])
 const loading = ref(false)
 const teams = ref<TeamProfile[]>([])
+
+/** 标签拆成两行，整体横向滑动 */
+const tagRow1 = computed(() => availableTags.value.filter((_, index) => index % 2 === 0))
+const tagRow2 = computed(() => availableTags.value.filter((_, index) => index % 2 === 1))
 
 function clearTags() {
   selectedTags.value = new Set()
@@ -206,6 +226,10 @@ async function loadTeams() {
   } finally {
     loading.value = false
   }
+}
+
+function isTeamFull(team: TeamProfile): boolean {
+  return team.status === 'active' && team.memberCount >= team.capacity
 }
 
 function goToTeamDetail(team: TeamProfile) {
@@ -266,21 +290,39 @@ watch(activeTab, () => {
 }
 
 .tag-scroll {
-  white-space: nowrap;
+  width: 100%;
   padding: 0 $spacing-md $spacing-sm;
+  box-sizing: border-box;
+}
+
+.tag-scroll-inner {
+  display: inline-block;
+  min-width: 100%;
 }
 
 .tag-row {
-  display: inline-flex;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
 
 .tag-chip {
+  flex-shrink: 0;
   display: inline-flex;
-  padding: 6px 14px;
+  align-items: center;
+  justify-content: center;
+  max-width: 140px;
+  padding: 8px 16px;
   border-radius: $radius-full;
-  background: $color-bg;
-  border: 1px solid $color-border;
+  background: #f5f6f8;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 4px rgba(47, 52, 65, 0.06);
 }
 
 .tag-chip--active {
@@ -289,8 +331,12 @@ watch(activeTab, () => {
 }
 
 .tag-chip-text {
-  font-size: $font-xs;
-  color: $color-text-sub;
+  font-size: $font-sm;
+  color: $color-text;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 108px;
 }
 
 .tag-chip--active .tag-chip-text {
@@ -409,11 +455,7 @@ watch(activeTab, () => {
   }
 
   &--disabled {
-    opacity: 0.6;
-
-    .team-name {
-      text-decoration: line-through;
-    }
+    opacity: 0.75;
   }
 }
 

@@ -3,10 +3,42 @@
     <AppNavbar :title="chatTitle">
       <template v-if="conversationKind === 'team'" #right>
         <view class="nav-info-btn" @tap="openTeamPanel">
-          <text class="nav-info-icon">ℹ️</text>
+          <text class="nav-info-icon">⋯</text>
         </view>
       </template>
     </AppNavbar>
+
+    <!-- 群公告折叠条 -->
+    <view
+      v-if="conversationKind === 'team' && teamAnnouncements.length > 0"
+      class="announcement-panel"
+    >
+      <view
+        v-if="!announcementExpanded"
+        class="announcement-panel__collapsed"
+        @tap="expandAnnouncements"
+      >
+        <text class="announcement-panel__tag">公告</text>
+        <text class="announcement-panel__text">{{ latestAnnouncement?.content }}</text>
+      </view>
+      <scroll-view v-else class="announcement-panel__expanded" scroll-y>
+        <view
+          v-for="item in teamAnnouncements"
+          :key="item.announcementId"
+          class="announcement-panel__item"
+        >
+          <text class="announcement-panel__tag">公告</text>
+          <text class="announcement-panel__text">{{ item.content }}</text>
+        </view>
+      </scroll-view>
+      <view
+        v-if="announcementExpanded"
+        class="announcement-panel__collapse"
+        @tap="collapseAnnouncements"
+      >
+        <text class="announcement-panel__collapse-icon">^</text>
+      </view>
+    </view>
 
     <!-- Message List -->
     <scroll-view
@@ -196,6 +228,7 @@
       :team="teamProfile"
       :my-role="myTeamRole"
       :pending-request-count="pendingJoinCount"
+      @dissolved="onTeamDissolved"
     />
 
     <ForwardTargetPicker
@@ -244,6 +277,7 @@ import AppNavbar from '@/components/base/AppNavbar.vue'
 import ForwardTargetPicker from '@/components/social/ForwardTargetPicker.vue'
 import LocationMessageCard from '@/components/social/LocationMessageCard.vue'
 import TeamChatPanel from '@/components/social/TeamChatPanel.vue'
+import { listAnnouncements } from '@/api/modules/teamChat'
 import {
   getTeamDetail,
   getTeamMembers,
@@ -278,6 +312,7 @@ type TeamMemberRole = components['schemas']['Social.TeamMemberRole']
 type TeamJoinRequest = components['schemas']['Social.TeamJoinRequest']
 type TeamMember = components['schemas']['Social.TeamMember']
 type SendMessageRequest = components['schemas']['Chat.SendMessageRequest']
+type TeamAnnouncement = components['schemas']['Chat.TeamAnnouncement']
 
 interface MentionableMember {
   userId: string
@@ -292,6 +327,8 @@ const conversationKind = ref<'friend' | 'team'>('friend')
 const teamProfile = ref<TeamProfile | null>(null)
 const myTeamRole = ref<TeamMemberRole | null>(null)
 const pendingJoinCount = ref(0)
+const teamAnnouncements = ref<TeamAnnouncement[]>([])
+const announcementExpanded = ref(false)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const teamPanelRef = ref<any>(null)
 const currentUserId = ref('')
@@ -333,6 +370,8 @@ const teamWritable = computed(
 const canSend = computed(
   () => inputText.value.trim().length > 0 && !sending.value && teamWritable.value,
 )
+
+const latestAnnouncement = computed(() => teamAnnouncements.value[0] ?? null)
 
 /** 判断是否为自己的消息 */
 function isMyMessage(msg: ChatMessage): boolean {
@@ -414,14 +453,15 @@ async function loadMessages() {
 async function loadTeamContext() {
   if (!teamId.value) return
   try {
-    const [teamResult, membersResult, requestsResult] = await Promise.all([
+    const [teamResult, membersResult, requestsResult, announcementsResult] = await Promise.all([
       getTeamDetail(teamId.value),
       getTeamMembers(teamId.value, 1, 100),
       getTeamJoinRequests(teamId.value).catch(() => null),
+      listAnnouncements(teamId.value, 1, 20).catch(() => null),
     ])
     teamProfile.value = teamResult as TeamProfile
     if (teamProfile.value.name) {
-      chatTitle.value = teamProfile.value.name
+      chatTitle.value = `${teamProfile.value.name} (${teamProfile.value.memberCount})`
     }
     const memberItems = extractPageItems<TeamMember>(membersResult)
     myTeamRole.value = memberItems.find((m) => m.userId === currentUserId.value)?.role ?? null
@@ -433,18 +473,46 @@ async function loadTeamContext() {
     for (const member of memberItems) {
       memberNames.value.set(member.userId, member.nickname)
     }
-    if (requestsResult) {
+    const isManager = myTeamRole.value === 'leader' || myTeamRole.value === 'admin'
+    if (isManager && requestsResult) {
       const requests = extractPageItems<TeamJoinRequest>(requestsResult)
       pendingJoinCount.value = requests.filter((r) => r.status === 'pending').length
+    } else {
+      pendingJoinCount.value = 0
     }
+
+    const announcementItems = announcementsResult
+      ? extractPageItems<TeamAnnouncement>(announcementsResult)
+      : []
+    teamAnnouncements.value = announcementItems.sort(
+      (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+    )
   } catch (error) {
     console.error('Failed to load team context:', error)
   }
 }
 
+function expandAnnouncements() {
+  if (teamAnnouncements.value.length > 0) {
+    announcementExpanded.value = true
+  }
+}
+
+function collapseAnnouncements() {
+  announcementExpanded.value = false
+}
+
 /** 打开小队信息弹窗 */
 function openTeamPanel() {
   teamPanelRef.value?.open()
+}
+
+/** 小队解散后更新本地状态，输入区切换为只读 */
+function onTeamDissolved() {
+  if (teamProfile.value) {
+    teamProfile.value = { ...teamProfile.value, status: 'dissolved' }
+    chatTitle.value = `${teamProfile.value.name} (${teamProfile.value.memberCount})`
+  }
 }
 
 /** 加载成员名称 */
@@ -676,7 +744,7 @@ async function sendLocationMessage() {
 }
 
 async function pickAndSendImage() {
-  if (!conversationId.value || sending.value) return
+  if (!conversationId.value || sending.value || !teamWritable.value) return
 
   uni.chooseImage({
     count: 1,
@@ -711,9 +779,8 @@ onMounted(async () => {
   const currentPage = pages[pages.length - 1] as any
   const options = currentPage.options || {}
 
-  // 获取当前用户 ID（从 auth store，mock 下为 '10001'）
   const authStore = useAuthStore()
-  currentUserId.value = authStore.userId || '10001'
+  currentUserId.value = authStore.userId ?? ''
 
   conversationKind.value = options.kind === 'team' ? 'team' : 'friend'
   teamId.value = options.teamId || ''
@@ -804,7 +871,66 @@ onShow(() => {
 }
 
 .nav-info-icon {
-  font-size: 18px;
+  font-size: 22px;
+  font-weight: $weight-bold;
+  line-height: 1;
+  letter-spacing: 1px;
+  color: $color-text;
+}
+
+.announcement-panel {
+  flex-shrink: 0;
+  background: #ffffff;
+  border-bottom: 1px solid $color-border-light;
+  box-shadow: $shadow-xs;
+}
+
+.announcement-panel__collapsed,
+.announcement-panel__item {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+}
+
+.announcement-panel__expanded {
+  max-height: 160px;
+}
+
+.announcement-panel__tag {
+  flex-shrink: 0;
+  font-size: $font-xs;
+  color: $color-primary;
+  background: $color-primary-light;
+  padding: 2px $spacing-xs;
+  border-radius: $radius-sm;
+  line-height: 1.4;
+}
+
+.announcement-panel__text {
+  flex: 1;
+  font-size: $font-sm;
+  color: $color-text;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.announcement-panel__collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xs 0 $spacing-sm;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.announcement-panel__collapse-icon {
+  font-size: 16px;
+  color: $color-text-muted;
+  line-height: 1;
 }
 
 .page {

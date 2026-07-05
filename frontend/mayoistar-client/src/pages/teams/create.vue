@@ -201,9 +201,10 @@ async function submit() {
       cancelText: '查看详情',
       success: (res) => {
         if (res.confirm && created.chatId) {
-          uni.redirectTo({
-            url: `/pages/messages/chat?conversationId=${created.chatId}&kind=team&teamId=${created.teamId}`,
-          })
+          const url =
+            `/pages/messages/chat` +
+            `?conversationId=${created.chatId}&kind=team&teamId=${created.teamId}`
+          uni.redirectTo({ url })
         } else {
           uni.redirectTo({ url: `/pages/teams/detail?teamId=${created.teamId}` })
         }

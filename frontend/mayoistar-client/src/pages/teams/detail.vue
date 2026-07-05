@@ -55,15 +55,29 @@
             <view v-if="canManage" class="action-btn action-btn--secondary" @tap="showManageMenu">
               <text class="action-btn-text-secondary">管理小队</text>
             </view>
-            <view v-else class="action-btn action-btn--danger" @tap="confirmLeave">
+            <view v-else class="action-btn action-btn--secondary" @tap="goToPoints">
+              <text class="action-btn-text-secondary">积分榜</text>
+            </view>
+            <view v-if="!canManage" class="action-btn action-btn--danger" @tap="confirmLeave">
               <text class="action-btn-text-danger">退出小队</text>
             </view>
           </view>
-          <view v-else class="action-buttons">
-            <view class="action-btn action-btn--primary" @tap="joinTeam_">
-              <text class="action-btn-text">加入小队</text>
+          <view v-else class="guest-actions">
+            <view
+              class="action-btn action-btn--primary action-btn--block"
+              :class="{ 'action-btn--disabled': joinDisabled }"
+              @tap="joinTeam_"
+            >
+              <text class="action-btn-text">{{ joinButtonText }}</text>
             </view>
+            <text v-if="joinHint" class="join-hint">{{ joinHint }}</text>
           </view>
+        </view>
+
+        <view v-else-if="!isMember" class="inactive-hint">
+          <text class="inactive-hint-text">
+            {{ team.status === 'dissolved' ? '小队已解散，无法加入' : '小队已停用，无法加入' }}
+          </text>
         </view>
 
         <!-- Members Section -->
@@ -193,6 +207,30 @@ const isLeader = computed(() => team.value?.leaderId === currentUserId.value)
 const myRole = computed(() => members.value.find((m) => m.userId === currentUserId.value)?.role)
 const canManage = computed(() => myRole.value === 'leader' || myRole.value === 'admin')
 
+const isFull = computed(() => {
+  if (!team.value) return false
+  return team.value.memberCount >= team.value.capacity
+})
+
+const joinDisabled = computed(() => {
+  if (!team.value || isMember.value) return true
+  if (team.value.status !== 'active') return true
+  return isFull.value
+})
+
+const joinButtonText = computed(() => {
+  if (!team.value) return '加入小队'
+  if (isFull.value) return '小队已满员'
+  return team.value.joinMode === 'publicJoin' ? '加入小队' : '申请加入'
+})
+
+const joinHint = computed(() => {
+  if (!team.value || isMember.value) return ''
+  if (isFull.value) return '人数已达上限，暂时无法加入'
+  if (team.value.joinMode === 'approvalRequired') return '提交后需等待队长或管理员审核'
+  return ''
+})
+
 /** 加载小队详情 */
 async function loadTeam() {
   if (!teamId.value) return
@@ -220,6 +258,10 @@ async function loadTeam() {
 
 /** 加入小队 */
 async function joinTeam_() {
+  if (joinDisabled.value) {
+    if (joinHint.value) uni.showToast({ title: joinHint.value, icon: 'none' })
+    return
+  }
   try {
     const result = await joinTeam(teamId.value)
     const status = (result as { status?: string }).status
@@ -279,9 +321,9 @@ function confirmDissolve() {
 
 function goToChat() {
   if (!team.value) return
-  uni.navigateTo({
-    url: `/pages/messages/chat?conversationId=${team.value.chatId}&kind=team&teamId=${teamId.value}`,
-  })
+  const chatUrl =
+    `/pages/messages/chat` + `?conversationId=${team.value.chatId}&kind=team&teamId=${teamId.value}`
+  uni.navigateTo({ url: chatUrl })
 }
 
 function showManageMenu() {
@@ -456,6 +498,13 @@ onMounted(() => {
   gap: $spacing-md;
 }
 
+.guest-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: $spacing-sm;
+}
+
 .action-btn {
   flex: 1;
   padding: $spacing-sm 0;
@@ -464,6 +513,14 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   transition: transform 0.2s ease;
+  box-sizing: border-box;
+  min-width: 0;
+
+  &--block {
+    flex: none;
+    width: 100%;
+    padding: $spacing-md 0;
+  }
 
   &:active {
     transform: scale(0.98);
@@ -481,6 +538,33 @@ onMounted(() => {
     background: #ffffff;
     border: 1px solid $color-danger;
   }
+
+  &--disabled {
+    opacity: 0.55;
+
+    &:active {
+      transform: none;
+    }
+  }
+}
+
+.join-hint {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: $font-xs;
+  color: $color-text-sub;
+  margin-top: $spacing-xs;
+}
+
+.inactive-hint {
+  padding: $spacing-md $spacing-xl;
+  text-align: center;
+}
+
+.inactive-hint-text {
+  font-size: $font-sm;
+  color: $color-text-sub;
 }
 
 .action-btn-text {

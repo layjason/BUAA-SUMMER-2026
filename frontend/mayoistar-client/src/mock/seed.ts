@@ -1034,7 +1034,14 @@ export function createSeedData(): MockDatabase {
   ]
 
   /* ---- 黑名单 ---- */
-  const blacklist: MockBlacklist[] = []
+  const blacklist: MockBlacklist[] = [
+    {
+      id: 1,
+      blockedBy: 10006,
+      userId: 10001,
+      createdAt: iso(-5),
+    },
+  ]
 
   /* ---- 会话 ---- */
   const conversations: MockConversation[] = [
@@ -1217,6 +1224,19 @@ export function createSeedData(): MockDatabase {
       tags: ['测试'],
       createdAt: iso(-30),
     },
+    {
+      id: 6,
+      name: '黑名单测试小队',
+      description: '队长与当前用户存在黑名单关系，用于验收不可加入场景。',
+      coverUrl: `https://picsum.photos/seed/team6/400/200`,
+      leaderId: 10006,
+      joinMode: 'publicJoin',
+      status: 'active',
+      maxMembers: 20,
+      memberCount: 1,
+      tags: ['测试'],
+      createdAt: iso(-15),
+    },
   ]
 
   /* ---- 小队成员 ---- */
@@ -1233,7 +1253,7 @@ export function createSeedData(): MockDatabase {
       id: 2,
       teamId: 1,
       userId: 10001,
-      role: 'member',
+      role: 'admin',
       points: 85,
       joinedAt: iso(-55),
     },
@@ -1285,6 +1305,14 @@ export function createSeedData(): MockDatabase {
       points: 0,
       joinedAt: iso(-30),
     },
+    {
+      id: 9,
+      teamId: 6,
+      userId: 10006,
+      role: 'leader',
+      points: 0,
+      joinedAt: iso(-15),
+    },
   ]
 
   /* ---- 小队加入申请 ---- */
@@ -1296,6 +1324,22 @@ export function createSeedData(): MockDatabase {
       status: 'pending',
       message: '我是桌游爱好者，想加入你们！',
       createdAt: iso(-2),
+    },
+    {
+      id: 2,
+      teamId: 1,
+      userId: 10005,
+      status: 'pending',
+      message: '想一起徒步，可以加入吗？',
+      createdAt: iso(-1, 10, 0),
+    },
+    {
+      id: 3,
+      teamId: 1,
+      userId: 10006,
+      status: 'pending',
+      message: '周末有空，求带！',
+      createdAt: iso(-1, 14, 0),
     },
   ]
 
@@ -1429,9 +1473,9 @@ export function createSeedData(): MockDatabase {
       friendRequests: 3,
       conversations: 6,
       messages: 7,
-      teams: 6,
-      teamMembers: 9,
-      teamJoinRequests: 2,
+      teams: 7,
+      teamMembers: 10,
+      teamJoinRequests: 4,
       teamAnnouncements: 2,
       teamPolls: 2,
       teamMedia: 3,

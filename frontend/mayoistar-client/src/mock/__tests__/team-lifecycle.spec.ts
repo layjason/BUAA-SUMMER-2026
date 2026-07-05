@@ -8,6 +8,9 @@ import {
   searchTeams,
   handleJoinRequest,
   createTeam,
+  countPendingJoinRequestsForManager,
+  updateMemberRole,
+  getTeamMembers,
 } from '../workflow'
 import { setCurrentUserId } from '../workflow'
 
@@ -42,9 +45,37 @@ describe('小队生命周期 mock 工作流', () => {
     expect(() => joinTeam(4, 10001)).toThrowError(/Team is full/)
   })
 
+  it('黑名单关系不能加入小队', () => {
+    expect(() => joinTeam(6, 10001)).toThrowError(/Blacklist/)
+  })
+
+  it('停用小队不能加入', () => {
+    expect(() => joinTeam(5, 10001)).toThrowError(/unavailable/)
+  })
+
+  it('已停用小队不出现在发现列表', () => {
+    const result = searchTeams('停用')
+    expect(result.items.some((t) => t.name.includes('停用'))).toBe(false)
+  })
+
   it('已解散小队不出现在发现列表', () => {
     const result = searchTeams('废弃')
     expect(result.items.some((t) => t.name.includes('废弃'))).toBe(false)
+  })
+
+  it('管理员可审核的待处理申请数为 2', () => {
+    expect(countPendingJoinRequestsForManager(10001)).toBe(2)
+  })
+
+  it('队长可设置和取消管理员', () => {
+    setCurrentUserId(10003)
+    updateMemberRole(1, 10003, 10001, 'member')
+    let members = getTeamMembers(1, 1, 100).items
+    expect(members.find((m) => m.userId === '10001')?.role).toBe('member')
+
+    updateMemberRole(1, 10003, 10001, 'admin')
+    members = getTeamMembers(1, 1, 100).items
+    expect(members.find((m) => m.userId === '10001')?.role).toBe('admin')
   })
 
   it('队长解散后我的小队显示 dissolved', () => {

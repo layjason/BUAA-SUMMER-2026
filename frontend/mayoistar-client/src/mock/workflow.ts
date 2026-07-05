@@ -3205,13 +3205,16 @@ export function getConversations(userId: number): ConversationSummary[] {
         }
       } else {
         const team = db.teams.find((t) => t.conversationId === c.id)
-        if (team?.coverUrl) {
-          avatar = mediaFileFromId(
-            `media_team_${team.id}`,
-            team.createdAt,
-            `team_${team.id}`,
-            'teamAlbum',
-          )
+        if (team) {
+          title = `${team.name} (${team.memberCount})`
+          if (team.coverUrl) {
+            avatar = mediaFileFromId(
+              `media_team_${team.id}`,
+              team.createdAt,
+              `team_${team.id}`,
+              'teamAlbum',
+            )
+          }
         }
       }
 

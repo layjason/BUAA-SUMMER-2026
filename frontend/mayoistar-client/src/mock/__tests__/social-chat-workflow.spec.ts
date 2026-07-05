@@ -235,11 +235,13 @@ describe('social & chat workflow', () => {
   })
 
   it('mentionAll requires leader or admin role', () => {
-    expect(() => sendMessage(3, 10001, { kind: 'text', text: 'hi', mentionAll: true })).toThrow(
+    expect(() => sendMessage(3, 10009, { kind: 'text', text: 'hi', mentionAll: true })).toThrow(
       MockBusinessError,
     )
-    const sent = sendMessage(3, 10003, { kind: 'text', text: '通知', mentionAll: true })
-    expect(sent.mentionAll).toBe(true)
+    const adminSent = sendMessage(3, 10001, { kind: 'text', text: '管理员通知', mentionAll: true })
+    expect(adminSent.mentionAll).toBe(true)
+    const leaderSent = sendMessage(3, 10003, { kind: 'text', text: '队长通知', mentionAll: true })
+    expect(leaderSent.mentionAll).toBe(true)
   })
 
   it('sendMessage stores location coordinates', () => {
