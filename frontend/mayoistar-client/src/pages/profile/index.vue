@@ -58,6 +58,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onShow } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/auth'
+import { logout } from '@/api/modules/auth'
 import { getMerchantProfile, getMyProfile } from '@/api/modules/profile'
 
 const { t } = useI18n()
@@ -158,12 +159,18 @@ const qualificationStatusMap: Record<string, string> = {
 async function loadNickname(): Promise<void> {
   if (!authStore.isLoggedIn) return
   try {
-    const profile =
-      authStore.userKind === 'merchant' ? await getMerchantProfile() : await getMyProfile()
+    if (authStore.userKind === 'merchant') {
+      const profile = await getMerchantProfile()
+      nickname.value = profile.nickname
+      avatarUrl.value = profile.avatar?.signedUrl ?? ''
+      merchantQualificationStatus.value = profile.qualificationStatus
+      return
+    }
+
+    const profile = await getMyProfile()
     nickname.value = profile.nickname
     avatarUrl.value = profile.avatar?.signedUrl ?? ''
-    merchantQualificationStatus.value =
-      authStore.userKind === 'merchant' ? profile.qualificationStatus : ''
+    merchantQualificationStatus.value = ''
   } catch {
     /* 加载失败使用 userId 兜底 */
     avatarUrl.value = ''
@@ -230,7 +237,7 @@ function onCardClick(): void {
  */
 async function handleLogout(): Promise<void> {
   try {
-    await api.post('/identity/auth/logout')
+    await logout()
   } catch {
     /* 即使服务端调用失败也清除本地状态 */
   }
