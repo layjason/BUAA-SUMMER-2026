@@ -12,8 +12,13 @@ export default defineConfig(() => {
       },
     },
     server: {
-      port: 3000,
+      port: 5173,
       host: '0.0.0.0',
+      proxy: {
+        '/admin': 'http://localhost:8080',
+        '/identity': 'http://localhost:8080',
+        '/media': 'http://localhost:8080',
+      },
     },
   };
 });

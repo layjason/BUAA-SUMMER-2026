@@ -24,6 +24,7 @@ import {
   Report,
   TeamStatus,
 } from '../types';
+import { AuthImage } from '../components/AuthImage';
 import {
   Search,
   Eye,
@@ -365,9 +366,8 @@ export const Teams: React.FC = () => {
             {/* Header branding */}
             <div className="flex items-start gap-4 p-5 bg-slate-50 border border-slate-100 rounded-2xl text-left">
               {selectedTeam.avatar?.signedUrl ? (
-                <img
-                  src={selectedTeam.avatar.signedUrl}
-                  referrerPolicy="no-referrer"
+                <AuthImage
+                  signedUrl={selectedTeam.avatar.signedUrl}
                   className="h-12 w-12 rounded-2xl object-cover border border-slate-200 shrink-0"
                   alt="群头像"
                 />
