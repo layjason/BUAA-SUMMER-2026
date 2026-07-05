@@ -26,7 +26,9 @@ class ActivityPlanningServiceImplTest {
     @BeforeEach
     void setUp() {
         client = new FakeActivityPlanningClient();
-        service = new ActivityPlanningServiceImpl(new ActivityPlanningPromptBuilder(), client, new ObjectMapper());
+        ObjectMapper objectMapper = new ObjectMapper();
+        service =
+                new ActivityPlanningServiceImpl(new ActivityPlanningPromptBuilder(objectMapper), client, objectMapper);
     }
 
     @Test
