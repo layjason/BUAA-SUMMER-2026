@@ -359,14 +359,4 @@ public class ActivityFeedService {
         return activityRepository.findAll(baseSpec.and(bboxSpec));
     }
 
-    private int normalizePage(Integer page) {
-        return page == null || page < 1 ? DEFAULT_PAGE : page;
-    }
-
-    private int normalizePageSize(Integer pageSize) {
-        if (pageSize == null || pageSize < 1) {
-            return DEFAULT_PAGE_SIZE;
-        }
-        return Math.min(pageSize, MAX_PAGE_SIZE);
-    }
 }
