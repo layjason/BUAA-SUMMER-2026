@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { login } from '../api/adminAuth';
+import { BusinessError } from '../api/client';
+import { getAdminErrorMessage } from '../constants/adminErrorMessages';
 import { Lock, User, Eye, EyeOff, Sparkles } from 'lucide-react';
 
 interface LoginProps {
@@ -34,7 +36,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       await login({ username: username.trim(), password: password.trim() });
       onLoginSuccess();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : '登录失败，请检查账号和密码');
+      if (err instanceof BusinessError) {
+        setError(getAdminErrorMessage(err.code, err.message));
+      } else {
+        setError(err instanceof Error ? err.message : '登录失败，请检查账号和密码');
+      }
     } finally {
       setLoading(false);
     }

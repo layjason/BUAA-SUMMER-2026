@@ -21,7 +21,6 @@ import {
   TeamProfile,
   UserKind,
   AccountStatus,
-  QualificationStatus,
 } from '../types';
 import { Search, Eye, AlertTriangle, Mail, Calendar, Activity, Users2 } from 'lucide-react';
 
@@ -36,7 +35,6 @@ export const Users: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [kind, setKind] = useState<string>('');
   const [status, setStatus] = useState<string>('');
-  const [qualificationStatus] = useState<string>('');
 
   // Selected details state
   const [selectedUser, setSelectedUser] = useState<AdminUserSummary | null>(null);
@@ -69,9 +67,6 @@ export const Users: React.FC = () => {
         keyword: keyword.trim() || undefined,
         kind: kind ? (kind as UserKind) : undefined,
         status: status ? (status as AccountStatus) : undefined,
-        qualificationStatus: qualificationStatus
-          ? (qualificationStatus as QualificationStatus)
-          : undefined,
         page,
         pageSize,
       });
@@ -86,7 +81,7 @@ export const Users: React.FC = () => {
 
   useEffect(() => {
     fetchList();
-  }, [page, kind, status, qualificationStatus]);
+  }, [page, kind, status]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,9 +157,10 @@ export const Users: React.FC = () => {
       }
 
       if (updated) {
-        setSelectedUser(updated);
-        // Sync local list summary state
-        setUsers((prev) => prev.map((item) => (item.userId === updated!.userId ? updated! : item)));
+        const detail = await getUser(selectedUser.userId);
+        setUserDetail(detail);
+        setSelectedUser(detail);
+        setUsers((prev) => prev.map((item) => (item.userId === detail.userId ? detail : item)));
       }
     } catch (e) {
       console.error('Failed to update user security state:', e);
@@ -508,7 +504,7 @@ export const Users: React.FC = () => {
             <div className="space-y-3">
               <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left flex items-center gap-1.5">
                 <Users2 className="h-3.5 w-3.5" />
-                <span>参与的小队 ({userTeams.length})</span>
+                <span>相关小队（创建或参与） ({userTeams.length})</span>
               </h5>
               {detailLoading ? (
                 <SkeletonBlock rows={2} />

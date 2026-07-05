@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAccessToken, setAccessToken, registerToastHandler } from './api/client';
+import { getAccessToken, registerToastHandler, registerUnauthorizedHandler } from './api/client';
 import { logout } from './api/adminAuth';
 import { SidebarNav } from './components/SidebarNav';
 import { TopBar } from './components/TopBar';
@@ -24,16 +24,19 @@ export default function App() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
 
-  // Setup global toast notifications
   useEffect(() => {
     registerToastHandler((message, type) => {
       const id = Date.now().toString() + Math.random().toString().slice(2, 6);
       setToasts((prev) => [...prev, { id, message, type }]);
 
-      // Auto-dismiss after 4 seconds
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
       }, 4000);
+    });
+
+    registerUnauthorizedHandler(() => {
+      setIsAuthenticated(false);
+      setCurrentRoute('workbench');
     });
   }, []);
 
@@ -41,16 +44,10 @@ export default function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (e) {
-      console.error('Logout request failed, fallback to state clearing:', e);
-    } finally {
-      setAccessToken('');
-      setIsAuthenticated(false);
-      setCurrentRoute('workbench');
-    }
+  const handleLogout = () => {
+    logout();
+    setIsAuthenticated(false);
+    setCurrentRoute('workbench');
   };
 
   const renderPage = () => {

@@ -1,3 +1,4 @@
+import { getAdminErrorMessage, resolveUnauthorizedMessage } from '../constants/adminErrorMessages';
 import type { APIResultEnvelope, PaginatedResult } from '../types';
 
 /**
@@ -61,7 +62,10 @@ export const isMockMode = () => {
 };
 
 type ToastCallback = (message: string, type: 'success' | 'error' | 'info') => void;
+type UnauthorizedCallback = () => void;
+
 let toastHandler: ToastCallback | null = null;
+let onUnauthorized: UnauthorizedCallback | null = null;
 /**
  * 注册 API 层可复用的 Toast 回调。
  *
@@ -72,6 +76,36 @@ let toastHandler: ToastCallback | null = null;
 export const registerToastHandler = (handler: ToastCallback) => {
   toastHandler = handler;
 };
+
+/**
+ * 注册全局未授权回调。仅在已携带 token 的请求收到 HTTP 401 时触发。
+ */
+export const registerUnauthorizedHandler = (handler: UnauthorizedCallback) => {
+  onUnauthorized = handler;
+};
+
+export async function parseErrorBody(
+  response: Response,
+): Promise<{ code?: number; message?: string }> {
+  try {
+    const body = (await response.json()) as { code?: number; message?: string };
+    return { code: body.code, message: body.message };
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * 已登录会话失效：清除 token、触发登出回调并提示用户。
+ * 供 request() 与 fetchMediaBlob() 共用。
+ */
+export function handleSessionExpired(message?: string): string {
+  const errMsg = resolveUnauthorizedMessage(message);
+  setAccessToken('');
+  onUnauthorized?.();
+  showToast(errMsg, 'error');
+  return errMsg;
+}
 
 /**
  * 展示 API 层提示消息。
@@ -117,6 +151,7 @@ export async function request<ResponseData>(
   }
 
   const url = path.startsWith('http') ? path : `${apiBaseUrl()}${path}`;
+  const hadToken = !!accessToken;
 
   try {
     const response = await fetch(url, {
@@ -125,7 +160,14 @@ export async function request<ResponseData>(
     });
 
     if (!response.ok) {
-      const errMsg = `HTTP Error ${response.status}: ${response.statusText}`;
+      const { code, message } = await parseErrorBody(response);
+
+      if (response.status === 401 && hadToken) {
+        const errMsg = handleSessionExpired(message);
+        throw new BusinessError(code ?? 401, errMsg);
+      }
+
+      const errMsg = message || `HTTP Error ${response.status}: ${response.statusText}`;
       showToast(errMsg, 'error');
       throw new Error(errMsg);
     }
@@ -133,8 +175,9 @@ export async function request<ResponseData>(
     const result: APIResultEnvelope<ResponseData> = await response.json();
 
     if (result.code !== 200) {
-      showToast(result.message || '请求执行失败', 'error');
-      throw new BusinessError(result.code, result.message || 'API Error');
+      const errMsg = getAdminErrorMessage(result.code, result.message || '请求执行失败');
+      showToast(errMsg, 'error');
+      throw new BusinessError(result.code, errMsg);
     }
 
     if (result.message && result.message !== 'For Super Earth!') {
