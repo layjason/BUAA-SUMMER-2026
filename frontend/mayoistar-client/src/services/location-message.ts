@@ -15,15 +15,16 @@ import {
   searchNearbyPOI,
   type POIItem,
 } from '@/services/amap'
+import { AMAP_REST_BASE_URL, AMAP_URI_BASE_URL } from '@/config/env'
 import type { components } from '@/api/types/schema'
 
 type ApiLocationInfo = components['schemas']['LocationInfo']
 
-/** 高德 URI API 基础 URL */
-const AMAP_URI_BASE = 'https://uri.amap.com'
+/** 高德 URI API 基础 URL（由环境变量 VITE_AMAP_URI_BASE_URL 控制） */
+const AMAP_URI_BASE = AMAP_URI_BASE_URL
 
-/** 高德 REST API 基础 URL */
-const AMAP_REST_BASE = 'https://restapi.amap.com/v3'
+/** 高德 REST API 基础 URL（由环境变量 VITE_AMAP_REST_BASE_URL 控制） */
+const AMAP_REST_BASE = AMAP_REST_BASE_URL
 
 /** 位置消息载荷（聊天 UI 渲染用） */
 export interface LocationMessagePayload {

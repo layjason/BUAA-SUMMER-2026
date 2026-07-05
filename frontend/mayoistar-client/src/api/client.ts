@@ -13,7 +13,7 @@ import { BusinessError, TokenExpiredError } from './types'
 
 /* ---- 配置 ---- */
 
-let baseUrl = 'http://localhost:4010'
+let baseUrl = ''
 
 export function setBaseUrl(url: string): void {
   baseUrl = url.replace(/\/+$/, '')

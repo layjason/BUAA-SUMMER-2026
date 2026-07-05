@@ -33,6 +33,7 @@ import { isActivityAtCapacity } from '@/utils/activity-capacity'
 import { formatDateTime, formatTimeRange } from '@/utils/date'
 import { getErrorMessage } from '@/utils/error'
 import { useAuthStore } from '@/stores/auth'
+import { QR_CODE_API_BASE_URL } from '@/config/env'
 
 const authStore = useAuthStore()
 
@@ -231,7 +232,7 @@ const checkInQrImageUrl = computed(() => {
   const token = checkInQrCode.value?.qrCodeToken
   if (!token) return ''
   return (
-    'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' + encodeURIComponent(token)
+    QR_CODE_API_BASE_URL + '?size=400x400&data=' + encodeURIComponent(token)
   )
 })
 

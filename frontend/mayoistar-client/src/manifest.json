@@ -1,5 +1,6 @@
 {
   "name": "迷星群聚",
+  /* uni-app 应用 ID，用于唯一标识应用，必须在 uni-app 平台注册 */
   "appid": "EXAMPLE_CODE",
   "description": "",
   "versionName": "0.0.0.1",
@@ -60,7 +61,8 @@
       "sdkConfigs": {
         "geolocation": {
           "amap": {
-            "name": "amapbL0GPTou",
+            /* 高德定位 SDK 配置，请替换为正式值。Web 端 Key 在 VITE_AMAP_WEB_API_KEY 环境变量中配置 */
+            "name": "your_amap_sdk_name",
             "__platform__": ["android"],
             "appkey_ios": "",
             "appkey_android": "your_android_appkey"
@@ -68,7 +70,8 @@
         },
         "maps": {
           "amap": {
-            "name": "amapbL0GPTou",
+            /* 高德地图 SDK 配置，请替换为正式值 */
+            "name": "your_amap_sdk_name",
             "appkey_ios": "your_ios_key",
             "appkey_android": "your_android_appkey"
           }

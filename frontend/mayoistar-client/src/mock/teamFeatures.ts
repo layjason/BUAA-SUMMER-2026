@@ -7,6 +7,7 @@ import { getMockDb, nextId, persistMockDb } from './database'
 import { MockBusinessError } from './workflow'
 import type { MockPageResult, MockTeamAnnouncement, MockTeamPoll } from './types'
 import type { components } from '@/api/types/schema'
+import { MOCK_IMAGE_BASE_URL } from '@/config/env'
 
 type TeamAnnouncement = components['schemas']['Chat.TeamAnnouncement']
 type TeamPoll = components['schemas']['Chat.TeamPoll']
@@ -69,7 +70,7 @@ function teamMediaFile(
     contentType: usage === 'teamAlbum' ? 'image/jpeg' : 'application/pdf',
     sizeBytes: 1024,
     usage,
-    signedUrl: `https://picsum.photos/seed/${mediaId}/400/300`,
+    signedUrl: `${MOCK_IMAGE_BASE_URL}/seed/${mediaId}/400/300`,
     uploadedAt,
   }
 }

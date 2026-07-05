@@ -13,6 +13,7 @@ import { cloneActivity, getMyActivities, type ActivitySummary } from '@/api/modu
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
 import { runtimeStatusText } from '@/utils/status'
+import { MOCK_IMAGE_BASE_URL } from '@/config/env'
 
 const loading = ref(true)
 const actioningId = ref('')
@@ -134,7 +135,7 @@ function formatLocation(activity: ActivitySummary): string {
 function getActivityCoverUrl(activity: ActivitySummary): string {
   return (
     activity.coverImage?.signedUrl ||
-    `https://picsum.photos/seed/activity${activity.activityId}/400/225`
+    `${MOCK_IMAGE_BASE_URL}/seed/activity${activity.activityId}/400/225`
   )
 }
 

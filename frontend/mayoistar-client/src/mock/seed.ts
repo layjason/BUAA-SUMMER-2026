@@ -29,6 +29,7 @@ import type {
   MockTemplate,
 } from './types'
 import type { MockDatabase } from './database'
+import { MOCK_IMAGE_BASE_URL } from '@/config/env'
 
 /** 生成 ISO 时间字符串 */
 function iso(daysFromNow: number, hours = 10, minutes = 0): string {
@@ -40,12 +41,12 @@ function iso(daysFromNow: number, hours = 10, minutes = 0): string {
 
 /** 生成用户头像占位图 URL */
 function avatar(id: number): string {
-  return `https://picsum.photos/seed/avatar${id}/128/128`
+  return `${MOCK_IMAGE_BASE_URL}/seed/avatar${id}/128/128`
 }
 
 /** 生成活动封面占位图 URL */
 function cover(id: number): string {
-  return `https://picsum.photos/seed/activity${id}/400/225`
+  return `${MOCK_IMAGE_BASE_URL}/seed/activity${id}/400/225`
 }
 
 /**
@@ -1748,7 +1749,7 @@ export function createSeedData(): MockDatabase {
       id: 1,
       name: '北京户外探险队',
       description: '热爱户外的伙伴们集合！一起探索北京周边山水。',
-      coverUrl: `https://picsum.photos/seed/team1/400/200`,
+      coverUrl: `${MOCK_IMAGE_BASE_URL}/seed/team1/400/200`,
       leaderId: 10003,
       joinMode: 'publicJoin',
       status: 'active',
@@ -1762,7 +1763,7 @@ export function createSeedData(): MockDatabase {
       id: 2,
       name: '桌游研究社',
       description: '从卡坦岛到阿瓦隆，各类桌游深度玩家。每周固定线下聚会。',
-      coverUrl: `https://picsum.photos/seed/team2/400/200`,
+      coverUrl: `${MOCK_IMAGE_BASE_URL}/seed/team2/400/200`,
       leaderId: 10007,
       joinMode: 'approvalRequired',
       status: 'active',
@@ -1790,7 +1791,7 @@ export function createSeedData(): MockDatabase {
       id: 4,
       name: '满员测试小队',
       description: '用于验收满员不可加入场景。',
-      coverUrl: `https://picsum.photos/seed/team4/400/200`,
+      coverUrl: `${MOCK_IMAGE_BASE_URL}/seed/team4/400/200`,
       leaderId: 10006,
       joinMode: 'publicJoin',
       status: 'active',
@@ -1804,7 +1805,7 @@ export function createSeedData(): MockDatabase {
       id: 5,
       name: '停用演示小队',
       description: '平台管理员已停用，仅可查看历史。',
-      coverUrl: `https://picsum.photos/seed/team5/400/200`,
+      coverUrl: `${MOCK_IMAGE_BASE_URL}/seed/team5/400/200`,
       leaderId: 10009,
       joinMode: 'publicJoin',
       status: 'disabled',
@@ -1817,7 +1818,7 @@ export function createSeedData(): MockDatabase {
       id: 6,
       name: '黑名单测试小队',
       description: '队长与当前用户存在黑名单关系，用于验收不可加入场景。',
-      coverUrl: `https://picsum.photos/seed/team6/400/200`,
+      coverUrl: `${MOCK_IMAGE_BASE_URL}/seed/team6/400/200`,
       leaderId: 10006,
       joinMode: 'publicJoin',
       status: 'active',
@@ -1985,7 +1986,7 @@ export function createSeedData(): MockDatabase {
       id: 1,
       name: '运动健身',
       activityType: '运动',
-      coverUrl: `https://picsum.photos/seed/tpl1/400/225`,
+      coverUrl: `${MOCK_IMAGE_BASE_URL}/seed/tpl1/400/225`,
       tags: ['运动', '健身'],
       defaultTitle: '运动健身活动',
       defaultIntroduction:
@@ -1998,7 +1999,7 @@ export function createSeedData(): MockDatabase {
       id: 2,
       name: '桌游派对',
       activityType: '社交',
-      coverUrl: `https://picsum.photos/seed/tpl2/400/225`,
+      coverUrl: `${MOCK_IMAGE_BASE_URL}/seed/tpl2/400/225`,
       tags: ['桌游', '社交'],
       defaultTitle: '桌游派对',
       defaultIntroduction:
@@ -2011,7 +2012,7 @@ export function createSeedData(): MockDatabase {
       id: 3,
       name: '户外徒步',
       activityType: '户外',
-      coverUrl: `https://picsum.photos/seed/tpl3/400/225`,
+      coverUrl: `${MOCK_IMAGE_BASE_URL}/seed/tpl3/400/225`,
       tags: ['户外', '徒步'],
       defaultTitle: '户外徒步活动',
       defaultIntroduction: '本次户外徒步活动路线已精心规划，请穿着登山鞋或运动鞋，携带足够饮用水。',
@@ -2023,7 +2024,7 @@ export function createSeedData(): MockDatabase {
       id: 4,
       name: '学习分享',
       activityType: '学习',
-      coverUrl: `https://picsum.photos/seed/tpl4/400/225`,
+      coverUrl: `${MOCK_IMAGE_BASE_URL}/seed/tpl4/400/225`,
       tags: ['学习', '分享'],
       defaultTitle: '学习分享会',
       defaultIntroduction: '本次学习分享会将围绕指定主题展开讨论，欢迎大家积极发言、交流心得。',
@@ -2034,7 +2035,7 @@ export function createSeedData(): MockDatabase {
       id: 5,
       name: '公益活动',
       activityType: '公益',
-      coverUrl: `https://picsum.photos/seed/tpl5/400/225`,
+      coverUrl: `${MOCK_IMAGE_BASE_URL}/seed/tpl5/400/225`,
       tags: ['公益', '志愿'],
       defaultTitle: '公益活动',
       defaultIntroduction: '感谢你的善心参与！本次公益活动旨在为社会贡献一份力量，请遵守活动规则。',

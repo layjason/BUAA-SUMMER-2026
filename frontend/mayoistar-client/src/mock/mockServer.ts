@@ -127,6 +127,7 @@ import {
   deleteTeamAlbumImages,
   getTeamPointRanks,
 } from './teamFeatures'
+import { MOCK_IMAGE_BASE_URL } from '@/config/env'
 
 /* ---- 辅助函数 ---- */
 
@@ -178,7 +179,7 @@ function err(code: number, message: string): MockApiResponse<null> {
 function mockUploadResponse(usage: string = 'activityImage'): Record<string, unknown> {
   const now = new Date().toISOString()
   const mediaId = `media_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-  const accessUrl = `https://picsum.photos/seed/${encodeURIComponent(mediaId)}/400/300`
+  const accessUrl = `${MOCK_IMAGE_BASE_URL}/seed/${encodeURIComponent(mediaId)}/400/300`
   return {
     mediaId,
     fileName: `${mediaId}.jpg`,

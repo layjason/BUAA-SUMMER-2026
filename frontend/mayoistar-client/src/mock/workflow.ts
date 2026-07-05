@@ -79,6 +79,7 @@ import type {
   MockConversation,
   MockMessage,
 } from './types'
+import { MOCK_IMAGE_BASE_URL } from '@/config/env'
 
 /* ================================================================
  *  错误处理
@@ -168,7 +169,7 @@ function mediaFileFromId(
   usage: MediaFile['usage'] = 'activityImage',
 ): MediaFile {
   const seed = encodeURIComponent(mediaId || fallbackSeed)
-  const accessUrl = `https://picsum.photos/seed/${seed}/400/225`
+  const accessUrl = `${MOCK_IMAGE_BASE_URL}/seed/${seed}/400/225`
   return {
     mediaId,
     signedUrl: accessUrl,
@@ -306,7 +307,7 @@ export function register(
     email,
     password,
     nickname,
-    avatarUrl: `https://picsum.photos/seed/avatar${id}/128/128`,
+    avatarUrl: `${MOCK_IMAGE_BASE_URL}/seed/avatar${id}/128/128`,
     kind,
     accountStatus: 'inactive',
     gender: 'unknown',
@@ -3083,7 +3084,7 @@ export function updateMerchantProfile(
     user.interestedActivityFields = data.interestedActivityFields
   }
   if (data.avatarMediaId !== undefined) {
-    user.avatarUrl = `https://picsum.photos/seed/${encodeURIComponent(data.avatarMediaId)}/200/200`
+    user.avatarUrl = `${MOCK_IMAGE_BASE_URL}/seed/${encodeURIComponent(data.avatarMediaId)}/200/200`
   }
 
   persistMockDb()
@@ -3791,7 +3792,7 @@ export function createTeamActivity(
     title: data.title,
     introduction: data.introduction,
     safetyNotice: data.safetyNotice ?? '请注意活动安全，遵守场地规则。',
-    coverUrl: `https://picsum.photos/seed/teamact${activityId}/400/225`,
+    coverUrl: `${MOCK_IMAGE_BASE_URL}/seed/teamact${activityId}/400/225`,
     images: [],
     startTime: data.startAt,
     endTime: data.endAt,
@@ -3885,7 +3886,7 @@ export function getMerchantProfile(userId: number): MerchantProfile {
       reviewedAt: user.qualificationReviewedAt,
       rejectReason: user.qualificationRejectReason,
       licenseImageUrls: user.qualificationLicenseMediaIds?.map(
-        (mediaId) => `https://picsum.photos/seed/${encodeURIComponent(mediaId)}/640/480`,
+        (mediaId) => `${MOCK_IMAGE_BASE_URL}/seed/${encodeURIComponent(mediaId)}/640/480`,
       ),
     },
   }

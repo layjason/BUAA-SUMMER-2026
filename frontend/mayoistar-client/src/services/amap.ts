@@ -11,12 +11,16 @@
  */
 import { MOCK_ACTIVITY_LOCATIONS } from '@/config/mock-locations'
 import type { MockLocationOption } from '@/config/mock-locations'
+import {
+  AMAP_WEB_API_KEY as ENV_AMAP_WEB_API_KEY,
+  AMAP_REST_BASE_URL as ENV_AMAP_REST_BASE_URL,
+} from '@/config/env'
 
-/** 高德 Web API Key（与 manifest.json maps.amap.key 保持一致） */
-export const AMAP_WEB_API_KEY = 'c0d8c161adaf0d0e378a1c4a9ab3198a'
+/** 高德 Web API Key（由环境变量 VITE_AMAP_WEB_API_KEY 控制） */
+export const AMAP_WEB_API_KEY = ENV_AMAP_WEB_API_KEY
 
-/** 高德 REST API 基础 URL */
-const AMAP_REST_BASE = 'https://restapi.amap.com/v3'
+/** 高德 REST API 基础 URL（由环境变量 VITE_AMAP_REST_BASE_URL 控制） */
+const AMAP_REST_BASE = ENV_AMAP_REST_BASE_URL
 
 /** POI 搜索结果项 */
 export interface POIItem {
