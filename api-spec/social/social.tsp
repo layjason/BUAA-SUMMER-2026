@@ -184,6 +184,16 @@ model FriendRemarkUpdate {
   groupTags?: string[];
 }
 
+@doc("扫码添加好友请求，调用方通过扫描二维码获取 token 并提交，系统解码 token 后自动创建好友申请。")
+model QrCodeScanRequest {
+  @doc("从二维码中解码得到的 token。")
+  token: string;
+
+  @doc("附加的好友申请附言。")
+  @maxLength(500)
+  message?: string;
+}
+
 @doc("关注关系结果。")
 model FollowRelation {
   @doc("被关注或取消关注的目标用户标识。")
@@ -527,7 +537,10 @@ interface SocialOperations {
   @get
   @route("/friends")
   @doc("获取好友列表，调用方已登录，分页返回好友，删除好友后双方关系解除。")
-  listFriends(...PageQuery): APIResult<PageResult<FriendItem>>;
+  listFriends(
+    @query @doc("好友昵称或备注筛选关键字。") keyword?: string,
+    ...PageQuery,
+  ): APIResult<PageResult<FriendItem>>;
 
   @patch
   @route("/friends/{userId}")
@@ -774,6 +787,27 @@ interface SocialOperations {
 
       | QujuApi.Errors.Social.TeamNotVisible
       | QujuApi.Errors.Social.TeamMemberNotFound
+  >;
+
+  @get
+  @route("/qr-code")
+  @doc("生成当前用户的个人二维码，返回 PNG 格式的二维码图片，含 5 分钟有效期 JWT token。")
+  getMyQrCode(): {
+    @header contentType: "image/png";
+    @body body: bytes;
+  };
+
+  @post
+  @route("/qr-code/scan")
+  @doc("扫描他人二维码添加好友，解码 token 后自动创建好友申请。")
+  scanQrCode(@body body: QrCodeScanRequest): APIResult<
+    FriendRequest,
+
+      | QujuApi.Errors.Social.UserNotVisible
+      | QujuApi.Errors.Social.BlacklistRelationExists
+      | QujuApi.Errors.Social.FriendshipStateInvalid
+      | QujuApi.Errors.Social.DuplicateFriendRequest
+      | QujuApi.Errors.Social.QrCodeTokenInvalid
   >;
 }
 
