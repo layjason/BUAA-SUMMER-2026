@@ -3146,7 +3146,7 @@ paths:
   /ai/image-classifications:
     post:
       operationId: AiOperations_classifyImages
-      description: 分类活动或总结图片，图片已上传，返回建议标签，标签需由人工确认后才成为最终标签。
+      description: 提交图片分类任务（异步）。已上传的图片通过后台 GPU 集群分类，返回 taskId 供轮询 GET /ai/image-classifications/{taskId} 获取结果。已分类过的图片直接命中缓存无需重复推理。
       parameters: []
       responses:
         '200':
@@ -3173,7 +3173,7 @@ paths:
                         description: 平台响应消息，成功响应固定为 For Super Earth!。
                       data:
                         allOf:
-                          - $ref: '#/components/schemas/Ai.ImageClassificationResult'
+                          - $ref: '#/components/schemas/Ai.ImageClassificationSubmitResponse'
                         description: 响应数据。
                     description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
                   - $ref: '#/components/schemas/BadRequestResponse'
@@ -3182,7 +3182,6 @@ paths:
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
                   - $ref: '#/components/schemas/Errors.Ai.AiRateLimited'
                   - $ref: '#/components/schemas/Errors.Ai.AiServiceUnavailable'
-                  - $ref: '#/components/schemas/Errors.Ai.AiOutputUnavailable'
                   - $ref: '#/components/schemas/Errors.Ai.ImageMediaUnavailable'
       tags:
         - AI 辅助
@@ -3192,6 +3191,99 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Ai.ImageClassificationRequest'
+  /ai/image-classifications/media/{mediaId}:
+    get:
+      operationId: AiOperations_getClassificationByMediaId
+      description: 按媒体 ID 查询单张图片的分类缓存。命中缓存时返回包括 classifiedAt 的完整分类结果，未命中时返回 30004。
+      parameters:
+        - name: mediaId
+          in: path
+          required: true
+          description: 媒体文件 ID。
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Ai.MediaClassificationResponse'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Ai.AiTaskNotFound'
+      tags:
+        - AI 辅助
+  /ai/image-classifications/{taskId}:
+    get:
+      operationId: AiOperations_getClassifyTaskResult
+      description: 查询图片分类任务结果。pending 时仅返回状态，succeeded 时返回所有 media（含缓存命中）的分类结果，failed/timeout 时包含错误信息。任务超时时间为 30 秒。
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          description: 图片分类任务 ID，由 POST /ai/image-classifications 返回。
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Ai.ImageClassificationTaskQueryResponse'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Ai.AiTaskNotFound'
+                  - $ref: '#/components/schemas/Errors.Ai.AiTaskTimeout'
+      tags:
+        - AI 辅助
   /chat/conversations:
     get:
       operationId: ChatOperations_listConversations
@@ -9067,6 +9159,14 @@ components:
         - high
         - uncertain
       description: AI 内容审核风险等级。
+    Ai.ClassifyTaskStatus:
+      type: string
+      enum:
+        - pending
+        - succeeded
+        - failed
+        - timeout
+      description: 分类任务状态。
     Ai.ImageClassificationItem:
       type: object
       required:
@@ -9098,26 +9198,66 @@ components:
           items:
             $ref: '#/components/schemas/EntityId'
           description: 需要进行图片分类的媒体文件标识列表。
-      description: AI 图片分类请求，mediaIds 指向已上传图片，返回建议标签供人工确认，最终标签以人工确认结果为准。
-    Ai.ImageClassificationResult:
+      description: AI 图片分类请求，mediaIds 指向已上传图片，任务异步提交，通过返回的 taskId 轮询结果。
+    Ai.ImageClassificationSubmitResponse:
+      type: object
+      required:
+        - taskId
+        - status
+      properties:
+        taskId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 任务唯一标识，用于轮询 GET /ai/image-classifications/{taskId} 获取结果。
+        status:
+          allOf:
+            - $ref: '#/components/schemas/Ai.ClassifyTaskStatus'
+          description: 任务初始状态：若全部图片已有缓存则为 succeeded，否则为 pending。
+      description: 图片分类任务提交响应，包含 taskId 供后续轮询。
+    Ai.ImageClassificationTaskQueryResponse:
       type: object
       required:
         - status
-        - items
       properties:
         status:
           allOf:
-            - $ref: '#/components/schemas/Ai.AiCallStatus'
-          description: AI 调用状态。
+            - $ref: '#/components/schemas/Ai.ClassifyTaskStatus'
+          description: 任务状态：pending 时仅返回状态，succeeded 时包含全部结果，failed/timeout 时包含 errorMessage。
         items:
           type: array
           items:
             $ref: '#/components/schemas/Ai.ImageClassificationItem'
-          description: 逐图片分类结果。
-        friendlyErrorMessage:
+          description: 逐图片分类结果（仅 succeeded 时非空）。
+        errorMessage:
           type: string
-          description: AI 调用失败时可展示给用户的友好错误信息。
-      description: AI 图片分类响应。
+          description: 失败或超时时的错误信息。
+      description: 图片分类任务查询响应。
+    Ai.MediaClassificationResponse:
+      type: object
+      required:
+        - mediaId
+        - suggestedTags
+        - confidence
+        - classifiedAt
+      properties:
+        mediaId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 图片媒体文件标识。
+        suggestedTags:
+          type: array
+          items:
+            type: string
+          description: AI 建议的图片标签。
+        confidence:
+          type: number
+          format: double
+          description: AI 对分类结果的置信度。
+        classifiedAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 分类完成时间（ISO-8601）。
+      description: 按 mediaId 查询单张图片的分类缓存。
     BadRequestResponse:
       type: object
       allOf:
@@ -10518,6 +10658,56 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 30001：AI 服务暂不可用。
+    Errors.Ai.AiTaskNotFound:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 30004
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Classification task not found
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 30004：分类任务不存在或已过期（含 mediaId 未分类时）。
+    Errors.Ai.AiTaskTimeout:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 30005
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Classification task timed out
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 30005：分类任务超时，GPU 服务在 30 秒内未响应。
     Errors.Ai.ImageMediaUnavailable:
       type: object
       allOf:

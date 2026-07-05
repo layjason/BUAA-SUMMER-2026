@@ -4,6 +4,8 @@
 
 - Version: 15 20260704 180106
   - 新增 messagePeerRead 事件类型（单聊已读回执），ChatMessage 新增 peerReadStatus 字段；markMessagesRead 完成后向原消息发送方推送 peerRead 通知，原因是发送方需要实时获知对方已读状态
+- Version: 15 20260704 152641
+  - 图片分类 API 从同步改为异步任务模式（Kafka 解耦）：POST 返回 taskId，GET 轮询结果，新增 GET /ai/image-classifications/media/{mediaId} 缓存查询；新增 WebSocket 事件 /queue/ai-events (image_classification_completed)，原因是 GPU 集群与 Java 后端通过 Kafka 异步通信
 - Version: 14 20260702 171143
   - 媒体访问端点统一为 `GET /media/{mediaId}`，成功时固定返回 200 与文件二进制流；上传返回的 `MediaFile.url` 改为后端相对访问路径，原因是客户端不应依赖对象存储公开读地址
 - Version: 13 20260701 172433
@@ -122,7 +124,18 @@ WebSocket：
 - WebSocket 握手与 STOMP CONNECT 帧均使用与 JSON API 相同的 Bearer Token 鉴权。
 - 连接建立后，客户端订阅 `/user/queue/chat-events` 接收 `ChatRealtimeEvent` 推送，支持事件类型：`messageCreated`、`messageRecalled`、`messageForwarded`、`messagePeerRead`。事件负载通过 `payload` 字段携带，类型由 `kind` 区分：`messageCreated`→`MessageCreatedPayload`（含 `message` 与 `conversationUnreadCount`），`messageRecalled`→`MessageRecalledPayload`（仅含 `message`），`messageForwarded`→`MessageForwardedPayload`（含 `message` 与 `conversationUnreadCount`），`messagePeerRead`→`MessagePeerReadPayload`（含 `conversationId`、`messageId`、`peerReadStatus`）。所有 payload 字段均为必填，无 null 歧义。
 - 订阅 `/user/queue/social-events` 接收 `friendRequestCreated` 事件（负载为 `FriendRequest` 模型）。
+- 订阅 `/user/queue/ai-events` 接收 `image_classification_completed` 事件，负载包含 `taskId` 和 `status`（`succeeded`/`failed`），用于替代轮询 GET /ai/image-classifications/{taskId}。
 - 普通 JSON API 的统一响应包装、HTTP 响应代码固定为 200 等规则不适用于升级后的 WebSocket 数据帧。
+
+异步任务 API 模式：
+
+- AI 图片分类等耗时的计算任务采用异步任务模式，防止客户端长时间等待。
+- POST 端点（如 `/ai/image-classifications`）立即返回 `{taskId, status: "pending"|"succeeded"}`。
+- 客户端通过以下两种方式获取最终结果：
+  1. 轮询 `GET /ai/image-classifications/{taskId}`，返回 `{status, items?, errorMessage?}`；
+  2. 订阅 WebSocket `/user/queue/ai-events`，收到 `image_classification_completed` 事件后调用查询接口。
+- 任务超时时间为 30 秒，超时后 GET 查询返回 `status: "timeout"` 和相应错误信息。
+- 部分已有缓存的 mediaId 可能即时返回 `status: "succeeded"`，无需等待 GPU 推理。
 
 日期与时间：
 

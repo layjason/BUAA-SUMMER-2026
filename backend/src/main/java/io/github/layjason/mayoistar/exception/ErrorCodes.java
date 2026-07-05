@@ -195,6 +195,12 @@ public final class ErrorCodes {
     /** 图片媒体文件不存在或不支持 AI 分类 */
     public static final int IMAGE_MEDIA_UNAVAILABLE = 30003;
 
+    /** 分类任务不存在或已过期 */
+    public static final int AI_TASK_NOT_FOUND = 30004;
+
+    /** 分类任务超时 */
+    public static final int AI_TASK_TIMEOUT = 30005;
+
     /** 小队媒体文件不存在 */
     public static final int TEAM_MEDIA_NOT_FOUND = 50003;
 

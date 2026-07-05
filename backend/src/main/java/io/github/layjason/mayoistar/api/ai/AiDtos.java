@@ -68,6 +68,34 @@ public final class AiDtos {
     }
 
     @Data
+    public static class ClassifyTaskSubmitResponse {
+        private UUID taskId;
+        private String status;
+    }
+
+    @Data
+    public static class ClassifyTaskQueryResponse {
+        private String status;
+        private List<ImageClassificationItem> items;
+        private String errorMessage;
+    }
+
+    @Data
+    public static class MediaClassificationResponse {
+        private UUID mediaId;
+        private List<String> suggestedTags;
+        private Double confidence;
+        private String classifiedAt;
+    }
+
+    @Data
+    public static class ImageClassificationCompletedEvent {
+        private String kind;
+        private UUID taskId;
+        private String status;
+    }
+
+    @Data
     public static class AiContentReviewResult {
         private String status;
         private String riskLevel;

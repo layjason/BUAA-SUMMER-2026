@@ -1,5 +1,6 @@
 package io.github.layjason.mayoistar.service;
 
+import io.github.layjason.mayoistar.api.ai.AiDtos;
 import io.github.layjason.mayoistar.api.chat.ChatDtos;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.entity.chat.MessageReadStatus;
@@ -32,6 +33,7 @@ public class WebSocketNotificationService implements NotificationService {
 
     private static final String CHAT_EVENTS_DEST = "/queue/chat-events";
     private static final String SOCIAL_EVENTS_DEST = "/queue/social-events";
+    private static final String AI_EVENTS_DEST = "/queue/ai-events";
 
     private final SimpMessagingTemplate messagingTemplate;
     private final MessageReadRepository messageReadRepository;
@@ -149,6 +151,22 @@ public class WebSocketNotificationService implements NotificationService {
     public void notifyFriendRequestCreated(SocialDtos.FriendRequest request) {
         sendToUser(request.getTargetUserId(), SOCIAL_EVENTS_DEST, request);
         log.info("好友申请通知已推送: requestId={}, to={}", request.getRequestId(), request.getTargetUserId());
+    }
+
+    /**
+     * 通知图片分类任务完成事件。
+     *
+     * <p>前置条件：分类任务已完成，状态标记为 succeeded 或 failed。
+     *
+     * <p>后置条件：目标用户通过 /queue/ai-events 收到包含 taskId 和 status 的事件。
+     *
+     * @param event  分类完成事件
+     * @param userId 目标用户 ID
+     */
+    @Override
+    public void notifyImageClassificationCompleted(AiDtos.ImageClassificationCompletedEvent event, String userId) {
+        sendToUser(userId, AI_EVENTS_DEST, event);
+        log.info("图片分类完成通知已推送: taskId={}, status={}, userId={}", event.getTaskId(), event.getStatus(), userId);
     }
 
     /**
