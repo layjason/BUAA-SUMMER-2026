@@ -1114,7 +1114,7 @@ public class AdminService {
         summary.setTags(activity.getTags());
         summary.setStartAt(activity.getStartAt().toString());
         summary.setEndAt(activity.getEndAt().toString());
-        summary.setFeeAmount(activity.getFeeAmount());
+        summary.setFeeAmount(activity.getFeeAmount() != null ? activity.getFeeAmount() : java.math.BigDecimal.ZERO);
         summary.setReviewStatus(activity.getReviewStatus());
         summary.setRuntimeStatus(activity.getRuntimeStatus());
         summary.setRegisteredCount(counts.registeredCount());

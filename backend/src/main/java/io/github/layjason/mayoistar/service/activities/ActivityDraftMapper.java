@@ -91,7 +91,7 @@ public class ActivityDraftMapper {
         dto.setSafetyNotice(activity.getSafetyNotice());
         dto.setCapacity(toDraftCapacity(activity.getCapacity()));
         dto.setRegistrationDeadline(formatInstant(activity.getRegistrationDeadline()));
-        dto.setFeeAmount(activity.getFeeAmount());
+        dto.setFeeAmount(activity.getFeeAmount() != null ? activity.getFeeAmount() : java.math.BigDecimal.ZERO);
         dto.setFeeDescription(activity.getFeeDescription());
         dto.setMinAge(activity.getMinAge());
         dto.setImages(mediaFiles.stream()
@@ -182,7 +182,7 @@ public class ActivityDraftMapper {
                 .map(this::toMediaFile)
                 .findFirst()
                 .orElse(null));
-        dto.setFeeAmount(activity.getFeeAmount());
+        dto.setFeeAmount(activity.getFeeAmount() != null ? activity.getFeeAmount() : java.math.BigDecimal.ZERO);
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setRuntimeStatus(activity.getRuntimeStatus());
         dto.setRegisteredCount(registeredCount);
