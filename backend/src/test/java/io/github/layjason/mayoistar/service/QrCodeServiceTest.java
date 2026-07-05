@@ -3,20 +3,23 @@ package io.github.layjason.mayoistar.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.google.zxing.BinaryBitmap;
-import com.google.zxing.LuminanceSource;
-import com.google.zxing.MultiFormatReader;
-import com.google.zxing.Result;
-import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
-import com.google.zxing.common.HybridBinarizer;
 import io.github.layjason.mayoistar.AbstractIntegrationTest;
+import io.github.layjason.mayoistar.QrCodeTestUtil;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Date;
+import java.util.UUID;
+import javax.crypto.SecretKey;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * 二维码服务单元测试。
@@ -29,6 +32,9 @@ class QrCodeServiceTest extends AbstractIntegrationTest {
 
     @Autowired
     private QrCodeService qrCodeService;
+
+    @Value("${mayoistar.jwt.secret}")
+    private String jwtSecret;
 
     /**
      * 验证生成的二维码为有效 PNG 图片。
@@ -62,12 +68,7 @@ class QrCodeServiceTest extends AbstractIntegrationTest {
     void generateQrCode_containsDecodableToken() throws Exception {
         byte[] pngBytes = qrCodeService.generateQrCode("test-user-456");
 
-        BufferedImage image = ImageIO.read(new ByteArrayInputStream(pngBytes));
-        LuminanceSource source = new BufferedImageLuminanceSource(image);
-        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
-        Result result = new MultiFormatReader().decode(bitmap);
-
-        String token = result.getText();
+        String token = QrCodeTestUtil.decodeQrCodeFromPng(pngBytes);
         assertThat(token).isNotNull().isNotEmpty().contains(".");
     }
 
@@ -81,13 +82,7 @@ class QrCodeServiceTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("解析二维码令牌 - 返回正确 userId")
     void parseQrCode_returnsCorrectUserId() throws Exception {
-        byte[] pngBytes = qrCodeService.generateQrCode("parse-user-789");
-
-        BufferedImage image = ImageIO.read(new ByteArrayInputStream(pngBytes));
-        LuminanceSource source = new BufferedImageLuminanceSource(image);
-        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
-        Result result = new MultiFormatReader().decode(bitmap);
-        String token = result.getText();
+        String token = createQrToken("parse-user-789");
 
         String userId = qrCodeService.parseQrCode(token);
         assertThat(userId).isEqualTo("parse-user-789");
@@ -134,17 +129,28 @@ class QrCodeServiceTest extends AbstractIntegrationTest {
         byte[] png1 = qrCodeService.generateQrCode("same-user");
         byte[] png2 = qrCodeService.generateQrCode("same-user");
 
-        BufferedImage img1 = ImageIO.read(new ByteArrayInputStream(png1));
-        BufferedImage img2 = ImageIO.read(new ByteArrayInputStream(png2));
-
-        LuminanceSource src1 = new BufferedImageLuminanceSource(img1);
-        LuminanceSource src2 = new BufferedImageLuminanceSource(img2);
-        BinaryBitmap bmp1 = new BinaryBitmap(new HybridBinarizer(src1));
-        BinaryBitmap bmp2 = new BinaryBitmap(new HybridBinarizer(src2));
-
-        String token1 = new MultiFormatReader().decode(bmp1).getText();
-        String token2 = new MultiFormatReader().decode(bmp2).getText();
+        String token1 = QrCodeTestUtil.decodeQrCodeFromPng(png1);
+        String token2 = QrCodeTestUtil.decodeQrCodeFromPng(png2);
 
         assertThat(token1).isNotEqualTo(token2);
+    }
+
+    /**
+     * 创建与 QrCodeService 签名规则一致的二维码令牌。
+     *
+     * <p>前置条件：test profile 已提供不少于 256 bit 的 JWT 密钥。
+     *
+     * <p>后置条件：返回未过期且可被 QrCodeService.parseQrCode 验证的 JWT 字符串。
+     */
+    private String createQrToken(String userId) {
+        SecretKey secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .subject(userId)
+                .id(UUID.randomUUID().toString())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusSeconds(300)))
+                .signWith(secretKey)
+                .compact();
     }
 }
