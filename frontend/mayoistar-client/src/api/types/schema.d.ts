@@ -536,6 +536,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/activities/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 创建平台活动模板，管理员已登录，模板创建后对全部用户可见，可用于快速创建活动草稿。 */
+        post: operations["AdminOperations_createActivityTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/activities/templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description 更新平台活动模板，管理员已登录，覆盖模板基础信息和默认封面，已由模板生成的草稿不受影响。 */
+        put: operations["AdminOperations_updateActivityTemplate"];
+        post?: never;
+        /** @description 删除平台活动模板，管理员已登录，删除后不再出现在用户模板列表，已创建的活动草稿不受影响。 */
+        delete: operations["AdminOperations_deleteActivityTemplate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/auth/login": {
         parameters: {
             query?: never;
@@ -1880,6 +1915,40 @@ export interface paths {
         patch: operations["SocialOperations_updateTeamMemberRole"];
         trace?: never;
     };
+    "/social/teams/{teamId}/members/{userId}/points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 手动调整小队成员积分，仅队长和管理员可执行。 */
+        post: operations["SocialOperations_adjustTeamMemberPoints"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social/teams/{teamId}/members/{userId}/points/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 查看小队成员积分变动历史。 */
+        get: operations["SocialOperations_getTeamMemberPointHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/social/teams/{teamId}/points": {
         parameters: {
             query?: never;
@@ -2277,7 +2346,7 @@ export interface components {
              */
             defaultCapacity: number;
             /** @description 模板默认活动封面图片。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
-            defaultCoverImage: components["schemas"]["MediaFile"];
+            defaultCoverImage?: components["schemas"]["MediaFile"];
             /** @description 模板默认活动简介。 */
             defaultIntroduction: string;
             /** @description 模板默认安全须知。 */
@@ -2288,6 +2357,26 @@ export interface components {
             name: string;
             /** @description 模板标识。 */
             templateId: components["schemas"]["EntityId"];
+        };
+        /** @description 活动模板创建或更新请求，管理员维护平台级模板，模板对全部用户可见。 */
+        "Activities.ActivityTemplateUpsertRequest": {
+            /** @description 模板所属活动类型。 */
+            activityType: string;
+            /**
+             * Format: int32
+             * @description 模板默认人数上限。
+             */
+            defaultCapacity: number;
+            /** @description 模板默认封面媒体文件标识。传入时必须是可用的活动图片媒体，保存后封面图片对全部用户公开可见。 */
+            defaultCoverImageMediaId?: components["schemas"]["EntityId"];
+            /** @description 模板默认活动简介。 */
+            defaultIntroduction: string;
+            /** @description 模板默认安全须知。 */
+            defaultSafetyNotice: string;
+            /** @description 模板默认标签。 */
+            defaultTags: string[];
+            /** @description 模板名称。 */
+            name: string;
         };
         /** @description 活动基础信息请求，地点来自地图选点，时间范围合法，可用于草稿保存或提交审核，费用字段只表达信息，不触发支付。 */
         "Activities.ActivityUpsertRequest": {
@@ -4876,6 +4965,16 @@ export interface components {
             /** @description 入队申请附言。 */
             message?: string;
         };
+        /** @description 手动调整小队成员积分请求。 */
+        "Social.ManualPointAdjustmentRequest": {
+            /**
+             * Format: int32
+             * @description 积分变动值，正数为加、负数为减。
+             */
+            pointChange: number;
+            /** @description 调整原因。 */
+            reason: string;
+        };
         /** @description 举报记录。 */
         "Social.Report": {
             /** @description 举报创建时间。 */
@@ -4992,6 +5091,11 @@ export interface components {
             /** @description 调整后的成员角色。 */
             role: components["schemas"]["Social.TeamMemberRole"];
         };
+        /**
+         * @description 小队积分变动来源枚举。
+         * @enum {string}
+         */
+        "Social.TeamPointChangeSource": "checkin" | "no_show" | "summary_post" | "manual";
         /** @description 小队积分项。 */
         "Social.TeamPointRankItem": {
             /** @description 成员昵称。 */
@@ -5006,6 +5110,31 @@ export interface components {
              * @description 积分排名。
              */
             rank: number;
+            /** @description 成员用户标识。 */
+            userId: components["schemas"]["EntityId"];
+        };
+        /** @description 小队积分变动记录项。 */
+        "Social.TeamPointRecordItem": {
+            /**
+             * Format: date-time
+             * @description 变动时间。
+             */
+            createdAt: string;
+            /** @description 成员昵称。 */
+            nickname: string;
+            /**
+             * Format: int32
+             * @description 积分变动值。
+             */
+            pointChange: number;
+            /** @description 变动原因。 */
+            reason: string;
+            /** @description 记录唯一标识。 */
+            recordId: components["schemas"]["EntityId"];
+            /** @description 关联实体 ID，如报名记录 ID。 */
+            referenceId?: components["schemas"]["EntityId"];
+            /** @description 变动来源。 */
+            source: components["schemas"]["Social.TeamPointChangeSource"];
             /** @description 成员用户标识。 */
             userId: components["schemas"]["EntityId"];
         };
@@ -6788,6 +6917,117 @@ export interface operations {
                          */
                         message: "For Super Earth!";
                     } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Admin.ActivityNotFound"] | components["schemas"]["Errors.Admin.ActivityModerationStateInvalid"] | components["schemas"]["Errors.Admin.ReviewReasonRequired"];
+                };
+            };
+        };
+    };
+    AdminOperations_createActivityTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Activities.ActivityTemplateUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["Activities.ActivityTemplate"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.MediaFileUnavailable"];
+                };
+            };
+        };
+    };
+    AdminOperations_updateActivityTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Activities.ActivityTemplateUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["Activities.ActivityTemplate"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.TemplateNotFound"] | components["schemas"]["Errors.Activities.MediaFileUnavailable"];
+                };
+            };
+        };
+    };
+    AdminOperations_deleteActivityTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["EmptyData"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.TemplateNotFound"];
                 };
             };
         };
@@ -10902,6 +11142,110 @@ export interface operations {
                          */
                         message: "For Super Earth!";
                     } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Social.TeamNotVisible"] | components["schemas"]["Errors.Social.TeamPermissionDenied"] | components["schemas"]["Errors.Social.TeamMemberNotFound"] | components["schemas"]["Errors.Social.TeamRoleChangeInvalid"];
+                };
+            };
+        };
+    };
+    SocialOperations_adjustTeamMemberPoints: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: components["schemas"]["EntityId"];
+                userId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Social.ManualPointAdjustmentRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["EmptyData"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Social.TeamNotVisible"] | components["schemas"]["Errors.Social.TeamMemberNotFound"] | components["schemas"]["Errors.Social.TeamPermissionDenied"];
+                };
+            };
+        };
+    };
+    SocialOperations_getTeamMemberPointHistory: {
+        parameters: {
+            query?: {
+                /** @description 页码，从 1 开始。 */
+                page?: components["parameters"]["PageQuery.page"];
+                /** @description 每页数量。 */
+                pageSize?: components["parameters"]["PageQuery.pageSize"];
+            };
+            header?: never;
+            path: {
+                teamId: components["schemas"]["EntityId"];
+                userId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: {
+                            /** @description 当前页数据。 */
+                            items: components["schemas"]["Social.TeamPointRecordItem"][];
+                            /**
+                             * Format: int32
+                             * @description 当前页码。
+                             */
+                            page: number;
+                            /**
+                             * Format: int32
+                             * @description 每页数量。
+                             */
+                            pageSize: number;
+                            /**
+                             * Format: int64
+                             * @description 匹配总数。
+                             */
+                            total: number;
+                            /**
+                             * Format: int32
+                             * @description 匹配总页数。
+                             */
+                            totalPages: number;
+                        };
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Social.TeamNotVisible"] | components["schemas"]["Errors.Social.TeamMemberNotFound"];
                 };
             };
         };

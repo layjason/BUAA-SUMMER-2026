@@ -65,6 +65,10 @@ public class ActivityDraftMapper {
     }
 
     public ActivityDtos.ActivityTemplate toTemplate(ActivityTemplate template) {
+        return toTemplate(template, template.getDefaultCoverImage());
+    }
+
+    public ActivityDtos.ActivityTemplate toTemplate(ActivityTemplate template, MediaFile defaultCoverImage) {
         ActivityDtos.ActivityTemplate dto = new ActivityDtos.ActivityTemplate();
         dto.setTemplateId(template.getTemplateId());
         dto.setName(template.getName());
@@ -73,8 +77,7 @@ public class ActivityDraftMapper {
         dto.setDefaultIntroduction(template.getDefaultIntroduction());
         dto.setDefaultSafetyNotice(template.getDefaultSafetyNotice());
         dto.setDefaultCapacity(template.getDefaultCapacity());
-        dto.setDefaultCoverImage(
-                template.getDefaultCoverImage() == null ? null : toMediaFile(template.getDefaultCoverImage()));
+        dto.setDefaultCoverImage(defaultCoverImage == null ? null : toMediaFile(defaultCoverImage));
         return dto;
     }
 

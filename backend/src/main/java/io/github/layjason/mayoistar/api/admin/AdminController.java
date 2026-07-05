@@ -18,6 +18,7 @@ import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.service.AdminAuthService;
 import io.github.layjason.mayoistar.service.AdminService;
 import io.github.layjason.mayoistar.service.ReportService;
+import io.github.layjason.mayoistar.service.activities.ActivityTemplateAdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,9 +27,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -43,6 +46,7 @@ public class AdminController {
     private final AdminAuthService adminAuthService;
     private final AdminService adminService;
     private final ReportService reportService;
+    private final ActivityTemplateAdminService activityTemplateAdminService;
 
     @PostMapping("/auth/login")
     @PreAuthorize("permitAll()")
@@ -164,6 +168,26 @@ public class AdminController {
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> getActivity(@PathVariable String activityId) {
         ActivityDtos.ActivityDetail result = adminService.getActivity(activityId);
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @PostMapping("/activities/templates")
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityTemplate>> createActivityTemplate(
+            @Valid @RequestBody ActivityDtos.ActivityTemplateUpsertRequest request) {
+        ActivityDtos.ActivityTemplate result = activityTemplateAdminService.createTemplate(request);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @PutMapping("/activities/templates/{templateId}")
+    public ResponseEntity<ApiResponse<ActivityDtos.ActivityTemplate>> updateActivityTemplate(
+            @PathVariable String templateId, @Valid @RequestBody ActivityDtos.ActivityTemplateUpsertRequest request) {
+        ActivityDtos.ActivityTemplate result = activityTemplateAdminService.updateTemplate(templateId, request);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @DeleteMapping("/activities/templates/{templateId}")
+    public ResponseEntity<ApiResponse<EmptyData>> deleteActivityTemplate(@PathVariable String templateId) {
+        activityTemplateAdminService.deleteTemplate(templateId);
+        return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
     }
 
     @PostMapping("/activities/{activityId}/review")
