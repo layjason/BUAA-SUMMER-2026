@@ -34,6 +34,16 @@ describe('活动页面底部操作栏', () => {
   })
 
   it('详情页主操作按钮应复用固定底部操作栏样式', () => {
+    const source = readActivityPage('templates.vue')
+
+    expect(source).not.toContain('activityTemplates.fromClone')
+    expect(source).not.toContain('selectClone')
+    expect(source).not.toContain('cloneActivity')
+    expect(source).not.toContain('getMyActivities')
+    expect(source).not.toContain('class="clone-list"')
+  })
+
+  it('detail page primary action should reuse fixed bottom action bar style', () => {
     const source = readActivityPage('detail.vue')
 
     expect(source).toContain('<BottomActionBar v-if=')

@@ -40,34 +40,6 @@
             </view>
           </view>
         </view>
-
-        <!-- 从已有活动克隆 -->
-        <view class="section">
-          <text class="section-title">{{ t('activityTemplates.fromClone') }}</text>
-          <view v-if="loadingActivities" class="loading-text">{{ t('加载中') }}</view>
-          <view v-else-if="myActivities.length === 0" class="empty-text">{{ t('暂无数据') }}</view>
-          <view v-else class="clone-list">
-            <view
-              v-for="item in myActivities"
-              :key="item.activityId"
-              class="clone-item"
-              hover-class="clone-hover"
-              @click="selectClone(item)"
-            >
-              <view class="clone-info">
-                <text class="clone-title">{{ item.title }}</text>
-                <text class="clone-meta"
-                  >{{ formatDate(item.startAt) }} · {{ item.location.city }}</text
-                >
-              </view>
-              <view class="clone-status">
-                <text class="status-tag" :class="'status-' + item.runtimeStatus">{{
-                  getStatusText(item.runtimeStatus)
-                }}</text>
-              </view>
-            </view>
-          </view>
-        </view>
       </view>
     </scroll-view>
 
@@ -83,33 +55,26 @@
 /**
  * 活动创建入口页
  *
- * 提供两种创建方式：从模板创建、从已有活动克隆。
+ * 提供从模板创建活动草稿的入口；克隆已有活动由独立页面承载。
  * 前置条件：用户已登录
  * 后置条件：选择后跳转编辑页
  */
 import { computed, ref } from 'vue'
-import { onLoad, onUnload } from '@dcloudio/uni-app'
+import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
 import {
-  cloneActivity,
   createDraftFromTemplate,
-  getMyActivities,
   getTemplates as fetchTemplates,
-  type ActivitySummary,
   type ActivityTemplate,
 } from '@/api/modules/activities'
 import { BottomActionBar } from '@/components'
 import { getErrorMessage } from '@/utils/error'
-import { formatDate } from '@/utils/date'
-import { runtimeStatusText as getRuntimeStatusText } from '@/utils/status'
 
 const { t } = useI18n()
 
 const loadingTemplates = ref(true)
-const loadingActivities = ref(true)
 const actioning = ref(false)
-let redirectTimer: ReturnType<typeof setTimeout> | null = null
 
 const templates = ref<ActivityTemplate[]>([])
 
@@ -122,12 +87,6 @@ const templateRows = computed(() => {
   return rows
 })
 
-const myActivities = ref<ActivitySummary[]>([])
-
-function getStatusText(status: string): string {
-  return getRuntimeStatusText(status, t)
-}
-
 async function loadTemplates(): Promise<void> {
   try {
     const result = await fetchTemplates()
@@ -136,17 +95,6 @@ async function loadTemplates(): Promise<void> {
     /* 加载失败不影响 */
   } finally {
     loadingTemplates.value = false
-  }
-}
-
-async function loadMyActivities(): Promise<void> {
-  try {
-    const result = await getMyActivities()
-    myActivities.value = result.items ?? []
-  } catch {
-    /* 加载失败不影响 */
-  } finally {
-    loadingActivities.value = false
   }
 }
 
@@ -172,44 +120,12 @@ async function selectTemplate(tpl: ActivityTemplate): Promise<void> {
   }
 }
 
-async function selectClone(item: ActivitySummary): Promise<void> {
-  if (actioning.value) return
-  actioning.value = true
-  try {
-    uni.showLoading({ title: t('activityClone.cloning') })
-    const result = await cloneActivity(item.activityId)
-    uni.hideLoading()
-    uni.showToast({ title: t('activityClone.success'), icon: 'success' })
-    redirectTimer = setTimeout(() => {
-      uni.redirectTo({
-        url: '/pages/activity/edit?activityId=' + result.activityId,
-      })
-    }, 800)
-  } catch (error) {
-    uni.hideLoading()
-    if (error instanceof BusinessError) {
-      uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
-    } else {
-      uni.showToast({ title: '克隆失败', icon: 'none' })
-    }
-    actioning.value = false
-  }
-}
-
 function skipTemplate(): void {
   uni.redirectTo({ url: '/pages/activity/edit' })
 }
 
 onLoad(() => {
   loadTemplates()
-  loadMyActivities()
-})
-
-onUnload(() => {
-  if (redirectTimer !== null) {
-    clearTimeout(redirectTimer)
-    redirectTimer = null
-  }
 })
 </script>
 
@@ -340,92 +256,6 @@ onUnload(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* ---- 克隆已有活动列表 ---- */
-.clone-list {
-  background-color: #fff;
-  border-radius: 12rpx;
-  overflow: hidden;
-}
-
-.clone-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24rpx 28rpx;
-  border-bottom: 2rpx solid #f5f5f5;
-}
-
-.clone-item:last-child {
-  border-bottom: none;
-}
-
-.clone-hover {
-  opacity: 0.85;
-}
-
-.clone-info {
-  flex: 1;
-  min-width: 0;
-  margin-right: 16rpx;
-}
-
-.clone-title {
-  display: block;
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #323233;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.clone-meta {
-  display: block;
-  font-size: 22rpx;
-  color: #969799;
-  margin-top: 4rpx;
-}
-
-.clone-status {
-  flex-shrink: 0;
-}
-
-.status-tag {
-  font-size: 20rpx;
-  padding: 2rpx 10rpx;
-  border-radius: 4rpx;
-}
-
-.status-registering {
-  background-color: #e8f7f0;
-  color: #5ec8a7;
-}
-
-.status-registrationClosed {
-  background-color: #fff7e6;
-  color: #ed6a0c;
-}
-
-.status-ongoing {
-  background-color: #e8f7f0;
-  color: #5ec8a7;
-}
-
-.status-ended {
-  background-color: #f2f3f5;
-  color: #c8c9cc;
-}
-
-.status-notStarted {
-  background-color: #ebedf0;
-  color: #969799;
-}
-
-.status-takenDown {
-  background-color: #fff2f0;
-  color: #ee0a24;
 }
 
 /* 底部操作按钮已由 BottomActionBar 组件承载 */
