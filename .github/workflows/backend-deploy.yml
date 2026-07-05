@@ -82,8 +82,10 @@ jobs:
         run: |
           echo "Starting Full Stack Deployment..."
 
-          docker compose -f ./docker-compose-ci.yaml down --remove-orphans
+          docker compose down --remove-orphans
 
-          docker compose -f ./docker-compose-ci.yaml up -d --build
+          docker compose up -d --build
+
+          docker system prune -f -a
 
           echo "Deployment Successful!"
