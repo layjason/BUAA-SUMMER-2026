@@ -54,6 +54,19 @@ public interface NotificationService {
     void notifyMessageForwarded(ChatDtos.ChatMessage message, List<String> recipientUserIds);
 
     /**
+     * 通知单聊对方已读事件。
+     *
+     * <p>前置条件：接收方已调用 markMessagesRead 标记消息已读。
+     *
+     * <p>后置条件：原消息发送方能收到 messagePeerRead 实时事件。
+     *
+     * @param conversationId 会话标识
+     * @param messageId      已被对方阅读的消息标识
+     * @param senderUserId   原消息发送方用户 ID
+     */
+    void notifyMessagePeerRead(String conversationId, String messageId, String senderUserId);
+
+    /**
      * 通知好友申请创建事件。
      *
      * <p>前置条件：好友申请已持久化。

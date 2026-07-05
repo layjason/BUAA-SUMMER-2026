@@ -25,6 +25,7 @@ public class ActivityRegistrationService {
     private static final int ACTIVITY_NOT_VISIBLE = 20002;
     private static final int REGISTRATION_CLOSED = 20006;
     private static final int DUPLICATE_REGISTRATION = 20007;
+    private static final int REPUTATION_INSUFFICIENT = 20008;
     private static final int SAFETY_NOTICE_NOT_ACCEPTED = 20010;
     private static final int REGISTRATION_NOT_FOUND = 20011;
     private static final int WAITING_CONFIRMATION_UNAVAILABLE = 20012;
@@ -34,6 +35,7 @@ public class ActivityRegistrationService {
 
     private final ActivityRepository activityRepository;
     private final ActivityRegistrationRepository activityRegistrationRepository;
+    private final ReputationService reputationService;
 
     @Transactional
     public ActivityDtos.RegistrationResult registerActivity(
@@ -41,6 +43,10 @@ public class ActivityRegistrationService {
         Instant now = Instant.now();
         if (request == null || !Boolean.TRUE.equals(request.getAcceptedSafetyNotice())) {
             throw new BusinessException(SAFETY_NOTICE_NOT_ACCEPTED, "Safety notice must be accepted");
+        }
+        if (!reputationService.canRegisterForActivity(userId)) {
+            throw new BusinessException(
+                    REPUTATION_INSUFFICIENT, "Reputation score is insufficient for activity registration");
         }
         Activity activity = findVisibleActivityForUpdate(activityId);
         if (!isRegistrationOpen(activity, now)) {

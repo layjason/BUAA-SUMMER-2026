@@ -183,16 +183,15 @@ public class ActivityController {
 
     @GetMapping("/templates")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivityTemplate>>> listTemplates(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
-        return responseFactory.emptyPage();
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.listTemplates(page, pageSize)));
     }
 
     @PostMapping("/templates/{templateId}/drafts")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> createDraftFromTemplate(
             @PathVariable String templateId) {
-        return responseFactory.activityDraftDetail();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.createDraftFromTemplate(userId, templateId)));
     }
 
     @GetMapping("/{activityId}")
@@ -239,7 +238,8 @@ public class ActivityController {
     @PostMapping("/{activityId}/clone")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> cloneActivity(
             @PathVariable String activityId) {
-        return responseFactory.activityDraftDetail();
+        String userId = securityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(activityDraftService.cloneActivity(userId, activityId)));
     }
 
     @GetMapping("/{activityId}/participants")

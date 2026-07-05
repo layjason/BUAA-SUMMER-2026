@@ -119,6 +119,7 @@ public final class ChatDtos {
         private List<String> mentionedUserIds;
         private Boolean mentionAll;
         private String readStatus;
+        private String peerReadStatus;
         private Boolean recalled;
         private String sentAt;
     }
@@ -143,6 +144,13 @@ public final class ChatDtos {
     public static class MessageForwardedPayload implements ChatRealtimeEventPayload {
         private ChatMessage message;
         private Integer conversationUnreadCount;
+    }
+
+    @Data
+    public static class MessagePeerReadPayload implements ChatRealtimeEventPayload {
+        private String conversationId;
+        private String messageId;
+        private String peerReadStatus;
     }
 
     @Data

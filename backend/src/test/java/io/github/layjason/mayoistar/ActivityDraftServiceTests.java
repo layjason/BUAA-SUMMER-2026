@@ -2,6 +2,10 @@ package io.github.layjason.mayoistar;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
@@ -9,8 +13,10 @@ import io.github.layjason.mayoistar.config.TestContentReviewConfiguration;
 import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
 import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityImage;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.activities.ActivityTemplate;
 import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
@@ -25,9 +31,12 @@ import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityTemplateRepository;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
 import io.github.layjason.mayoistar.service.ai.ContentReviewRisk;
 import io.github.layjason.mayoistar.service.ai.ContentReviewScanResult;
+import io.github.layjason.mayoistar.service.storage.FileStorageService;
+import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -44,6 +53,7 @@ import org.springframework.test.context.ActiveProfiles;
 class ActivityDraftServiceTests {
 
     private static final UUID IMAGE_A_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID IMAGE_B_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     @Autowired
     private ActivityDraftService activityDraftService;
@@ -55,10 +65,16 @@ class ActivityDraftServiceTests {
     private ActivityImageRepository activityImageRepository;
 
     @Autowired
+    private ActivityTemplateRepository activityTemplateRepository;
+
+    @Autowired
     private ActivityReviewRecordRepository activityReviewRecordRepository;
 
     @Autowired
     private MediaFileRepository mediaFileRepository;
+
+    @Autowired
+    private FileStorageService fileStorageService;
 
     @Autowired
     private TeamRepository teamRepository;
@@ -78,6 +94,7 @@ class ActivityDraftServiceTests {
         activityReviewRecordRepository.deleteAll();
         activityImageRepository.deleteAll();
         activityRepository.deleteAll();
+        activityTemplateRepository.deleteAll();
         mediaFileRepository.deleteAll();
         teamMemberRepository.deleteAll();
         teamRepository.deleteAll();
@@ -133,6 +150,158 @@ class ActivityDraftServiceTests {
     }
 
     @Test
+    void saveDraftShouldPersistPartialRequestWithoutExposingPlaceholders() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftUpsertRequest request = new ActivityDtos.ActivityDraftUpsertRequest();
+        request.setTitle("未完成的活动草稿");
+
+        ActivityDtos.ActivityDraftDetail draft = activityDraftService.saveDraft(organizer.getUserId(), request);
+
+        Activity savedActivity =
+                activityRepository.findById(draft.getActivityId()).orElseThrow();
+        assertThat(savedActivity.getTitle()).isEqualTo("未完成的活动草稿");
+        assertThat(savedActivity.getStartAt()).isEqualTo(Instant.EPOCH);
+        assertThat(savedActivity.getEndAt()).isEqualTo(Instant.EPOCH);
+        assertThat(savedActivity.getCapacity()).isZero();
+        assertThat(draft.getTitle()).isEqualTo("未完成的活动草稿");
+        assertThat(draft.getStartAt()).isNull();
+        assertThat(draft.getEndAt()).isNull();
+        assertThat(draft.getCapacity()).isNull();
+    }
+
+    @Test
+    void submitActivityShouldRejectDraftWithInternalPlaceholders() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftUpsertRequest request = createDraftRequest(List.of());
+        request.setStartAt(null);
+        request.setEndAt(null);
+        request.setCapacity(null);
+        ActivityDtos.ActivityDraftDetail draft = activityDraftService.saveDraft(organizer.getUserId(), request);
+
+        assertThatThrownBy(() -> activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("活动结束时间必须晚于开始时间");
+    }
+
+    @Test
+    void updateDraftShouldMergePartialRequestWithoutClearingExistingFields() {
+        User organizer = saveUser("user-a");
+        ActivityDtos.ActivityDraftDetail created =
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+        ActivityDtos.ActivityDraftUpsertRequest request = new ActivityDtos.ActivityDraftUpsertRequest();
+        request.setTitle("周末羽毛球（更新版）");
+        request.setIntroduction("更新后的活动简介");
+        request.setCapacity(30);
+
+        ActivityDtos.ActivityDraftDetail updated =
+                activityDraftService.updateDraft(organizer.getUserId(), created.getActivityId(), request);
+
+        Activity savedActivity =
+                activityRepository.findById(updated.getActivityId()).orElseThrow();
+        assertThat(savedActivity.getTitle()).isEqualTo("周末羽毛球（更新版）");
+        assertThat(savedActivity.getIntroduction()).isEqualTo("更新后的活动简介");
+        assertThat(savedActivity.getCapacity()).isEqualTo(30);
+        assertThat(savedActivity.getStartAt()).isEqualTo(Instant.parse("2026-07-02T10:00:00Z"));
+        assertThat(savedActivity.getEndAt()).isEqualTo(Instant.parse("2026-07-02T12:00:00Z"));
+        assertThat(updated.getStartAt()).isEqualTo("2026-07-02T10:00:00Z");
+    }
+
+    @Test
+    void draftFlowShouldSupportIncrementalSaveUpdateAndSubmit() {
+        User organizer = saveUser("user-a");
+        MediaFile imageA = saveMediaFile(IMAGE_A_ID, organizer.getUserId());
+        MediaFile imageB = saveMediaFile(IMAGE_B_ID, organizer.getUserId());
+
+        ActivityDtos.ActivityDraftUpsertRequest titleOnlyRequest = new ActivityDtos.ActivityDraftUpsertRequest();
+        titleOnlyRequest.setTitle("先占一个标题");
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.saveDraft(organizer.getUserId(), titleOnlyRequest);
+        assertThat(draft.getTitle()).isEqualTo("先占一个标题");
+        assertThat(draft.getStartAt()).isNull();
+        assertThat(draft.getEndAt()).isNull();
+        assertThat(draft.getCapacity()).isNull();
+
+        ActivityDtos.ActivityDraftUpsertRequest textPatch = new ActivityDtos.ActivityDraftUpsertRequest();
+        textPatch.setTags(List.of("运动", "羽毛球"));
+        textPatch.setIntroduction("第一次补充活动介绍");
+        textPatch.setSafetyNotice("请穿防滑运动鞋");
+        ActivityDtos.ActivityDraftDetail textUpdated =
+                activityDraftService.updateDraft(organizer.getUserId(), draft.getActivityId(), textPatch);
+        assertThat(textUpdated.getTitle()).isEqualTo("先占一个标题");
+        assertThat(textUpdated.getTags()).containsExactly("运动", "羽毛球");
+        assertThat(textUpdated.getStartAt()).isNull();
+        assertThat(textUpdated.getCapacity()).isNull();
+
+        ActivityDtos.ActivityDraftUpsertRequest schedulePatch = new ActivityDtos.ActivityDraftUpsertRequest();
+        schedulePatch.setStartAt("2026-07-04T02:00:00Z");
+        schedulePatch.setEndAt("2026-07-04T04:00:00Z");
+        schedulePatch.setRegistrationDeadline("2026-07-03T12:00:00Z");
+        schedulePatch.setLocation(createLocation("北京", "海淀体育馆", "三号场"));
+        schedulePatch.setRequireLocationCheck(true);
+        ActivityDtos.ActivityDraftDetail scheduleUpdated =
+                activityDraftService.updateDraft(organizer.getUserId(), draft.getActivityId(), schedulePatch);
+        assertThat(scheduleUpdated.getStartAt()).isEqualTo("2026-07-04T02:00:00Z");
+        assertThat(scheduleUpdated.getEndAt()).isEqualTo("2026-07-04T04:00:00Z");
+        assertThat(scheduleUpdated.getRegistrationDeadline()).isEqualTo("2026-07-03T12:00:00Z");
+        assertThat(scheduleUpdated.getLocation().getAddress()).isEqualTo("海淀体育馆");
+        assertThat(scheduleUpdated.getRequireLocationCheck()).isTrue();
+        assertThat(scheduleUpdated.getCapacity()).isNull();
+
+        ActivityDtos.ActivityDraftUpsertRequest capacityAndImagePatch = new ActivityDtos.ActivityDraftUpsertRequest();
+        capacityAndImagePatch.setCapacity(12);
+        capacityAndImagePatch.setFeeDescription("场地费 AA");
+        capacityAndImagePatch.setMinAge(16);
+        capacityAndImagePatch.setImageIds(List.of(imageA.getMediaId()));
+        ActivityDtos.ActivityDraftDetail imageUpdated =
+                activityDraftService.updateDraft(organizer.getUserId(), draft.getActivityId(), capacityAndImagePatch);
+        assertThat(imageUpdated.getCapacity()).isEqualTo(12);
+        assertThat(imageUpdated.getImages())
+                .extracting(CommonDtos.MediaFile::getMediaId)
+                .containsExactly(imageA.getMediaId());
+
+        ActivityDtos.ActivityDraftUpsertRequest noImagePatch = new ActivityDtos.ActivityDraftUpsertRequest();
+        noImagePatch.setTitle("周末羽毛球");
+        ActivityDtos.ActivityDraftDetail imagePreserved =
+                activityDraftService.updateDraft(organizer.getUserId(), draft.getActivityId(), noImagePatch);
+        assertThat(imagePreserved.getImages())
+                .extracting(CommonDtos.MediaFile::getMediaId)
+                .containsExactly(imageA.getMediaId());
+        assertThat(mediaFileRepository
+                        .findById(imageA.getMediaId())
+                        .orElseThrow()
+                        .getDeletedAt())
+                .isNull();
+
+        ActivityDtos.ActivityDraftUpsertRequest clearImagePatch = new ActivityDtos.ActivityDraftUpsertRequest();
+        clearImagePatch.setImageIds(List.of());
+        ActivityDtos.ActivityDraftDetail imageCleared =
+                activityDraftService.updateDraft(organizer.getUserId(), draft.getActivityId(), clearImagePatch);
+        assertThat(imageCleared.getImages()).isEmpty();
+        assertThat(mediaFileRepository
+                        .findById(imageA.getMediaId())
+                        .orElseThrow()
+                        .getDeletedAt())
+                .isNotNull();
+
+        ActivityDtos.ActivityDraftUpsertRequest finalPatch = new ActivityDtos.ActivityDraftUpsertRequest();
+        finalPatch.setImageIds(List.of(imageB.getMediaId()));
+        ActivityDtos.ActivityDraftDetail readyDraft =
+                activityDraftService.updateDraft(organizer.getUserId(), draft.getActivityId(), finalPatch);
+        assertThat(readyDraft.getImages())
+                .extracting(CommonDtos.MediaFile::getMediaId)
+                .containsExactly(imageB.getMediaId());
+
+        ActivityDtos.ActivityDetail submitted =
+                activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId());
+        assertThat(submitted.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
+        assertThat(submitted.getTitle()).isEqualTo("周末羽毛球");
+        assertThat(submitted.getCapacity()).isEqualTo(12);
+        assertThat(submitted.getImages())
+                .extracting(CommonDtos.MediaFile::getMediaId)
+                .containsExactly(imageB.getMediaId());
+    }
+
+    @Test
     void saveDraftShouldRejectBindingOthersMedia() {
         User organizer = saveUser("user-a");
         saveUser("user-b");
@@ -178,6 +347,98 @@ class ActivityDraftServiceTests {
 
         assertThat(activityDraftService.listDrafts(organizer.getUserId(), 1, 20).getItems())
                 .hasSize(1);
+    }
+
+    @Test
+    void listTemplatesShouldReturnPersistedTemplates() {
+        saveTemplate("template-a", "桌游模板", "社交", List.of("桌游", "轻松"));
+        saveTemplate("template-b", "徒步模板", "户外", List.of("徒步"));
+
+        ActivityDtos.ActivityTemplate firstTemplate =
+                activityDraftService.listTemplates(1, 1).getItems().getFirst();
+
+        assertThat(firstTemplate.getTemplateId()).isEqualTo("template-a");
+        assertThat(firstTemplate.getName()).isEqualTo("桌游模板");
+        assertThat(firstTemplate.getActivityType()).isEqualTo("社交");
+        assertThat(firstTemplate.getDefaultTags()).containsExactly("桌游", "轻松");
+        assertThat(activityDraftService.listTemplates(1, 1).getTotal()).isEqualTo(2);
+    }
+
+    @Test
+    void createDraftFromTemplateShouldPersistEditableDraft() {
+        User organizer = saveUser("user-a");
+        saveTemplate("template-a", "桌游模板", "社交", List.of("桌游", "轻松"));
+
+        ActivityDtos.ActivityDraftDetail draft =
+                activityDraftService.createDraftFromTemplate(organizer.getUserId(), "template-a");
+
+        Activity savedActivity =
+                activityRepository.findById(draft.getActivityId()).orElseThrow();
+        assertThat(savedActivity.getOrganizerId()).isEqualTo(organizer.getUserId());
+        assertThat(savedActivity.getReviewStatus()).isEqualTo(ActivityReviewStatus.draft);
+        assertThat(draft.getTitle()).isEqualTo("桌游模板");
+        assertThat(draft.getTags()).containsExactly("桌游", "轻松");
+        assertThat(draft.getIntroduction()).isEqualTo("模板介绍");
+        assertThat(draft.getSafetyNotice()).isEqualTo("模板安全须知");
+        assertThat(draft.getCapacity()).isEqualTo(12);
+        assertThat(draft.getImages()).isEmpty();
+    }
+
+    @Test
+    void createDraftFromTemplateShouldRejectMissingTemplate() {
+        User organizer = saveUser("user-a");
+
+        assertThatThrownBy(() -> activityDraftService.createDraftFromTemplate(organizer.getUserId(), "missing"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(20001);
+    }
+
+    @Test
+    void cloneActivityShouldCopyActivityFieldsAndImagesAsDraft() {
+        User organizer = saveUser("user-a");
+        MediaFile sourceImage = saveMediaFile(IMAGE_A_ID, organizer.getUserId());
+        Activity source = saveSubmittedActivity(organizer.getUserId(), "原活动");
+        saveActivityImage(source.getActivityId(), sourceImage.getMediaId(), 0);
+        when(fileStorageService.retrieve(sourceImage.getStoragePath()))
+                .thenReturn(new ByteArrayInputStream(new byte[] {1}));
+        when(fileStorageService.store(anyString(), any(), anyString(), anyLong()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ActivityDtos.ActivityDraftDetail cloned =
+                activityDraftService.cloneActivity(organizer.getUserId(), source.getActivityId());
+
+        Activity savedClone =
+                activityRepository.findById(cloned.getActivityId()).orElseThrow();
+        assertThat(savedClone.getActivityId()).isNotEqualTo(source.getActivityId());
+        assertThat(savedClone.getReviewStatus()).isEqualTo(ActivityReviewStatus.draft);
+        assertThat(savedClone.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.notStarted);
+        assertThat(savedClone.getTitle()).isEqualTo(source.getTitle());
+        assertThat(savedClone.getTags()).containsExactlyElementsOf(source.getTags());
+        assertThat(savedClone.getRequireLocationCheck()).isEqualTo(source.getRequireLocationCheck());
+        assertThat(cloned.getImages()).hasSize(1);
+        assertThat(cloned.getImages().getFirst().getMediaId()).isNotEqualTo(sourceImage.getMediaId());
+
+        MediaFile clonedImage = mediaFileRepository
+                .findById(cloned.getImages().getFirst().getMediaId())
+                .orElseThrow();
+        assertThat(clonedImage.getUploadedBy()).isEqualTo(organizer.getUserId());
+        assertThat(clonedImage.getAccessPolicy()).isEqualTo(MediaAccessPolicy.activityOwner);
+        assertThat(clonedImage.getAccessScopeId()).isEqualTo(savedClone.getActivityId());
+        assertThat(activityImageRepository.findByActivityIdOrderBySortOrderAsc(source.getActivityId()))
+                .hasSize(1);
+    }
+
+    @Test
+    void cloneActivityShouldRejectNonOrganizer() {
+        saveUser("user-a");
+        saveUser("user-b");
+        Activity source = saveSubmittedActivity("user-a", "原活动");
+
+        assertThatThrownBy(() -> activityDraftService.cloneActivity("user-b", source.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(20003);
     }
 
     @Test
@@ -471,6 +732,55 @@ class ActivityDraftServiceTests {
                 .build());
     }
 
+    private Activity saveSubmittedActivity(String organizerId, String title) {
+        return activityRepository.save(Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizerId)
+                .title(title)
+                .tags(List.of("社交", "桌游"))
+                .introduction("原活动简介")
+                .startAt(Instant.parse("2026-07-02T10:00:00Z"))
+                .endAt(Instant.parse("2026-07-02T12:00:00Z"))
+                .pointLon(116.397)
+                .pointLat(39.907)
+                .city("北京")
+                .address("海淀区某街道")
+                .placeName("活动中心")
+                .safetyNotice("原活动安全须知")
+                .capacity(8)
+                .feeDescription("AA")
+                .minAge(18)
+                .registrationDeadline(Instant.parse("2026-07-01T12:00:00Z"))
+                .reviewStatus(ActivityReviewStatus.approved)
+                .runtimeStatus(ActivityRuntimeStatus.ended)
+                .requireLocationCheck(true)
+                .manualReviewRequired(false)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build());
+    }
+
+    private ActivityImage saveActivityImage(String activityId, UUID mediaId, int sortOrder) {
+        return activityImageRepository.save(ActivityImage.builder()
+                .imageId(UUID.randomUUID().toString())
+                .activityId(activityId)
+                .mediaId(mediaId)
+                .sortOrder(sortOrder)
+                .build());
+    }
+
+    private ActivityTemplate saveTemplate(String templateId, String name, String activityType, List<String> tags) {
+        return activityTemplateRepository.save(ActivityTemplate.builder()
+                .templateId(templateId)
+                .name(name)
+                .activityType(activityType)
+                .defaultTags(tags)
+                .defaultIntroduction("模板介绍")
+                .defaultSafetyNotice("模板安全须知")
+                .defaultCapacity(12)
+                .build());
+    }
+
     private ActivityDtos.ActivityDraftUpsertRequest createDraftRequest(List<UUID> imageIds) {
         ActivityDtos.ActivityDraftUpsertRequest request = new ActivityDtos.ActivityDraftUpsertRequest();
         request.setTitle("桌游局");
@@ -494,5 +804,17 @@ class ActivityDraftServiceTests {
         request.setMinAge(18);
         request.setImageIds(imageIds);
         return request;
+    }
+
+    private CommonDtos.LocationInfo createLocation(String city, String address, String placeName) {
+        CommonDtos.GeoPoint point = new CommonDtos.GeoPoint();
+        point.setLongitude(116.397);
+        point.setLatitude(39.907);
+        CommonDtos.LocationInfo location = new CommonDtos.LocationInfo();
+        location.setPoint(point);
+        location.setCity(city);
+        location.setAddress(address);
+        location.setPlaceName(placeName);
+        return location;
     }
 }

@@ -2,6 +2,8 @@
 
 ## 更新日志
 
+- Version: 15 20260704 180106
+  - 新增 messagePeerRead 事件类型（单聊已读回执），ChatMessage 新增 peerReadStatus 字段；markMessagesRead 完成后向原消息发送方推送 peerRead 通知，原因是发送方需要实时获知对方已读状态
 - Version: 15 20260704 152641
   - 图片分类 API 从同步改为异步任务模式（Kafka 解耦）：POST 返回 taskId，GET 轮询结果，新增 GET /ai/image-classifications/media/{mediaId} 缓存查询；新增 WebSocket 事件 /queue/ai-events (image_classification_completed)，原因是 GPU 集群与 Java 后端通过 Kafka 异步通信
 - Version: 14 20260702 171143
@@ -120,7 +122,7 @@ WebSocket：
 - TypeSpec 中使用 `GET /chat/ws/messages` 作为聊天消息实时 WebSocket 端点标识，实际调用时客户端应向该路径发起 WebSocket Upgrade。
 - 服务端通过 STOMP over WebSocket 提供消息代理，客户端使用 STOMP 协议连接。
 - WebSocket 握手与 STOMP CONNECT 帧均使用与 JSON API 相同的 Bearer Token 鉴权。
-- 连接建立后，客户端订阅 `/user/queue/chat-events` 接收 `ChatRealtimeEvent` 推送，支持事件类型：`messageCreated`、`messageRecalled`、`messageForwarded`。事件负载通过 `payload` 字段携带，类型由 `kind` 区分：`messageCreated`→`MessageCreatedPayload`（含 `message` 与 `conversationUnreadCount`），`messageRecalled`→`MessageRecalledPayload`（仅含 `message`），`messageForwarded`→`MessageForwardedPayload`（含 `message` 与 `conversationUnreadCount`）。所有 payload 字段均为必填，无 null 歧义。
+- 连接建立后，客户端订阅 `/user/queue/chat-events` 接收 `ChatRealtimeEvent` 推送，支持事件类型：`messageCreated`、`messageRecalled`、`messageForwarded`、`messagePeerRead`。事件负载通过 `payload` 字段携带，类型由 `kind` 区分：`messageCreated`→`MessageCreatedPayload`（含 `message` 与 `conversationUnreadCount`），`messageRecalled`→`MessageRecalledPayload`（仅含 `message`），`messageForwarded`→`MessageForwardedPayload`（含 `message` 与 `conversationUnreadCount`），`messagePeerRead`→`MessagePeerReadPayload`（含 `conversationId`、`messageId`、`peerReadStatus`）。所有 payload 字段均为必填，无 null 歧义。
 - 订阅 `/user/queue/social-events` 接收 `friendRequestCreated` 事件（负载为 `FriendRequest` 模型）。
 - 订阅 `/user/queue/ai-events` 接收 `image_classification_completed` 事件，负载包含 `taskId` 和 `status`（`succeeded`/`failed`），用于替代轮询 GET /ai/image-classifications/{taskId}。
 - 普通 JSON API 的统一响应包装、HTTP 响应代码固定为 200 等规则不适用于升级后的 WebSocket 数据帧。

@@ -38,6 +38,9 @@ public class CapturingNotificationService implements NotificationService {
     @Getter
     private final List<CapturedAiEvent> aiEvents = new ArrayList<>();
 
+    @Getter
+    private final List<CapturedPeerRead> peerReads = new ArrayList<>();
+
     @Override
     public void notifyMessageCreated(ChatDtos.ChatMessage message, List<String> recipientUserIds) {
         log.info("测试通知: messageCreated messageId={}, recipients={}", message.getMessageId(), recipientUserIds);
@@ -68,7 +71,15 @@ public class CapturingNotificationService implements NotificationService {
         aiEvents.add(new CapturedAiEvent(event, userId));
     }
 
+    @Override
+    public void notifyMessagePeerRead(String conversationId, String messageId, String senderUserId) {
+        log.info("测试通知: messagePeerRead messageId={}, to={}", messageId, senderUserId);
+        peerReads.add(new CapturedPeerRead(conversationId, messageId, senderUserId));
+    }
+
     public record CapturedRecall(String messageId, String conversationId, List<String> recipientUserIds) {}
 
     public record CapturedAiEvent(AiDtos.ImageClassificationCompletedEvent event, String userId) {}
+
+    public record CapturedPeerRead(String conversationId, String messageId, String senderUserId) {}
 }

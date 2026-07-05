@@ -7231,6 +7231,144 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Social.TeamMemberRoleUpdate'
+  /social/teams/{teamId}/members/{userId}/points:
+    post:
+      operationId: SocialOperations_adjustTeamMemberPoints
+      description: 手动调整小队成员积分，仅队长和管理员可执行。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/EmptyData'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Social.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Social.TeamMemberNotFound'
+                  - $ref: '#/components/schemas/Errors.Social.TeamPermissionDenied'
+      tags:
+        - 好友社群
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Social.ManualPointAdjustmentRequest'
+  /social/teams/{teamId}/members/{userId}/points/history:
+    get:
+      operationId: SocialOperations_getTeamMemberPointHistory
+      description: 查看小队成员积分变动历史。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Social.TeamPointRecordItem'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Social.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Social.TeamMemberNotFound'
+      tags:
+        - 好友社群
   /social/teams/{teamId}/points:
     get:
       operationId: SocialOperations_getTeamPointRanks
@@ -7946,6 +8084,7 @@ components:
         - canCancelRegistration
         - canConfirmWaitingSeat
         - canCheckIn
+        - canReview
       properties:
         canRegister:
           type: boolean
@@ -7971,6 +8110,13 @@ components:
         canCheckIn:
           type: boolean
           description: 当前用户是否可以扫码签到。
+        canReview:
+          type: boolean
+          description: 当前用户是否可以评价该活动。由后端根据活动结束时间、签到状态、是否已评价、评价窗口是否过期等规则计算。
+        reviewWindowEndsAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 评价入口关闭时间。仅 canReview 为 true 或用户满足评价基础条件时返回，用于前端展示剩余时间。
       description: 当前登录用户相对于指定活动的参与和可操作状态。
     Activities.ActivityReview:
       type: object
@@ -12896,6 +13042,21 @@ components:
           type: string
           description: 入队申请附言。
       description: 加入小队请求，小队存在且未满员未解散，公开小队直接加入，审核小队创建申请，黑名单关系不得加入。
+    Social.ManualPointAdjustmentRequest:
+      type: object
+      required:
+        - pointChange
+        - reason
+      properties:
+        pointChange:
+          type: integer
+          format: int32
+          description: 积分变动值，正数为加、负数为减。
+        reason:
+          type: string
+          maxLength: 50
+          description: 调整原因。
+      description: 手动调整小队成员积分请求。
     Social.Report:
       type: object
       required:
@@ -13115,6 +13276,14 @@ components:
             - $ref: '#/components/schemas/Social.TeamMemberRole'
           description: 调整后的成员角色。
       description: 小队成员角色更新请求。
+    Social.TeamPointChangeSource:
+      type: string
+      enum:
+        - checkin
+        - no_show
+        - summary_post
+        - manual
+      description: 小队积分变动来源枚举。
     Social.TeamPointRankItem:
       type: object
       required:
@@ -13139,6 +13308,48 @@ components:
           format: int32
           description: 成员积分。
       description: 小队积分项。
+    Social.TeamPointRecordItem:
+      type: object
+      required:
+        - recordId
+        - userId
+        - nickname
+        - pointChange
+        - source
+        - reason
+        - createdAt
+      properties:
+        recordId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 记录唯一标识。
+        userId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 成员用户标识。
+        nickname:
+          type: string
+          description: 成员昵称。
+        pointChange:
+          type: integer
+          format: int32
+          description: 积分变动值。
+        source:
+          allOf:
+            - $ref: '#/components/schemas/Social.TeamPointChangeSource'
+          description: 变动来源。
+        referenceId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 关联实体 ID，如报名记录 ID。
+        reason:
+          type: string
+          description: 变动原因。
+        createdAt:
+          type: string
+          format: date-time
+          description: 变动时间。
+      description: 小队积分变动记录项。
     Social.TeamProfile:
       type: object
       required:
