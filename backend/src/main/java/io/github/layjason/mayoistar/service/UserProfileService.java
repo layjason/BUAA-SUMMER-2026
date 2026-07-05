@@ -2,7 +2,6 @@ package io.github.layjason.mayoistar.service;
 
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
-import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.PersonalProfile;
 import io.github.layjason.mayoistar.entity.identity.User;
@@ -14,8 +13,6 @@ import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +34,7 @@ public class UserProfileService {
     private final InterestTagRepository interestTagRepository;
     private final MediaFileRepository mediaFileRepository;
     private final ReputationService reputationService;
+    private final MediaFileUploadService mediaFileUploadService;
 
     /**
      * @param userRepository              用户数据访问
@@ -44,18 +42,21 @@ public class UserProfileService {
      * @param interestTagRepository       兴趣标签数据访问
      * @param mediaFileRepository         媒体文件数据访问
      * @param reputationService           信誉分服务
+     * @param mediaFileUploadService      媒体文件上传服务
      */
     public UserProfileService(
             UserRepository userRepository,
             PersonalProfileRepository personalProfileRepository,
             InterestTagRepository interestTagRepository,
             MediaFileRepository mediaFileRepository,
-            ReputationService reputationService) {
+            ReputationService reputationService,
+            MediaFileUploadService mediaFileUploadService) {
         this.userRepository = userRepository;
         this.personalProfileRepository = personalProfileRepository;
         this.interestTagRepository = interestTagRepository;
         this.mediaFileRepository = mediaFileRepository;
         this.reputationService = reputationService;
+        this.mediaFileUploadService = mediaFileUploadService;
     }
 
     /**
@@ -187,7 +188,7 @@ public class UserProfileService {
      *
      * <p>前置条件：file 为有效的图片文件（JPG/PNG），大小不超过限制。
      *
-     * <p>后置条件：文件存储到本地文件系统，元数据存入 media_files 表。
+     * <p>后置条件：文件存储到 RustFS 对象存储，元数据存入 media_files 表。
      *
      * @param userId 上传者用户 ID
      * @param file   上传的文件
@@ -195,53 +196,7 @@ public class UserProfileService {
      */
     @Transactional
     public CommonDtos.MediaFile uploadAvatar(String userId, MultipartFile file) {
-        String contentType = file.getContentType();
-        if (contentType == null || (!contentType.equals("image/jpeg") && !contentType.equals("image/png"))) {
-            throw new BusinessException(10013, "Image must be a JPG or PNG file");
-        }
-
-        long maxSize = 5 * 1024 * 1024L; // 5 MB
-        if (file.getSize() > maxSize) {
-            throw new BusinessException(10014, "Image file is too large");
-        }
-
-        String mediaId = UUID.randomUUID().toString();
-        String originalFilename =
-                Optional.ofNullable(file.getOriginalFilename()).orElse("avatar.png");
-        String storagePath = "avatars/" + userId + "/" + mediaId + "_" + originalFilename;
-
-        try {
-            java.nio.file.Path dir = java.nio.file.Path.of("uploads/avatars/" + userId);
-            java.nio.file.Files.createDirectories(dir);
-            file.transferTo(dir.resolve(mediaId + "_" + originalFilename).toFile());
-        } catch (Exception e) {
-            log.error("头像文件写入失败: userId={}", userId, e);
-            throw new RuntimeException("文件上传失败", e);
-        }
-
-        Instant now = Instant.now();
-        MediaFile mediaFile = MediaFile.builder()
-                .mediaId(mediaId)
-                .fileName(originalFilename)
-                .contentType(contentType)
-                .sizeBytes(file.getSize())
-                .usage(MediaUsage.avatar)
-                .storagePath(storagePath)
-                .uploadedBy(userId)
-                .uploadedAt(now)
-                .build();
-        mediaFileRepository.save(mediaFile);
-
-        log.info("头像上传成功: mediaId={}, userId={}", mediaId, userId);
-
-        CommonDtos.MediaFile result = new CommonDtos.MediaFile();
-        result.setMediaId(mediaId);
-        result.setFileName(originalFilename);
-        result.setContentType(contentType);
-        result.setSizeBytes(file.getSize());
-        result.setUsage(MediaUsage.avatar);
-        result.setUploadedAt(now.toString());
-        return result;
+        return mediaFileUploadService.upload(userId, file, MediaUsage.avatar);
     }
 
     /**

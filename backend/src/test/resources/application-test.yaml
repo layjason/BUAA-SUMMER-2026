@@ -1,4 +1,8 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
   datasource:
     url: jdbc:h2:mem:mayoistar_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
@@ -6,7 +10,17 @@ spring:
     password:
 
 mayoistar:
+  test:
+    seed:
+      placeholder:
+        enabled: false
   jwt:
     secret: test-secret-key-that-is-at-least-256-bits-long-for-hs256
     access-token-expire: 3600
     refresh-token-expire: 2592000
+  media:
+    access:
+      signing-secret: test-media-signing-secret
+  ai:
+    clip:
+      kafka-enabled: false

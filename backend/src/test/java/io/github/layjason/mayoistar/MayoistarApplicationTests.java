@@ -1,8 +1,6 @@
 package io.github.layjason.mayoistar;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Mayoistar 应用启动测试。
@@ -11,9 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
  *
  * <p>类不变量：测试过程只使用内存数据库，不连接外部数据库，不修改外部系统状态。
  */
-@SpringBootTest
-@ActiveProfiles("test")
-class MayoistarApplicationTests {
+class MayoistarApplicationTests extends AbstractIntegrationTest {
 
     /**
      * 验证 Spring 应用上下文可以加载。

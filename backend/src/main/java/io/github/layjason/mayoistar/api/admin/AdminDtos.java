@@ -10,7 +10,9 @@ import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.entity.social.ReportStatus;
 import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import lombok.Data;
 
@@ -29,28 +31,30 @@ public final class AdminDtos {
 
     @Data
     public static class AdminLoginRequest {
-        @NotNull
+        @NotBlank
+        @Size(max = 50)
         private String username;
 
-        @NotNull
+        @NotBlank
         private String password;
     }
 
     @Data
     public static class AdminChangePasswordRequest {
-        @NotNull
+        @NotBlank
         private String oldPassword;
 
-        @NotNull
+        @NotBlank
+        @Size(min = 8)
         private String newPassword;
     }
 
     @Data
     public static class BanUserRequest {
-        @NotNull
+        @NotBlank
         private String reason;
 
-        @NotNull
+        @NotBlank
         private String bannedUntil;
     }
 
@@ -64,7 +68,7 @@ public final class AdminDtos {
 
     @Data
     public static class ActivityModerationRequest {
-        @NotNull
+        @NotBlank
         private String reason;
     }
 
@@ -81,13 +85,13 @@ public final class AdminDtos {
         @NotNull
         private ReportStatus status;
 
-        @NotNull
+        @NotBlank
         private String handlingNote;
     }
 
     @Data
     public static class TeamModerationRequest {
-        @NotNull
+        @NotBlank
         private String reason;
     }
 

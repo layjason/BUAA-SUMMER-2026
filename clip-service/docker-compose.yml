@@ -1,0 +1,41 @@
+# Docker Compose 配置 - MayoiStar CLIP 分类服务（GPU + Kafka Consumer）
+# 启动方式：docker compose up -d
+# 注意：需要先安装 NVIDIA Container Toolkit（https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html）
+#
+# 环境变量配置见 .env 文件或 .env.gpu.example
+
+services:
+  clip-classifier:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mayoistar-clip:gpu
+    container_name: mayoistar-clip
+    ports:
+      - "${CLIP_PORT:-8000}:8000"
+    environment:
+      - MODE=kafka
+      - HF_HOME=/app/.cache/huggingface
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - KAFKA_GROUP_ID=${KAFKA_GROUP_ID:-mayoistar-clip-gpu}
+      - KAFKA_REQUEST_TOPIC=${KAFKA_REQUEST_TOPIC:-clip-classify-request}
+      - KAFKA_RESPONSE_TOPIC=${KAFKA_RESPONSE_TOPIC:-clip-classify-response}
+      - RUSTFS_ENDPOINT=${RUSTFS_ENDPOINT}
+      - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY}
+      - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY}
+      - RUSTFS_BUCKET=${RUSTFS_BUCKET:-mayoistar-media}
+      - CONSUMER_MAX_RETRIES=${CONSUMER_MAX_RETRIES:-3}
+    volumes:
+      # 持久化模型缓存，避免每次重启重新下载（约 600MB）
+      - clip_model_cache:/app/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  clip_model_cache:

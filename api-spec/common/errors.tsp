@@ -85,6 +85,13 @@ namespace QujuApi.Errors.Identity {
       10018,
       "Password reset email rate limit has been exceeded"
     > {}
+
+  @doc("10019：账号因多次登录失败被暂时锁定。message 中会提示剩余锁定时间。")
+  model AccountLocked
+    extends APIErrorResponse<
+      10019,
+      "Account is temporarily locked due to multiple failed login attempts"
+    > {}
 }
 
 namespace QujuApi.Errors.Activities {
@@ -173,6 +180,14 @@ namespace QujuApi.Errors.Activities {
   @doc("20019：上传图像超过活动服务允许的大小。")
   model ImageTooLarge
     extends APIErrorResponse<20019, "Image file is too large"> {}
+
+  @doc("20020：活动总结已存在，每个活动仅允许发布一篇总结。")
+  model DuplicateSummary
+    extends APIErrorResponse<20020, "Activity summary already exists"> {}
+
+  @doc("20021：活动要求位置签到，但用户未提供位置信息。")
+  model CheckInLocationRequired
+    extends APIErrorResponse<20021, "Check-in location is required"> {}
 }
 
 namespace QujuApi.Errors.Ai {
@@ -191,6 +206,14 @@ namespace QujuApi.Errors.Ai {
   @doc("30003：图片媒体文件不存在或不支持 AI 分类。")
   model ImageMediaUnavailable
     extends APIErrorResponse<30003, "Image media is unavailable"> {}
+
+  @doc("30004：分类任务不存在或已过期（含 mediaId 未分类时）。")
+  model AiTaskNotFound
+    extends APIErrorResponse<30004, "Classification task not found"> {}
+
+  @doc("30005：分类任务超时，GPU 服务在 30 秒内未响应。")
+  model AiTaskTimeout
+    extends APIErrorResponse<30005, "Classification task timed out"> {}
 }
 
 namespace QujuApi.Errors.Social {
@@ -287,6 +310,10 @@ namespace QujuApi.Errors.Social {
   @doc("40020：调用方缺少小队管理权限。")
   model TeamPermissionDenied
     extends APIErrorResponse<40020, "Team operation is not allowed"> {}
+
+  @doc("40021：二维码 token 无效或已过期。")
+  model QrCodeTokenInvalid
+    extends APIErrorResponse<40021, "QR code token is invalid"> {}
 }
 
 namespace QujuApi.Errors.Chat {
@@ -343,7 +370,7 @@ namespace QujuApi.Errors.Chat {
       "Forward target conversation is unavailable"
     > {}
 
-  @doc("50011：调用方无权发布群公告。")
+  @doc("50011：调用方无权执行该群公告操作。")
   model AnnouncementPermissionDenied
     extends APIErrorResponse<50011, "Announcement operation is not allowed"> {}
 
@@ -351,7 +378,7 @@ namespace QujuApi.Errors.Chat {
   model PollOptionsInvalid
     extends APIErrorResponse<50012, "Poll options are invalid"> {}
 
-  @doc("50013：投票不存在、已截止或调用方不可参与。")
+  @doc("50013：投票已截止或调用方不可参与。")
   model PollUnavailable
     extends APIErrorResponse<50013, "Poll is unavailable"> {}
 
@@ -373,6 +400,13 @@ namespace QujuApi.Errors.Chat {
       50017,
       "Announcement {announcementId} is not visible"
     > {}
+
+  @doc("50018：消息引用的媒体文件不存在。")
+  model MediaReferenceInvalid
+    extends APIErrorResponse<50018, "Referenced media does not exist"> {}
+
+  @doc("50019：投票不存在。")
+  model PollNotFound extends APIErrorResponse<50019, "Poll does not exist"> {}
 }
 
 namespace QujuApi.Errors.Admin {

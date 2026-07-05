@@ -1,0 +1,356 @@
+<template>
+  <view class="page">
+    <scroll-view
+      class="scroll-area"
+      scroll-y
+      refresher-enabled
+      :refresher-triggered="refreshing"
+      @refresherrefresh="onRefresh"
+    >
+      <view v-if="loading" class="loading-text">{{ t('加载中') }}</view>
+
+      <view v-else-if="errorMsg" class="error-text">{{ errorMsg }}</view>
+
+      <view v-else-if="items.length === 0" class="empty-text">{{ t('暂无数据') }}</view>
+
+      <view v-else>
+        <view
+          v-for="item in items"
+          :key="item.registrationId"
+          class="card"
+          :class="'card-' + item.registrationStatus"
+          hover-class="card-hover"
+          @click="goDetail(item.activityId)"
+        >
+          <view class="card-inner">
+            <image
+              v-if="item.coverImage?.signedUrl"
+              class="card-cover"
+              :src="item.coverImage.signedUrl"
+              mode="aspectFill"
+            />
+            <view v-else class="card-cover card-cover-placeholder">
+              <text class="placeholder-icon">📋</text>
+            </view>
+
+            <view class="card-body">
+              <view class="card-header-row">
+                <text class="card-title">{{ item.title }}</text>
+                <text class="status-tag" :class="'status-' + item.registrationStatus">{{
+                  statusText(item.registrationStatus)
+                }}</text>
+              </view>
+
+              <view v-if="item.tags.length > 0" class="card-tags">
+                <text v-for="tag in item.tags.slice(0, 3)" :key="tag" class="tag">{{ tag }}</text>
+              </view>
+
+              <view class="card-meta">
+                <text class="meta-item">{{ formatDate(item.startAt) }}</text>
+                <text class="meta-sep">|</text>
+                <text class="meta-item">{{ item.location.city }}</text>
+              </view>
+
+              <view class="card-bottom">
+                <view class="card-bottom-left">
+                  <text class="fee" :class="{ free: !item.feeAmount }">{{
+                    item.feeAmount ? '¥' + item.feeAmount : t('activityDetail.free')
+                  }}</text>
+                  <text class="registered">{{ item.registeredCount }}/{{ item.capacity }}人</text>
+                </view>
+                <text class="meta-item" style="font-size: 20rpx">{{
+                  t('myRegistrations.registrationTime') + ' ' + formatDate(item.registeredAt)
+                }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view></scroll-view
+    >
+  </view>
+</template>
+
+<script setup lang="ts">
+/**
+ * 我的报名
+ *
+ * 展示用户已报名的活动列表及报名状态。
+ * API: GET /activities/registrations/mine
+ * 前置条件：用户已登录
+ * 后置条件：加载成功后展示报名数据
+ */
+import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { useI18n } from 'vue-i18n'
+import { api, BusinessError } from '@/api'
+import { getErrorMessage } from '@/utils/error'
+import { formatDate } from '@/utils/date'
+
+const { t } = useI18n()
+
+const loading = ref(true)
+const refreshing = ref(false)
+const errorMsg = ref('')
+
+const statusMap: Record<string, string> = {
+  registered: t('myRegistrations.statusRegistered'),
+  checkedIn: t('myRegistrations.statusCheckedIn'),
+  canceled: t('myRegistrations.statusCanceled'),
+  waiting: t('myRegistrations.statusWaiting'),
+  waitingConfirmation: t('myRegistrations.statusWaitingConfirmation'),
+}
+
+interface RegistrationItem {
+  registrationId: string
+  activityId: string
+  title: string
+  tags: string[]
+  startAt: string
+  endAt: string
+  location: { city: string; address: string; placeName?: string }
+  coverImage: { signedUrl: string; mediaId: string } | null
+  feeAmount?: number
+  capacity: number
+  registeredCount: number
+  registrationStatus: string
+  registeredAt: string
+  runtimeStatus: string
+  waitingRank?: number
+  confirmationDeadline?: string
+}
+
+const items = ref<RegistrationItem[]>([])
+
+async function loadData(): Promise<void> {
+  loading.value = true
+  errorMsg.value = ''
+  try {
+    const result = await api.get('/activities/registrations/mine')
+    items.value = (result.items ?? []) as RegistrationItem[]
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      errorMsg.value = getErrorMessage(error.code)
+    } else {
+      errorMsg.value = getErrorMessage(0, '加载失败')
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+async function onRefresh(): Promise<void> {
+  refreshing.value = true
+  errorMsg.value = ''
+  try {
+    const result = await api.get('/activities/registrations/mine')
+    items.value = (result.items ?? []) as RegistrationItem[]
+  } catch {
+    /* 静默 */
+  } finally {
+    refreshing.value = false
+  }
+}
+
+onShow(() => {
+  loadData()
+})
+
+function statusText(status: string): string {
+  return statusMap[status] ?? status
+}
+
+function goDetail(activityId: string): void {
+  uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
+}
+</script>
+
+<style scoped>
+.page {
+  background-color: #f7f8fa;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.loading-text,
+.error-text,
+.empty-text {
+  text-align: center;
+  font-size: 28rpx;
+  color: #969799;
+  padding-top: 120rpx;
+}
+
+.error-text {
+  color: #ee0a24;
+}
+
+.card {
+  background-color: #fff;
+  margin: 16rpx 32rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.card-hover {
+  opacity: 0.85;
+}
+
+.card-canceled {
+  opacity: 0.65;
+}
+
+.card-checkedIn {
+  border-left: 6rpx solid #07c160;
+}
+
+.card-inner {
+  display: flex;
+  flex-direction: row;
+}
+
+.card-cover {
+  width: 200rpx;
+  height: 160rpx;
+  flex-shrink: 0;
+}
+
+.card-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f2f3f5;
+}
+
+.placeholder-icon {
+  font-size: 44rpx;
+}
+
+.card-body {
+  flex: 1;
+  padding: 16rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8rpx;
+}
+
+.card-title {
+  font-size: 28rpx;
+  color: #323233;
+  font-weight: 600;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-tag {
+  font-size: 20rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 4rpx;
+  flex-shrink: 0;
+}
+
+.status-registered {
+  background-color: #e6f0fe;
+  color: #1989fa;
+}
+
+.status-checkedIn {
+  background-color: #ebf9e9;
+  color: #07c160;
+}
+
+.status-canceled {
+  background-color: #ebedf0;
+  color: #969799;
+}
+
+.status-waiting,
+.status-waitingConfirmation {
+  background-color: #fff7e6;
+  color: #ed6a0c;
+}
+
+.card-tags {
+  display: flex;
+  gap: 6rpx;
+  flex-wrap: wrap;
+  margin-top: 6rpx;
+}
+
+.tag {
+  font-size: 20rpx;
+  color: #1989fa;
+  background-color: #e6f0fe;
+  padding: 2rpx 10rpx;
+  border-radius: 4rpx;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  margin-top: 6rpx;
+}
+
+.meta-item {
+  font-size: 22rpx;
+  color: #969799;
+}
+
+.meta-sep {
+  font-size: 18rpx;
+  color: #c8c9cc;
+}
+
+.card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6rpx;
+}
+
+.card-bottom-left {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.fee {
+  font-size: 24rpx;
+  color: #ee0a24;
+  font-weight: 600;
+}
+
+.fee.free {
+  color: #07c160;
+}
+
+.registered {
+  font-size: 20rpx;
+  color: #969799;
+}
+</style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
+}
+</style>

@@ -80,6 +80,9 @@ model ActivityUpsertRequest {
 
   @doc("活动图片媒体文件标识列表，第一张为封面。")
   imageIds?: EntityId[];
+
+  @doc("是否要求签到用户提供位置信息进行位置校验。true 时签到必须传入 currentLocation，且服务端校验距离。")
+  requireLocationCheck?: boolean;
 }
 
 @doc("活动草稿保存请求。草稿阶段允许只填写部分活动信息，提交审核时再校验完整性。")
@@ -122,6 +125,9 @@ model ActivityDraftUpsertRequest {
 
   @doc("活动图片媒体文件标识列表。")
   imageIds?: EntityId[];
+
+  @doc("是否要求签到用户提供位置信息进行位置校验。")
+  requireLocationCheck?: boolean;
 }
 
 @doc("活动摘要。")
@@ -144,7 +150,7 @@ model ActivitySummary {
   @doc("活动地点。")
   location: LocationInfo;
 
-  @doc("活动封面图片。")
+  @doc("活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。")
   coverImage?: MediaFile;
 
   @doc("活动费用金额。")
@@ -156,11 +162,37 @@ model ActivitySummary {
   @doc("活动进行状态。")
   runtimeStatus: ActivityRuntimeStatus;
 
-  @doc("已报名人数。")
+  @doc("已确认参加人数（含已报名与已签到），不含候补待确认。")
   registeredCount: int32;
+
+  @doc("当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。")
+  occupiedCount: int32;
 
   @doc("活动人数上限。")
   capacity: int32;
+
+  @doc("是否要求签到用户提供位置信息进行位置校验。")
+  requireLocationCheck: boolean;
+}
+
+@doc("我报名的活动摘要，包含活动信息与当前用户的报名状态。")
+model RegisteredActivitySummary {
+  ...ActivitySummary;
+
+  @doc("报名记录标识。")
+  registrationId: EntityId;
+
+  @doc("当前用户在该活动中的报名状态。")
+  registrationStatus: RegistrationStatus;
+
+  @doc("报名或候补创建时间。")
+  registeredAt: DateTimeString;
+
+  @doc("候补排位，非候补状态时为空。")
+  waitingRank?: int32;
+
+  @doc("候补名额确认截止时间，仅候补待确认时返回。")
+  confirmationDeadline?: DateTimeString;
 }
 
 @doc("当前登录用户相对于指定活动的参与和可操作状态。")
@@ -185,6 +217,12 @@ model ActivityParticipationState {
 
   @doc("当前用户是否可以扫码签到。")
   canCheckIn: boolean;
+
+  @doc("当前用户是否可以评价该活动。由后端根据活动结束时间、签到状态、是否已评价、评价窗口是否过期等规则计算。")
+  canReview: boolean;
+
+  @doc("评价入口关闭时间。仅 canReview 为 true 或用户满足评价基础条件时返回，用于前端展示剩余时间。")
+  reviewWindowEndsAt?: DateTimeString;
 }
 
 @doc("活动详情。")
@@ -206,10 +244,10 @@ model ActivityDetail {
   @doc("活动发起人展示名称。")
   organizerName: string;
 
-  @doc("活动图片列表。")
+  @doc("活动图片列表。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。")
   images: MediaFile[];
 
-  @doc("当前候补人数。")
+  @doc("当前候补人数（含候补排队与候补待确认），候补待确认占用名额。")
   waitingCount: int32;
 
   @doc("AI 内容安全审核结果快照。未执行或暂不支持 AI 审核时为空。")
@@ -263,7 +301,10 @@ model ActivityDraftDetail {
   @doc("参与者最低年龄要求。")
   minAge?: int32;
 
-  @doc("活动图片列表。")
+  @doc("是否要求签到用户提供位置信息进行位置校验。")
+  requireLocationCheck?: boolean;
+
+  @doc("活动图片列表。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。")
   images: MediaFile[];
 
   @doc("活动审核状态。")
@@ -317,7 +358,7 @@ model ActivityTemplate {
   @doc("模板默认人数上限。")
   defaultCapacity: int32;
 
-  @doc("模板默认活动封面图片。")
+  @doc("模板默认活动封面图片。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   defaultCoverImage: MediaFile;
 }
 
@@ -420,7 +461,7 @@ model ActivityParticipant {
   @doc("参与者昵称。")
   nickname: string;
 
-  @doc("参与者头像。")
+  @doc("参与者头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("当前报名或签到状态。")
@@ -454,12 +495,12 @@ model CheckInQrCode {
   expiresAt: DateTimeString;
 }
 
-@doc("扫码签到请求，二维码有效，报名记录进入已签到状态，开启位置校验时当前位置必须在活动地点附近。")
+@doc("扫码签到请求，二维码有效，报名记录进入已签到状态。若活动发起人设置了要求位置校验，则必须传入 currentLocation 且必须在活动地点附近。")
 model CheckInRequest {
   @doc("扫码得到的签到二维码 token。")
   qrCodeToken: string;
 
-  @doc("签到时用户当前位置，用于可选的位置校验。")
+  @doc("签到时用户当前位置。活动不要求位置校验时可不传；活动要求位置校验时必须传入。")
   currentLocation?: GeoPoint;
 }
 
@@ -519,7 +560,7 @@ model ActivitySummaryPost {
   @doc("活动总结正文。")
   content: string;
 
-  @doc("活动总结图片列表。")
+  @doc("活动总结图片列表。签名 URL 用途为 summaryImage，对外消费路径待实现。")
   images: MediaFile[];
 
   @doc("活动总结图片标签。")
@@ -565,12 +606,32 @@ model ActivityReview {
   createdAt: DateTimeString;
 }
 
+@doc("活动评价列表项，在评价基础上补充评价用户展示昵称。")
+model ActivityReviewListItem {
+  ...ActivityReview;
+
+  @doc("评价用户展示昵称。")
+  nickname: string;
+}
+
+@doc("当前登录用户对指定活动的评价查询结果。")
+model MyActivityReviewResult {
+  @doc("评价内容，当前用户未评价时为空。")
+  review?: ActivityReview;
+}
+
+@doc("当前登录用户对指定活动发布的总结查询结果。")
+model MyActivitySummaryResult {
+  @doc("总结内容，当前用户未发布时为空。")
+  summary?: ActivitySummaryPost;
+}
+
 @route("/activities")
 @tag("活动")
 interface ActivityOperations {
   @post
   @route("/media/images")
-  @doc("上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。")
+  @doc("上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。返回的 signedUrl 为 owner 预览地址，绑定草稿后升级为 activityOwner、审核发布后升级为 publicAccess 并因 accessVersion 递增而失效，客户端应从活动接口获取当前 URL。")
   uploadActivityImage(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
 
@@ -580,7 +641,7 @@ interface ActivityOperations {
 
   @post
   @route("/media/review-images")
-  @doc("上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。")
+  @doc("上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。返回的 signedUrl 为 owner 私有地址，仅上传者本人与管理员可访问，对外消费路径待实现。")
   uploadActivityReviewImage(@multipartBody body: MediaUploadRequest): APIResult<
     MediaFile,
 
@@ -690,6 +751,13 @@ interface ActivityOperations {
   listMyActivities(...PageQuery): APIResponse<PageResult<ActivitySummary>>;
 
   @get
+  @route("/registrations/mine")
+  @doc("获取我报名的活动列表，调用方已登录，分页返回本人报名的活动及报名状态。")
+  listMyRegistrations(
+    ...PageQuery,
+  ): APIResponse<PageResult<RegisteredActivitySummary>>;
+
+  @get
   @route("/{activityId}")
   @doc("获取活动详情，活动存在且调用方可见，返回完整展示信息，下架活动仅管理员或发起人可见。")
   getActivity(@path activityId: EntityId): APIResult<
@@ -766,7 +834,7 @@ interface ActivityOperations {
 
   @post
   @route("/{activityId}/check-ins")
-  @doc("扫码签到，二维码有效且用户已报名，记录签到时间，需要位置校验时必须处于活动地点附近。")
+  @doc("扫码签到，二维码有效且用户已报名，记录签到时间。活动要求位置校验时用户必须传入当前位置且在活动地点附近。")
   checkIn(@path activityId: EntityId, @body body: CheckInRequest): APIResult<
     CheckInRecord,
 
@@ -774,6 +842,7 @@ interface ActivityOperations {
       | QujuApi.Errors.Activities.RegistrationNotFound
       | QujuApi.Errors.Activities.CheckInQrCodeInvalid
       | QujuApi.Errors.Activities.CheckInLocationInvalid
+      | QujuApi.Errors.Activities.CheckInLocationRequired
   >;
 
   @get
@@ -791,9 +860,25 @@ interface ActivityOperations {
   @doc("导出签到数据，调用方为活动发起人或管理员，返回二进制表格文件，该接口允许不使用 APIResponse 包装。")
   exportCheckIns(@path activityId: EntityId): bytes;
 
+  @get
+  @route("/{activityId}/summaries")
+  @doc("获取活动图文总结列表，活动存在且调用方可见，分页返回已发布的活动总结，用于活动详情页展示回顾内容。")
+  listSummaries(@path activityId: EntityId, ...PageQuery): APIResult<
+    PageResult<ActivitySummaryPost>,
+    QujuApi.Errors.Activities.ActivityNotVisible
+  >;
+
+  @get
+  @route("/{activityId}/summaries/mine")
+  @doc("获取当前登录用户对指定活动发布的总结，调用方已登录，未发布时 summary 为空。")
+  getMySummary(@path activityId: EntityId): APIResult<
+    MyActivitySummaryResult,
+    QujuApi.Errors.Activities.ActivityNotVisible
+  >;
+
   @post
   @route("/{activityId}/summaries")
-  @doc("发布活动图文总结，活动已结束且调用方为发起人，发布总结，AI 图片标签必须经人工确认。")
+  @doc("发布活动图文总结，活动已结束且调用方为发起人，每个活动仅允许发布一篇总结，AI 图片标签必须经人工确认。")
   createSummary(
     @path activityId: EntityId,
     @body body: ActivitySummaryPostRequest,
@@ -804,6 +889,23 @@ interface ActivityOperations {
       | QujuApi.Errors.Activities.ActivityPermissionDenied
       | QujuApi.Errors.Activities.ActivityNotEnded
       | QujuApi.Errors.Activities.MediaFileUnavailable
+      | QujuApi.Errors.Activities.DuplicateSummary
+  >;
+
+  @get
+  @route("/{activityId}/reviews")
+  @doc("获取活动评价列表，活动存在且调用方可见，分页返回参与者评价，用于活动详情页展示评价摘要。")
+  listReviews(@path activityId: EntityId, ...PageQuery): APIResult<
+    PageResult<ActivityReviewListItem>,
+    QujuApi.Errors.Activities.ActivityNotVisible
+  >;
+
+  @get
+  @route("/{activityId}/reviews/mine")
+  @doc("获取当前登录用户对指定活动的评价，调用方已登录，未评价时 review 为空。")
+  getMyReview(@path activityId: EntityId): APIResult<
+    MyActivityReviewResult,
+    QujuApi.Errors.Activities.ActivityNotVisible
   >;
 
   @post

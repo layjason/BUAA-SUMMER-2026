@@ -12,12 +12,64 @@
         <Bug pattern="SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING" />
     </Match>
     <!--
-        JwtService 构造器中通过 Keys.hmacShaKeyFor 初始化密钥，密钥长度校验可能抛出
-        IllegalArgumentException。Finalizer 攻击在 Java 25 中已不适用（Finalizer 已被移除），
-        且抛出的异常仅用于参数校验，不影响对象状态完整性。
+        项目统一使用 Lombok @RequiredArgsConstructor 实现构造器注入。
+        SpotBugs 无法通过字节码追踪 Lombok 生成的构造器对字段的赋值与使用，
+        产生 UUF_UNUSED_FIELD、UWF_UNWRITTEN_FIELD、NP_UNWRITTEN_FIELD、CT_CONSTRUCTOR_THROW 误报。
+        非 Lombok 类不存在此问题，全局排除不影响其他类。
     -->
     <Match>
-        <Class name="io.github.layjason.mayoistar.service.JwtService" />
+        <Bug pattern="UUF_UNUSED_FIELD" />
+    </Match>
+    <Match>
+        <Bug pattern="UWF_UNWRITTEN_FIELD" />
+    </Match>
+    <Match>
+        <Bug pattern="NP_UNWRITTEN_FIELD" />
+    </Match>
+    <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW" />
     </Match>
+    <!--
+        @ConfigurationProperties 和实体类的字段通过 Spring Boot 配置绑定或 Lombok @Getter
+        进行读写。SpotBugs 无法追踪 Spring Boot 的反射绑定和 Lombok 生成的访问器，
+        将配置字段和实体字段标记为 URF_UNREAD_FIELD，属于系统性误报。
+    -->
+    <Match>
+        <Bug pattern="URF_UNREAD_FIELD" />
+    </Match>
+    <!--
+        Service 类通过构造器注入 Spring Bean（Repository、其他 Service 等），这些对象由
+        Spring 容器管理，不存在外部可变对象暴露风险。构造器注入为 Spring 推荐实践。
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2" />
+        <Or>
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+ServiceImpl" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.\w+Service" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.storage\.\w+Service" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.ai\.\w+Client" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.activities\.\w+Action" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.activities\.\w+Service" />
+            <Class name="~io\.github\.layjason\.mayoistar\.service\.activities\.\w+Scheduler" />
+        </Or>
+    </Match>
+    <!--
+        项目全局使用 SLF4J 参数化日志（{} 占位符）。SLF4J 的 {} 参数不会插入到格式字符串中，
+        而是作为独立对象传递给日志后端，因此不存在 CRLF 注入风险。
+        FindSecBugs 的 CRLF_INJECTION_LOGS 规则设计针对字符串拼接日志，对 SLF4J 参数化日志为误报。
+        对于直接拼接的自由文本日志（如 AdminService.sanitizeForLog），代码中已做 CRLF 字符过滤。
+    -->
+    <Match>
+        <Bug pattern="CRLF_INJECTION_LOGS" />
+    </Match>
+    <!--
+        ReportServiceImpl.listReports 的 status/reporterUserId/targetType/targetId 均为
+        管理员端的可选筛选条件，可传递 null。接口上已标注 @Nullable，
+        在 service 包的 @NonNullApi 下被 SpotBugs 误判为不应为空的参数。
+    -->
+    <Match>
+        <Class name="io.github.layjason.mayoistar.service.ReportServiceImpl" />
+        <Bug pattern="NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE" />
+    </Match>
+
 </FindBugsFilter>

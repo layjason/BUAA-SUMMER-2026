@@ -1,0 +1,2019 @@
+{
+  "info": {
+    "_postman_id": "a3b2c1d4-e5f6-47a8-b901-c2d3e4f5a607",
+    "name": "MayoiStar Activities",
+    "description": "活动管理后端 API 测试集合。覆盖草稿管理、活动发布、报名签到、评价总结、后台审核等全部端点。导入 Yaak 后配合 MayoiStar.Activities.local.postman_environment.json 使用。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 登录与会话变量",
+      "item": [
+        {
+          "name": "个人用户登录 test_user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{testUserEmail}}\",\"password\":\"{{testUserPassword}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/identity/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "管理员登录 admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{adminUsername}}\",\"password\":\"{{adminPassword}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "个人用户登录 test_peer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{testPeerEmail}}\",\"password\":\"{{testPeerPassword}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/identity/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 活动草稿管理",
+      "item": [
+        {
+          "name": "获取活动模板列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/templates?page=1&pageSize=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "templates"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "基于模板创建草稿",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/templates/{{templateId}}/drafts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "templates",
+                "{{templateId}}",
+                "drafts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "保存活动草稿（新建）",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"周末羽毛球\", \"tags\": [\"运动\", \"球类\"], \"introduction\": \"周末一起打羽毛球，新手友好\", \"startAt\": \"2099-08-15T09:00:00Z\", \"endAt\": \"2099-08-15T12:00:00Z\", \"location\": {\"point\": {\"longitude\": 116.397, \"latitude\": 39.908}, \"city\": \"北京\", \"address\": \"海淀区学院路37号\", \"placeName\": \"北航体育馆\"}, \"safetyNotice\": \"请穿着运动鞋，自备球拍\", \"capacity\": 20, \"registrationDeadline\": \"2099-08-14T18:00:00Z\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/drafts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "drafts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "保存活动草稿（仅部分字段）",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"未完成的活动草稿\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/drafts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "drafts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取我的草稿列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/drafts?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "drafts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取草稿详情",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/drafts/{{draftId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "drafts",
+                "{{draftId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "更新草稿",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"周末羽毛球（更新版）\", \"introduction\": \"更新后的活动简介\", \"capacity\": 30}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/drafts/{{draftId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "drafts",
+                "{{draftId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "上传活动图片",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{activityImageFile}}"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/media/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "media",
+                "images"
+              ]
+            }
+          }
+        },
+        {
+          "name": "克隆历史活动",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/clone",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "clone"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 活动发布与发现",
+      "item": [
+        {
+          "name": "提交活动审核",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{draftId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{draftId}}",
+                "submit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "首页信息流 - 推荐",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/feed?tab=recommended&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "feed"
+              ],
+              "query": [
+                {
+                  "key": "tab",
+                  "value": "recommended"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "首页信息流 - 最新",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/feed?tab=latest&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "feed"
+              ],
+              "query": [
+                {
+                  "key": "tab",
+                  "value": "latest"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "首页信息流 - 附近（按距离）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/feed?tab=nearby&longitude=116.397&latitude=39.908&distanceMeters=5000&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "feed"
+              ],
+              "query": [
+                {
+                  "key": "tab",
+                  "value": "nearby"
+                },
+                {
+                  "key": "longitude",
+                  "value": "116.397"
+                },
+                {
+                  "key": "latitude",
+                  "value": "39.908"
+                },
+                {
+                  "key": "distanceMeters",
+                  "value": "5000"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "高级搜索活动（关键词+城市+时间）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/search?keyword=羽毛球&city=北京&startAtFrom=2099-01-01T00:00:00Z&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "羽毛球"
+                },
+                {
+                  "key": "city",
+                  "value": "北京"
+                },
+                {
+                  "key": "startAtFrom",
+                  "value": "2099-01-01T00:00:00Z"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "高级搜索活动（费用范围）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/search?minFee=0&maxFee=100&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "minFee",
+                  "value": "0"
+                },
+                {
+                  "key": "maxFee",
+                  "value": "100"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "高级搜索活动（距离筛选）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/search?longitude=116.397&latitude=39.908&distanceMeters=3000&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "longitude",
+                  "value": "116.397"
+                },
+                {
+                  "key": "latitude",
+                  "value": "39.908"
+                },
+                {
+                  "key": "distanceMeters",
+                  "value": "3000"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "地图活动点位",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/map?longitude=116.397&latitude=39.908&distanceMeters=10000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "map"
+              ],
+              "query": [
+                {
+                  "key": "longitude",
+                  "value": "116.397"
+                },
+                {
+                  "key": "latitude",
+                  "value": "39.908"
+                },
+                {
+                  "key": "distanceMeters",
+                  "value": "10000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取活动详情",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取参与状态",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/participation-state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "participation-state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "我创建的活动列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/mine?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "mine"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "我报名的活动列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/registrations/mine?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "registrations",
+                "mine"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 报名与签到",
+      "item": [
+        {
+          "name": "报名活动",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"acceptedSafetyNotice\": true, \"participantNote\": \"第一次参加，请多关照\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "registrations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "查看活动参与人列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/participants?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "participants"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "取消报名",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/registrations/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "registrations",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "重新报名（取消后）",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"acceptedSafetyNotice\": true}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "registrations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "确认候补名额",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"confirmed\": true}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/waiting-confirmations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "waiting-confirmations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "生成签到二维码",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/check-in-qrcode",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "check-in-qrcode"
+              ]
+            }
+          }
+        },
+        {
+          "name": "扫码签到（含位置校验）",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"qrCodeToken\": \"{{qrCodeToken}}\", \"currentLocation\": {\"longitude\": 116.397, \"latitude\": 39.908}}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/check-ins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "check-ins"
+              ]
+            }
+          }
+        },
+        {
+          "name": "扫码签到（不含位置）",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"qrCodeToken\": \"{{qrCodeToken}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/check-ins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "check-ins"
+              ]
+            }
+          }
+        },
+        {
+          "name": "查看签到列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/check-ins?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "check-ins"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "导出签到数据",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/check-ins/export",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "check-ins",
+                "export"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 活动评价与总结",
+      "item": [
+        {
+          "name": "上传活动评价图片",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{activityImageFile}}"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/media/review-images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "media",
+                "review-images"
+              ]
+            }
+          }
+        },
+        {
+          "name": "评价活动",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"rating\": 5, \"content\": \"组织得很好，场地不错\", \"tags\": [\"气氛好\", \"水平适中\"]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "reviews"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取活动评价列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/reviews?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取我的评价",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/reviews/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "reviews",
+                "mine"
+              ]
+            }
+          }
+        },
+        {
+          "name": "发布活动图文总结",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"周末羽毛球活动总结\", \"content\": \"本次活动共20人参与，大家都很开心\", \"imageIds\": [\"{{activityMediaId}}\"], \"confirmedImageTags\": [{\"mediaId\": \"{{activityMediaId}}\", \"tags\": [\"运动\", \"羽毛球\"]}]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/summaries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "summaries"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取活动图文总结列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/summaries?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "summaries"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取我的总结",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/summaries/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "summaries",
+                "mine"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 后台活动管理",
+      "item": [
+        {
+          "name": "后台查询全部活动",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "后台按审核状态筛选活动",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities?reviewStatus=pending&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities"
+              ],
+              "query": [
+                {
+                  "key": "reviewStatus",
+                  "value": "pending"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "后台按进行状态筛选活动",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities?runtimeStatus=registering&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities"
+              ],
+              "query": [
+                {
+                  "key": "runtimeStatus",
+                  "value": "registering"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "后台按关键词搜索活动",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities?keyword=羽毛球&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "羽毛球"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "后台查询指定用户的活动",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{testUserId}}/activities?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{testUserId}}",
+                "activities"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "后台获取活动详情",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities/{{activityId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities",
+                "{{activityId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "后台审核活动 - 通过",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"result\": \"approved\", \"reason\": \"QA：活动内容符合规范\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities/{{activityId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities",
+                "{{activityId}}",
+                "review"
+              ]
+            }
+          }
+        },
+        {
+          "name": "后台审核活动 - 驳回",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"result\": \"rejected\", \"reason\": \"QA：活动时间与其他活动冲突\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities/{{activityId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities",
+                "{{activityId}}",
+                "review"
+              ]
+            }
+          }
+        },
+        {
+          "name": "后台审核活动 - 要求修改",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"result\": \"changeRequired\", \"reason\": \"QA：请补充安全须知内容\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities/{{activityId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities",
+                "{{activityId}}",
+                "review"
+              ]
+            }
+          }
+        },
+        {
+          "name": "后台下架活动",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"reason\": \"QA：活动存在违规内容\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities/{{activityId}}/take-down",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities",
+                "{{activityId}}",
+                "take-down"
+              ]
+            }
+          }
+        },
+        {
+          "name": "后台恢复活动",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities/{{activityId}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities",
+                "{{activityId}}",
+                "restore"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 异常场景测试",
+      "item": [
+        {
+          "name": "异常 - 提交不完整的草稿审核 - 应返回 20004",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/00000000-0000-0000-0000-000000000001/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "00000000-0000-0000-0000-000000000001",
+                "submit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 报名不存在的活动 - 应返回 20002",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"acceptedSafetyNotice\": true}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/00000000-0000-0000-0000-000000000000/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "00000000-0000-0000-0000-000000000000",
+                "registrations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 重复报名 - 应返回 20007",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"acceptedSafetyNotice\": true}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "registrations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 取消不存在的报名 - 应返回 20011",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/registrations/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "registrations",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 签到二维码无效 - 应返回 20013",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"qrCodeToken\": \"not-a-valid-token\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/check-ins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "check-ins"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 获取不存在草稿详情 - 应返回 20002",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/drafts/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "drafts",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 查看不存在活动评价 - 应返回 20002",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/00000000-0000-0000-0000-000000000000/reviews?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "00000000-0000-0000-0000-000000000000",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 对未参与的活动进行评价 - 应返回 20011",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"rating\": 3, \"content\": \"没参加但也想评价\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "reviews"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 非发起人生成签到二维码 - 应返回 20003",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{peerAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/check-in-qrcode",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "check-in-qrcode"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 后台审核不存在的活动 - 应返回 60008",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"result\": \"approved\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities/00000000-0000-0000-0000-000000000000/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities",
+                "00000000-0000-0000-0000-000000000000",
+                "review"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 后台下架不存在的活动 - 应返回 60008",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"reason\": \"QA：测试下架不存在的活动\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities/00000000-0000-0000-0000-000000000000/take-down",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities",
+                "00000000-0000-0000-0000-000000000000",
+                "take-down"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 提交已审核活动 - 应返回 20005",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "submit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "异常 - 未登录访问",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activities/feed?tab=recommended&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "feed"
+              ],
+              "query": [
+                {
+                  "key": "tab",
+                  "value": "recommended"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

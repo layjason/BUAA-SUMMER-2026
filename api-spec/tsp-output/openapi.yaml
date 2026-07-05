@@ -10,6 +10,7 @@ tags:
   - name: 好友社群
   - name: 即时通讯
   - name: 后台管理
+  - name: 通用
 paths:
   /activities/drafts:
     post:
@@ -364,7 +365,7 @@ paths:
   /activities/media/images:
     post:
       operationId: ActivityOperations_uploadActivityImage
-      description: 上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。
+      description: 上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。返回的 signedUrl 为 owner 预览地址，绑定草稿后升级为 activityOwner、审核发布后升级为 publicAccess 并因 accessVersion 递增而失效，客户端应从活动接口获取当前 URL。
       parameters: []
       responses:
         '200':
@@ -411,7 +412,7 @@ paths:
   /activities/media/review-images:
     post:
       operationId: ActivityOperations_uploadActivityReviewImage
-      description: 上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。
+      description: 上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。返回的 signedUrl 为 owner 私有地址，仅上传者本人与管理员可访问，对外消费路径待实现。
       parameters: []
       responses:
         '200':
@@ -497,6 +498,69 @@ paths:
                         type: array
                         items:
                           $ref: '#/components/schemas/Activities.ActivitySummary'
+                        description: 当前页数据。
+                      total:
+                        type: integer
+                        format: int64
+                        description: 匹配总数。
+                      page:
+                        type: integer
+                        format: int32
+                        description: 当前页码。
+                      pageSize:
+                        type: integer
+                        format: int32
+                        description: 每页数量。
+                      totalPages:
+                        type: integer
+                        format: int32
+                        description: 匹配总页数。
+                    description: 响应数据。
+                description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+      tags:
+        - 活动
+  /activities/registrations/mine:
+    get:
+      operationId: ActivityOperations_listMyRegistrations
+      description: 获取我报名的活动列表，调用方已登录，分页返回本人报名的活动及报名状态。
+      parameters:
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - message
+                  - data
+                properties:
+                  code:
+                    type: number
+                    enum:
+                      - 200
+                    description: 平台响应代码，成功响应固定为 200。
+                  message:
+                    type: string
+                    enum:
+                      - For Super Earth!
+                    description: 平台响应消息，成功响应固定为 For Super Earth!。
+                  data:
+                    type: object
+                    required:
+                      - items
+                      - total
+                      - page
+                      - pageSize
+                      - totalPages
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Activities.RegisteredActivitySummary'
                         description: 当前页数据。
                       total:
                         type: integer
@@ -803,7 +867,7 @@ paths:
   /activities/{activityId}/check-ins:
     post:
       operationId: ActivityOperations_checkIn
-      description: 扫码签到，二维码有效且用户已报名，记录签到时间，需要位置校验时必须处于活动地点附近。
+      description: 扫码签到，二维码有效且用户已报名，记录签到时间。活动要求位置校验时用户必须传入当前位置且在活动地点附近。
       parameters:
         - name: activityId
           in: path
@@ -846,6 +910,7 @@ paths:
                   - $ref: '#/components/schemas/Errors.Activities.RegistrationNotFound'
                   - $ref: '#/components/schemas/Errors.Activities.CheckInQrCodeInvalid'
                   - $ref: '#/components/schemas/Errors.Activities.CheckInLocationInvalid'
+                  - $ref: '#/components/schemas/Errors.Activities.CheckInLocationRequired'
       tags:
         - 活动
       requestBody:
@@ -1211,6 +1276,79 @@ paths:
       tags:
         - 活动
   /activities/{activityId}/reviews:
+    get:
+      operationId: ActivityOperations_listReviews
+      description: 获取活动评价列表，活动存在且调用方可见，分页返回参与者评价，用于活动详情页展示评价摘要。
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Activities.ActivityReviewListItem'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Activities.ActivityNotVisible'
+      tags:
+        - 活动
     post:
       operationId: ActivityOperations_reviewActivity
       description: 评价活动，调用方已参与且评价入口仍有效，保存评价，每个用户仅能评价一次。
@@ -1264,6 +1402,51 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Activities.ActivityReviewRequest'
+  /activities/{activityId}/reviews/mine:
+    get:
+      operationId: ActivityOperations_getMyReview
+      description: 获取当前登录用户对指定活动的评价，调用方已登录，未评价时 review 为空。
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Activities.MyActivityReviewResult'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Activities.ActivityNotVisible'
+      tags:
+        - 活动
   /activities/{activityId}/submit:
     post:
       operationId: ActivityOperations_submitActivity
@@ -1313,9 +1496,82 @@ paths:
       tags:
         - 活动
   /activities/{activityId}/summaries:
+    get:
+      operationId: ActivityOperations_listSummaries
+      description: 获取活动图文总结列表，活动存在且调用方可见，分页返回已发布的活动总结，用于活动详情页展示回顾内容。
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Activities.ActivitySummaryPost'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Activities.ActivityNotVisible'
+      tags:
+        - 活动
     post:
       operationId: ActivityOperations_createSummary
-      description: 发布活动图文总结，活动已结束且调用方为发起人，发布总结，AI 图片标签必须经人工确认。
+      description: 发布活动图文总结，活动已结束且调用方为发起人，每个活动仅允许发布一篇总结，AI 图片标签必须经人工确认。
       parameters:
         - name: activityId
           in: path
@@ -1358,6 +1614,7 @@ paths:
                   - $ref: '#/components/schemas/Errors.Activities.ActivityPermissionDenied'
                   - $ref: '#/components/schemas/Errors.Activities.ActivityNotEnded'
                   - $ref: '#/components/schemas/Errors.Activities.MediaFileUnavailable'
+                  - $ref: '#/components/schemas/Errors.Activities.DuplicateSummary'
       tags:
         - 活动
       requestBody:
@@ -1366,6 +1623,51 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Activities.ActivitySummaryPostRequest'
+  /activities/{activityId}/summaries/mine:
+    get:
+      operationId: ActivityOperations_getMySummary
+      description: 获取当前登录用户对指定活动发布的总结，调用方已登录，未发布时 summary 为空。
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Activities.MyActivitySummaryResult'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Activities.ActivityNotVisible'
+      tags:
+        - 活动
   /activities/{activityId}/waiting-confirmations:
     post:
       operationId: ActivityOperations_confirmWaitingSeat
@@ -2844,7 +3146,7 @@ paths:
   /ai/image-classifications:
     post:
       operationId: AiOperations_classifyImages
-      description: 分类活动或总结图片，图片已上传，返回建议标签，标签需由人工确认后才成为最终标签。
+      description: 提交图片分类任务（异步）。已上传的图片通过后台 GPU 集群分类，返回 taskId 供轮询 GET /ai/image-classifications/{taskId} 获取结果。已分类过的图片直接命中缓存无需重复推理。
       parameters: []
       responses:
         '200':
@@ -2871,7 +3173,7 @@ paths:
                         description: 平台响应消息，成功响应固定为 For Super Earth!。
                       data:
                         allOf:
-                          - $ref: '#/components/schemas/Ai.ImageClassificationResult'
+                          - $ref: '#/components/schemas/Ai.ImageClassificationSubmitResponse'
                         description: 响应数据。
                     description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
                   - $ref: '#/components/schemas/BadRequestResponse'
@@ -2880,7 +3182,6 @@ paths:
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
                   - $ref: '#/components/schemas/Errors.Ai.AiRateLimited'
                   - $ref: '#/components/schemas/Errors.Ai.AiServiceUnavailable'
-                  - $ref: '#/components/schemas/Errors.Ai.AiOutputUnavailable'
                   - $ref: '#/components/schemas/Errors.Ai.ImageMediaUnavailable'
       tags:
         - AI 辅助
@@ -2890,6 +3191,99 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Ai.ImageClassificationRequest'
+  /ai/image-classifications/media/{mediaId}:
+    get:
+      operationId: AiOperations_getClassificationByMediaId
+      description: 按媒体 ID 查询单张图片的分类缓存。命中缓存时返回包括 classifiedAt 的完整分类结果，未命中时返回 30004。
+      parameters:
+        - name: mediaId
+          in: path
+          required: true
+          description: 媒体文件 ID。
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Ai.MediaClassificationResponse'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Ai.AiTaskNotFound'
+      tags:
+        - AI 辅助
+  /ai/image-classifications/{taskId}:
+    get:
+      operationId: AiOperations_getClassifyTaskResult
+      description: 查询图片分类任务结果。pending 时仅返回状态，succeeded 时返回所有 media（含缓存命中）的分类结果，failed/timeout 时包含错误信息。任务超时时间为 30 秒。
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          description: 图片分类任务 ID，由 POST /ai/image-classifications 返回。
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Ai.ImageClassificationTaskQueryResponse'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Ai.AiTaskNotFound'
+                  - $ref: '#/components/schemas/Errors.Ai.AiTaskTimeout'
+      tags:
+        - AI 辅助
   /chat/conversations:
     get:
       operationId: ChatOperations_listConversations
@@ -3035,7 +3429,7 @@ paths:
         - 即时通讯
     post:
       operationId: ChatOperations_sendMessage
-      description: 发送消息，调用方属于会话且消息内容合法，创建消息并通知接收方，位置消息必须包含完整地点信息。
+      description: 发送消息，调用方属于会话且消息内容合法，创建消息并通知接收方，位置消息必须包含完整地点信息。成功后应向会话内其他成员推送 messageCreated 实时事件。
       parameters:
         - name: conversationId
           in: path
@@ -3077,6 +3471,7 @@ paths:
                   - $ref: '#/components/schemas/Errors.Chat.ConversationNotVisible'
                   - $ref: '#/components/schemas/Errors.Chat.ConversationMemberRequired'
                   - $ref: '#/components/schemas/Errors.Chat.MessageContentInvalid'
+                  - $ref: '#/components/schemas/Errors.Chat.MediaReferenceInvalid'
       tags:
         - 即时通讯
       requestBody:
@@ -3088,7 +3483,7 @@ paths:
   /chat/media/images:
     post:
       operationId: ChatOperations_uploadChatImage
-      description: 上传聊天图片，请求为 multipart/form-data，返回可发送的图片 mediaId，上传不等于发送消息。
+      description: 上传聊天图片，请求为 multipart/form-data，返回可发送的图片 mediaId，上传不等于发送消息。返回的 signedUrl 为 owner 预览地址，发送消息后策略升级为 conversationMember 并因 accessVersion 递增而失效，客户端应在发送后从消息接口获取新的会话签名 URL。
       parameters: []
       responses:
         '200':
@@ -3135,7 +3530,7 @@ paths:
   /chat/messages/read:
     post:
       operationId: ChatOperations_markMessagesRead
-      description: 批量标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。
+      description: 批量标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。标记成功后服务端应向原消息发送方推送 messagePeerRead 事件（单聊）。
       parameters: []
       responses:
         '200':
@@ -3183,7 +3578,7 @@ paths:
   /chat/messages/{messageId}/forward:
     post:
       operationId: ChatOperations_forwardMessage
-      description: 转发消息，原消息可见且目标会话可发送，目标会话生成新消息，不会修改原消息。
+      description: 转发消息，原消息可见且目标会话可发送，目标会话生成新消息，不会修改原消息。成功后应向各目标会话内其他成员推送 messageForwarded 实时事件。
       parameters:
         - name: messageId
           in: path
@@ -3236,7 +3631,7 @@ paths:
   /chat/messages/{messageId}/recall:
     post:
       operationId: ChatOperations_recallMessage
-      description: 撤回消息，调用方为发送者且发送未超过 2 分钟，消息进入撤回状态，撤回不删除审计记录。
+      description: 撤回消息，调用方为发送者且发送未超过 2 分钟，消息进入撤回状态，撤回不删除审计记录。成功后应向会话内其他成员推送 messageRecalled 实时事件。
       parameters:
         - name: messageId
           in: path
@@ -3283,7 +3678,7 @@ paths:
   /chat/teams/{teamId}/album-images:
     post:
       operationId: ChatOperations_uploadTeamAlbumImage
-      description: 上传小队相册图片，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队相册的图片 mediaId。
+      description: 上传小队相册图片，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队相册的图片 mediaId。返回的 signedUrl 已是 teamMember 终态地址，小队成员均可访问。
       parameters:
         - name: teamId
           in: path
@@ -3512,6 +3907,189 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Chat.TeamAnnouncementRequest'
+    get:
+      operationId: ChatOperations_listAnnouncements
+      description: 查询群公告，调用方为小队成员，分页返回该小队的群公告列表。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Chat.TeamAnnouncement'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamMemberRequired'
+      tags:
+        - 即时通讯
+  /chat/teams/{teamId}/announcements/{announcementId}:
+    put:
+      operationId: ChatOperations_updateAnnouncement
+      description: 编辑群公告，调用方为队长或管理员，仅限修改公告内容。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - name: announcementId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Chat.TeamAnnouncement'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Chat.AnnouncementPermissionDenied'
+                  - $ref: '#/components/schemas/Errors.Chat.AnnouncementNotVisible'
+      tags:
+        - 即时通讯
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Chat.TeamAnnouncementRequest'
+    delete:
+      operationId: ChatOperations_deleteAnnouncement
+      description: 删除群公告，调用方为队长或管理员，公告删除后不可恢复。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - name: announcementId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/EmptyData'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Chat.AnnouncementPermissionDenied'
+                  - $ref: '#/components/schemas/Errors.Chat.AnnouncementNotVisible'
+      tags:
+        - 即时通讯
   /chat/teams/{teamId}/announcements/{announcementId}/read:
     post:
       operationId: ChatOperations_markAnnouncementRead
@@ -3567,7 +4145,7 @@ paths:
   /chat/teams/{teamId}/files:
     post:
       operationId: ChatOperations_uploadTeamFile
-      description: 上传群文件，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队的文件 mediaId。
+      description: 上传群文件，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队的文件 mediaId。返回的 signedUrl 已是 teamMember 终态地址，小队成员均可访问。
       parameters:
         - name: teamId
           in: path
@@ -3795,6 +4373,132 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Chat.TeamPollCreateRequest'
+    get:
+      operationId: ChatOperations_listPolls
+      description: 查看群投票列表，调用方为小队成员，可分页查看小队中已创建的投票。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Chat.TeamPoll'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamMemberRequired'
+      tags:
+        - 即时通讯
+  /chat/teams/{teamId}/polls/{pollId}:
+    get:
+      operationId: ChatOperations_getPoll
+      description: 查看群投票结果，调用方为小队成员，返回投票详情及各选项当前票数。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - name: pollId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Chat.TeamPoll'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Chat.TeamMemberRequired'
+                  - $ref: '#/components/schemas/Errors.Chat.PollNotFound'
+      tags:
+        - 即时通讯
   /chat/teams/{teamId}/polls/{pollId}/votes:
     post:
       operationId: ChatOperations_votePoll
@@ -3856,7 +4560,24 @@ paths:
   /chat/ws/messages:
     get:
       operationId: ChatOperations_connectMessageWebSocket
-      description: 聊天消息实时 WebSocket 占位端点。实际调用时客户端以 Bearer Token 完成鉴权并发起 WebSocket Upgrade，连接建立后服务端按 ChatRealtimeEvent 推送当前用户可见会话中的新消息；普通 JSON API 统一响应规则不适用于升级后的 WebSocket 数据帧。
+      description: |-
+        聊天消息实时 WebSocket 端点（OpenAPI 以 GET 占位描述 Upgrade 入口）。
+
+        **连接**
+        - 将 `GET /chat/ws/messages` 升级为 WebSocket；生产环境使用 `wss://`。
+        - Upgrade 请求携带 `Authorization: Bearer {accessToken}`，鉴权规则与 REST 一致。
+        - 单用户维持一条长连接；断线后客户端应指数退避重连。
+
+        **数据帧**
+        - 服务端 → 客户端：每个 Text 帧为 `ChatWebSocketFrame`（即 `ChatRealtimeEvent`）JSON，不包裹 `{ code, message, data }`。
+        - 客户端 → 服务端：本版本无业务帧；心跳由网关或基础设施处理。
+
+        **推送触发（实现参考）**
+        - `sendMessage`：向会话内除发送方外的成员推送 `messageCreated`。
+        - `markMessagesRead`：单聊中向被已读消息的原发送方推送 `messagePeerRead`（可逐条推送）。
+        - `recallMessage`：向会话内除撤回方外的成员推送 `messageRecalled`。
+        - `forwardMessage`：向各目标会话内除转发方外的成员推送 `messageForwarded`。
+        - 仅推送给当前在线且有权查看该会话的用户；离线用户通过 REST 拉取补偿。
       parameters: []
       responses:
         '200':
@@ -3883,7 +4604,7 @@ paths:
                         description: 平台响应消息，成功响应固定为 For Super Earth!。
                       data:
                         allOf:
-                          - $ref: '#/components/schemas/Chat.ChatRealtimeEvent'
+                          - $ref: '#/components/schemas/Chat.ChatWebSocketFrame'
                         description: 响应数据。
                     description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
                   - $ref: '#/components/schemas/BadRequestResponse'
@@ -4640,7 +5361,7 @@ paths:
   /identity/media/avatar:
     post:
       operationId: IdentityOperations_uploadAvatar
-      description: 上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。
+      description: 上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。返回的 signedUrl 为公开稳定地址，可直接使用并公共缓存。
       parameters: []
       responses:
         '200':
@@ -4687,7 +5408,7 @@ paths:
   /identity/media/license:
     post:
       operationId: IdentityOperations_uploadMerchantLicense
-      description: 上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于后续资质提交的 mediaId，不得返回存储凭据。
+      description: 上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于后续资质提交的 mediaId，不得返回存储凭据。返回的 signedUrl 为 owner 私有地址，仅上传者本人与管理员可访问，属敏感资料，客户端不应持久缓存。
       parameters: []
       responses:
         '200':
@@ -4778,6 +5499,27 @@ paths:
         - 身份与资料
       security:
         - {}
+  /media/{mediaId}:
+    get:
+      operationId: CommonOperations_getMediaFile
+      description: 根据媒体文件标识获取文件内容，成功时固定返回 200 和原始二进制流，Content-Type 根据上传时的 MIME 类型设置。
+      parameters:
+        - name: mediaId
+          in: path
+          required: true
+          description: 媒体文件标识
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+      tags:
+        - 通用
   /social/blacklist:
     get:
       operationId: SocialOperations_listBlacklist
@@ -5407,6 +6149,13 @@ paths:
       operationId: SocialOperations_listFriends
       description: 获取好友列表，调用方已登录，分页返回好友，删除好友后双方关系解除。
       parameters:
+        - name: keyword
+          in: query
+          required: false
+          description: 好友昵称或备注筛选关键字。
+          schema:
+            type: string
+          explode: false
         - $ref: '#/components/parameters/PageQuery.page'
         - $ref: '#/components/parameters/PageQuery.pageSize'
       responses:
@@ -5611,6 +6360,71 @@ paths:
                   - $ref: '#/components/schemas/Errors.Social.BlacklistRelationExists'
       tags:
         - 好友社群
+  /social/qr-code:
+    get:
+      operationId: SocialOperations_getMyQrCode
+      description: 生成当前用户的个人二维码，返回 PNG 格式的二维码图片，含 5 分钟有效期 JWT token。
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+      tags:
+        - 好友社群
+  /social/qr-code/scan:
+    post:
+      operationId: SocialOperations_scanQrCode
+      description: 扫描他人二维码添加好友，解码 token 后自动创建好友申请。
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Social.FriendRequest'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Social.UserNotVisible'
+                  - $ref: '#/components/schemas/Errors.Social.BlacklistRelationExists'
+                  - $ref: '#/components/schemas/Errors.Social.FriendshipStateInvalid'
+                  - $ref: '#/components/schemas/Errors.Social.DuplicateFriendRequest'
+                  - $ref: '#/components/schemas/Errors.Social.QrCodeTokenInvalid'
+      tags:
+        - 好友社群
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Social.QrCodeScanRequest'
   /social/reports:
     post:
       operationId: SocialOperations_createReport
@@ -5790,6 +6604,74 @@ paths:
             items:
               type: string
           explode: false
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Social.TeamProfile'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+      tags:
+        - 好友社群
+  /social/teams/mine:
+    get:
+      operationId: SocialOperations_listMyTeams
+      description: 获取当前用户加入的小队列表，含已解散/已停用的历史小队，按加入时间倒序。
+      parameters:
         - $ref: '#/components/parameters/PageQuery.page'
         - $ref: '#/components/parameters/PageQuery.pageSize'
       responses:
@@ -6489,6 +7371,144 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Social.TeamMemberRoleUpdate'
+  /social/teams/{teamId}/members/{userId}/points:
+    post:
+      operationId: SocialOperations_adjustTeamMemberPoints
+      description: 手动调整小队成员积分，仅队长和管理员可执行。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/EmptyData'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Social.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Social.TeamMemberNotFound'
+                  - $ref: '#/components/schemas/Errors.Social.TeamPermissionDenied'
+      tags:
+        - 好友社群
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Social.ManualPointAdjustmentRequest'
+  /social/teams/{teamId}/members/{userId}/points/history:
+    get:
+      operationId: SocialOperations_getTeamMemberPointHistory
+      description: 查看小队成员积分变动历史。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Social.TeamPointRecordItem'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Social.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Social.TeamMemberNotFound'
+      tags:
+        - 好友社群
   /social/teams/{teamId}/points:
     get:
       operationId: SocialOperations_getTeamPointRanks
@@ -6848,7 +7868,9 @@ components:
         - reviewStatus
         - runtimeStatus
         - registeredCount
+        - occupiedCount
         - capacity
+        - requireLocationCheck
         - introduction
         - safetyNotice
         - registrationDeadline
@@ -6886,7 +7908,7 @@ components:
         coverImage:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 活动封面图片。
+          description: 活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。
         feeAmount:
           type: number
           format: double
@@ -6902,11 +7924,18 @@ components:
         registeredCount:
           type: integer
           format: int32
-          description: 已报名人数。
+          description: 已确认参加人数（含已报名与已签到），不含候补待确认。
+        occupiedCount:
+          type: integer
+          format: int32
+          description: 当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。
         capacity:
           type: integer
           format: int32
           description: 活动人数上限。
+        requireLocationCheck:
+          type: boolean
+          description: 是否要求签到用户提供位置信息进行位置校验。
         introduction:
           type: string
           description: 活动完整简介。
@@ -6928,11 +7957,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MediaFile'
-          description: 活动图片列表。
+          description: 活动图片列表。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。
         waitingCount:
           type: integer
           format: int32
-          description: 当前候补人数。
+          description: 当前候补人数（含候补排队与候补待确认），候补待确认占用名额。
         aiContentReview:
           allOf:
             - $ref: '#/components/schemas/Ai.AiContentReviewResult'
@@ -7005,11 +8034,14 @@ components:
           type: integer
           format: int32
           description: 参与者最低年龄要求。
+        requireLocationCheck:
+          type: boolean
+          description: 是否要求签到用户提供位置信息进行位置校验。
         images:
           type: array
           items:
             $ref: '#/components/schemas/MediaFile'
-          description: 活动图片列表。
+          description: 活动图片列表。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。
         reviewStatus:
           allOf:
             - $ref: '#/components/schemas/Activities.ActivityReviewStatus'
@@ -7104,6 +8136,9 @@ components:
           items:
             $ref: '#/components/schemas/EntityId'
           description: 活动图片媒体文件标识列表。
+        requireLocationCheck:
+          type: boolean
+          description: 是否要求签到用户提供位置信息进行位置校验。
       description: 活动草稿保存请求。草稿阶段允许只填写部分活动信息，提交审核时再校验完整性。
     Activities.ActivityFeedTab:
       type: string
@@ -7164,7 +8199,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 参与者头像。
+          description: 参与者头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         registrationStatus:
           allOf:
             - $ref: '#/components/schemas/Activities.RegistrationStatus'
@@ -7189,6 +8224,7 @@ components:
         - canCancelRegistration
         - canConfirmWaitingSeat
         - canCheckIn
+        - canReview
       properties:
         canRegister:
           type: boolean
@@ -7214,6 +8250,13 @@ components:
         canCheckIn:
           type: boolean
           description: 当前用户是否可以扫码签到。
+        canReview:
+          type: boolean
+          description: 当前用户是否可以评价该活动。由后端根据活动结束时间、签到状态、是否已评价、评价窗口是否过期等规则计算。
+        reviewWindowEndsAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 评价入口关闭时间。仅 canReview 为 true 或用户满足评价基础条件时返回，用于前端展示剩余时间。
       description: 当前登录用户相对于指定活动的参与和可操作状态。
     Activities.ActivityReview:
       type: object
@@ -7254,6 +8297,49 @@ components:
             - $ref: '#/components/schemas/DateTimeString'
           description: 评价创建时间。
       description: 活动评价。
+    Activities.ActivityReviewListItem:
+      type: object
+      required:
+        - reviewId
+        - activityId
+        - userId
+        - rating
+        - tags
+        - createdAt
+        - nickname
+      properties:
+        reviewId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 评价标识。
+        activityId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 活动标识。
+        userId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 评价用户标识。
+        rating:
+          type: integer
+          format: int32
+          description: 评分。
+        content:
+          type: string
+          description: 评价正文，使用 Markdown 格式；正文中的图片链接来自活动评价图片上传接口返回的媒体访问地址。
+        tags:
+          type: array
+          items:
+            type: string
+          description: 评价标签。
+        createdAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 评价创建时间。
+        nickname:
+          type: string
+          description: 评价用户展示昵称。
+      description: 活动评价列表项，在评价基础上补充评价用户展示昵称。
     Activities.ActivityReviewRequest:
       type: object
       required:
@@ -7303,7 +8389,9 @@ components:
         - reviewStatus
         - runtimeStatus
         - registeredCount
+        - occupiedCount
         - capacity
+        - requireLocationCheck
       properties:
         activityId:
           allOf:
@@ -7332,7 +8420,7 @@ components:
         coverImage:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 活动封面图片。
+          description: 活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。
         feeAmount:
           type: number
           format: double
@@ -7348,11 +8436,18 @@ components:
         registeredCount:
           type: integer
           format: int32
-          description: 已报名人数。
+          description: 已确认参加人数（含已报名与已签到），不含候补待确认。
+        occupiedCount:
+          type: integer
+          format: int32
+          description: 当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。
         capacity:
           type: integer
           format: int32
           description: 活动人数上限。
+        requireLocationCheck:
+          type: boolean
+          description: 是否要求签到用户提供位置信息进行位置校验。
       description: 活动摘要。
     Activities.ActivitySummaryPost:
       type: object
@@ -7383,7 +8478,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MediaFile'
-          description: 活动总结图片列表。
+          description: 活动总结图片列表。签名 URL 用途为 summaryImage，对外消费路径待实现。
         imageTags:
           type: array
           items:
@@ -7459,7 +8554,7 @@ components:
         defaultCoverImage:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 模板默认活动封面图片。
+          description: 模板默认活动封面图片。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
       description: 活动模板。
     Activities.ActivityUpsertRequest:
       type: object
@@ -7524,6 +8619,9 @@ components:
           items:
             $ref: '#/components/schemas/EntityId'
           description: 活动图片媒体文件标识列表，第一张为封面。
+        requireLocationCheck:
+          type: boolean
+          description: 是否要求签到用户提供位置信息进行位置校验。true 时签到必须传入 currentLocation，且服务端校验距离。
       description: 活动基础信息请求，地点来自地图选点，时间范围合法，可用于草稿保存或提交审核，费用字段只表达信息，不触发支付。
     Activities.CheckInQrCode:
       type: object
@@ -7583,8 +8681,8 @@ components:
         currentLocation:
           allOf:
             - $ref: '#/components/schemas/GeoPoint'
-          description: 签到时用户当前位置，用于可选的位置校验。
-      description: 扫码签到请求，二维码有效，报名记录进入已签到状态，开启位置校验时当前位置必须在活动地点附近。
+          description: 签到时用户当前位置。活动不要求位置校验时可不传；活动要求位置校验时必须传入。
+      description: 扫码签到请求，二维码有效，报名记录进入已签到状态。若活动发起人设置了要求位置校验，则必须传入 currentLocation 且必须在活动地点附近。
     Activities.ImageTagConfirmation:
       type: object
       required:
@@ -7601,6 +8699,22 @@ components:
             type: string
           description: 该图片最终确认的标签。
       description: 图片标签确认结果。
+    Activities.MyActivityReviewResult:
+      type: object
+      properties:
+        review:
+          allOf:
+            - $ref: '#/components/schemas/Activities.ActivityReview'
+          description: 评价内容，当前用户未评价时为空。
+      description: 当前登录用户对指定活动的评价查询结果。
+    Activities.MyActivitySummaryResult:
+      type: object
+      properties:
+        summary:
+          allOf:
+            - $ref: '#/components/schemas/Activities.ActivitySummaryPost'
+          description: 总结内容，当前用户未发布时为空。
+      description: 当前登录用户对指定活动发布的总结查询结果。
     Activities.RegisterActivityRequest:
       type: object
       required:
@@ -7613,6 +8727,101 @@ components:
           type: boolean
           description: 是否已确认活动安全须知。
       description: 活动报名请求，活动存在且用户满足信誉、年龄等校验，生成正式报名或候补记录，满员时不得直接占用名额。
+    Activities.RegisteredActivitySummary:
+      type: object
+      required:
+        - activityId
+        - title
+        - tags
+        - startAt
+        - endAt
+        - location
+        - reviewStatus
+        - runtimeStatus
+        - registeredCount
+        - occupiedCount
+        - capacity
+        - requireLocationCheck
+        - registrationId
+        - registrationStatus
+        - registeredAt
+      properties:
+        activityId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 活动标识。
+        title:
+          type: string
+          description: 活动名称。
+        tags:
+          type: array
+          items:
+            type: string
+          description: 活动标签。
+        startAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 活动开始时间。
+        endAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 活动结束时间。
+        location:
+          allOf:
+            - $ref: '#/components/schemas/LocationInfo'
+          description: 活动地点。
+        coverImage:
+          allOf:
+            - $ref: '#/components/schemas/MediaFile'
+          description: 活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。
+        feeAmount:
+          type: number
+          format: double
+          description: 活动费用金额。
+        reviewStatus:
+          allOf:
+            - $ref: '#/components/schemas/Activities.ActivityReviewStatus'
+          description: 活动审核状态。
+        runtimeStatus:
+          allOf:
+            - $ref: '#/components/schemas/Activities.ActivityRuntimeStatus'
+          description: 活动进行状态。
+        registeredCount:
+          type: integer
+          format: int32
+          description: 已确认参加人数（含已报名与已签到），不含候补待确认。
+        occupiedCount:
+          type: integer
+          format: int32
+          description: 当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。
+        capacity:
+          type: integer
+          format: int32
+          description: 活动人数上限。
+        requireLocationCheck:
+          type: boolean
+          description: 是否要求签到用户提供位置信息进行位置校验。
+        registrationId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 报名记录标识。
+        registrationStatus:
+          allOf:
+            - $ref: '#/components/schemas/Activities.RegistrationStatus'
+          description: 当前用户在该活动中的报名状态。
+        registeredAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 报名或候补创建时间。
+        waitingRank:
+          type: integer
+          format: int32
+          description: 候补排位，非候补状态时为空。
+        confirmationDeadline:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 候补名额确认截止时间，仅候补待确认时返回。
+      description: 我报名的活动摘要，包含活动信息与当前用户的报名状态。
     Activities.RegistrationResult:
       type: object
       required:
@@ -7820,7 +9029,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 小队头像媒体文件。
+          description: 小队头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         status:
           allOf:
             - $ref: '#/components/schemas/Social.TeamStatus'
@@ -8090,6 +9299,14 @@ components:
         - high
         - uncertain
       description: AI 内容审核风险等级。
+    Ai.ClassifyTaskStatus:
+      type: string
+      enum:
+        - pending
+        - succeeded
+        - failed
+        - timeout
+      description: 分类任务状态。
     Ai.ImageClassificationItem:
       type: object
       required:
@@ -8121,26 +9338,66 @@ components:
           items:
             $ref: '#/components/schemas/EntityId'
           description: 需要进行图片分类的媒体文件标识列表。
-      description: AI 图片分类请求，mediaIds 指向已上传图片，返回建议标签供人工确认，最终标签以人工确认结果为准。
-    Ai.ImageClassificationResult:
+      description: AI 图片分类请求，mediaIds 指向已上传图片，任务异步提交，通过返回的 taskId 轮询结果。
+    Ai.ImageClassificationSubmitResponse:
+      type: object
+      required:
+        - taskId
+        - status
+      properties:
+        taskId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 任务唯一标识，用于轮询 GET /ai/image-classifications/{taskId} 获取结果。
+        status:
+          allOf:
+            - $ref: '#/components/schemas/Ai.ClassifyTaskStatus'
+          description: 任务初始状态：若全部图片已有缓存则为 succeeded，否则为 pending。
+      description: 图片分类任务提交响应，包含 taskId 供后续轮询。
+    Ai.ImageClassificationTaskQueryResponse:
       type: object
       required:
         - status
-        - items
       properties:
         status:
           allOf:
-            - $ref: '#/components/schemas/Ai.AiCallStatus'
-          description: AI 调用状态。
+            - $ref: '#/components/schemas/Ai.ClassifyTaskStatus'
+          description: 任务状态：pending 时仅返回状态，succeeded 时包含全部结果，failed/timeout 时包含 errorMessage。
         items:
           type: array
           items:
             $ref: '#/components/schemas/Ai.ImageClassificationItem'
-          description: 逐图片分类结果。
-        friendlyErrorMessage:
+          description: 逐图片分类结果（仅 succeeded 时非空）。
+        errorMessage:
           type: string
-          description: AI 调用失败时可展示给用户的友好错误信息。
-      description: AI 图片分类响应。
+          description: 失败或超时时的错误信息。
+      description: 图片分类任务查询响应。
+    Ai.MediaClassificationResponse:
+      type: object
+      required:
+        - mediaId
+        - suggestedTags
+        - confidence
+        - classifiedAt
+      properties:
+        mediaId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 图片媒体文件标识。
+        suggestedTags:
+          type: array
+          items:
+            type: string
+          description: AI 建议的图片标签。
+        confidence:
+          type: number
+          format: double
+          description: AI 对分类结果的置信度。
+        classifiedAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 分类完成时间（ISO-8601）。
+      description: 按 mediaId 查询单张图片的分类缓存。
     BadRequestResponse:
       type: object
       allOf:
@@ -8199,7 +9456,7 @@ components:
         image:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 图片消息媒体文件。
+          description: 图片消息媒体文件。签名 URL 为会话成员可见，会话内稳定；被移出会话后访问失效。
         location:
           allOf:
             - $ref: '#/components/schemas/LocationInfo'
@@ -8215,7 +9472,11 @@ components:
         readStatus:
           allOf:
             - $ref: '#/components/schemas/Chat.MessageReadStatus'
-          description: 消息读取状态。
+          description: 当前用户作为接收方时，自己是否已读该消息。本人发送的消息对本人恒为 read。
+        peerReadStatus:
+          allOf:
+            - $ref: '#/components/schemas/Chat.MessageReadStatus'
+          description: 单聊中发送方可见的对方已读状态：对方全部已读时为 read，否则 unread。仅本人发送的消息返回；群聊暂不返回。
         recalled:
           type: boolean
           description: 消息是否已撤回。
@@ -8229,8 +9490,7 @@ components:
       required:
         - kind
         - conversationId
-        - message
-        - conversationUnreadCount
+        - payload
         - occurredAt
       properties:
         kind:
@@ -8241,24 +9501,54 @@ components:
           allOf:
             - $ref: '#/components/schemas/EntityId'
           description: 发生事件的会话标识。
-        message:
-          allOf:
-            - $ref: '#/components/schemas/Chat.ChatMessage'
-          description: 新创建的聊天消息。
-        conversationUnreadCount:
-          type: integer
-          format: int32
-          description: 当前用户在该会话中的最新未读消息数。
+        payload:
+          anyOf:
+            - $ref: '#/components/schemas/Chat.MessageCreatedPayload'
+            - $ref: '#/components/schemas/Chat.MessageRecalledPayload'
+            - $ref: '#/components/schemas/Chat.MessageForwardedPayload'
+            - $ref: '#/components/schemas/Chat.MessagePeerReadPayload'
+          description: 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload，kind=messagePeerRead 时为 MessagePeerReadPayload。
         occurredAt:
           allOf:
             - $ref: '#/components/schemas/DateTimeString'
           description: 事件发生时间。
-      description: 聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话的新消息。
+      description: 聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话中的实时事件。
     Chat.ChatRealtimeEventKind:
       type: string
       enum:
         - messageCreated
-      description: 聊天实时事件类型。
+        - messageRecalled
+        - messageForwarded
+        - messagePeerRead
+      description: 聊天实时事件类型。friendRequestCreated 事件通过 /queue/social-events 推送，不在此枚举内。
+    Chat.ChatWebSocketFrame:
+      type: object
+      required:
+        - kind
+        - conversationId
+        - payload
+        - occurredAt
+      properties:
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/Chat.ChatRealtimeEventKind'
+          description: 实时事件类型。
+        conversationId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 发生事件的会话标识。
+        payload:
+          anyOf:
+            - $ref: '#/components/schemas/Chat.MessageCreatedPayload'
+            - $ref: '#/components/schemas/Chat.MessageRecalledPayload'
+            - $ref: '#/components/schemas/Chat.MessageForwardedPayload'
+            - $ref: '#/components/schemas/Chat.MessagePeerReadPayload'
+          description: 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload，kind=messagePeerRead 时为 MessagePeerReadPayload。
+        occurredAt:
+          allOf:
+            - $ref: '#/components/schemas/DateTimeString'
+          description: 事件发生时间。
+      description: 聊天 WebSocket 数据帧。服务端向客户端推送的每个 Text 帧为 UTF-8 JSON，结构与本模型一致，不包裹 APIResult 统一响应外壳。
     Chat.ConversationKind:
       type: string
       enum:
@@ -8288,7 +9578,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 会话头像。
+          description: 会话头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         lastMessagePreview:
           type: string
           description: 最后一条消息的摘要文本。
@@ -8345,6 +9635,36 @@ components:
             $ref: '#/components/schemas/EntityId'
           description: 待标记为已读的消息标识列表。
       description: 批量标记消息已读请求，调用方为消息接收方，所有消息均需对调用方可见。
+    Chat.MessageCreatedPayload:
+      type: object
+      required:
+        - message
+        - conversationUnreadCount
+      properties:
+        message:
+          allOf:
+            - $ref: '#/components/schemas/Chat.ChatMessage'
+          description: 新创建的聊天消息。
+        conversationUnreadCount:
+          type: integer
+          format: int32
+          description: 当前用户在该会话中的最新未读消息数。
+      description: 消息创建事件负载。
+    Chat.MessageForwardedPayload:
+      type: object
+      required:
+        - message
+        - conversationUnreadCount
+      properties:
+        message:
+          allOf:
+            - $ref: '#/components/schemas/Chat.ChatMessage'
+          description: 转发产生的新聊天消息。
+        conversationUnreadCount:
+          type: integer
+          format: int32
+          description: 当前用户在该会话中的最新未读消息数。
+      description: 消息转发事件负载。
     Chat.MessageKind:
       type: string
       enum:
@@ -8352,12 +9672,42 @@ components:
         - image
         - location
       description: 消息类型。
+    Chat.MessagePeerReadPayload:
+      type: object
+      required:
+        - conversationId
+        - messageId
+        - peerReadStatus
+      properties:
+        conversationId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 会话标识。
+        messageId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 已被对方阅读的消息标识。
+        peerReadStatus:
+          allOf:
+            - $ref: '#/components/schemas/Chat.MessageReadStatus'
+          description: 对方已读后的状态，恒为 read。
+      description: 单聊对方已读事件负载，接收方为原消息发送者。
     Chat.MessageReadStatus:
       type: string
       enum:
         - unread
         - read
       description: 消息读取状态。
+    Chat.MessageRecalledPayload:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          allOf:
+            - $ref: '#/components/schemas/Chat.ChatMessage'
+          description: 被撤回的聊天消息，其 recalled 字段为 true。
+      description: 消息撤回事件负载。
     Chat.SendMessageRequest:
       type: object
       required:
@@ -8673,6 +10023,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 20014：用户当前位置不满足签到位置校验。
+    Errors.Activities.CheckInLocationRequired:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 20021
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Check-in location is required
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 20021：活动要求位置签到，但用户未提供位置信息。
     Errors.Activities.CheckInQrCodeInvalid:
       type: object
       allOf:
@@ -8748,6 +10123,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 20016：用户已经评价过该活动。
+    Errors.Activities.DuplicateSummary:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 20020
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Activity summary already exists
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 20020：活动总结已存在，每个活动仅允许发布一篇总结。
     Errors.Activities.ImageFormatInvalid:
       type: object
       allOf:
@@ -9398,6 +10798,56 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 30001：AI 服务暂不可用。
+    Errors.Ai.AiTaskNotFound:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 30004
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Classification task not found
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 30004：分类任务不存在或已过期（含 mediaId 未分类时）。
+    Errors.Ai.AiTaskTimeout:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 30005
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Classification task timed out
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 30005：分类任务超时，GPU 服务在 30 秒内未响应。
     Errors.Ai.ImageMediaUnavailable:
       type: object
       allOf:
@@ -9472,7 +10922,7 @@ components:
                 - $ref: '#/components/schemas/EmptyData'
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
-      description: 50011：调用方无权发布群公告。
+      description: 50011：调用方无权执行该群公告操作。
     Errors.Chat.ConversationMemberRequired:
       type: object
       allOf:
@@ -9623,6 +11073,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 50000：上传媒体用途不符合聊天接口要求。
+    Errors.Chat.MediaReferenceInvalid:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 50018
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Referenced media does not exist
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 50018：消息引用的媒体文件不存在。
     Errors.Chat.MessageContentInvalid:
       type: object
       allOf:
@@ -9723,6 +11198,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 50008：调用方不是消息发送者。
+    Errors.Chat.PollNotFound:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 50019
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Poll does not exist
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 50019：投票不存在。
     Errors.Chat.PollOptionsInvalid:
       type: object
       allOf:
@@ -9772,7 +11272,7 @@ components:
                 - $ref: '#/components/schemas/EmptyData'
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
-      description: 50013：投票不存在、已截止或调用方不可参与。
+      description: 50013：投票已截止或调用方不可参与。
     Errors.Chat.TeamMediaNotFound:
       type: object
       allOf:
@@ -9948,6 +11448,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 10004：账号尚未激活。
+    Errors.Identity.AccountLocked:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 10019
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - Account is temporarily locked due to multiple failed login attempts
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 10019：账号因多次登录失败被暂时锁定。message 中会提示剩余锁定时间。
     Errors.Identity.ActivationEmailRateLimited:
       type: object
       allOf:
@@ -10548,6 +12073,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 40004：好友关系状态不允许当前操作。
+    Errors.Social.QrCodeTokenInvalid:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 40021
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - QR code token is invalid
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 40021：二维码 token 无效或已过期。
     Errors.Social.ReportInvalid:
       type: object
       allOf:
@@ -11020,7 +12570,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 商家头像媒体文件。
+          description: 商家头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         interestedActivityFields:
           type: array
           items:
@@ -11114,7 +12664,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 用户头像媒体文件。
+          description: 用户头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         gender:
           allOf:
             - $ref: '#/components/schemas/Identity.Gender'
@@ -11360,9 +12910,13 @@ components:
           allOf:
             - $ref: '#/components/schemas/MediaUsage'
           description: 媒体用途。
-        url:
+        signedUrl:
           type: string
-          description: 访问地址。
+          description: 签名访问地址，是资源当前状态的派生地址而非永久地址：accessVersion 变化后立即失效，客户端不得长期保存。生命周期随 usage 而定（头像、已发布活动图片为公开稳定可缓存；聊天图片、群文件、相册为私有成员可见；未发布活动图片仅组织者可见并随活动状态翻转；商家资质为私有仅本人与管理员）。详见 docs/media-access-control.md 的「URL 生命周期与缓存策略」。
+        visibility:
+          allOf:
+            - $ref: '#/components/schemas/MediaVisibility'
+          description: 媒体可见性。
         uploadedAt:
           allOf:
             - $ref: '#/components/schemas/DateTimeString'
@@ -11389,6 +12943,12 @@ components:
         - summaryImage
         - activityReviewImage
       description: 媒体用途。
+    MediaVisibility:
+      type: string
+      enum:
+        - publicVisible
+        - privateVisible
+      description: 媒体可见性。
     ReviewDecisionRequest:
       type: object
       required:
@@ -11454,7 +13014,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 被屏蔽用户头像。
+          description: 被屏蔽用户头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         blockedAt:
           allOf:
             - $ref: '#/components/schemas/DateTimeString'
@@ -11478,7 +13038,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 用户头像。
+          description: 用户头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         followedAt:
           allOf:
             - $ref: '#/components/schemas/DateTimeString'
@@ -11527,7 +13087,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 好友头像。
+          description: 好友头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         remark:
           type: string
           description: 当前用户为该好友设置的备注。
@@ -11647,6 +13207,34 @@ components:
           type: string
           description: 入队申请附言。
       description: 加入小队请求，小队存在且未满员未解散，公开小队直接加入，审核小队创建申请，黑名单关系不得加入。
+    Social.ManualPointAdjustmentRequest:
+      type: object
+      required:
+        - pointChange
+        - reason
+      properties:
+        pointChange:
+          type: integer
+          format: int32
+          description: 积分变动值，正数为加、负数为减。
+        reason:
+          type: string
+          maxLength: 50
+          description: 调整原因。
+      description: 手动调整小队成员积分请求。
+    Social.QrCodeScanRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: 从二维码中解码得到的 token。
+        message:
+          type: string
+          maxLength: 500
+          description: 附加的好友申请附言。
+      description: 扫码添加好友请求，调用方通过扫描二维码获取 token 并提交，系统解码 token 后自动创建好友申请。
     Social.Report:
       type: object
       required:
@@ -11835,7 +13423,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 成员头像。
+          description: 成员头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         role:
           allOf:
             - $ref: '#/components/schemas/Social.TeamMemberRole'
@@ -11866,6 +13454,14 @@ components:
             - $ref: '#/components/schemas/Social.TeamMemberRole'
           description: 调整后的成员角色。
       description: 小队成员角色更新请求。
+    Social.TeamPointChangeSource:
+      type: string
+      enum:
+        - checkin
+        - no_show
+        - summary_post
+        - manual
+      description: 小队积分变动来源枚举。
     Social.TeamPointRankItem:
       type: object
       required:
@@ -11890,6 +13486,48 @@ components:
           format: int32
           description: 成员积分。
       description: 小队积分项。
+    Social.TeamPointRecordItem:
+      type: object
+      required:
+        - recordId
+        - userId
+        - nickname
+        - pointChange
+        - source
+        - reason
+        - createdAt
+      properties:
+        recordId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 记录唯一标识。
+        userId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 成员用户标识。
+        nickname:
+          type: string
+          description: 成员昵称。
+        pointChange:
+          type: integer
+          format: int32
+          description: 积分变动值。
+        source:
+          allOf:
+            - $ref: '#/components/schemas/Social.TeamPointChangeSource'
+          description: 变动来源。
+        referenceId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 关联实体 ID，如报名记录 ID。
+        reason:
+          type: string
+          description: 变动原因。
+        createdAt:
+          type: string
+          format: date-time
+          description: 变动时间。
+      description: 小队积分变动记录项。
     Social.TeamProfile:
       type: object
       required:
@@ -11934,7 +13572,7 @@ components:
         avatar:
           allOf:
             - $ref: '#/components/schemas/MediaFile'
-          description: 小队头像媒体文件。
+          description: 小队头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
         status:
           allOf:
             - $ref: '#/components/schemas/Social.TeamStatus'

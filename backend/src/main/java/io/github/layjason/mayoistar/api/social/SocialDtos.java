@@ -9,9 +9,16 @@ import io.github.layjason.mayoistar.entity.social.ReportTargetType;
 import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
 import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
+import io.github.layjason.mayoistar.entity.social.TeamPointChangeSource;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
 
 /**
@@ -29,12 +36,14 @@ public final class SocialDtos {
 
     @Data
     public static class FriendRequestCreate {
-        @NotNull
+        @NotBlank
+        @Size(max = 36)
         private String targetUserId;
 
         @NotNull
         private FriendRequestSource source;
 
+        @Size(max = 500)
         private String message;
     }
 
@@ -49,35 +58,40 @@ public final class SocialDtos {
         @NotNull
         private ReportTargetType targetType;
 
-        @NotNull
+        @NotBlank
+        @Size(max = 36)
         private String targetId;
 
-        @NotNull
+        @NotBlank
         private String reason;
     }
 
     @Data
     public static class FriendRemarkUpdate {
+        @Size(max = 50)
         private String remark;
+
         private List<String> groupTags;
     }
 
     @Data
     public static class TeamCreateRequest {
-        @NotNull
+        @NotBlank
+        @Size(max = 100)
         private String name;
 
-        @NotNull
+        @NotEmpty
         private List<String> tags;
 
         @NotNull
         private TeamJoinMode joinMode;
 
-        @NotNull
+        @Positive
+        @Min(1)
         private Integer capacity;
 
         private String description;
-        private String avatarMediaId;
+        private UUID avatarMediaId;
     }
 
     @Data
@@ -200,5 +214,36 @@ public final class SocialDtos {
         private String userId;
         private String nickname;
         private Integer points;
+    }
+
+    @Data
+    public static class QrCodeScanRequest {
+        @NotBlank
+        private String token;
+
+        @Size(max = 500)
+        private String message;
+    }
+
+    @Data
+    public static class ManualPointAdjustmentRequest {
+        @NotNull
+        private Integer pointChange;
+
+        @NotBlank
+        @Size(max = 50)
+        private String reason;
+    }
+
+    @Data
+    public static class TeamPointRecordItem {
+        private String recordId;
+        private String userId;
+        private String nickname;
+        private Integer pointChange;
+        private TeamPointChangeSource source;
+        private String referenceId;
+        private String reason;
+        private String createdAt;
     }
 }

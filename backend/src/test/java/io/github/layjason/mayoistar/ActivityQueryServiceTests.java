@@ -1,0 +1,720 @@
+package io.github.layjason.mayoistar;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import io.github.layjason.mayoistar.api.activities.ActivityDtos;
+import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
+import io.github.layjason.mayoistar.config.TestStorageConfiguration;
+import io.github.layjason.mayoistar.entity.activities.Activity;
+import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
+import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
+import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
+import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
+import io.github.layjason.mayoistar.entity.identity.AccountStatus;
+import io.github.layjason.mayoistar.entity.identity.User;
+import io.github.layjason.mayoistar.entity.identity.UserKind;
+import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.repository.ActivityRepository;
+import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
+import io.github.layjason.mayoistar.repository.MediaFileRepository;
+import io.github.layjason.mayoistar.repository.TeamMemberRepository;
+import io.github.layjason.mayoistar.repository.TeamRepository;
+import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
+import io.github.layjason.mayoistar.service.activities.ActivityQueryService;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@Import({TestSecurityConfiguration.class, TestStorageConfiguration.class})
+class ActivityQueryServiceTests {
+
+    @Autowired
+    private ActivityQueryService activityQueryService;
+
+    @Autowired
+    private ActivityRepository activityRepository;
+
+    @Autowired
+    private ActivityImageRepository activityImageRepository;
+
+    @Autowired
+    private ActivityReviewRecordRepository activityReviewRecordRepository;
+
+    @Autowired
+    private ActivityRegistrationRepository activityRegistrationRepository;
+
+    @Autowired
+    private MediaFileRepository mediaFileRepository;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
+    @Autowired
+    private TeamMemberRepository teamMemberRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @AfterEach
+    void tearDown() {
+        activityRegistrationRepository.deleteAll();
+        activityReviewRecordRepository.deleteAll();
+        activityImageRepository.deleteAll();
+        activityRepository.deleteAll();
+        mediaFileRepository.deleteAll();
+        teamMemberRepository.deleteAll();
+        teamRepository.deleteAll();
+        userRepository.deleteAll();
+    }
+
+    @Test
+    void getActivityShouldReturnDetailForApprovedActivity() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "公开活动");
+
+        ActivityDtos.ActivityDetail detail =
+                activityQueryService.getActivity(Optional.empty(), activity.getActivityId());
+
+        assertThat(detail.getActivityId()).isEqualTo(activity.getActivityId());
+        assertThat(detail.getTitle()).isEqualTo("公开活动");
+        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
+        assertThat(detail.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.notStarted);
+        assertThat(detail.getOrganizerName()).isEqualTo(organizer.getNickname());
+        assertThat(detail.getRegisteredCount()).isZero();
+        assertThat(detail.getOccupiedCount()).isZero();
+        assertThat(detail.getWaitingCount()).isZero();
+    }
+
+    @Test
+    void getActivityShouldReturnRegistrationCountsWithContractSemantics() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "计数活动");
+        saveUser("registered-user");
+        saveUser("checked-in-user");
+        saveUser("waiting-confirmation-user");
+        saveUser("waiting-user");
+        saveUser("canceled-user");
+        saveRegistration(activity.getActivityId(), "registered-user", RegistrationStatus.registered);
+        saveRegistration(activity.getActivityId(), "checked-in-user", RegistrationStatus.checkedIn);
+        saveRegistration(activity.getActivityId(), "waiting-confirmation-user", RegistrationStatus.waitingConfirmation);
+        saveRegistration(activity.getActivityId(), "waiting-user", RegistrationStatus.waiting);
+        saveRegistration(activity.getActivityId(), "canceled-user", RegistrationStatus.canceled);
+
+        ActivityDtos.ActivityDetail detail =
+                activityQueryService.getActivity(Optional.empty(), activity.getActivityId());
+
+        assertThat(detail.getRegisteredCount()).isEqualTo(2);
+        assertThat(detail.getOccupiedCount()).isEqualTo(3);
+        assertThat(detail.getWaitingCount()).isEqualTo(2);
+    }
+
+    @Test
+    void getActivityShouldExposeOccupiedCountWhenWaitingConfirmationFillsCapacity() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "待确认占座活动", 7);
+        for (int index = 1; index <= 6; index++) {
+            String userId = "registered-user-" + index;
+            saveUser(userId);
+            saveRegistration(activity.getActivityId(), userId, RegistrationStatus.registered);
+        }
+        saveUser("waiting-confirmation-user");
+        saveRegistration(activity.getActivityId(), "waiting-confirmation-user", RegistrationStatus.waitingConfirmation);
+
+        ActivityDtos.ActivityDetail detail =
+                activityQueryService.getActivity(Optional.empty(), activity.getActivityId());
+
+        assertThat(detail.getRegisteredCount()).isEqualTo(6);
+        assertThat(detail.getOccupiedCount()).isEqualTo(7);
+        assertThat(detail.getCapacity()).isEqualTo(7);
+    }
+
+    @Test
+    void getActivityShouldReturnDetailForOwnDraft() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveDraftActivity(organizer.getUserId(), "我的草稿");
+
+        ActivityDtos.ActivityDetail detail =
+                activityQueryService.getActivity(Optional.of(organizer.getUserId()), activity.getActivityId());
+
+        assertThat(detail.getActivityId()).isEqualTo(activity.getActivityId());
+        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.draft);
+    }
+
+    @Test
+    void getActivityShouldRejectNonOwnerForDraft() {
+        User organizer = saveUser("user-a");
+        saveUser("user-b");
+        Activity activity = saveDraftActivity(organizer.getUserId(), "草稿");
+
+        assertThatThrownBy(() -> activityQueryService.getActivity(Optional.of("user-b"), activity.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("is not visible");
+    }
+
+    @Test
+    void getActivityShouldRejectAnonymousForDraft() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveDraftActivity(organizer.getUserId(), "草稿");
+
+        assertThatThrownBy(() -> activityQueryService.getActivity(Optional.empty(), activity.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("is not visible");
+    }
+
+    @Test
+    void getActivityShouldRejectNonOwnerForTakenDown() {
+        User organizer = saveUser("user-a");
+        saveUser("user-b");
+        Activity activity = saveTakenDownActivity(organizer.getUserId());
+
+        assertThatThrownBy(() -> activityQueryService.getActivity(Optional.of("user-b"), activity.getActivityId()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("is not visible");
+    }
+
+    @Test
+    void getActivityShouldReturnDetailForOwnTakenDown() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveTakenDownActivity(organizer.getUserId());
+
+        ActivityDtos.ActivityDetail detail =
+                activityQueryService.getActivity(Optional.of(organizer.getUserId()), activity.getActivityId());
+
+        assertThat(detail.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.takenDown);
+    }
+
+    @Test
+    void getActivityShouldReturnDetailForApprovedWhenAuthenticated() {
+        User organizer = saveUser("user-a");
+        saveUser("user-b");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "公开活动");
+
+        // user-b 也能看到 approved 的活动
+        ActivityDtos.ActivityDetail detail =
+                activityQueryService.getActivity(Optional.of("user-b"), activity.getActivityId());
+
+        assertThat(detail.getTitle()).isEqualTo("公开活动");
+    }
+
+    @Test
+    void getActivityShouldThrowWhenNotFound() {
+        assertThatThrownBy(() -> activityQueryService.getActivity(Optional.empty(), "non-existent"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("is not visible");
+    }
+
+    @Test
+    void getActivityShouldMapReviewStatusCorrectly() {
+        User organizer = saveUser("user-a");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "测试活动");
+
+        ActivityDtos.ActivityDetail detail =
+                activityQueryService.getActivity(Optional.empty(), activity.getActivityId());
+
+        assertThat(detail.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
+        assertThat(detail.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.notStarted);
+    }
+
+    @Test
+    void listMyActivitiesShouldOnlyReturnCurrentUsersActivities() {
+        User userA = saveUser("user-a");
+        User userB = saveUser("user-b");
+        saveApprovedActivity(userA.getUserId(), "A的活动1");
+        saveApprovedActivity(userA.getUserId(), "A的活动2");
+        saveApprovedActivity(userB.getUserId(), "B的活动");
+
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityQueryService.listMyActivities(userA.getUserId(), null, 1, 20);
+
+        assertThat(result.getItems()).hasSize(2);
+        assertThat(result.getItems()).allMatch(item -> item.getTitle().contains("A的活动"));
+    }
+
+    @Test
+    void listMyActivitiesShouldFilterByStatus() {
+        User user = saveUser("user-a");
+        saveApprovedActivity(user.getUserId(), "已通过");
+        saveDraftActivity(user.getUserId(), "草稿");
+
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityQueryService.listMyActivities(user.getUserId(), "draft", 1, 20);
+
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().getFirst().getReviewStatus()).isEqualTo(ActivityReviewStatus.draft);
+    }
+
+    @Test
+    void listMyActivitiesShouldDefaultPageParams() {
+        User user = saveUser("user-a");
+
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityQueryService.listMyActivities(user.getUserId(), null, null, null);
+
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getPageSize()).isEqualTo(20);
+    }
+
+    @Test
+    void listMyActivitiesShouldReturnSummaryFields() {
+        User user = saveUser("user-a");
+        Activity activity = saveApprovedActivity(user.getUserId(), "摘要测试");
+
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityQueryService.listMyActivities(user.getUserId(), null, 1, 20);
+
+        assertThat(result.getItems()).hasSize(1);
+        ActivityDtos.ActivitySummary summary = result.getItems().getFirst();
+        assertThat(summary.getActivityId()).isEqualTo(activity.getActivityId());
+        assertThat(summary.getTitle()).isEqualTo("摘要测试");
+        assertThat(summary.getTags()).containsExactly("社交", "桌游");
+        assertThat(summary.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
+        assertThat(summary.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.notStarted);
+        assertThat(summary.getRegisteredCount()).isZero();
+        assertThat(summary.getOccupiedCount()).isZero();
+        assertThat(summary.getCapacity()).isEqualTo(8);
+    }
+
+    @Test
+    void listMyActivitiesShouldReturnRegistrationCounts() {
+        User user = saveUser("user-a");
+        Activity activity = saveApprovedActivity(user.getUserId(), "计数摘要");
+        saveUser("registered-user");
+        saveUser("checked-in-user");
+        saveUser("waiting-confirmation-user");
+        saveUser("waiting-user");
+        saveRegistration(activity.getActivityId(), "registered-user", RegistrationStatus.registered);
+        saveRegistration(activity.getActivityId(), "checked-in-user", RegistrationStatus.checkedIn);
+        saveRegistration(activity.getActivityId(), "waiting-confirmation-user", RegistrationStatus.waitingConfirmation);
+        saveRegistration(activity.getActivityId(), "waiting-user", RegistrationStatus.waiting);
+
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityQueryService.listMyActivities(user.getUserId(), null, 1, 20);
+
+        ActivityDtos.ActivitySummary summary = result.getItems().getFirst();
+        assertThat(summary.getRegisteredCount()).isEqualTo(2);
+        assertThat(summary.getOccupiedCount()).isEqualTo(3);
+    }
+
+    @Test
+    void listMyActivitiesShouldThrowForInvalidStatus() {
+        User user = saveUser("user-a");
+
+        assertThatThrownBy(() -> activityQueryService.listMyActivities(user.getUserId(), "invalid_status", 1, 20))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("无效的审核状态筛选条件");
+    }
+
+    @Test
+    void listMyRegistrationsShouldOnlyReturnCurrentUsersRegistrations() {
+        User userA = saveUser("user-a");
+        User userB = saveUser("user-b");
+        User organizer = saveUser("organizer");
+        Activity oldActivity = saveApprovedActivity(organizer.getUserId(), "旧报名活动");
+        Activity waitingActivity = saveApprovedActivity(organizer.getUserId(), "候补活动");
+        Activity otherUserActivity = saveApprovedActivity(organizer.getUserId(), "其他用户活动");
+        Instant oldRegisteredAt = Instant.parse("2026-07-02T08:00:00Z");
+        Instant newRegisteredAt = Instant.parse("2026-07-02T09:00:00Z");
+
+        ActivityRegistration oldRegistration = saveRegistration(
+                oldActivity.getActivityId(),
+                userA.getUserId(),
+                RegistrationStatus.registered,
+                null,
+                oldRegisteredAt,
+                null);
+        ActivityRegistration waitingRegistration = saveRegistration(
+                waitingActivity.getActivityId(),
+                userA.getUserId(),
+                RegistrationStatus.waiting,
+                2,
+                newRegisteredAt,
+                null);
+        saveRegistration(
+                otherUserActivity.getActivityId(),
+                userB.getUserId(),
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                null);
+
+        PageResult<ActivityDtos.RegisteredActivitySummary> result =
+                activityQueryService.listMyRegistrations(userA.getUserId(), 1, 20);
+
+        assertThat(result.getTotal()).isEqualTo(2);
+        assertThat(result.getItems()).hasSize(2);
+        assertThat(result.getItems().getFirst().getRegistrationId()).isEqualTo(waitingRegistration.getRegistrationId());
+        assertThat(result.getItems().getFirst().getTitle()).isEqualTo("候补活动");
+        assertThat(result.getItems().getFirst().getRegistrationStatus()).isEqualTo(RegistrationStatus.waiting);
+        assertThat(result.getItems().getFirst().getRegisteredAt()).isEqualTo(newRegisteredAt.toString());
+        assertThat(result.getItems().getFirst().getWaitingRank()).isEqualTo(2);
+        assertThat(result.getItems().getLast().getRegistrationId()).isEqualTo(oldRegistration.getRegistrationId());
+    }
+
+    @Test
+    void listMyRegistrationsShouldDefaultPageParams() {
+        User user = saveUser("user-a");
+
+        PageResult<ActivityDtos.RegisteredActivitySummary> result =
+                activityQueryService.listMyRegistrations(user.getUserId(), null, null);
+
+        assertThat(result.getItems()).isEmpty();
+        assertThat(result.getTotal()).isZero();
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getPageSize()).isEqualTo(20);
+        assertThat(result.getTotalPages()).isZero();
+    }
+
+    @Test
+    void listMyRegistrationsShouldPaginateByRegisteredAtDesc() {
+        User user = saveUser("user-a");
+        User organizer = saveUser("organizer");
+        Activity firstActivity = saveApprovedActivity(organizer.getUserId(), "最早报名");
+        Activity secondActivity = saveApprovedActivity(organizer.getUserId(), "第二报名");
+        Activity thirdActivity = saveApprovedActivity(organizer.getUserId(), "最新报名");
+        saveRegistration(
+                firstActivity.getActivityId(),
+                user.getUserId(),
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T08:00:00Z"),
+                null);
+        saveRegistration(
+                secondActivity.getActivityId(),
+                user.getUserId(),
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T09:00:00Z"),
+                null);
+        saveRegistration(
+                thirdActivity.getActivityId(),
+                user.getUserId(),
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                null);
+
+        PageResult<ActivityDtos.RegisteredActivitySummary> pageOne =
+                activityQueryService.listMyRegistrations(user.getUserId(), 1, 2);
+        PageResult<ActivityDtos.RegisteredActivitySummary> pageTwo =
+                activityQueryService.listMyRegistrations(user.getUserId(), 2, 2);
+
+        assertThat(pageOne.getTotal()).isEqualTo(3);
+        assertThat(pageOne.getTotalPages()).isEqualTo(2);
+        assertThat(pageOne.getItems())
+                .extracting(ActivityDtos.RegisteredActivitySummary::getTitle)
+                .containsExactly("最新报名", "第二报名");
+        assertThat(pageTwo.getItems())
+                .extracting(ActivityDtos.RegisteredActivitySummary::getTitle)
+                .containsExactly("最早报名");
+    }
+
+    @Test
+    void listMyRegistrationsShouldReturnWaitingConfirmationDeadline() {
+        User user = saveUser("user-a");
+        User organizer = saveUser("organizer");
+        Activity activity = saveApprovedActivity(organizer.getUserId(), "候补待确认活动");
+        Instant confirmationDeadline = Instant.parse("2026-07-02T10:15:00Z");
+        saveRegistration(
+                activity.getActivityId(),
+                user.getUserId(),
+                RegistrationStatus.waitingConfirmation,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                confirmationDeadline);
+
+        PageResult<ActivityDtos.RegisteredActivitySummary> result =
+                activityQueryService.listMyRegistrations(user.getUserId(), 1, 20);
+
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().getFirst().getRegistrationStatus())
+                .isEqualTo(RegistrationStatus.waitingConfirmation);
+        assertThat(result.getItems().getFirst().getConfirmationDeadline()).isEqualTo(confirmationDeadline.toString());
+    }
+
+    // ========== getMapPoints ==========
+
+    @Test
+    void getMapPointsShouldReturnApprovedActivitiesWithCoordinates() {
+        User organizer = saveUser("user-a");
+        saveApprovedActivity(organizer.getUserId(), "北京活动");
+        saveApprovedActivity(organizer.getUserId(), "上海活动");
+
+        List<ActivityDtos.ActivityMapPoint> result =
+                activityQueryService.getMapPoints(null, null, null, null, null, null, null, null, null, 1, 20);
+
+        assertThat(result).hasSize(2);
+        assertThat(result).allMatch(point -> point.getPoint() != null);
+        assertThat(result).allMatch(point -> point.getPoint().getLatitude() != null);
+        assertThat(result).allMatch(point -> point.getPoint().getLongitude() != null);
+    }
+
+    @Test
+    void getMapPointsShouldExcludeDrafts() {
+        User organizer = saveUser("user-a");
+        saveDraftActivity(organizer.getUserId(), "草稿");
+        saveApprovedActivity(organizer.getUserId(), "已通过");
+
+        List<ActivityDtos.ActivityMapPoint> result =
+                activityQueryService.getMapPoints(null, null, null, null, null, null, null, null, null, 1, 20);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getTitle()).isEqualTo("已通过");
+    }
+
+    @Test
+    void getMapPointsShouldExcludeTakenDown() {
+        User organizer = saveUser("user-a");
+        saveTakenDownActivity(organizer.getUserId());
+        saveApprovedActivity(organizer.getUserId(), "正常活动");
+
+        List<ActivityDtos.ActivityMapPoint> result =
+                activityQueryService.getMapPoints(null, null, null, null, null, null, null, null, null, 1, 20);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getTitle()).isEqualTo("正常活动");
+    }
+
+    @Test
+    void getMapPointsShouldFilterByKeyword() {
+        User organizer = saveUser("user-a");
+        saveApprovedActivity(organizer.getUserId(), "桌游之夜");
+        saveApprovedActivity(organizer.getUserId(), "羽毛球赛");
+
+        List<ActivityDtos.ActivityMapPoint> result =
+                activityQueryService.getMapPoints("桌游", null, null, null, null, null, null, null, null, 1, 20);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getTitle()).isEqualTo("桌游之夜");
+    }
+
+    @Test
+    void getMapPointsShouldFilterByCity() {
+        User organizer = saveUser("user-a");
+        saveApprovedActivity(organizer.getUserId(), "北京活动");
+        activityRepository.save(Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizer.getUserId())
+                .title("上海活动")
+                .tags(List.of("社交"))
+                .introduction("简介")
+                .startAt(Instant.parse("2026-07-02T10:00:00Z"))
+                .endAt(Instant.parse("2026-07-02T12:00:00Z"))
+                .pointLon(121.473)
+                .pointLat(31.230)
+                .city("上海")
+                .address("浦东新区")
+                .safetyNotice("注意安全")
+                .capacity(8)
+                .reviewStatus(ActivityReviewStatus.approved)
+                .runtimeStatus(ActivityRuntimeStatus.notStarted)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build());
+
+        List<ActivityDtos.ActivityMapPoint> result =
+                activityQueryService.getMapPoints(null, "上海", null, null, null, null, null, null, null, 1, 20);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getTitle()).isEqualTo("上海活动");
+    }
+
+    @Test
+    void getMapPointsShouldPaginate() {
+        User organizer = saveUser("user-a");
+        saveApprovedActivity(organizer.getUserId(), "活动1");
+        saveApprovedActivity(organizer.getUserId(), "活动2");
+        saveApprovedActivity(organizer.getUserId(), "活动3");
+
+        List<ActivityDtos.ActivityMapPoint> page1 =
+                activityQueryService.getMapPoints(null, null, null, null, null, null, null, null, null, 1, 2);
+
+        assertThat(page1).hasSize(2);
+    }
+
+    @Test
+    void listParticipantsShouldAllowJoinedUserAndReturnParticipants() {
+        saveUser("organizer");
+        saveUser("participant-a");
+        saveUser("participant-b");
+        Activity activity = saveApprovedActivity("organizer", "参与者列表");
+        saveRegistration(
+                activity.getActivityId(),
+                "participant-a",
+                RegistrationStatus.registered,
+                null,
+                Instant.parse("2026-07-02T10:00:00Z"),
+                null);
+        saveRegistration(
+                activity.getActivityId(),
+                "participant-b",
+                RegistrationStatus.checkedIn,
+                null,
+                Instant.parse("2026-07-02T09:00:00Z"),
+                null);
+
+        PageResult<ActivityDtos.ActivityParticipant> result =
+                activityQueryService.listParticipants("participant-a", false, activity.getActivityId(), 1, 20);
+
+        assertThat(result.getItems()).hasSize(2);
+        assertThat(result.getItems().getFirst().getUserId()).isEqualTo("participant-a");
+        assertThat(result.getItems().getFirst().getNickname()).isEqualTo("nickname-participant-a");
+        assertThat(result.getItems().getFirst().getRegistrationStatus()).isEqualTo(RegistrationStatus.registered);
+        assertThat(result.getTotal()).isEqualTo(2);
+    }
+
+    @Test
+    void listParticipantsShouldRejectUnrelatedUser() {
+        saveUser("organizer");
+        saveUser("participant");
+        saveUser("viewer");
+        Activity activity = saveApprovedActivity("organizer", "参与者权限");
+        saveRegistration(activity.getActivityId(), "participant", RegistrationStatus.registered);
+
+        assertThatThrownBy(
+                        () -> activityQueryService.listParticipants("viewer", false, activity.getActivityId(), 1, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(20003);
+    }
+
+    @Test
+    void listParticipantsShouldRejectInvisibleActivityForNonOrganizer() {
+        saveUser("organizer");
+        saveUser("participant");
+        Activity activity = saveDraftActivity("organizer", "草稿参与者");
+        saveRegistration(activity.getActivityId(), "participant", RegistrationStatus.registered);
+
+        assertThatThrownBy(() ->
+                        activityQueryService.listParticipants("participant", false, activity.getActivityId(), 1, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(20002);
+    }
+
+    // ========== 辅助方法 ==========
+
+    private ActivityRegistration saveRegistration(String activityId, String userId, RegistrationStatus status) {
+        return saveRegistration(activityId, userId, status, null, Instant.now(), null);
+    }
+
+    private ActivityRegistration saveRegistration(
+            String activityId,
+            String userId,
+            RegistrationStatus status,
+            Integer waitingRank,
+            Instant registeredAt,
+            Instant confirmationDeadline) {
+        return activityRegistrationRepository.save(ActivityRegistration.builder()
+                .registrationId(UUID.randomUUID().toString())
+                .activityId(activityId)
+                .userId(userId)
+                .status(status)
+                .participantNote("测试备注")
+                .acceptedSafetyNotice(true)
+                .waitingRank(waitingRank)
+                .confirmationDeadline(confirmationDeadline)
+                .registeredAt(registeredAt)
+                .build());
+    }
+
+    private User saveUser(String userId) {
+        return userRepository.save(User.builder()
+                .userId(userId)
+                .email(userId + "@example.com")
+                .nickname("nickname-" + userId)
+                .passwordHash("hashed-password")
+                .kind(UserKind.personal)
+                .accountStatus(AccountStatus.active)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build());
+    }
+
+    private Activity saveDraftActivity(String organizerId, String title) {
+        return activityRepository.save(Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizerId)
+                .title(title)
+                .tags(List.of("社交", "桌游"))
+                .introduction("简介")
+                .startAt(Instant.parse("2026-07-02T10:00:00Z"))
+                .endAt(Instant.parse("2026-07-02T12:00:00Z"))
+                .pointLon(116.397)
+                .pointLat(39.907)
+                .city("北京")
+                .address("海淀区某街道")
+                .placeName("活动中心")
+                .safetyNotice("注意安全")
+                .capacity(8)
+                .registrationDeadline(Instant.parse("2026-07-01T12:00:00Z"))
+                .reviewStatus(ActivityReviewStatus.draft)
+                .runtimeStatus(ActivityRuntimeStatus.notStarted)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build());
+    }
+
+    private Activity saveApprovedActivity(String organizerId, String title) {
+        return saveApprovedActivity(organizerId, title, 8);
+    }
+
+    private Activity saveApprovedActivity(String organizerId, String title, int capacity) {
+        return activityRepository.save(Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizerId)
+                .title(title)
+                .tags(List.of("社交", "桌游"))
+                .introduction("简介")
+                .startAt(Instant.parse("2026-07-02T10:00:00Z"))
+                .endAt(Instant.parse("2026-07-02T12:00:00Z"))
+                .pointLon(116.397)
+                .pointLat(39.907)
+                .city("北京")
+                .address("海淀区某街道")
+                .placeName("活动中心")
+                .safetyNotice("注意安全")
+                .capacity(capacity)
+                .registrationDeadline(Instant.parse("2026-07-01T12:00:00Z"))
+                .reviewStatus(ActivityReviewStatus.approved)
+                .runtimeStatus(ActivityRuntimeStatus.notStarted)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build());
+    }
+
+    private Activity saveTakenDownActivity(String organizerId) {
+        return activityRepository.save(Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizerId)
+                .title("已下架活动")
+                .tags(List.of("社交"))
+                .introduction("简介")
+                .startAt(Instant.parse("2026-07-02T10:00:00Z"))
+                .endAt(Instant.parse("2026-07-02T12:00:00Z"))
+                .pointLon(116.397)
+                .pointLat(39.907)
+                .city("北京")
+                .address("海淀区某街道")
+                .safetyNotice("注意安全")
+                .capacity(8)
+                .registrationDeadline(Instant.parse("2026-07-01T12:00:00Z"))
+                .reviewStatus(ActivityReviewStatus.approved)
+                .runtimeStatus(ActivityRuntimeStatus.takenDown)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build());
+    }
+}

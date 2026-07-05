@@ -1,0 +1,222 @@
+/**
+ * 全局 SCSS 混入
+ *
+ * 提供可复用的样式模式，避免在组件中重复编写相同样式。
+ * 使用方式：在组件 <style> 中 @import '@/styles/mixins.scss' 后调用。
+ */
+@import './theme.scss';
+
+/* ===== 玻璃拟态卡片 ===== */
+
+/**
+ * 轻玻璃效果卡片
+ * @param $padding 内边距，默认 $spacing-lg
+ * @param $radius 圆角，默认 $radius-xl
+ */
+@mixin glass-card($padding: $spacing-lg, $radius: $radius-xl) {
+  background: $color-bg-glass;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid $color-border-light;
+  border-radius: $radius;
+  padding: $padding;
+  box-shadow: $shadow-sm;
+}
+
+/**
+ * 更强烈的玻璃效果（用于重要卡片）
+ */
+@mixin glass-card-heavy($padding: $spacing-lg, $radius: $radius-xl) {
+  background: $color-bg-glass-heavy;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: $radius;
+  padding: $padding;
+  box-shadow: $shadow-glass;
+}
+
+/* ===== 柔和阴影 ===== */
+
+@mixin soft-shadow($level: 'md') {
+  @if $level == 'sm' {
+    box-shadow: $shadow-sm;
+  } @else if $level == 'md' {
+    box-shadow: $shadow-md;
+  } @else if $level == 'lg' {
+    box-shadow: $shadow-lg;
+  } @else if $level == 'glass' {
+    box-shadow: $shadow-glass;
+  }
+}
+
+/* ===== 按钮样式 ===== */
+
+/**
+ * 主按钮（品牌色填充）
+ */
+@mixin btn-primary {
+  background: $color-primary;
+  color: $color-text-inverse;
+  border: none;
+  border-radius: $radius-full;
+  font-weight: $weight-semibold;
+  cursor: pointer;
+  transition:
+    opacity 0.2s,
+    transform 0.1s;
+
+  &:active {
+    opacity: 0.85;
+    transform: scale(0.98);
+  }
+
+  &.disabled,
+  &[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+/**
+ * 次要按钮（描边）
+ */
+@mixin btn-secondary {
+  background: transparent;
+  color: $color-primary;
+  border: 1.5px solid $color-primary;
+  border-radius: $radius-full;
+  font-weight: $weight-medium;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:active {
+    background: $color-primary-light;
+  }
+
+  &.disabled,
+  &[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+/**
+ * 幽灵按钮（无边框无背景）
+ */
+@mixin btn-ghost {
+  background: transparent;
+  color: $color-text-sub;
+  border: none;
+  cursor: pointer;
+
+  &:active {
+    color: $color-primary;
+  }
+}
+
+/* ===== 状态色 ===== */
+
+/**
+ * 根据活动运行状态返回对应颜色
+ * 用法：在父选择器内调用 @include status-color('registering')
+ */
+@mixin status-color($status) {
+  @if $status == 'registering' {
+    color: $color-primary;
+    background: $color-primary-light;
+  } @else if $status == 'registration-closed' or $status == 'full' {
+    color: $color-warning;
+    background: rgba(246, 197, 111, 0.12);
+  } @else if $status == 'ongoing' {
+    color: $color-secondary;
+    background: $color-secondary-light;
+  } @else if $status == 'ended' {
+    color: $color-text-muted;
+    background: rgba(160, 166, 178, 0.1);
+  } @else if $status == 'not-started' {
+    color: $color-info;
+    background: $color-secondary-light;
+  } @else if $status == 'taken-down' {
+    color: $color-danger;
+    background: rgba(242, 156, 163, 0.1);
+  }
+}
+
+/**
+ * 审核状态色
+ */
+@mixin review-status-color($status) {
+  @if $status == 'approved' {
+    color: $color-success;
+    background: $color-primary-light;
+  } @else if $status == 'pending' or $status == 'risk-review' {
+    color: $color-warning;
+    background: rgba(246, 197, 111, 0.12);
+  } @else if $status == 'rejected' {
+    color: $color-danger;
+    background: rgba(242, 156, 163, 0.1);
+  } @else if $status == 'revision-requested' {
+    color: $color-accent;
+    background: $color-accent-light;
+  }
+}
+
+/* ===== 布局辅助 ===== */
+
+/**
+ * 单行截断
+ */
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/**
+ * 多行截断
+ * @param $lines 最大行数
+ */
+@mixin text-clamp($lines: 2) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: $lines;
+  overflow: hidden;
+}
+
+/**
+ * Flex 居中
+ */
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/**
+ * Flex 两端对齐
+ */
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/**
+ * 页面容器（统一内边距 + 安全区域）
+ */
+@mixin page-container {
+  padding: $spacing-lg;
+  padding-bottom: calc(#{$safe-bottom} + #{$tabbar-height} + #{$spacing-lg});
+}
+
+/**
+ * 分割线
+ */
+@mixin divider {
+  height: 1px;
+  background: $color-border;
+  margin: $spacing-md 0;
+}

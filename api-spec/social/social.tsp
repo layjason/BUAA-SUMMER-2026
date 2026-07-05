@@ -162,7 +162,7 @@ model FriendItem {
   @doc("好友昵称。")
   nickname: string;
 
-  @doc("好友头像。")
+  @doc("好友头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("当前用户为该好友设置的备注。")
@@ -182,6 +182,16 @@ model FriendRemarkUpdate {
 
   @doc("新的好友分组标签。")
   groupTags?: string[];
+}
+
+@doc("扫码添加好友请求，调用方通过扫描二维码获取 token 并提交，系统解码 token 后自动创建好友申请。")
+model QrCodeScanRequest {
+  @doc("从二维码中解码得到的 token。")
+  token: string;
+
+  @doc("附加的好友申请附言。")
+  @maxLength(500)
+  message?: string;
 }
 
 @doc("关注关系结果。")
@@ -207,7 +217,7 @@ model FollowItem {
   @doc("用户昵称。")
   nickname: string;
 
-  @doc("用户头像。")
+  @doc("用户头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("关注时间。")
@@ -225,7 +235,7 @@ model BlacklistItem {
   @doc("被屏蔽用户昵称。")
   nickname: string;
 
-  @doc("被屏蔽用户头像。")
+  @doc("被屏蔽用户头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("屏蔽时间。")
@@ -304,7 +314,7 @@ model TeamProfile {
   @doc("小队简介。")
   description?: string;
 
-  @doc("小队头像媒体文件。")
+  @doc("小队头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("小队状态。")
@@ -328,7 +338,7 @@ model TeamMember {
   @doc("成员昵称。")
   nickname: string;
 
-  @doc("成员头像。")
+  @doc("成员头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
   avatar?: MediaFile;
 
   @doc("成员在小队中的角色。")
@@ -394,6 +404,58 @@ model TeamPointRankItem {
 
   @doc("成员积分。")
   points: int32;
+}
+
+@doc("手动调整小队成员积分请求。")
+model ManualPointAdjustmentRequest {
+  @doc("积分变动值，正数为加、负数为减。")
+  pointChange: int32;
+
+  @doc("调整原因。")
+  @maxLength(50)
+  reason: string;
+}
+
+@doc("小队积分变动记录项。")
+model TeamPointRecordItem {
+  @doc("记录唯一标识。")
+  recordId: EntityId;
+
+  @doc("成员用户标识。")
+  userId: EntityId;
+
+  @doc("成员昵称。")
+  nickname: string;
+
+  @doc("积分变动值。")
+  pointChange: int32;
+
+  @doc("变动来源。")
+  source: TeamPointChangeSource;
+
+  @doc("关联实体 ID，如报名记录 ID。")
+  referenceId?: EntityId;
+
+  @doc("变动原因。")
+  reason: string;
+
+  @doc("变动时间。")
+  createdAt: utcDateTime;
+}
+
+@doc("小队积分变动来源枚举。")
+enum TeamPointChangeSource {
+  @doc("活动签到加分。")
+  checkin,
+
+  @doc("爽约扣分。")
+  no_show,
+
+  @doc("发布活动图文总结加分。")
+  summary_post,
+
+  @doc("管理员手动加减分。")
+  manual,
 }
 
 @route("/social")
@@ -475,7 +537,10 @@ interface SocialOperations {
   @get
   @route("/friends")
   @doc("获取好友列表，调用方已登录，分页返回好友，删除好友后双方关系解除。")
-  listFriends(...PageQuery): APIResult<PageResult<FriendItem>>;
+  listFriends(
+    @query @doc("好友昵称或备注筛选关键字。") keyword?: string,
+    ...PageQuery,
+  ): APIResult<PageResult<FriendItem>>;
 
   @patch
   @route("/friends/{userId}")
@@ -545,6 +610,11 @@ interface SocialOperations {
     @query tags?: string[],
     ...PageQuery,
   ): APIResult<PageResult<TeamProfile>>;
+
+  @get
+  @route("/teams/mine")
+  @doc("获取当前用户加入的小队列表，含已解散/已停用的历史小队，按加入时间倒序。")
+  listMyTeams(...PageQuery): APIResult<PageResult<TeamProfile>>;
 
   @get
   @route("/teams/{teamId}")
@@ -688,6 +758,56 @@ interface SocialOperations {
 
       | QujuApi.Errors.Social.TeamNotVisible
       | QujuApi.Errors.Social.TeamMemberNotFound
+  >;
+
+  @post
+  @route("/teams/{teamId}/members/{userId}/points")
+  @doc("手动调整小队成员积分，仅队长和管理员可执行。")
+  adjustTeamMemberPoints(
+    @path teamId: EntityId,
+    @path userId: EntityId,
+    @body request: ManualPointAdjustmentRequest,
+  ): APIResult<
+    EmptyData,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamMemberNotFound
+      | QujuApi.Errors.Social.TeamPermissionDenied
+  >;
+
+  @get
+  @route("/teams/{teamId}/members/{userId}/points/history")
+  @doc("查看小队成员积分变动历史。")
+  getTeamMemberPointHistory(
+    @path teamId: EntityId,
+    @path userId: EntityId,
+    ...PageQuery,
+  ): APIResult<
+    PageResult<TeamPointRecordItem>,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamMemberNotFound
+  >;
+
+  @get
+  @route("/qr-code")
+  @doc("生成当前用户的个人二维码，返回 PNG 格式的二维码图片，含 5 分钟有效期 JWT token。")
+  getMyQrCode(): {
+    @header contentType: "image/png";
+    @body body: bytes;
+  };
+
+  @post
+  @route("/qr-code/scan")
+  @doc("扫描他人二维码添加好友，解码 token 后自动创建好友申请。")
+  scanQrCode(@body body: QrCodeScanRequest): APIResult<
+    FriendRequest,
+
+      | QujuApi.Errors.Social.UserNotVisible
+      | QujuApi.Errors.Social.BlacklistRelationExists
+      | QujuApi.Errors.Social.FriendshipStateInvalid
+      | QujuApi.Errors.Social.DuplicateFriendRequest
+      | QujuApi.Errors.Social.QrCodeTokenInvalid
   >;
 }
 

@@ -2,10 +2,13 @@ package io.github.layjason.mayoistar.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.MerchantProfile;
 import io.github.layjason.mayoistar.entity.identity.Qualification;
@@ -17,6 +20,7 @@ import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.MerchantProfileRepository;
 import io.github.layjason.mayoistar.repository.QualificationRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -29,6 +33,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 class MerchantProfileServiceTest {
@@ -45,6 +50,12 @@ class MerchantProfileServiceTest {
     @Mock
     private MediaFileRepository mediaFileRepository;
 
+    @Mock
+    private MediaFileUploadService mediaFileUploadService;
+
+    @Mock
+    private MediaAccessService mediaAccessService;
+
     private MerchantProfileService merchantProfileService;
 
     private final String userId = UUID.randomUUID().toString();
@@ -52,7 +63,12 @@ class MerchantProfileServiceTest {
     @BeforeEach
     void setUp() {
         merchantProfileService = new MerchantProfileService(
-                userRepository, merchantProfileRepository, qualificationRepository, mediaFileRepository);
+                userRepository,
+                merchantProfileRepository,
+                qualificationRepository,
+                mediaFileRepository,
+                mediaFileUploadService,
+                mediaAccessService);
     }
 
     @Nested
@@ -142,7 +158,7 @@ class MerchantProfileServiceTest {
         @DisplayName("成功提交资质")
         void shouldSubmitQualification() {
             User user = buildMerchantUser();
-            String licenseId = UUID.randomUUID().toString();
+            UUID licenseId = UUID.randomUUID();
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(mediaFileRepository.findById(licenseId))
@@ -177,7 +193,7 @@ class MerchantProfileServiceTest {
         @DisplayName("资质已提交时抛出 10009")
         void shouldThrowOnAlreadySubmitted() {
             User user = buildMerchantUser();
-            String licenseId = UUID.randomUUID().toString();
+            UUID licenseId = UUID.randomUUID();
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(mediaFileRepository.findById(licenseId))
@@ -201,6 +217,30 @@ class MerchantProfileServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
                     .isEqualTo(10009);
+        }
+    }
+
+    @Nested
+    @DisplayName("营业执照上传")
+    class UploadLicense {
+
+        @Test
+        @DisplayName("委托 MediaFileUploadService 上传营业执照")
+        void shouldDelegateToMediaFileUploadService() {
+            MultipartFile file = mock(MultipartFile.class);
+            CommonDtos.MediaFile expected = new CommonDtos.MediaFile();
+            expected.setMediaId(UUID.randomUUID());
+            expected.setFileName("license.png");
+            expected.setContentType("image/png");
+            expected.setUsage(MediaUsage.merchantLicense);
+
+            when(mediaFileUploadService.upload(userId, file, MediaUsage.merchantLicense))
+                    .thenReturn(expected);
+
+            CommonDtos.MediaFile result = merchantProfileService.uploadLicense(userId, file);
+
+            assertThat(result.getFileName()).isEqualTo("license.png");
+            verify(mediaFileUploadService).upload(userId, file, MediaUsage.merchantLicense);
         }
     }
 

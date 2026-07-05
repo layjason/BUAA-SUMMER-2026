@@ -8,10 +8,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -21,11 +19,9 @@ import org.springframework.test.web.servlet.MockMvc;
  *
  * <p>不变量：不测试 Service 层业务逻辑，仅验证 HTTP 层面的角色访问控制。
  */
-@SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 @DisplayName("权限控制")
-class PermissionControlTests {
+class PermissionControlTests extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -41,12 +37,16 @@ class PermissionControlTests {
         }
 
         @Test
-        @DisplayName("管理员登录接口无认证可访问，因缺少请求体返回 400")
+        @DisplayName("管理员登录接口无认证可访问，缺少请求体时返回 HTTP 200 + 业务码 400")
         void adminLoginWithoutAuth_shouldSucceed() throws Exception {
             mockMvc.perform(post("/admin/auth/login")
                             .contentType("application/json")
                             .content("{}"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isOk())
+                    .andExpect(result -> {
+                        String body = result.getResponse().getContentAsString();
+                        assert body.contains("\"code\":400") || body.contains("\"code\": 400");
+                    });
         }
     }
 

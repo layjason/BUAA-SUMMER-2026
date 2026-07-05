@@ -1,0 +1,215 @@
+/**
+ * 全局样式
+ *
+ * 引入主题变量和混入，定义页面重置、工具类和通用组件样式。
+ * 通过 App.vue 的 <style> 标签引入，作用于整个应用。
+ */
+@import './theme.scss';
+@import './variables.scss';
+
+/* ===== 页面基础重置 ===== */
+page {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-size: $font-base;
+  color: $color-text;
+  background: linear-gradient(160deg, $color-bg 0%, $color-bg-warm 100%);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== 通用布局 ===== */
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+/* ===== 文字工具类 ===== */
+.text-primary {
+  color: $color-primary;
+}
+
+.text-secondary {
+  color: $color-text-sub;
+}
+
+.text-muted {
+  color: $color-text-muted;
+}
+
+.text-danger {
+  color: $color-danger;
+}
+
+.text-warning {
+  color: $color-warning;
+}
+
+.text-xs {
+  font-size: $font-xs;
+}
+
+.text-sm {
+  font-size: $font-sm;
+}
+
+.text-base {
+  font-size: $font-base;
+}
+
+.text-lg {
+  font-size: $font-lg;
+}
+
+.text-xl {
+  font-size: $font-xl;
+}
+
+.text-2xl {
+  font-size: $font-2xl;
+}
+
+.text-bold {
+  font-weight: $weight-semibold;
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.text-clamp-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+/* ===== 间距工具类 ===== */
+.mt-xs {
+  margin-top: $spacing-xs;
+}
+
+.mt-sm {
+  margin-top: $spacing-sm;
+}
+
+.mt-md {
+  margin-top: $spacing-md;
+}
+
+.mt-lg {
+  margin-top: $spacing-lg;
+}
+
+.mt-xl {
+  margin-top: $spacing-xl;
+}
+
+.mb-sm {
+  margin-bottom: $spacing-sm;
+}
+
+.mb-md {
+  margin-bottom: $spacing-md;
+}
+
+.mb-lg {
+  margin-bottom: $spacing-lg;
+}
+
+.p-sm {
+  padding: $spacing-sm;
+}
+
+.p-md {
+  padding: $spacing-md;
+}
+
+.p-lg {
+  padding: $spacing-lg;
+}
+
+.px-lg {
+  padding-left: $spacing-lg;
+  padding-right: $spacing-lg;
+}
+
+.py-md {
+  padding-top: $spacing-md;
+  padding-bottom: $spacing-md;
+}
+
+/* ===== 卡片（兼容旧写法） ===== */
+.card {
+  background: $color-bg-glass;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid $color-border-light;
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  margin: $spacing-sm $spacing-lg;
+  box-shadow: $shadow-sm;
+}
+
+/* ===== 安全区域 ===== */
+.safe-bottom {
+  padding-bottom: $safe-bottom;
+}
+
+/* ===== 页面容器 ===== */
+.page {
+  min-height: 100vh;
+  padding-bottom: calc(#{$safe-bottom} + #{$tabbar-height} + #{$spacing-lg});
+}
+
+.page-no-tab {
+  min-height: 100vh;
+  padding-bottom: calc(#{$safe-bottom} + #{$spacing-lg});
+}
+
+/* ===== 分割线 ===== */
+.divider {
+  height: 1px;
+  background: $color-border;
+  margin: $spacing-md 0;
+}
+
+/* ===== 全局过渡 ===== */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}

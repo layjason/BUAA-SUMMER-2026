@@ -83,7 +83,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。 */
+    /** @description 上传活动图片，请求为 multipart/form-data，返回活动图片 mediaId，上传接口不创建活动。返回的 signedUrl 为 owner 预览地址，绑定草稿后升级为 activityOwner、审核发布后升级为 publicAccess 并因 accessVersion 递增而失效，客户端应从活动接口获取当前 URL。 */
     post: operations['ActivityOperations_uploadActivityImage'];
     delete?: never;
     options?: never;
@@ -100,7 +100,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。 */
+    /** @description 上传活动评价 Markdown 内链图片，请求为 multipart/form-data，服务端自动设置媒体用途为 activityReviewImage，返回的 url 可用于评价正文 Markdown 图片链接。返回的 signedUrl 为 owner 私有地址，仅上传者本人与管理员可访问，对外消费路径待实现。 */
     post: operations['ActivityOperations_uploadActivityReviewImage'];
     delete?: never;
     options?: never;
@@ -117,6 +117,23 @@ export interface paths {
     };
     /** @description 获取我创建的活动列表，调用方已登录，分页返回本人创建的活动及审核状态，用于我的活动页查看提交处理结果。 */
     get: operations['ActivityOperations_listMyActivities'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/activities/registrations/mine': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 获取我报名的活动列表，调用方已登录，分页返回本人报名的活动及报名状态。 */
+    get: operations['ActivityOperations_listMyRegistrations'];
     put?: never;
     post?: never;
     delete?: never;
@@ -220,7 +237,7 @@ export interface paths {
     /** @description 查看签到列表，调用方为活动发起人或管理员，返回报名与签到状态，列表不返回用户敏感凭据。 */
     get: operations['ActivityOperations_listCheckIns'];
     put?: never;
-    /** @description 扫码签到，二维码有效且用户已报名，记录签到时间，需要位置校验时必须处于活动地点附近。 */
+    /** @description 扫码签到，二维码有效且用户已报名，记录签到时间。活动要求位置校验时用户必须传入当前位置且在活动地点附近。 */
     post: operations['ActivityOperations_checkIn'];
     delete?: never;
     options?: never;
@@ -337,10 +354,28 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** @description 获取活动评价列表，活动存在且调用方可见，分页返回参与者评价，用于活动详情页展示评价摘要。 */
+    get: operations['ActivityOperations_listReviews'];
     put?: never;
     /** @description 评价活动，调用方已参与且评价入口仍有效，保存评价，每个用户仅能评价一次。 */
     post: operations['ActivityOperations_reviewActivity'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/activities/{activityId}/reviews/mine': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 获取当前登录用户对指定活动的评价，调用方已登录，未评价时 review 为空。 */
+    get: operations['ActivityOperations_getMyReview'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -371,10 +406,28 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** @description 获取活动图文总结列表，活动存在且调用方可见，分页返回已发布的活动总结，用于活动详情页展示回顾内容。 */
+    get: operations['ActivityOperations_listSummaries'];
     put?: never;
-    /** @description 发布活动图文总结，活动已结束且调用方为发起人，发布总结，AI 图片标签必须经人工确认。 */
+    /** @description 发布活动图文总结，活动已结束且调用方为发起人，每个活动仅允许发布一篇总结，AI 图片标签必须经人工确认。 */
     post: operations['ActivityOperations_createSummary'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/activities/{activityId}/summaries/mine': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 获取当前登录用户对指定活动发布的总结，调用方已登录，未发布时 summary 为空。 */
+    get: operations['ActivityOperations_getMySummary'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -867,7 +920,7 @@ export interface paths {
     /** @description 获取会话消息，调用方属于会话，分页返回消息，撤回消息只展示撤回状态。 */
     get: operations['ChatOperations_listMessages'];
     put?: never;
-    /** @description 发送消息，调用方属于会话且消息内容合法，创建消息并通知接收方，位置消息必须包含完整地点信息。 */
+    /** @description 发送消息，调用方属于会话且消息内容合法，创建消息并通知接收方，位置消息必须包含完整地点信息。成功后应向会话内其他成员推送 messageCreated 实时事件。 */
     post: operations['ChatOperations_sendMessage'];
     delete?: never;
     options?: never;
@@ -884,7 +937,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 上传聊天图片，请求为 multipart/form-data，返回可发送的图片 mediaId，上传不等于发送消息。 */
+    /** @description 上传聊天图片，请求为 multipart/form-data，返回可发送的图片 mediaId，上传不等于发送消息。返回的 signedUrl 为 owner 预览地址，发送消息后策略升级为 conversationMember 并因 accessVersion 递增而失效，客户端应在发送后从消息接口获取新的会话签名 URL。 */
     post: operations['ChatOperations_uploadChatImage'];
     delete?: never;
     options?: never;
@@ -901,7 +954,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 批量标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。 */
+    /** @description 批量标记消息已读，调用方为消息接收方，消息读取状态更新，发送者不能替接收方标记已读。标记成功后服务端应向原消息发送方推送 messagePeerRead 事件（单聊）。 */
     post: operations['ChatOperations_markMessagesRead'];
     delete?: never;
     options?: never;
@@ -918,7 +971,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 转发消息，原消息可见且目标会话可发送，目标会话生成新消息，不会修改原消息。 */
+    /** @description 转发消息，原消息可见且目标会话可发送，目标会话生成新消息，不会修改原消息。成功后应向各目标会话内其他成员推送 messageForwarded 实时事件。 */
     post: operations['ChatOperations_forwardMessage'];
     delete?: never;
     options?: never;
@@ -935,7 +988,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 撤回消息，调用方为发送者且发送未超过 2 分钟，消息进入撤回状态，撤回不删除审计记录。 */
+    /** @description 撤回消息，调用方为发送者且发送未超过 2 分钟，消息进入撤回状态，撤回不删除审计记录。成功后应向会话内其他成员推送 messageRecalled 实时事件。 */
     post: operations['ChatOperations_recallMessage'];
     delete?: never;
     options?: never;
@@ -953,7 +1006,7 @@ export interface paths {
     /** @description 查看小队相册图片，小队成员可分页查看已上传到相册的图片。 */
     get: operations['ChatOperations_listTeamAlbumImages'];
     put?: never;
-    /** @description 上传小队相册图片，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队相册的图片 mediaId。 */
+    /** @description 上传小队相册图片，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队相册的图片 mediaId。返回的 signedUrl 已是 teamMember 终态地址，小队成员均可访问。 */
     post: operations['ChatOperations_uploadTeamAlbumImage'];
     /** @description 批量删除小队相册图片，队长或管理员可传入相册图片媒体标识列表删除指定图片。 */
     delete: operations['ChatOperations_deleteTeamAlbumImages'];
@@ -969,11 +1022,30 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** @description 查询群公告，调用方为小队成员，分页返回该小队的群公告列表。 */
+    get: operations['ChatOperations_listAnnouncements'];
     put?: never;
     /** @description 发布群公告，调用方为队长或管理员，小队公告更新并通知成员，普通成员不可发布公告。 */
     post: operations['ChatOperations_publishAnnouncement'];
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/chat/teams/{teamId}/announcements/{announcementId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** @description 编辑群公告，调用方为队长或管理员，仅限修改公告内容。 */
+    put: operations['ChatOperations_updateAnnouncement'];
+    post?: never;
+    /** @description 删除群公告，调用方为队长或管理员，公告删除后不可恢复。 */
+    delete: operations['ChatOperations_deleteAnnouncement'];
     options?: never;
     head?: never;
     patch?: never;
@@ -1006,7 +1078,7 @@ export interface paths {
     /** @description 查看群文件，小队成员可分页查看群文件列表。 */
     get: operations['ChatOperations_listTeamFiles'];
     put?: never;
-    /** @description 上传群文件，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队的文件 mediaId。 */
+    /** @description 上传群文件，请求为 multipart/form-data，调用方必须是小队成员，返回已关联到该小队的文件 mediaId。返回的 signedUrl 已是 teamMember 终态地址，小队成员均可访问。 */
     post: operations['ChatOperations_uploadTeamFile'];
     /** @description 批量删除群文件，队长或管理员可传入群文件媒体标识列表删除指定文件。 */
     delete: operations['ChatOperations_deleteTeamFiles'];
@@ -1022,10 +1094,28 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** @description 查看群投票列表，调用方为小队成员，可分页查看小队中已创建的投票。 */
+    get: operations['ChatOperations_listPolls'];
     put?: never;
     /** @description 创建群投票，调用方为小队成员，创建投票，投票选项至少两个。 */
     post: operations['ChatOperations_createPoll'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/chat/teams/{teamId}/polls/{pollId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 查看群投票结果，调用方为小队成员，返回投票详情及各选项当前票数。 */
+    get: operations['ChatOperations_getPoll'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1056,7 +1146,25 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description 聊天消息实时 WebSocket 占位端点。实际调用时客户端以 Bearer Token 完成鉴权并发起 WebSocket Upgrade，连接建立后服务端按 ChatRealtimeEvent 推送当前用户可见会话中的新消息；普通 JSON API 统一响应规则不适用于升级后的 WebSocket 数据帧。 */
+    /**
+     * @description 聊天消息实时 WebSocket 端点（OpenAPI 以 GET 占位描述 Upgrade 入口）。
+     *
+     *     **连接**
+     *     - 将 `GET /chat/ws/messages` 升级为 WebSocket；生产环境使用 `wss://`。
+     *     - Upgrade 请求携带 `Authorization: Bearer {accessToken}`，鉴权规则与 REST 一致。
+     *     - 单用户维持一条长连接；断线后客户端应指数退避重连。
+     *
+     *     **数据帧**
+     *     - 服务端 → 客户端：每个 Text 帧为 `ChatWebSocketFrame`（即 `ChatRealtimeEvent`）JSON，不包裹 `{ code, message, data }`。
+     *     - 客户端 → 服务端：本版本无业务帧；心跳由网关或基础设施处理。
+     *
+     *     **推送触发（实现参考）**
+     *     - `sendMessage`：向会话内除发送方外的成员推送 `messageCreated`。
+     *     - `markMessagesRead`：单聊中向被已读消息的原发送方推送 `messagePeerRead`（可逐条推送）。
+     *     - `recallMessage`：向会话内除撤回方外的成员推送 `messageRecalled`。
+     *     - `forwardMessage`：向各目标会话内除转发方外的成员推送 `messageForwarded`。
+     *     - 仅推送给当前在线且有权查看该会话的用户；离线用户通过 REST 拉取补偿。
+     */
     get: operations['ChatOperations_connectMessageWebSocket'];
     put?: never;
     post?: never;
@@ -1315,7 +1423,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。 */
+    /** @description 上传用户或商家头像，请求为 multipart/form-data，服务端固定媒体用途为 avatar，资料更新接口通过 avatarMediaId 引用。返回的 signedUrl 为公开稳定地址，可直接使用并公共缓存。 */
     post: operations['IdentityOperations_uploadAvatar'];
     delete?: never;
     options?: never;
@@ -1332,7 +1440,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于后续资质提交的 mediaId，不得返回存储凭据。 */
+    /** @description 上传商家营业执照或营业凭证，请求为 multipart/form-data，返回可用于后续资质提交的 mediaId，不得返回存储凭据。返回的 signedUrl 为 owner 私有地址，仅上传者本人与管理员可访问，属敏感资料，客户端不应持久缓存。 */
     post: operations['IdentityOperations_uploadMerchantLicense'];
     delete?: never;
     options?: never;
@@ -1349,6 +1457,23 @@ export interface paths {
     };
     /** @description 校验昵称是否可用，nickname 非空，返回唯一性校验结果，个人昵称和商家昵称共享唯一性约束。 */
     get: operations['IdentityOperations_checkNickname'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/media/{mediaId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 根据媒体文件标识获取文件内容，成功时固定返回 200 和原始二进制流，Content-Type 根据上传时的 MIME 类型设置。 */
+    get: operations['CommonOperations_getMediaFile'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1790,7 +1915,7 @@ export interface components {
       endAt: components['schemas']['DateTimeString'];
       /** @description 活动地点。 */
       location: components['schemas']['LocationInfo'];
-      /** @description 活动封面图片。 */
+      /** @description 活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。 */
       coverImage?: components['schemas']['MediaFile'];
       /**
        * Format: double
@@ -1803,14 +1928,21 @@ export interface components {
       runtimeStatus: components['schemas']['Activities.ActivityRuntimeStatus'];
       /**
        * Format: int32
-       * @description 已报名人数。
+       * @description 已确认参加人数（含已报名与已签到），不含候补待确认。
        */
       registeredCount: number;
+      /**
+       * Format: int32
+       * @description 当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。
+       */
+      occupiedCount: number;
       /**
        * Format: int32
        * @description 活动人数上限。
        */
       capacity: number;
+      /** @description 是否要求签到用户提供位置信息进行位置校验。 */
+      requireLocationCheck: boolean;
       /** @description 活动完整简介。 */
       introduction: string;
       /** @description 活动安全须知全文。 */
@@ -1821,11 +1953,11 @@ export interface components {
       organizerId: components['schemas']['EntityId'];
       /** @description 活动发起人展示名称。 */
       organizerName: string;
-      /** @description 活动图片列表。 */
+      /** @description 活动图片列表。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。 */
       images: components['schemas']['MediaFile'][];
       /**
        * Format: int32
-       * @description 当前候补人数。
+       * @description 当前候补人数（含候补排队与候补待确认），候补待确认占用名额。
        */
       waitingCount: number;
       /** @description AI 内容安全审核结果快照。未执行或暂不支持 AI 审核时为空。 */
@@ -1872,7 +2004,9 @@ export interface components {
        * @description 参与者最低年龄要求。
        */
       minAge?: number;
-      /** @description 活动图片列表。 */
+      /** @description 是否要求签到用户提供位置信息进行位置校验。 */
+      requireLocationCheck?: boolean;
+      /** @description 活动图片列表。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。 */
       images: components['schemas']['MediaFile'][];
       /** @description 活动审核状态。 */
       reviewStatus: components['schemas']['Activities.ActivityReviewStatus'];
@@ -1931,6 +2065,8 @@ export interface components {
       minAge?: number;
       /** @description 活动图片媒体文件标识列表。 */
       imageIds?: components['schemas']['EntityId'][];
+      /** @description 是否要求签到用户提供位置信息进行位置校验。 */
+      requireLocationCheck?: boolean;
     };
     /**
      * @description 首页信息流类型。
@@ -1958,7 +2094,7 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 参与者昵称。 */
       nickname: string;
-      /** @description 参与者头像。 */
+      /** @description 参与者头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 当前报名或签到状态。 */
       registrationStatus: components['schemas']['Activities.RegistrationStatus'];
@@ -1991,6 +2127,10 @@ export interface components {
       canConfirmWaitingSeat: boolean;
       /** @description 当前用户是否可以扫码签到。 */
       canCheckIn: boolean;
+      /** @description 当前用户是否可以评价该活动。由后端根据活动结束时间、签到状态、是否已评价、评价窗口是否过期等规则计算。 */
+      canReview: boolean;
+      /** @description 评价入口关闭时间。仅 canReview 为 true 或用户满足评价基础条件时返回，用于前端展示剩余时间。 */
+      reviewWindowEndsAt?: components['schemas']['DateTimeString'];
     };
     /** @description 活动评价。 */
     'Activities.ActivityReview': {
@@ -2011,6 +2151,28 @@ export interface components {
       tags: string[];
       /** @description 评价创建时间。 */
       createdAt: components['schemas']['DateTimeString'];
+    };
+    /** @description 活动评价列表项，在评价基础上补充评价用户展示昵称。 */
+    'Activities.ActivityReviewListItem': {
+      /** @description 评价标识。 */
+      reviewId: components['schemas']['EntityId'];
+      /** @description 活动标识。 */
+      activityId: components['schemas']['EntityId'];
+      /** @description 评价用户标识。 */
+      userId: components['schemas']['EntityId'];
+      /**
+       * Format: int32
+       * @description 评分。
+       */
+      rating: number;
+      /** @description 评价正文，使用 Markdown 格式；正文中的图片链接来自活动评价图片上传接口返回的媒体访问地址。 */
+      content?: string;
+      /** @description 评价标签。 */
+      tags: string[];
+      /** @description 评价创建时间。 */
+      createdAt: components['schemas']['DateTimeString'];
+      /** @description 评价用户展示昵称。 */
+      nickname: string;
     };
     /** @description 活动评价请求，调用方已签到且评价窗口未关闭，保存评价，每名参与者对同一活动仅评价一次。 */
     'Activities.ActivityReviewRequest': {
@@ -2050,7 +2212,7 @@ export interface components {
       endAt: components['schemas']['DateTimeString'];
       /** @description 活动地点。 */
       location: components['schemas']['LocationInfo'];
-      /** @description 活动封面图片。 */
+      /** @description 活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。 */
       coverImage?: components['schemas']['MediaFile'];
       /**
        * Format: double
@@ -2063,14 +2225,21 @@ export interface components {
       runtimeStatus: components['schemas']['Activities.ActivityRuntimeStatus'];
       /**
        * Format: int32
-       * @description 已报名人数。
+       * @description 已确认参加人数（含已报名与已签到），不含候补待确认。
        */
       registeredCount: number;
+      /**
+       * Format: int32
+       * @description 当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。
+       */
+      occupiedCount: number;
       /**
        * Format: int32
        * @description 活动人数上限。
        */
       capacity: number;
+      /** @description 是否要求签到用户提供位置信息进行位置校验。 */
+      requireLocationCheck: boolean;
     };
     /** @description 活动图文总结。 */
     'Activities.ActivitySummaryPost': {
@@ -2082,7 +2251,7 @@ export interface components {
       title: string;
       /** @description 活动总结正文。 */
       content: string;
-      /** @description 活动总结图片列表。 */
+      /** @description 活动总结图片列表。签名 URL 用途为 summaryImage，对外消费路径待实现。 */
       images: components['schemas']['MediaFile'][];
       /** @description 活动总结图片标签。 */
       imageTags: components['schemas']['Activities.ImageTagConfirmation'][];
@@ -2119,7 +2288,7 @@ export interface components {
        * @description 模板默认人数上限。
        */
       defaultCapacity: number;
-      /** @description 模板默认活动封面图片。 */
+      /** @description 模板默认活动封面图片。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       defaultCoverImage: components['schemas']['MediaFile'];
     };
     /** @description 活动基础信息请求，地点来自地图选点，时间范围合法，可用于草稿保存或提交审核，费用字段只表达信息，不触发支付。 */
@@ -2159,6 +2328,8 @@ export interface components {
       minAge?: number;
       /** @description 活动图片媒体文件标识列表，第一张为封面。 */
       imageIds?: components['schemas']['EntityId'][];
+      /** @description 是否要求签到用户提供位置信息进行位置校验。true 时签到必须传入 currentLocation，且服务端校验距离。 */
+      requireLocationCheck?: boolean;
     };
     /** @description 签到二维码。 */
     'Activities.CheckInQrCode': {
@@ -2182,11 +2353,11 @@ export interface components {
       /** @description 签到完成时间。 */
       checkedInAt?: components['schemas']['DateTimeString'];
     };
-    /** @description 扫码签到请求，二维码有效，报名记录进入已签到状态，开启位置校验时当前位置必须在活动地点附近。 */
+    /** @description 扫码签到请求，二维码有效，报名记录进入已签到状态。若活动发起人设置了要求位置校验，则必须传入 currentLocation 且必须在活动地点附近。 */
     'Activities.CheckInRequest': {
       /** @description 扫码得到的签到二维码 token。 */
       qrCodeToken: string;
-      /** @description 签到时用户当前位置，用于可选的位置校验。 */
+      /** @description 签到时用户当前位置。活动不要求位置校验时可不传；活动要求位置校验时必须传入。 */
       currentLocation?: components['schemas']['GeoPoint'];
     };
     /** @description 图片标签确认结果。 */
@@ -2196,12 +2367,78 @@ export interface components {
       /** @description 该图片最终确认的标签。 */
       tags: string[];
     };
+    /** @description 当前登录用户对指定活动的评价查询结果。 */
+    'Activities.MyActivityReviewResult': {
+      /** @description 评价内容，当前用户未评价时为空。 */
+      review?: components['schemas']['Activities.ActivityReview'];
+    };
+    /** @description 当前登录用户对指定活动发布的总结查询结果。 */
+    'Activities.MyActivitySummaryResult': {
+      /** @description 总结内容，当前用户未发布时为空。 */
+      summary?: components['schemas']['Activities.ActivitySummaryPost'];
+    };
     /** @description 活动报名请求，活动存在且用户满足信誉、年龄等校验，生成正式报名或候补记录，满员时不得直接占用名额。 */
     'Activities.RegisterActivityRequest': {
       /** @description 参与者报名备注或必要报名信息。 */
       participantNote?: string;
       /** @description 是否已确认活动安全须知。 */
       acceptedSafetyNotice: boolean;
+    };
+    /** @description 我报名的活动摘要，包含活动信息与当前用户的报名状态。 */
+    'Activities.RegisteredActivitySummary': {
+      /** @description 活动标识。 */
+      activityId: components['schemas']['EntityId'];
+      /** @description 活动名称。 */
+      title: string;
+      /** @description 活动标签。 */
+      tags: string[];
+      /** @description 活动开始时间。 */
+      startAt: components['schemas']['DateTimeString'];
+      /** @description 活动结束时间。 */
+      endAt: components['schemas']['DateTimeString'];
+      /** @description 活动地点。 */
+      location: components['schemas']['LocationInfo'];
+      /** @description 活动封面图片。签名 URL 随活动状态翻转：草稿仅组织者可见（activityOwner），发布后公开可缓存（publicAccess）；活动状态变更后旧 URL 失效，需重查活动接口。 */
+      coverImage?: components['schemas']['MediaFile'];
+      /**
+       * Format: double
+       * @description 活动费用金额。
+       */
+      feeAmount?: number;
+      /** @description 活动审核状态。 */
+      reviewStatus: components['schemas']['Activities.ActivityReviewStatus'];
+      /** @description 活动进行状态。 */
+      runtimeStatus: components['schemas']['Activities.ActivityRuntimeStatus'];
+      /**
+       * Format: int32
+       * @description 已确认参加人数（含已报名与已签到），不含候补待确认。
+       */
+      registeredCount: number;
+      /**
+       * Format: int32
+       * @description 当前已占用名额数（已报名 + 已签到 + 候补待确认）。occupiedCount >= capacity 时活动满员，新报名将进入候补。
+       */
+      occupiedCount: number;
+      /**
+       * Format: int32
+       * @description 活动人数上限。
+       */
+      capacity: number;
+      /** @description 是否要求签到用户提供位置信息进行位置校验。 */
+      requireLocationCheck: boolean;
+      /** @description 报名记录标识。 */
+      registrationId: components['schemas']['EntityId'];
+      /** @description 当前用户在该活动中的报名状态。 */
+      registrationStatus: components['schemas']['Activities.RegistrationStatus'];
+      /** @description 报名或候补创建时间。 */
+      registeredAt: components['schemas']['DateTimeString'];
+      /**
+       * Format: int32
+       * @description 候补排位，非候补状态时为空。
+       */
+      waitingRank?: number;
+      /** @description 候补名额确认截止时间，仅候补待确认时返回。 */
+      confirmationDeadline?: components['schemas']['DateTimeString'];
     };
     /** @description 活动报名结果。 */
     'Activities.RegistrationResult': {
@@ -2316,7 +2553,7 @@ export interface components {
       memberCount: number;
       /** @description 小队简介。 */
       description?: string;
-      /** @description 小队头像媒体文件。 */
+      /** @description 小队头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 小队状态。 */
       status: components['schemas']['Social.TeamStatus'];
@@ -2525,7 +2762,7 @@ export interface components {
       kind: components['schemas']['Chat.MessageKind'];
       /** @description 文本消息内容。 */
       text?: string;
-      /** @description 图片消息媒体文件。 */
+      /** @description 图片消息媒体文件。签名 URL 为会话成员可见，会话内稳定；被移出会话后访问失效。 */
       image?: components['schemas']['MediaFile'];
       /** @description 位置共享消息地点。 */
       location?: components['schemas']['LocationInfo'];
@@ -2533,34 +2770,51 @@ export interface components {
       mentionedUserIds?: components['schemas']['EntityId'][];
       /** @description 该消息是否 @ 所有人。 */
       mentionAll?: boolean;
-      /** @description 消息读取状态。 */
+      /** @description 当前用户作为接收方时，自己是否已读该消息。本人发送的消息对本人恒为 read。 */
       readStatus: components['schemas']['Chat.MessageReadStatus'];
+      /** @description 单聊中发送方可见的对方已读状态：对方全部已读时为 read，否则 unread。仅本人发送的消息返回；群聊暂不返回。 */
+      peerReadStatus?: components['schemas']['Chat.MessageReadStatus'];
       /** @description 消息是否已撤回。 */
       recalled: boolean;
       /** @description 消息发送时间。 */
       sentAt: components['schemas']['DateTimeString'];
     };
-    /** @description 聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话的新消息。 */
+    /** @description 聊天实时事件，WebSocket 连接建立后由服务端推送，用于通知当前用户可见会话中的实时事件。 */
     'Chat.ChatRealtimeEvent': {
       /** @description 实时事件类型。 */
       kind: components['schemas']['Chat.ChatRealtimeEventKind'];
       /** @description 发生事件的会话标识。 */
       conversationId: components['schemas']['EntityId'];
-      /** @description 新创建的聊天消息。 */
-      message: components['schemas']['Chat.ChatMessage'];
-      /**
-       * Format: int32
-       * @description 当前用户在该会话中的最新未读消息数。
-       */
-      conversationUnreadCount: number;
+      /** @description 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload，kind=messagePeerRead 时为 MessagePeerReadPayload。 */
+      payload:
+        | components['schemas']['Chat.MessageCreatedPayload']
+        | components['schemas']['Chat.MessageRecalledPayload']
+        | components['schemas']['Chat.MessageForwardedPayload']
+        | components['schemas']['Chat.MessagePeerReadPayload'];
       /** @description 事件发生时间。 */
       occurredAt: components['schemas']['DateTimeString'];
     };
     /**
-     * @description 聊天实时事件类型。
+     * @description 聊天实时事件类型。friendRequestCreated 事件通过 /queue/social-events 推送，不在此枚举内。
      * @enum {string}
      */
-    'Chat.ChatRealtimeEventKind': 'messageCreated';
+    'Chat.ChatRealtimeEventKind':
+      'messageCreated' | 'messageRecalled' | 'messageForwarded' | 'messagePeerRead';
+    /** @description 聊天 WebSocket 数据帧。服务端向客户端推送的每个 Text 帧为 UTF-8 JSON，结构与本模型一致，不包裹 APIResult 统一响应外壳。 */
+    'Chat.ChatWebSocketFrame': {
+      /** @description 实时事件类型。 */
+      kind: components['schemas']['Chat.ChatRealtimeEventKind'];
+      /** @description 发生事件的会话标识。 */
+      conversationId: components['schemas']['EntityId'];
+      /** @description 事件负载，根据 kind 不同携带对应结构。kind=messageCreated 时 payload 为 MessageCreatedPayload，kind=messageRecalled 时为 MessageRecalledPayload，kind=messageForwarded 时为 MessageForwardedPayload，kind=messagePeerRead 时为 MessagePeerReadPayload。 */
+      payload:
+        | components['schemas']['Chat.MessageCreatedPayload']
+        | components['schemas']['Chat.MessageRecalledPayload']
+        | components['schemas']['Chat.MessageForwardedPayload']
+        | components['schemas']['Chat.MessagePeerReadPayload'];
+      /** @description 事件发生时间。 */
+      occurredAt: components['schemas']['DateTimeString'];
+    };
     /**
      * @description 会话类型。
      * @enum {string}
@@ -2574,7 +2828,7 @@ export interface components {
       kind: components['schemas']['Chat.ConversationKind'];
       /** @description 会话标题。 */
       title: string;
-      /** @description 会话头像。 */
+      /** @description 会话头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 最后一条消息的摘要文本。 */
       lastMessagePreview?: string;
@@ -2606,16 +2860,50 @@ export interface components {
       /** @description 待标记为已读的消息标识列表。 */
       messageIds: components['schemas']['EntityId'][];
     };
+    /** @description 消息创建事件负载。 */
+    'Chat.MessageCreatedPayload': {
+      /** @description 新创建的聊天消息。 */
+      message: components['schemas']['Chat.ChatMessage'];
+      /**
+       * Format: int32
+       * @description 当前用户在该会话中的最新未读消息数。
+       */
+      conversationUnreadCount: number;
+    };
+    /** @description 消息转发事件负载。 */
+    'Chat.MessageForwardedPayload': {
+      /** @description 转发产生的新聊天消息。 */
+      message: components['schemas']['Chat.ChatMessage'];
+      /**
+       * Format: int32
+       * @description 当前用户在该会话中的最新未读消息数。
+       */
+      conversationUnreadCount: number;
+    };
     /**
      * @description 消息类型。
      * @enum {string}
      */
     'Chat.MessageKind': 'text' | 'image' | 'location';
+    /** @description 单聊对方已读事件负载，接收方为原消息发送者。 */
+    'Chat.MessagePeerReadPayload': {
+      /** @description 会话标识。 */
+      conversationId: components['schemas']['EntityId'];
+      /** @description 已被对方阅读的消息标识。 */
+      messageId: components['schemas']['EntityId'];
+      /** @description 对方已读后的状态，恒为 read。 */
+      peerReadStatus: components['schemas']['Chat.MessageReadStatus'];
+    };
     /**
      * @description 消息读取状态。
      * @enum {string}
      */
     'Chat.MessageReadStatus': 'unread' | 'read';
+    /** @description 消息撤回事件负载。 */
+    'Chat.MessageRecalledPayload': {
+      /** @description 被撤回的聊天消息，其 recalled 字段为 true。 */
+      message: components['schemas']['Chat.ChatMessage'];
+    };
     /** @description 消息发送请求，调用方属于会话，创建消息并更新未读状态，不同消息类型只使用对应内容字段。 */
     'Chat.SendMessageRequest': {
       /** @description 待发送消息类型。 */
@@ -2790,6 +3078,21 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
+    /** @description 20021：活动要求位置签到，但用户未提供位置信息。 */
+    'Errors.Activities.CheckInLocationRequired': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 20021;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'Check-in location is required';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
     /** @description 20013：签到二维码无效或已过期。 */
     'Errors.Activities.CheckInQrCodeInvalid': {
       /**
@@ -2832,6 +3135,21 @@ export interface components {
        * @enum {string}
        */
       message: 'Activity review already exists';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
+    /** @description 20020：活动总结已存在，每个活动仅允许发布一篇总结。 */
+    'Errors.Activities.DuplicateSummary': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 20020;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'Activity summary already exists';
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
@@ -3255,7 +3573,7 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
-    /** @description 50011：调用方无权发布群公告。 */
+    /** @description 50011：调用方无权执行该群公告操作。 */
     'Errors.Chat.AnnouncementPermissionDenied': {
       /**
        * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
@@ -3360,6 +3678,21 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
+    /** @description 50018：消息引用的媒体文件不存在。 */
+    'Errors.Chat.MediaReferenceInvalid': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 50018;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'Referenced media does not exist';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
     /** @description 50006：消息内容与消息类型不匹配。 */
     'Errors.Chat.MessageContentInvalid': {
       /**
@@ -3420,6 +3753,21 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
+    /** @description 50019：投票不存在。 */
+    'Errors.Chat.PollNotFound': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 50019;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'Poll does not exist';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
     /** @description 50012：投票选项不满足业务规则。 */
     'Errors.Chat.PollOptionsInvalid': {
       /**
@@ -3435,7 +3783,7 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
-    /** @description 50013：投票不存在、已截止或调用方不可参与。 */
+    /** @description 50013：投票已截止或调用方不可参与。 */
     'Errors.Chat.PollUnavailable': {
       /**
        * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
@@ -3552,6 +3900,21 @@ export interface components {
        * @enum {string}
        */
       message: 'Account is inactive';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
+    /** @description 10019：账号因多次登录失败被暂时锁定。message 中会提示剩余锁定时间。 */
+    'Errors.Identity.AccountLocked': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 10019;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'Account is temporarily locked due to multiple failed login attempts';
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
@@ -4191,7 +4554,7 @@ export interface components {
       merchantName: string;
       /** @description 商家全平台唯一昵称，与个人昵称共享唯一约束。 */
       nickname: string;
-      /** @description 商家头像媒体文件。 */
+      /** @description 商家头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 商家关注或经营的活动领域。 */
       interestedActivityFields: string[];
@@ -4238,7 +4601,7 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 用户展示昵称。 */
       nickname: string;
-      /** @description 用户头像媒体文件。 */
+      /** @description 用户头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 用户性别。 */
       gender?: components['schemas']['Identity.Gender'];
@@ -4377,8 +4740,10 @@ export interface components {
       sizeBytes: number;
       /** @description 媒体用途。 */
       usage: components['schemas']['MediaUsage'];
-      /** @description 访问地址。 */
-      url?: string;
+      /** @description 签名访问地址，是资源当前状态的派生地址而非永久地址：accessVersion 变化后立即失效，客户端不得长期保存。生命周期随 usage 而定（头像、已发布活动图片为公开稳定可缓存；聊天图片、群文件、相册为私有成员可见；未发布活动图片仅组织者可见并随活动状态翻转；商家资质为私有仅本人与管理员）。详见 docs/media-access-control.md 的「URL 生命周期与缓存策略」。 */
+      signedUrl?: string;
+      /** @description 媒体可见性。 */
+      visibility?: components['schemas']['MediaVisibility'];
       /** @description 上传时间。 */
       uploadedAt: components['schemas']['DateTimeString'];
     };
@@ -4402,6 +4767,11 @@ export interface components {
       | 'teamAlbum'
       | 'summaryImage'
       | 'activityReviewImage';
+    /**
+     * @description 媒体可见性。
+     * @enum {string}
+     */
+    MediaVisibility: 'publicVisible' | 'privateVisible';
     /** @description 人工审核请求，审核对象存在且处于可审核状态，对象状态按 result 迁移，驳回、要求修改、下架、封禁类动作必须提供 reason。 */
     ReviewDecisionRequest: {
       /** @description 审核结果。 */
@@ -4433,7 +4803,7 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 被屏蔽用户昵称。 */
       nickname: string;
-      /** @description 被屏蔽用户头像。 */
+      /** @description 被屏蔽用户头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 屏蔽时间。 */
       blockedAt: components['schemas']['DateTimeString'];
@@ -4444,7 +4814,7 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 用户昵称。 */
       nickname: string;
-      /** @description 用户头像。 */
+      /** @description 用户头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 关注时间。 */
       followedAt: components['schemas']['DateTimeString'];
@@ -4468,7 +4838,7 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 好友昵称。 */
       nickname: string;
-      /** @description 好友头像。 */
+      /** @description 好友头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 当前用户为该好友设置的备注。 */
       remark?: string;
@@ -4629,7 +4999,7 @@ export interface components {
       userId: components['schemas']['EntityId'];
       /** @description 成员昵称。 */
       nickname: string;
-      /** @description 成员头像。 */
+      /** @description 成员头像。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 成员在小队中的角色。 */
       role: components['schemas']['Social.TeamMemberRole'];
@@ -4690,7 +5060,7 @@ export interface components {
       memberCount: number;
       /** @description 小队简介。 */
       description?: string;
-      /** @description 小队头像媒体文件。 */
+      /** @description 小队头像媒体文件。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
       avatar?: components['schemas']['MediaFile'];
       /** @description 小队状态。 */
       status: components['schemas']['Social.TeamStatus'];
@@ -5300,6 +5670,67 @@ export interface operations {
       };
     };
   };
+  ActivityOperations_listMyRegistrations: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /**
+             * @description 平台响应代码，成功响应固定为 200。
+             * @enum {number}
+             */
+            code: 200;
+            /**
+             * @description 平台响应消息，成功响应固定为 For Super Earth!。
+             * @enum {string}
+             */
+            message: 'For Super Earth!';
+            /** @description 响应数据。 */
+            data: {
+              /** @description 当前页数据。 */
+              items: components['schemas']['Activities.RegisteredActivitySummary'][];
+              /**
+               * Format: int64
+               * @description 匹配总数。
+               */
+              total: number;
+              /**
+               * Format: int32
+               * @description 当前页码。
+               */
+              page: number;
+              /**
+               * Format: int32
+               * @description 每页数量。
+               */
+              pageSize: number;
+              /**
+               * Format: int32
+               * @description 匹配总页数。
+               */
+              totalPages: number;
+            };
+          };
+        };
+      };
+    };
+  };
   ActivityOperations_searchActivities: {
     parameters: {
       query?: {
@@ -5689,7 +6120,8 @@ export interface operations {
             | components['schemas']['Errors.Activities.ActivityNotVisible']
             | components['schemas']['Errors.Activities.RegistrationNotFound']
             | components['schemas']['Errors.Activities.CheckInQrCodeInvalid']
-            | components['schemas']['Errors.Activities.CheckInLocationInvalid'];
+            | components['schemas']['Errors.Activities.CheckInLocationInvalid']
+            | components['schemas']['Errors.Activities.CheckInLocationRequired'];
         };
       };
     };
@@ -5955,6 +6387,75 @@ export interface operations {
       };
     };
   };
+  ActivityOperations_listReviews: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path: {
+        activityId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Activities.ActivityReviewListItem'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Activities.ActivityNotVisible'];
+        };
+      };
+    };
+  };
   ActivityOperations_reviewActivity: {
     parameters: {
       query?: never;
@@ -6003,6 +6504,47 @@ export interface operations {
       };
     };
   };
+  ActivityOperations_getMyReview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        activityId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Activities.MyActivityReviewResult'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Activities.ActivityNotVisible'];
+        };
+      };
+    };
+  };
   ActivityOperations_submitActivity: {
     parameters: {
       query?: never;
@@ -6043,6 +6585,75 @@ export interface operations {
             | components['schemas']['Errors.Activities.ActivityPermissionDenied']
             | components['schemas']['Errors.Activities.ActivityStateNotSubmittable']
             | components['schemas']['Errors.Activities.InvalidActivitySchedule'];
+        };
+      };
+    };
+  };
+  ActivityOperations_listSummaries: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path: {
+        activityId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Activities.ActivitySummaryPost'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Activities.ActivityNotVisible'];
         };
       };
     };
@@ -6090,7 +6701,49 @@ export interface operations {
             | components['schemas']['Errors.Activities.ActivityNotVisible']
             | components['schemas']['Errors.Activities.ActivityPermissionDenied']
             | components['schemas']['Errors.Activities.ActivityNotEnded']
-            | components['schemas']['Errors.Activities.MediaFileUnavailable'];
+            | components['schemas']['Errors.Activities.MediaFileUnavailable']
+            | components['schemas']['Errors.Activities.DuplicateSummary'];
+        };
+      };
+    };
+  };
+  ActivityOperations_getMySummary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        activityId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Activities.MyActivitySummaryResult'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Activities.ActivityNotVisible'];
         };
       };
     };
@@ -7697,7 +8350,8 @@ export interface operations {
             | components['schemas']['InternalServerErrorResponse']
             | components['schemas']['Errors.Chat.ConversationNotVisible']
             | components['schemas']['Errors.Chat.ConversationMemberRequired']
-            | components['schemas']['Errors.Chat.MessageContentInvalid'];
+            | components['schemas']['Errors.Chat.MessageContentInvalid']
+            | components['schemas']['Errors.Chat.MediaReferenceInvalid'];
         };
       };
     };
@@ -8044,6 +8698,76 @@ export interface operations {
       };
     };
   };
+  ChatOperations_listAnnouncements: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Chat.TeamAnnouncement'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Chat.TeamNotVisible']
+            | components['schemas']['Errors.Chat.TeamMemberRequired'];
+        };
+      };
+    };
+  };
   ChatOperations_publishAnnouncement: {
     parameters: {
       query?: never;
@@ -8086,6 +8810,98 @@ export interface operations {
             | components['schemas']['InternalServerErrorResponse']
             | components['schemas']['Errors.Chat.TeamNotVisible']
             | components['schemas']['Errors.Chat.AnnouncementPermissionDenied'];
+        };
+      };
+    };
+  };
+  ChatOperations_updateAnnouncement: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+        announcementId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Chat.TeamAnnouncementRequest'];
+      };
+    };
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Chat.TeamAnnouncement'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Chat.TeamNotVisible']
+            | components['schemas']['Errors.Chat.AnnouncementPermissionDenied']
+            | components['schemas']['Errors.Chat.AnnouncementNotVisible'];
+        };
+      };
+    };
+  };
+  ChatOperations_deleteAnnouncement: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+        announcementId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['EmptyData'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Chat.TeamNotVisible']
+            | components['schemas']['Errors.Chat.AnnouncementPermissionDenied']
+            | components['schemas']['Errors.Chat.AnnouncementNotVisible'];
         };
       };
     };
@@ -8297,6 +9113,76 @@ export interface operations {
       };
     };
   };
+  ChatOperations_listPolls: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Chat.TeamPoll'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Chat.TeamNotVisible']
+            | components['schemas']['Errors.Chat.TeamMemberRequired'];
+        };
+      };
+    };
+  };
   ChatOperations_createPoll: {
     parameters: {
       query?: never;
@@ -8340,6 +9226,50 @@ export interface operations {
             | components['schemas']['Errors.Chat.TeamNotVisible']
             | components['schemas']['Errors.Chat.TeamMemberRequired']
             | components['schemas']['Errors.Chat.PollOptionsInvalid'];
+        };
+      };
+    };
+  };
+  ChatOperations_getPoll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        teamId: components['schemas']['EntityId'];
+        pollId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Chat.TeamPoll'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Chat.TeamNotVisible']
+            | components['schemas']['Errors.Chat.TeamMemberRequired']
+            | components['schemas']['Errors.Chat.PollNotFound'];
         };
       };
     };
@@ -8420,7 +9350,7 @@ export interface operations {
                  */
                 message: 'For Super Earth!';
                 /** @description 响应数据。 */
-                data: components['schemas']['Chat.ChatRealtimeEvent'];
+                data: components['schemas']['Chat.ChatWebSocketFrame'];
               }
             | components['schemas']['BadRequestResponse']
             | components['schemas']['UnauthorizedResponse']
@@ -9137,20 +10067,27 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            /**
-             * @description 平台响应代码，成功响应固定为 200。
-             * @enum {number}
-             */
-            code: 200;
-            /**
-             * @description 平台响应消息，成功响应固定为 For Super Earth!。
-             * @enum {string}
-             */
-            message: 'For Super Earth!';
-            /** @description 响应数据。 */
-            data: components['schemas']['MediaFile'];
-          };
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['MediaFile'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Identity.ImageFormatInvalid']
+            | components['schemas']['Errors.Identity.ImageTooLarge'];
         };
       };
     };
@@ -9235,6 +10172,29 @@ export interface operations {
             | components['schemas']['UnauthorizedResponse']
             | components['schemas']['ForbiddenResponse']
             | components['schemas']['InternalServerErrorResponse'];
+        };
+      };
+    };
+  };
+  CommonOperations_getMediaFile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 媒体文件标识 */
+        mediaId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          '*/*': string;
         };
       };
     };
