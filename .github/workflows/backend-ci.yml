@@ -6,11 +6,6 @@ on:
       - "api-spec/**"
       - "backend/**"
       - ".github/workflows/backend-ci.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/backend-deploy.yml"
   pull_request:
     paths:
       - "api-spec/**"
