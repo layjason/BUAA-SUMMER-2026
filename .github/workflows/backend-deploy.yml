@@ -1,11 +1,7 @@
 name: Backend Full-Stack Deploy
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/backend-deploy.yml"
+  workflow_dispatch:
   workflow_run:
     workflows: ["Backend CI"]
     types:
@@ -15,14 +11,18 @@ jobs:
   deploy:
     name: Full Stack Deployment
     runs-on: self-hosted
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: >-
+      ${{ 
+        github.event_name == 'workflow_dispatch' || 
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') 
+      }}
     defaults:
       run:
         working-directory: backend
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # 关键步骤：创建 .env 文件
       # docker-compose 会自动读取同目录下的 .env 文件来填充变量
