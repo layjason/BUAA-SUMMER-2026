@@ -177,7 +177,7 @@ describe('活动 mock workflow 契约对齐', () => {
     })
   })
 
-  it('已结束未总结的演示活动应允许发起人发布总结且参与者评价', () => {
+  it('评价演示活动应允许已签到参与者在窗口内评价', () => {
     const participantState = getParticipationState(13, 10001)
 
     expect(participantState).toMatchObject({
@@ -186,9 +186,21 @@ describe('活动 mock workflow 契约对齐', () => {
       reviewWindowEndsAt: expect.any(String),
     })
 
-    expect(listActivitySummaries(13, 1, 10).items).toHaveLength(0)
+    expect(getMyActivityReview(13, 10001)).toEqual({})
+  })
 
-    const summary = createSummary(13, 10002, {
+  it('总结演示活动应允许发起人发布活动总结', () => {
+    const participantState = getParticipationState(14, 10001)
+
+    expect(participantState).toMatchObject({
+      status: 'checkedIn',
+      canReview: true,
+      reviewWindowEndsAt: expect.any(String),
+    })
+
+    expect(listActivitySummaries(14, 1, 10).items).toHaveLength(0)
+
+    const summary = createSummary(14, 10002, {
       title: '社区花园共创日精彩回顾',
       content: '大家一起整理花箱、清理步道，留下了很棒的过程记录。',
       imageIds: ['media_summary_demo_1'],
@@ -196,7 +208,7 @@ describe('活动 mock workflow 契约对齐', () => {
     })
 
     expect(summary).toMatchObject({
-      activityId: '13',
+      activityId: '14',
       title: '社区花园共创日精彩回顾',
       imageTags: [{ mediaId: 'media_summary_demo_1', tags: ['过程记录', '成果展示'] }],
     })

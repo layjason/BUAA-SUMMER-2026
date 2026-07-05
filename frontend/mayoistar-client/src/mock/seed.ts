@@ -574,15 +574,44 @@ export function createSeedData(): MockDatabase {
       isTakenDown: false,
       createdAt: iso(-1),
     },
-    // 13: 已结束且未总结 - 用于总结与评价演示
+    // 13: 已结束且已签到 - 用于评价演示
     {
       id: 13,
-      creatorId: 10002,
-      title: '社区花园共创日回顾测试活动',
-      introduction: '一起整理社区花园、布置花箱，并记录共创过程中的精彩瞬间。',
-      safetyNotice: '请佩戴手套，使用园艺工具时注意安全。',
+      creatorId: 10003,
+      title: '午后城市速写评价测试活动',
+      introduction: '跟随组织者在街区进行速写练习，记录城市角落与路人瞬间。',
+      safetyNotice: '请注意行走安全，不要影响行人和商户正常活动。',
       coverUrl: cover(13),
       images: [cover(13)],
+      startTime: iso(-1, 14, 0),
+      endTime: iso(-1, 16, 0),
+      registrationDeadline: iso(-3, 23, 59),
+      location: {
+        longitude: 116.42,
+        latitude: 39.91,
+        city: '北京',
+        address: '东城区南锣鼓巷街区',
+        placeName: '南锣鼓巷',
+      },
+      fee: 0,
+      capacity: 12,
+      registeredCount: 0,
+      minAge: 12,
+      tags: ['绘画', '城市探索', '学习'],
+      runtimeStatus: 'ended',
+      reviewStatus: 'approved',
+      isTakenDown: false,
+      createdAt: iso(-10),
+    },
+    // 14: 已结束且未总结 - 用于活动总结演示
+    {
+      id: 14,
+      creatorId: 10002,
+      title: '社区花园共创日总结测试活动',
+      introduction: '一起整理社区花园、布置花箱，并记录共创过程中的精彩瞬间。',
+      safetyNotice: '请佩戴手套，使用园艺工具时注意安全。',
+      coverUrl: cover(14),
+      images: [cover(14)],
       startTime: iso(-1, 9, 0),
       endTime: iso(-1, 12, 0),
       registrationDeadline: iso(-3, 23, 59),
@@ -813,10 +842,18 @@ export function createSeedData(): MockDatabase {
       status: 'registered',
       registeredAt: iso(-5),
     },
-    // 活动 13 (已结束未总结) - 普通用户已签到，可评价
+    // 活动 13 (评价测试) - 普通用户已签到，可评价
     {
       id: 32,
       activityId: 13,
+      userId: 10001,
+      status: 'checkedIn',
+      registeredAt: iso(-5),
+    },
+    // 活动 14 (总结测试) - 普通用户参与，商家发起人可发布总结
+    {
+      id: 33,
+      activityId: 14,
       userId: 10001,
       status: 'checkedIn',
       registeredAt: iso(-5),
@@ -853,6 +890,7 @@ export function createSeedData(): MockDatabase {
     { id: 3, activityId: 7, userId: 10001, checkedInAt: iso(-3, 16, 5) },
     { id: 4, activityId: 7, userId: 10006, checkedInAt: iso(-3, 16, 10) },
     { id: 5, activityId: 13, userId: 10001, checkedInAt: iso(-1, 9, 5) },
+    { id: 6, activityId: 14, userId: 10001, checkedInAt: iso(-1, 9, 10) },
   ]
 
   /* ---- 评价 ---- */
@@ -1310,11 +1348,11 @@ export function createSeedData(): MockDatabase {
     templates,
     nextId: {
       users: 10011,
-      activities: 14,
+      activities: 15,
       drafts: 4,
-      registrations: 33,
+      registrations: 34,
       waitlist: 3,
-      checkins: 6,
+      checkins: 7,
       reviews: 3,
       summaries: 2,
       friendRequests: 3,
