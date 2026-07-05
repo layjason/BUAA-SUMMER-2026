@@ -95,29 +95,25 @@ class ActivitySearchServiceTests {
     }
 
     /**
-     * 验证距离筛选。
+     * 验证距离筛选在分页前生效。
      *
-     * <p>前置条件：Repository 返回两个活动，服务在内存中按距离筛选。
+     * <p>前置条件：Repository 返回两个活动，一个有距离条件内、一个在外。
      *
-     * <p>后置条件：距离内活动保留（near），超出抛弃（far）。PageResult.total 仍反映数据库总数。
+     * <p>后置条件：仅距离内活动出现在结果中，total 反映距离过滤后的实际数量。
      */
     @Test
     void searchFiltersByDistance() {
         List<Activity> all =
                 List.of(activity("near", "近处活动", 116.397, 39.908), activity("far", "远处活动", 121.473, 31.230));
-        Page<Activity> page = new PageImpl<>(all, PageRequest.of(0, 20), 2);
-        when(activityRepository.findAll(anySpecification(), any(Pageable.class)))
-                .thenReturn(page);
-        when(activityRegistrationCountService.countByActivityIds(List.of("near", "far")))
-                .thenReturn(Map.of(
-                        "near", new ActivityRegistrationCounts(1, 1, 0),
-                        "far", new ActivityRegistrationCounts(2, 2, 0)));
+        when(activityRepository.findAll(anySpecification())).thenReturn(all);
+        when(activityRegistrationCountService.countByActivityIds(List.of("near")))
+                .thenReturn(Map.of("near", new ActivityRegistrationCounts(1, 1, 0)));
 
         PageResult<ActivityDtos.ActivitySummary> result = service.search(new ActivitySearchService.SearchCriteria(
                 null, null, null, null, null, null, null, 39.908, 116.397, 1000, 1, 20));
 
-        // 距离筛选是内存过滤，PageResult.total 来自数据库总数（2）
-        assertThat(result.getTotal()).isEqualTo(2L);
+        // 距离筛选在分页前执行，total 反映过滤后实际数量
+        assertThat(result.getTotal()).isEqualTo(1L);
         assertThat(result.getItems())
                 .extracting(ActivityDtos.ActivitySummary::getActivityId)
                 .containsExactly("near");

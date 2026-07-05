@@ -3,9 +3,8 @@ package io.github.layjason.mayoistar.service.activities;
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.entity.activities.Activity;
-import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
-import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
+import io.github.layjason.mayoistar.service.ActivitySearchService;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -18,7 +17,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 首页活动信息流服务。
  *
  * <p>类职责：为首页 Feed 提供推荐、最新和附近三种 Tab 的分页查询，
- * 每种 Tab 使用不同的排序策略，但共享相同的可见性过滤条件。
+ * 每种 Tab 使用不同的排序策略，并支持 ActivitySearchQuery 中的筛选条件。
  *
  * <p>类不变量：所有查询仅返回审核通过且未下架的活动。
  */
@@ -41,6 +39,7 @@ public class ActivityFeedService {
     private static final double EARTH_RADIUS_METERS = 6_371_000D;
 
     private final ActivityRepository activityRepository;
+    private final ActivitySearchService activitySearchService;
     private final ActivityDtoMapper activityDtoMapper;
     private final ActivityMediaQueryService activityMediaQueryService;
     private final ActivityRegistrationCountService activityRegistrationCountService;
@@ -48,81 +47,83 @@ public class ActivityFeedService {
     /**
      * 获取首页活动信息流。
      *
-     * <p>前置条件：tab 非空，为 recommended/latest/nearby 之一。
-     * nearby 模式建议传入 latitude 和 longitude，否则回退按 createdAt 降序排序。
+     * <p>前置条件：tab 为 recommended/latest/nearby 之一，或默认 recommended。
+     * nearby 模式会应用 criteria 中的 distanceMeters 半径过滤。
      *
-     * <p>后置条件：返回分页的 ActivitySummary，仅包含审核通过且未下架的活动。
+     * <p>后置条件：返回分页的 ActivitySummary，仅包含审核通过、未下架且满足所有筛选条件的活动。
      *
      * <p>不变量：不修改数据库，不修改传入参数。
      *
-     * @param tab       信息流 Tab 类型
-     * @param page      页码，从 1 开始
-     * @param pageSize  每页数量
-     * @param latitude  用户纬度，用于附近排序
-     * @param longitude 用户经度，用于附近排序
+     * @param tab      信息流 Tab 类型
+     * @param criteria 搜索条件，包含分页参数和距离筛选
      * @return 分页活动摘要
      */
     @Transactional(readOnly = true)
-    public PageResult<ActivityDtos.ActivitySummary> getFeed(
-            String tab, Integer page, Integer pageSize, Double latitude, Double longitude) {
-        int normalizedPage = normalizePage(page);
-        int normalizedPageSize = normalizePageSize(pageSize);
+    public PageResult<ActivityDtos.ActivitySummary> getFeed(String tab, ActivitySearchService.SearchCriteria criteria) {
+        int normalizedPage = normalizePage(criteria.page());
+        int normalizedPageSize = normalizePageSize(criteria.pageSize());
         String feedTab = tab != null ? tab.replaceAll("[\\r\\n]", "_") : "recommended";
 
         log.debug(
-                "获取首页信息流: tab={}, page={}, pageSize={}, lat={}, lon={}",
+                "获取首页信息流: tab={}, page={}, pageSize={}, keyword={}, city={}, activityTypes={}",
                 feedTab,
                 normalizedPage,
                 normalizedPageSize,
-                latitude,
-                longitude);
+                criteria.keyword(),
+                criteria.city(),
+                criteria.activityTypes());
 
         return switch (feedTab) {
-            case "latest" -> getLatestFeed(normalizedPage, normalizedPageSize);
-            case "nearby" -> getNearbyFeed(normalizedPage, normalizedPageSize, latitude, longitude);
-            default -> getRecommendedFeed(normalizedPage, normalizedPageSize);
+            case "latest" -> getLatestFeed(criteria, normalizedPage, normalizedPageSize);
+            case "nearby" -> getNearbyFeed(criteria, normalizedPage, normalizedPageSize);
+            default -> getRecommendedFeed(criteria, normalizedPage, normalizedPageSize);
         };
     }
 
     /**
      * 获取"最新"Tab 信息流，按创建时间降序排列。
      *
-     * <p>前置条件：page 和 pageSize 已规范化。
+     * <p>前置条件：criteria 非空，page 和 pageSize 已规范化。
      *
-     * <p>后置条件：返回按 createdAt 降序排列的分页结果。
+     * <p>后置条件：返回按 createdAt 降序排列、满足所有筛选条件的分页结果。
      *
-     * <p>不变量：仅返回审核通过且未下架的活动。
+     * <p>不变量：仅返回审核通过且未下架且满足搜索条件的活动。
      */
-    private PageResult<ActivityDtos.ActivitySummary> getLatestFeed(int page, int pageSize) {
+    private PageResult<ActivityDtos.ActivitySummary> getLatestFeed(
+            ActivitySearchService.SearchCriteria criteria, int page, int pageSize) {
         Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Activity> activityPage = activityRepository.findAll(visibleSpecification(), pageable);
+        Page<Activity> activityPage =
+                activityRepository.findAll(activitySearchService.buildSpecification(criteria), pageable);
         Function<String, ActivityRegistrationCounts> countsProvider = loadCountsProvider(activityPage.getContent());
         return activityDtoMapper.toActivitySummaryPage(
                 activityPage, activityMediaQueryService::loadCoverImage, countsProvider);
     }
 
     /**
-     * 获取"附近"Tab 信息流，按距离用户位置升序排列。
+     * 获取"附近"Tab 信息流，按距离用户位置升序排列并按 distanceMeters 过滤。
      *
-     * <p>前置条件：page 和 pageSize 已规范化。
+     * <p>前置条件：criteria 非空，page 和 pageSize 已规范化。
      * 若无有效用户坐标，回退到按 createdAt 降序排序。
      *
-     * <p>后置条件：返回按距离升序排列的分页结果，仅包含有坐标的活动。
+     * <p>后置条件：返回按距离升序排列且仅在 distanceMeters 范围内的分页结果。
      *
-     * <p>不变量：仅返回审核通过且未下架的活动。
+     * <p>不变量：仅返回审核通过且未下架且满足搜索条件的活动。
      *
-     * <p>性能说明：当前实现为内存排序，适合初期规模。
+     * <p>性能说明：当前实现为内存排序与过滤，适合初期规模。
      * 后续可迁移为数据库空间索引（如 PostGIS）以支撑更大数据量。
      */
     private PageResult<ActivityDtos.ActivitySummary> getNearbyFeed(
-            int page, int pageSize, Double latitude, Double longitude) {
+            ActivitySearchService.SearchCriteria criteria, int page, int pageSize) {
+        Double latitude = criteria.latitude();
+        Double longitude = criteria.longitude();
+
         if (latitude == null || longitude == null) {
             log.debug("附近 Tab 无用户坐标，回退按最新排序");
-            return getLatestFeed(page, pageSize);
+            return getLatestFeed(criteria, page, pageSize);
         }
 
-        List<Activity> visibleActivities = activityRepository.findAll(visibleSpecification());
-        List<Activity> withCoordinates = visibleActivities.stream()
+        List<Activity> candidates = activityRepository.findAll(activitySearchService.buildSpecification(criteria));
+        List<Activity> withCoordinates = candidates.stream()
                 .filter(a -> a.getPointLat() != null && a.getPointLon() != null)
                 .toList();
 
@@ -130,24 +131,34 @@ public class ActivityFeedService {
         sorted.sort(
                 Comparator.comparingDouble(a -> distanceMeters(latitude, longitude, a.getPointLat(), a.getPointLon())));
 
-        return paginateInMemory(sorted, page, pageSize);
+        // 若指定了 distanceMeters，则按半径过滤
+        Integer distanceMeters = criteria.distanceMeters();
+        List<Activity> filtered = sorted;
+        if (distanceMeters != null) {
+            filtered = sorted.stream()
+                    .filter(a ->
+                            distanceMeters(latitude, longitude, a.getPointLat(), a.getPointLon()) <= distanceMeters)
+                    .toList();
+        }
+
+        return paginateInMemory(filtered, page, pageSize);
     }
 
     /**
      * 获取"推荐"Tab 信息流，随机排序。
      *
-     * <p>前置条件：page 和 pageSize 已规范化。
+     * <p>前置条件：criteria 非空，page 和 pageSize 已规范化。
      *
-     * <p>后置条件：返回随机打乱顺序后的分页结果。
-     * 同一请求周期内多次调用会得到不同结果。
+     * <p>后置条件：返回随机打乱顺序后、满足所有筛选条件的分页结果。
      *
-     * <p>不变量：仅返回审核通过且未下架的活动。
+     * <p>不变量：仅返回审核通过且未下架且满足搜索条件的活动。
      *
      * <p>性能说明：当前实现为全量加载后内存随机分页，适合初期规模。
-     * 后续可迁移为数据库 RANDOM()/RAND() 排序以支撑更大数据量。
      */
-    private PageResult<ActivityDtos.ActivitySummary> getRecommendedFeed(int page, int pageSize) {
-        List<Activity> visibleActivities = activityRepository.findAll(visibleSpecification());
+    private PageResult<ActivityDtos.ActivitySummary> getRecommendedFeed(
+            ActivitySearchService.SearchCriteria criteria, int page, int pageSize) {
+        List<Activity> visibleActivities =
+                activityRepository.findAll(activitySearchService.buildSpecification(criteria));
         List<Activity> shuffled = new ArrayList<>(visibleActivities);
         Collections.shuffle(shuffled);
         return paginateInMemory(shuffled, page, pageSize);
@@ -177,23 +188,6 @@ public class ActivityFeedService {
                         activity, activityMediaQueryService::loadCoverImage, countsProvider))
                 .toList();
         return new PageResult<>(items, (long) total, page, pageSize, totalPages);
-    }
-
-    /**
-     * 构建活动可见性过滤条件：审核通过且未下架。
-     *
-     * <p>前置条件：无。
-     *
-     * <p>后置条件：返回仅匹配审核通过且运行时状态不为 takenDown 的 Specification。
-     *
-     * <p>不变量：每次调用返回等效的新 Specification 实例。
-     *
-     * @return 可见性 Specification
-     */
-    private Specification<Activity> visibleSpecification() {
-        return (root, query, builder) -> builder.and(
-                builder.equal(root.get("reviewStatus"), ActivityReviewStatus.approved),
-                builder.notEqual(root.get("runtimeStatus"), ActivityRuntimeStatus.takenDown));
     }
 
     /**
