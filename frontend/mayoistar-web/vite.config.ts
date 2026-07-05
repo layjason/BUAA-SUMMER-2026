@@ -12,7 +12,7 @@ export default defineConfig(() => {
       },
     },
     server: {
-      port: 5173,
+      port: 3005,
       host: '0.0.0.0',
       proxy: {
         '/admin': 'http://localhost:8080',

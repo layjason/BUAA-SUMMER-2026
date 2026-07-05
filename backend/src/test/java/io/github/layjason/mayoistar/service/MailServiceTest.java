@@ -39,8 +39,8 @@ class MailServiceTest {
 
     private MailService mailService;
 
-    private static final String ACTIVATION_BASE = "http://localhost:5173/activate";
-    private static final String RESET_BASE = "http://localhost:5173/reset-password";
+    private static final String ACTIVATION_BASE = "http://localhost:3005/activate";
+    private static final String RESET_BASE = "http://localhost:3005/reset-password";
     private static final String SENDER = "noreply@mayoistar.example.com";
     private static final String TO = "user@example.com";
     private static final String TOKEN = "test-token";
