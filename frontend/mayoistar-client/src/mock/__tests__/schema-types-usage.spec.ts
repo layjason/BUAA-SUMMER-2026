@@ -95,6 +95,7 @@ describe('mock schema-types 契约应用', () => {
       }),
       requireLocationCheck: expect.any(Boolean),
     })
+    expect(first.coverImage?.signedUrl).toContain('https://')
   })
 
   it('活动详情应包含 ActivityDetail 关键字段', () => {
@@ -110,6 +111,8 @@ describe('mock schema-types 契约应用', () => {
       registeredCount: expect.any(Number),
       waitingCount: expect.any(Number),
     })
+    expect(detail.coverImage?.signedUrl).toContain('https://')
+    expect(detail.images[0]?.signedUrl).toContain('https://')
   })
 
   it('参与状态应符合 ActivityParticipationState 且无 mock 扩展字段', () => {

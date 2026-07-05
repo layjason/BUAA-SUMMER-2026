@@ -16,7 +16,7 @@
           <!-- 昵称 -->
           <FormInput
             v-model="formNickname"
-            :label="t('editProfile.nickname')"
+            :label="nicknameLabel"
             :placeholder="t('editProfile.nicknamePlaceholder')"
             :error="nicknameError"
             @blur="checkNickname"
@@ -99,9 +99,23 @@
                 {{ t('editProfile.qualificationStatus') }}:
                 {{ qualificationStatusText }}
               </text>
+              <text v-if="qualificationSubmittedAt" class="qualification-meta">
+                {{ t('editProfile.qualificationSubmittedAt') }}: {{ qualificationSubmittedAt }}
+              </text>
+              <text v-if="qualificationReviewedAt" class="qualification-meta">
+                {{ t('editProfile.qualificationReviewedAt') }}: {{ qualificationReviewedAt }}
+              </text>
               <text v-if="qualificationRejectReason" class="qualification-reject">
                 {{ t('editProfile.rejectReason') }}: {{ qualificationRejectReason }}
               </text>
+            </view>
+            <view v-if="submittedLicenseUrls.length > 0" class="submitted-license-section">
+              <text class="sub-label">{{ t('editProfile.qualificationImages') }}</text>
+              <view class="license-grid">
+                <view v-for="url in submittedLicenseUrls" :key="url" class="license-preview">
+                  <image class="license-image" :src="url" mode="aspectFill" />
+                </view>
+              </view>
             </view>
             <view v-if="canSubmitQualification" class="qualification-upload">
               <view class="license-grid">
@@ -129,12 +143,34 @@
           </view>
 
           <FormError :message="formError" />
+
+          <view class="profile-summary">
+            <view class="summary-row">
+              <text class="summary-label">{{ t('editProfile.userKind') }}</text>
+              <text class="summary-value">{{ userKindText }}</text>
+            </view>
+            <view v-if="!isMerchant" class="summary-row">
+              <text class="summary-label">{{ t('editProfile.reputationScore') }}</text>
+              <text class="summary-value">{{ reputationScoreText }}</text>
+            </view>
+            <view v-else class="summary-row">
+              <text class="summary-label">{{ t('editProfile.accountStatus') }}</text>
+              <text class="summary-value">{{ accountStatusText }}</text>
+            </view>
+          </view>
         </view>
       </view>
     </scroll-view>
-    <view class="action-bar">
-      <SubmitButton :text="t('editProfile.save')" :loading="saving" @click="handleSave" />
-    </view>
+    <BottomActionBar>
+      <button
+        class="bar-btn bar-btn-primary"
+        :disabled="saving || !hasProfileChanges"
+        :loading="saving"
+        @click="handleSave"
+      >
+        {{ saving ? '' : t('editProfile.save') }}
+      </button>
+    </BottomActionBar>
   </view>
 </template>
 
@@ -162,7 +198,7 @@ import {
   uploadMerchantLicense,
 } from '@/api/modules/profile'
 import { getErrorMessage } from '@/utils/error'
-import { FormInput, FormError, SubmitButton } from '@/components'
+import { BottomActionBar, FormInput, FormError } from '@/components'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -190,13 +226,20 @@ const tagLabel = computed(() =>
   isMerchant.value ? t('editProfile.interestedActivityFields') : t('editProfile.interestTags'),
 )
 
+/** 昵称字段标签，商家资料需明确显示为商家昵称 */
+const nicknameLabel = computed(() =>
+  isMerchant.value ? t('editProfile.merchantNickname') : t('editProfile.nickname'),
+)
+
 // ================= 表单字段 =================
 
 const formNickname = ref('')
 const formMerchantName = ref('')
-const formGender = ref<'male' | 'female' | 'other' | ''>('')
+const formGender = ref<'unspecified' | 'male' | 'female' | 'other' | ''>('')
 const formBirthday = ref('')
 const formSignature = ref('')
+const reputationScore = ref<number | null>(null)
+const merchantAccountStatus = ref<string>('')
 
 const avatarUrl = ref('')
 /** 上传后返回的 mediaId，提交时使用 */
@@ -224,11 +267,67 @@ const nicknameAvailable = ref(false)
 /** 商家资质信息（只读） */
 const qualification = ref<{
   status: string
+  submittedAt?: string
+  reviewedAt?: string
   rejectReason?: string
+  licenseImageUrls?: string[]
 } | null>(null)
 
 const licenseMediaIds = ref<string[]>([])
 const licensePreviewUrls = ref<string[]>([])
+
+interface EditableProfileSnapshot {
+  nickname: string
+  merchantName: string
+  gender: string
+  birthday: string
+  signature: string
+  tags: string[]
+  avatarMediaId: string
+}
+
+const initialProfileSnapshot = ref<EditableProfileSnapshot | null>(null)
+
+function sortedTags(): string[] {
+  return [...selectedTags.value].sort()
+}
+
+/** 获取当前可保存资料的快照
+ *
+ * 前置条件：表单字段已初始化。
+ * 后置条件：返回只包含资料保存接口会提交的字段快照，顺序稳定。
+ */
+function getEditableProfileSnapshot(): EditableProfileSnapshot {
+  return {
+    nickname: formNickname.value.trim(),
+    merchantName: formMerchantName.value.trim(),
+    gender: formGender.value,
+    birthday: formBirthday.value,
+    signature: formSignature.value.trim(),
+    tags: sortedTags(),
+    avatarMediaId: avatarMediaId.value,
+  }
+}
+
+function sameStringArray(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((item, index) => item === right[index])
+}
+
+/** 当前资料表单是否有未保存修改 */
+const hasProfileChanges = computed(() => {
+  if (!initialProfileSnapshot.value) return false
+  const current = getEditableProfileSnapshot()
+  const initial = initialProfileSnapshot.value
+  return (
+    current.nickname !== initial.nickname ||
+    current.merchantName !== initial.merchantName ||
+    current.gender !== initial.gender ||
+    current.birthday !== initial.birthday ||
+    current.signature !== initial.signature ||
+    current.avatarMediaId !== initial.avatarMediaId ||
+    !sameStringArray(current.tags, initial.tags)
+  )
+})
 
 /** 是否允许提交或重新提交商家资质 */
 const canSubmitQualification = computed(() => {
@@ -253,9 +352,32 @@ const qualificationRejectReason = computed(() => {
   return qualification.value?.rejectReason ?? ''
 })
 
+const qualificationSubmittedAt = computed(() => qualification.value?.submittedAt ?? '')
+const qualificationReviewedAt = computed(() => qualification.value?.reviewedAt ?? '')
+const submittedLicenseUrls = computed(() => qualification.value?.licenseImageUrls ?? [])
+
+const reputationScoreText = computed(() => {
+  return reputationScore.value === null ? '-' : String(reputationScore.value)
+})
+
+const userKindText = computed(() => {
+  return isMerchant.value ? t('editProfile.userKindMerchant') : t('editProfile.userKindPersonal')
+})
+
+const accountStatusText = computed(() => {
+  const status = merchantAccountStatus.value || authStore.accountStatus || ''
+  const map: Record<string, string> = {
+    active: t('editProfile.accountStatusActive'),
+    inactive: t('editProfile.accountStatusInactive'),
+    banned: t('editProfile.accountStatusBanned'),
+  }
+  return map[status] ?? (status || '-')
+})
+
 // ================= 性别选项 =================
 
 const genderOptions = [
+  { value: 'unspecified' as const, label: t('editProfile.unspecified') },
   { value: 'male' as const, label: t('editProfile.male') },
   { value: 'female' as const, label: t('editProfile.female') },
   { value: 'other' as const, label: t('editProfile.other') },
@@ -299,6 +421,26 @@ function checkNickname(): void {
       nicknameChecked.value = false
     }
   }, 500)
+}
+
+/** 确保当前昵称可用
+ *
+ * 前置条件：formNickname 非空。
+ * 后置条件：返回 true 表示昵称可提交；返回 false 时 nicknameError 已包含错误提示。
+ */
+async function ensureNicknameAvailable(nickname: string): Promise<boolean> {
+  if (nicknameChecked.value) return nicknameAvailable.value
+  try {
+    const result = await checkNicknameAvailability(nickname)
+    nicknameAvailable.value = result.available
+    nicknameChecked.value = true
+    if (!result.available) {
+      nicknameError.value = t('editProfile.nicknameUnavailable')
+    }
+    return result.available
+  } catch {
+    return true
+  }
 }
 
 // ================= 标签切换 =================
@@ -369,7 +511,7 @@ async function chooseLicenseImages(): Promise<void> {
     for (const filePath of res.tempFilePaths) {
       const result = await uploadMerchantLicense(filePath)
       licenseMediaIds.value.push(result.mediaId)
-      licensePreviewUrls.value.push(result.signedUrl || filePath)
+      licensePreviewUrls.value.push(filePath)
     }
   } catch {
     formError.value = '营业凭证上传失败或已取消'
@@ -443,10 +585,16 @@ async function loadProfile(): Promise<void> {
       if (profile.avatar?.signedUrl) avatarUrl.value = profile.avatar.signedUrl
       if (profile.interestedActivityFields?.length) {
         selectedTags.value = new Set(profile.interestedActivityFields)
+      } else {
+        selectedTags.value = new Set()
       }
+      merchantAccountStatus.value = profile.accountStatus
       qualification.value = {
         status: profile.qualification?.status ?? profile.qualificationStatus ?? 'not_submitted',
+        submittedAt: profile.qualification?.submittedAt,
+        reviewedAt: profile.qualification?.reviewedAt,
         rejectReason: profile.qualification?.rejectReason,
+        licenseImageUrls: profile.qualification?.licenseImageUrls,
       }
     } else {
       const profile = await getMyProfile()
@@ -457,8 +605,12 @@ async function loadProfile(): Promise<void> {
       if (profile.signature) formSignature.value = profile.signature
       if (profile.interestTags?.length) {
         selectedTags.value = new Set(profile.interestTags)
+      } else {
+        selectedTags.value = new Set()
       }
+      reputationScore.value = profile.reputationScore
     }
+    initialProfileSnapshot.value = getEditableProfileSnapshot()
   } catch (error) {
     if (error instanceof BusinessError) {
       formError.value = getErrorMessage(error.code)
@@ -496,6 +648,7 @@ onMounted(() => {
  */
 async function handleSave(): Promise<void> {
   if (saving.value) return
+  if (!hasProfileChanges.value) return
   formError.value = ''
 
   // 昵称校验
@@ -506,6 +659,12 @@ async function handleSave(): Promise<void> {
   }
   if (nicknameChecked.value && !nicknameAvailable.value) {
     nicknameError.value = t('editProfile.nicknameUnavailable')
+    return
+  }
+  if (!(await ensureNicknameAvailable(nickname))) return
+
+  if (isMerchant.value && !formMerchantName.value.trim()) {
+    merchantNameError.value = t('editProfile.merchantNameRequired')
     return
   }
 
@@ -554,20 +713,13 @@ async function handleSave(): Promise<void> {
 
 .scroll-area {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  height: 0;
   -webkit-overflow-scrolling: touch;
 }
 
 .edit-container {
   padding: 32rpx 32rpx calc(160rpx + env(safe-area-inset-bottom));
-}
-
-.action-bar {
-  padding: 16rpx 32rpx;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  background-color: #fff;
-  border-top: 2rpx solid #ebedf0;
-  flex-shrink: 0;
 }
 
 .avatar-section {
@@ -618,6 +770,13 @@ async function handleSave(): Promise<void> {
   display: block;
   font-size: 28rpx;
   color: #323233;
+  margin-bottom: 12rpx;
+}
+
+.sub-label {
+  display: block;
+  font-size: 26rpx;
+  color: #646566;
   margin-bottom: 12rpx;
 }
 
@@ -721,8 +880,16 @@ async function handleSave(): Promise<void> {
 }
 
 .qualification-text {
+  display: block;
   font-size: 28rpx;
   color: #323233;
+}
+
+.qualification-meta {
+  display: block;
+  font-size: 24rpx;
+  color: #969799;
+  margin-top: 8rpx;
 }
 
 .qualification-reject {
@@ -733,6 +900,10 @@ async function handleSave(): Promise<void> {
 }
 
 .qualification-upload {
+  margin-top: 20rpx;
+}
+
+.submitted-license-section {
   margin-top: 20rpx;
 }
 
@@ -810,6 +981,31 @@ async function handleSave(): Promise<void> {
   margin-top: 12rpx;
   font-size: 24rpx;
   color: #969799;
+}
+
+.profile-summary {
+  margin-top: 32rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 12rpx;
+  background-color: #fff;
+}
+
+.summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0;
+}
+
+.summary-label {
+  font-size: 26rpx;
+  color: #646566;
+}
+
+.summary-value {
+  font-size: 26rpx;
+  color: #323233;
+  font-weight: 500;
 }
 </style>
 

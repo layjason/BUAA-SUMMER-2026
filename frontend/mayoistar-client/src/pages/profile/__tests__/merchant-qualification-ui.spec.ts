@@ -13,6 +13,43 @@ describe('商家资料资质提交 UI', () => {
     expect(source).toContain('licenseMediaIds')
     expect(source).toContain('qualificationStatusText')
     expect(source).toContain('profile.qualification?.status ?? profile.qualificationStatus')
+    expect(source).toContain('licensePreviewUrls.value.push(filePath)')
+    expect(source).not.toContain('licensePreviewUrls.value.push(result.signedUrl || filePath)')
+    expect(source).toContain('qualificationSubmittedAt')
+    expect(source).toContain('qualificationReviewedAt')
+    expect(source).toContain('submittedLicenseUrls')
     expect(source).not.toContain('v-if="isMerchant && qualification"')
+  })
+
+  it('编辑资料页应复用固定底部操作栏并避免页面外层滚动', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
+
+    expect(source).toContain('<BottomActionBar>')
+    expect(source).toContain('class="bar-btn bar-btn-primary"')
+    expect(source).toContain('min-height: 0;')
+    expect(source).toContain('height: 0;')
+    expect(source).not.toContain('class="action-bar"')
+    expect(source).not.toContain('overflow-y: auto;')
+  })
+
+  it('编辑资料页应覆盖 OpenAPI 个人和商家资料字段', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
+
+    expect(source).toContain('merchantNickname')
+    expect(source).toContain('reputationScore')
+    expect(source).toContain('merchantAccountStatus')
+    expect(source).toContain('accountStatusText')
+    expect(source).toContain("value: 'unspecified'")
+    expect(source).toContain('ensureNicknameAvailable')
+    expect(source).toContain('merchantNameRequired')
+  })
+
+  it('编辑资料页无修改时应禁用保存按钮', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
+
+    expect(source).toContain(':disabled="saving || !hasProfileChanges"')
+    expect(source).toContain('initialProfileSnapshot')
+    expect(source).toContain('getEditableProfileSnapshot')
+    expect(source).toContain('if (!hasProfileChanges.value) return')
   })
 })

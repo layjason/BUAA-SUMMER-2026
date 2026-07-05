@@ -174,7 +174,7 @@ function mediaFilesFromActivity(a: MockActivity): MediaFile[] {
   }
   return a.images.map((url, index) => ({
     mediaId: `media_img_${a.id}_${index}`,
-    url,
+    signedUrl: url,
     contentType: 'image/jpeg',
     fileName: `image_${index}.jpg`,
     sizeBytes: 50000,
@@ -191,7 +191,7 @@ function mediaFilesFromDraft(d: MockDraft): MediaFile[] {
   }
   return d.images.map((url, index) => ({
     mediaId: `media_draft_${d.id}_${index}`,
-    url,
+    signedUrl: url,
     contentType: 'image/jpeg',
     fileName: `draft_image_${index}.jpg`,
     sizeBytes: 50000,
@@ -1993,9 +1993,9 @@ export function createDraftFromTemplate(templateId: number, userId: number): Act
     creatorId: userId,
     title: template.defaultTitle,
     introduction: template.defaultIntroduction,
-    safetyNotice: '',
+    safetyNotice: template.defaultSafetyNotice,
     coverUrl: template.coverUrl,
-    images: [],
+    images: [template.coverUrl],
     startTime: '',
     endTime: '',
     registrationDeadline: '',
@@ -2007,7 +2007,7 @@ export function createDraftFromTemplate(templateId: number, userId: number): Act
       placeName: '',
     },
     fee: 0,
-    capacity: 0,
+    capacity: template.defaultCapacity,
     minAge: 0,
     tags: [...template.tags],
     reviewStatus: 'draft',
@@ -2288,16 +2288,20 @@ export function getTemplates(): ActivityTemplate[] {
   return db.templates.map((t) => ({
     templateId: String(t.id),
     name: t.name,
-    activityType: t.tags[0] ?? '通用',
+    activityType: t.activityType,
     defaultTags: t.tags,
     defaultIntroduction: t.defaultIntroduction,
-    defaultSafetyNotice: '',
-    defaultCapacity: 20,
-    defaultCoverImage: mediaFileFromId(
-      `media_tpl_${t.id}`,
-      new Date().toISOString(),
-      `tpl_${t.id}`,
-    ),
+    defaultSafetyNotice: t.defaultSafetyNotice,
+    defaultCapacity: t.defaultCapacity,
+    defaultCoverImage: {
+      mediaId: `media_tpl_${t.id}`,
+      signedUrl: t.coverUrl,
+      contentType: 'image/jpeg',
+      fileName: `template_${t.id}.jpg`,
+      sizeBytes: 50000,
+      uploadedAt: new Date().toISOString(),
+      usage: 'activityImage',
+    },
   }))
 }
 

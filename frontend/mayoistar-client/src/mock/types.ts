@@ -222,10 +222,13 @@ export interface MockInterestTag {
 export interface MockTemplate {
   id: number
   name: string
+  activityType: string
   coverUrl: string
   tags: string[]
   defaultTitle: string
   defaultIntroduction: string
+  defaultSafetyNotice: string
+  defaultCapacity: number
 }
 
 /** Mock API 响应格式 */

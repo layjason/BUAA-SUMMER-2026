@@ -5,12 +5,14 @@ import {
   cancelRegistration,
   checkIn,
   createDraft,
+  createDraftFromTemplate,
   createReview,
   createSummary,
   getCheckIns,
   getMyActivities,
   getMyActivityReview,
   getParticipationState,
+  getTemplates,
   getMerchantProfile,
   listActivityReviews,
   listActivitySummaries,
@@ -83,6 +85,38 @@ describe('活动 mock workflow 契约对齐', () => {
       reviewRecords: expect.any(Array),
     })
     expect(submitted.reviewStatus).not.toBe('riskReview')
+  })
+
+  it('从模板创建草稿应继承模板默认内容', () => {
+    const templates = getTemplates()
+    const firstTemplate = templates[0]
+
+    expect(firstTemplate).toMatchObject({
+      templateId: expect.any(String),
+      name: expect.any(String),
+      activityType: expect.any(String),
+      defaultTags: expect.arrayContaining([expect.any(String)]),
+      defaultIntroduction: expect.any(String),
+      defaultSafetyNotice: expect.any(String),
+      defaultCapacity: expect.any(Number),
+      defaultCoverImage: expect.objectContaining({
+        signedUrl: expect.stringContaining('https://'),
+      }),
+    })
+
+    const draft = createDraftFromTemplate(Number(firstTemplate.templateId), 10001)
+
+    expect(draft).toMatchObject({
+      title: expect.any(String),
+      introduction: firstTemplate.defaultIntroduction,
+      safetyNotice: firstTemplate.defaultSafetyNotice,
+      capacity: firstTemplate.defaultCapacity,
+      tags: firstTemplate.defaultTags,
+      images: [expect.objectContaining({ signedUrl: firstTemplate.defaultCoverImage.signedUrl })],
+    })
+    expect(draft.title).not.toBe('')
+    expect(draft.safetyNotice).not.toBe('')
+    expect(draft.capacity).toBeGreaterThan(0)
   })
 
   it('报名中未来活动已报名用户应可取消但不可签到', () => {

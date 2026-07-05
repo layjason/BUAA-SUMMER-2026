@@ -585,7 +585,7 @@ async function loadDraft(): Promise<void> {
     formFeeDescription.value = draft.feeDescription ?? ''
     formMinAge.value = draft.minAge != null ? String(draft.minAge) : ''
 
-    if (draft.tags.length) selectedTags.value = new Set(draft.tags)
+    selectedTags.value = new Set(draft.tags ?? [])
 
     const startParsed = parseISO(draft.startAt ?? '')
     if (startParsed) {
@@ -603,10 +603,8 @@ async function loadDraft(): Promise<void> {
       deadlineTime.value = deadlineParsed.time
     }
 
-    if (draft.images.length) {
-      imagePreviews.value = draft.images.map((i) => i.signedUrl ?? '')
-      imageIds.value = draft.images.map((i) => i.mediaId)
-    }
+    imagePreviews.value = (draft.images ?? []).map((i) => i.signedUrl ?? '').filter(Boolean)
+    imageIds.value = (draft.images ?? []).map((i) => i.mediaId)
   } catch (error) {
     if (error instanceof BusinessError) {
       formError.value = getErrorMessage(error.code)
