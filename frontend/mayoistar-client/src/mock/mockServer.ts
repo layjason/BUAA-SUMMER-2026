@@ -377,7 +377,11 @@ const routes: Route[] = [
   {
     method: 'GET',
     pattern: '/activities/templates',
-    handler: () => ok(getTemplates()),
+    handler: (_p, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '100', 10)
+      return ok(getTemplates(page, pageSize))
+    },
   },
   {
     method: 'POST',

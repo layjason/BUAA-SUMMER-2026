@@ -211,6 +211,7 @@ function displayOccupiedCount(item: SearchResultItem): number {
           confirm-type="search"
           @confirm="doSearch"
         />
+        <text class="search-submit" @tap="doSearch">搜索</text>
       </view>
       <text class="map-link" @tap="goToMap">地图模式</text>
     </view>
@@ -401,6 +402,17 @@ function displayOccupiedCount(item: SearchResultItem): number {
   flex: 1;
   font-size: $font-base;
   color: $color-text;
+}
+
+.search-submit {
+  flex-shrink: 0;
+  margin-left: $spacing-md;
+  padding-left: $spacing-md;
+  border-left: 1px solid $color-border;
+  font-size: $font-sm;
+  font-weight: $weight-semibold;
+  color: $color-primary;
+  white-space: nowrap;
 }
 
 .map-link {

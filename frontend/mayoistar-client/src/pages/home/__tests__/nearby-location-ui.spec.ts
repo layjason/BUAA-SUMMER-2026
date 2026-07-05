@@ -11,4 +11,17 @@ describe('首页附近 Tab 定位参数', () => {
     expect(source).toContain('nearbyFallbackLocation')
     expect(source).toContain('goSearch')
   })
+
+  it('首页应提供明显搜索、高级筛选和附近地图入口', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/home/index.vue'), 'utf8')
+
+    expect(source).toContain('class="home-search-entry"')
+    expect(source).toContain('搜索活动名称、标签...')
+    expect(source).toContain('高级筛选')
+    expect(source).toContain('类型、时间、城市、费用、距离')
+    expect(source).toContain("activeTab === 'nearby'")
+    expect(source).toContain('地图模式')
+    expect(source).toContain("url: '/pages/discover/search'")
+    expect(source).toContain("url: '/pages/discover/map'")
+  })
 })

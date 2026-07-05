@@ -12,26 +12,31 @@
           <text class="section-title">{{ t('activityTemplates.fromTemplate') }}</text>
           <view v-if="loadingTemplates" class="loading-text">{{ t('加载中') }}</view>
           <view v-else class="template-grid">
-            <view
-              v-for="tpl in templates"
-              :key="tpl.templateId"
-              class="card"
-              hover-class="card-hover"
-              @click="selectTemplate(tpl)"
-            >
-              <image
-                v-if="tpl.defaultCoverImage?.signedUrl"
-                class="card-cover"
-                :src="tpl.defaultCoverImage.signedUrl"
-                mode="aspectFill"
-              />
-              <view v-else class="card-cover card-cover-placeholder">
-                <text class="placeholder-icon">📋</text>
+            <view v-for="(row, rowIndex) in templateRows" :key="rowIndex" class="template-row">
+              <view
+                v-for="tpl in row"
+                :key="tpl.templateId"
+                class="card"
+                hover-class="card-hover"
+                @click="selectTemplate(tpl)"
+              >
+                <view class="card-inner">
+                  <image
+                    v-if="tpl.defaultCoverImage?.signedUrl"
+                    class="card-cover"
+                    :src="tpl.defaultCoverImage.signedUrl"
+                    mode="aspectFill"
+                  />
+                  <view v-else class="card-cover card-cover-placeholder">
+                    <text class="placeholder-icon">📋</text>
+                  </view>
+                  <view class="card-body">
+                    <text class="card-name">{{ tpl.name }}</text>
+                    <text class="card-tags">{{ tpl.defaultTags.join(' · ') }}</text>
+                  </view>
+                </view>
               </view>
-              <view class="card-body">
-                <text class="card-name">{{ tpl.name }}</text>
-                <text class="card-tags">{{ tpl.defaultTags.join(' · ') }}</text>
-              </view>
+              <view v-if="row.length === 1" class="card card-spacer" />
             </view>
           </view>
         </view>
@@ -82,7 +87,7 @@
  * 前置条件：用户已登录
  * 后置条件：选择后跳转编辑页
  */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
@@ -107,6 +112,15 @@ const actioning = ref(false)
 let redirectTimer: ReturnType<typeof setTimeout> | null = null
 
 const templates = ref<ActivityTemplate[]>([])
+
+/** 模板卡片按每行两个分组，避免依赖小程序端 flex-wrap 自动换行 */
+const templateRows = computed(() => {
+  const rows: ActivityTemplate[][] = []
+  for (let index = 0; index < templates.value.length; index += 2) {
+    rows.push(templates.value.slice(index, index + 2))
+  }
+  return rows
+})
 
 const myActivities = ref<ActivitySummary[]>([])
 
@@ -258,16 +272,30 @@ onUnload(() => {
 
 /* ---- 模板卡片 ---- */
 .template-grid {
+  margin-top: -8rpx;
+}
+
+.template-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
+  flex-direction: row;
+  margin: 0 -8rpx 16rpx;
 }
 
 .card {
-  width: calc(50% - 8rpx);
+  box-sizing: border-box;
+  width: 50%;
+  padding: 0 8rpx;
+}
+
+.card-spacer {
+  visibility: hidden;
+}
+
+.card-inner {
   background-color: #fff;
   border-radius: 12rpx;
   overflow: hidden;
+  height: 100%;
 }
 
 .card-hover {
@@ -299,6 +327,9 @@ onUnload(() => {
   font-size: 28rpx;
   font-weight: 600;
   color: #323233;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-tags {
@@ -306,6 +337,9 @@ onUnload(() => {
   font-size: 22rpx;
   color: #969799;
   margin-top: 6rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---- 克隆已有活动列表 ---- */

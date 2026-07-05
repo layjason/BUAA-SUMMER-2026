@@ -124,8 +124,10 @@ export function cloneActivity(activityId: string) {
 }
 
 /** 获取活动模板列表 */
-export function getTemplates() {
-  return get('/activities/templates')
+export function getTemplates(page?: number, pageSize?: number) {
+  return get('/activities/templates', {
+    query: { page: page ?? 1, pageSize: pageSize ?? 100 },
+  })
 }
 
 /** 从模板创建活动草稿 */

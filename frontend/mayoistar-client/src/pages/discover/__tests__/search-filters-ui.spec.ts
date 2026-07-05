@@ -17,4 +17,12 @@ describe('搜索页轻量筛选 UI', () => {
     expect(source).toContain('toggleDistanceFilter')
     expect(source).toContain('getCurrentLocation')
   })
+
+  it('应提供显式关键词搜索按钮', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/discover/search.vue'), 'utf8')
+
+    expect(source).toContain('class="search-submit"')
+    expect(source).toContain('@tap="doSearch"')
+    expect(source).toContain('>搜索</text>')
+  })
 })

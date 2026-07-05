@@ -22,6 +22,17 @@ describe('活动页面底部操作栏', () => {
     expect(source).not.toContain('class="action-bar"')
   })
 
+  it('模板选择页模板卡片应使用稳定两列布局', () => {
+    const source = readActivityPage('templates.vue')
+
+    expect(source).toContain('templateRows')
+    expect(source).toContain('class="template-row"')
+    expect(source).toContain('class="card-inner"')
+    expect(source).toMatch(/\.template-row\s*\{[\s\S]*display:\s*flex;/)
+    expect(source).toMatch(/\.card\s*\{[\s\S]*width:\s*50%;[\s\S]*padding:\s*0 8rpx;/)
+    expect(source).not.toMatch(/\.template-grid\s*\{[\s\S]*gap:/)
+  })
+
   it('详情页主操作按钮应复用固定底部操作栏样式', () => {
     const source = readActivityPage('detail.vue')
 

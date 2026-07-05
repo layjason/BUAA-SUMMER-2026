@@ -33,6 +33,13 @@ describe('searchActivities 筛选', () => {
     expect(result.items.some((item) => item.title === '桌游之夜：卡坦岛争霸赛')).toBe(true)
   })
 
+  it('应按关键词搜索活动标题、简介或标签', () => {
+    const result = searchActivities({ keyword: '桌游' }, 1, 20)
+
+    expect(result.items.length).toBeGreaterThan(0)
+    expect(result.items.some((item) => item.title === '桌游之夜：卡坦岛争霸赛')).toBe(true)
+  })
+
   it('免费筛选应只返回 feeAmount 为 0 的活动', () => {
     const result = searchActivities(
       {

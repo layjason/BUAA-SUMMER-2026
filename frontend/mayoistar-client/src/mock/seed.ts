@@ -1193,13 +1193,13 @@ export function createSeedData(): MockDatabase {
     },
     {
       id: 2,
-      name: '桌游派对',
+      name: '桌游聚会',
       activityType: '社交',
       coverUrl: `https://picsum.photos/seed/tpl2/400/225`,
       tags: ['桌游', '社交'],
-      defaultTitle: '桌游派对',
+      defaultTitle: '桌游聚会',
       defaultIntroduction:
-        '来参加桌游派对吧！我们会准备多款经典桌游，无论你是新手还是老手都能找到乐趣。',
+        '来参加桌游聚会吧！我们会准备多款经典桌游，无论你是新手还是老手都能找到乐趣。',
       defaultSafetyNotice: '请遵守场地秩序，妥善保管个人物品，活动中尊重其他参与者。',
       defaultCapacity: 12,
     },
@@ -1216,11 +1216,11 @@ export function createSeedData(): MockDatabase {
     },
     {
       id: 4,
-      name: '学习分享',
+      name: '学习交流',
       activityType: '学习',
       coverUrl: `https://picsum.photos/seed/tpl4/400/225`,
       tags: ['学习', '分享'],
-      defaultTitle: '学习分享会',
+      defaultTitle: '学习交流会',
       defaultIntroduction: '本次学习分享会将围绕指定主题展开讨论，欢迎大家积极发言、交流心得。',
       defaultSafetyNotice: '请按时到场，保持会场安静，分享资料请确认不包含敏感或侵权内容。',
       defaultCapacity: 30,
@@ -1235,6 +1235,18 @@ export function createSeedData(): MockDatabase {
       defaultIntroduction: '感谢你的善心参与！本次公益活动旨在为社会贡献一份力量，请遵守活动规则。',
       defaultSafetyNotice: '请服从现场工作人员安排，注意个人安全，未成年人需在监护人陪同下参与。',
       defaultCapacity: 25,
+    },
+    {
+      id: 6,
+      name: '城市探索',
+      activityType: '城市探索',
+      coverUrl: `https://picsum.photos/seed/tpl6/400/225`,
+      tags: ['城市探索', '旅行'],
+      defaultTitle: '城市探索活动',
+      defaultIntroduction:
+        '一起发现城市里的有趣角落！本次活动将沿着规划路线探索街区、地标与特色空间。',
+      defaultSafetyNotice: '请按集合时间到达指定地点，活动中注意交通安全并跟随队伍行动。',
+      defaultCapacity: 15,
     },
   ]
 

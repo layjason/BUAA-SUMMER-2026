@@ -13,7 +13,7 @@
         </view>
       </view>
       <view class="filter-entry" @click="goSearch">
-        <text>筛选</text>
+        <text>高级筛选</text>
       </view>
     </view>
 
@@ -25,6 +25,25 @@
       @refresherrefresh="onRefresh"
       @scrolltolower="loadMore"
     >
+      <view class="discover-entry-panel">
+        <view class="home-search-entry" @click="goSearch">
+          <text class="home-search-icon">🔍</text>
+          <text class="home-search-placeholder">搜索活动名称、标签...</text>
+          <text class="home-search-action">搜索</text>
+        </view>
+
+        <view class="advanced-actions">
+          <view class="advanced-action" @click="goSearch">
+            <text class="advanced-action-title">高级筛选</text>
+            <text class="advanced-action-desc">类型、时间、城市、费用、距离</text>
+          </view>
+          <view v-if="activeTab === 'nearby'" class="advanced-action map-action" @click="goMap">
+            <text class="advanced-action-title">地图模式</text>
+            <text class="advanced-action-desc">查看当前位置周边活动</text>
+          </view>
+        </view>
+      </view>
+
       <view v-if="loading && items.length === 0" class="loading-text">{{ t('home.loading') }}</view>
 
       <view v-else-if="errorMsg && items.length === 0" class="error-box">
@@ -281,6 +300,10 @@ function goCreate(): void {
 function goSearch(): void {
   uni.navigateTo({ url: '/pages/discover/search' })
 }
+
+function goMap(): void {
+  uni.navigateTo({ url: '/pages/discover/map' })
+}
 </script>
 
 <style scoped>
@@ -325,12 +348,82 @@ function goSearch(): void {
   padding: 0 32rpx;
   font-size: 26rpx;
   color: #5ec8a7;
+  white-space: nowrap;
 }
 
 .scroll-area {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+.discover-entry-panel {
+  padding: 24rpx 32rpx 16rpx;
+}
+
+.home-search-entry {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border: 1rpx solid #ebedf0;
+  border-radius: 999rpx;
+  padding: 20rpx 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(50, 50, 51, 0.06);
+}
+
+.home-search-icon {
+  font-size: 28rpx;
+  margin-right: 12rpx;
+}
+
+.home-search-placeholder {
+  flex: 1;
+  font-size: 28rpx;
+  color: #969799;
+}
+
+.home-search-action {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  padding-left: 16rpx;
+  border-left: 1rpx solid #ebedf0;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #5ec8a7;
+}
+
+.advanced-actions {
+  display: flex;
+  flex-direction: row;
+  margin: 16rpx -8rpx 0;
+}
+
+.advanced-action {
+  flex: 1;
+  margin: 0 8rpx;
+  padding: 18rpx 20rpx;
+  background-color: #fff;
+  border-radius: 16rpx;
+  border-left: 6rpx solid #5ec8a7;
+  box-shadow: 0 8rpx 24rpx rgba(50, 50, 51, 0.05);
+}
+
+.map-action {
+  border-left-color: #6f8cff;
+}
+
+.advanced-action-title {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #323233;
+}
+
+.advanced-action-desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #969799;
 }
 
 .loading-text,

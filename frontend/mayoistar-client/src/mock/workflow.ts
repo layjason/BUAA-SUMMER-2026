@@ -2282,10 +2282,15 @@ export function getInterestTags(): InterestTagItem[] {
   return db.interestTags.map((t) => ({ name: t.name }))
 }
 
-/** 获取模板列表 */
-export function getTemplates(): ActivityTemplate[] {
+/** 获取模板列表
+ *
+ * 前置条件：page 与 pageSize 为正整数。
+ * 后置条件：返回符合 OpenAPI PageResult<ActivityTemplate> 的分页模板列表。
+ * 不变量：模板字段与 TypeSpec ActivityTemplate 保持一致。
+ */
+export function getTemplates(page: number, pageSize: number): MockPageResult<ActivityTemplate> {
   const db = getMockDb()
-  return db.templates.map((t) => ({
+  const templates: ActivityTemplate[] = db.templates.map((t) => ({
     templateId: String(t.id),
     name: t.name,
     activityType: t.activityType,
@@ -2303,6 +2308,7 @@ export function getTemplates(): ActivityTemplate[] {
       usage: 'activityImage',
     },
   }))
+  return paginate(templates, page, pageSize)
 }
 
 /** 获取商家资料 */

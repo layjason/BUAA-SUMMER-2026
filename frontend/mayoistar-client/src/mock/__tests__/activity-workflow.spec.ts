@@ -88,8 +88,25 @@ describe('活动 mock workflow 契约对齐', () => {
   })
 
   it('从模板创建草稿应继承模板默认内容', () => {
-    const templates = getTemplates()
+    const templatePage = getTemplates(1, 100)
+    const templates = templatePage.items
     const firstTemplate = templates[0]
+
+    expect(templatePage).toMatchObject({
+      total: 6,
+      page: 1,
+      pageSize: 100,
+      totalPages: 1,
+    })
+
+    expect(templates.map((template) => template.name)).toEqual([
+      '运动健身',
+      '桌游聚会',
+      '户外徒步',
+      '学习交流',
+      '公益活动',
+      '城市探索',
+    ])
 
     expect(firstTemplate).toMatchObject({
       templateId: expect.any(String),
@@ -117,6 +134,26 @@ describe('活动 mock workflow 契约对齐', () => {
     expect(draft.title).not.toBe('')
     expect(draft.safetyNotice).not.toBe('')
     expect(draft.capacity).toBeGreaterThan(0)
+  })
+
+  it('模板 mock 路由应返回分页结构供页面读取 items', async () => {
+    const response = await handleMockRequest('GET', '/activities/templates?page=1&pageSize=10')
+
+    expect(response).not.toBeNull()
+    expect(response?.data).toMatchObject({
+      total: 6,
+      page: 1,
+      pageSize: 10,
+      totalPages: 1,
+      items: expect.arrayContaining([
+        expect.objectContaining({ name: '运动健身' }),
+        expect.objectContaining({ name: '桌游聚会' }),
+        expect.objectContaining({ name: '户外徒步' }),
+        expect.objectContaining({ name: '学习交流' }),
+        expect.objectContaining({ name: '公益活动' }),
+        expect.objectContaining({ name: '城市探索' }),
+      ]),
+    })
   })
 
   it('报名中未来活动已报名用户应可取消但不可签到', () => {
