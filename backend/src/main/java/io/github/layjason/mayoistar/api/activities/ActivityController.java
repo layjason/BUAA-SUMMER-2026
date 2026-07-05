@@ -82,12 +82,33 @@ public class ActivityController {
     @GetMapping("/feed")
     public ResponseEntity<ApiResponse<PageResult<ActivityDtos.ActivitySummary>>> getFeed(
             @RequestParam(required = false) String tab,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) List<String> activityTypes,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String startAtFrom,
+            @RequestParam(required = false) String startAtTo,
+            @RequestParam(required = false) Double minFee,
+            @RequestParam(required = false) Double maxFee,
             @RequestParam(required = false) Double latitude,
             @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false) Integer distanceMeters,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
-        return ResponseEntity.ok(
-                ApiResponse.success(activityFeedService.getFeed(tab, page, pageSize, latitude, longitude)));
+        return ResponseEntity.ok(ApiResponse.success(activityFeedService.getFeed(
+                tab,
+                toSearchCriteria(
+                        keyword,
+                        activityTypes,
+                        city,
+                        startAtFrom,
+                        startAtTo,
+                        minFee,
+                        maxFee,
+                        latitude,
+                        longitude,
+                        distanceMeters,
+                        page,
+                        pageSize))));
     }
 
     @GetMapping("/map")

@@ -38,23 +38,105 @@ public class ActivitySearchService {
     private final ActivityRepository activityRepository;
     private final ActivityRegistrationCountService activityRegistrationCountService;
 
+    /**
+     * 搜索活动。
+     *
+     * <p>前置条件：criteria 非空。
+     *
+     * <p>后置条件：当无距离筛选条件时使用数据库分页；有距离筛选条件时先查询全量候选集，
+     * 在内存中完成距离过滤后再统一分页，确保 items、total、totalPages 与筛选结果一致。
+     *
+     * <p>不变量：仅返回审核通过且未下架的活动。
+     *
+     * @param criteria 搜索条件
+     * @return 分页活动摘要
+     */
     @Transactional(readOnly = true)
     public PageResult<ActivityDtos.ActivitySummary> search(SearchCriteria criteria) {
         int page = normalizePage(criteria.page());
         int pageSize = normalizePageSize(criteria.pageSize());
+        if (hasDistanceCriteria(criteria)) {
+            return searchWithDistanceFilter(criteria, page, pageSize);
+        }
+        return searchWithoutDistanceFilter(criteria, page, pageSize);
+    }
+
+    /**
+     * 无距离筛选时使用数据库分页查询。
+     */
+    private PageResult<ActivityDtos.ActivitySummary> searchWithoutDistanceFilter(
+            SearchCriteria criteria, int page, int pageSize) {
         Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.ASC, "startAt"));
-        var result = activityRepository.findAll(toSpecification(criteria), pageable);
+        var result = activityRepository.findAll(buildSpecification(criteria), pageable);
         Map<String, ActivityRegistrationCounts> countsByActivityId =
                 activityRegistrationCountService.countByActivityIds(result.getContent().stream()
                         .map(Activity::getActivityId)
                         .toList());
         List<ActivityDtos.ActivitySummary> items = result.getContent().stream()
-                .filter(activity -> matchesDistance(activity, criteria))
                 .map(activity -> toSummary(
                         activity,
                         countsByActivityId.getOrDefault(activity.getActivityId(), ActivityRegistrationCounts.zero())))
                 .toList();
         return new PageResult<>(items, result.getTotalElements(), page, pageSize, result.getTotalPages());
+    }
+
+    /**
+     * 有距离筛选时：先查询全量非距离候选集，内存中距离过滤后再统一分页，
+     * 确保 total 和 items 与距离筛选结果一致。
+     */
+    private PageResult<ActivityDtos.ActivitySummary> searchWithDistanceFilter(
+            SearchCriteria criteria, int page, int pageSize) {
+        List<Activity> candidates = activityRepository.findAll(buildSpecification(criteria));
+        List<Activity> withinDistance = candidates.stream()
+                .filter(activity -> matchesDistance(activity, criteria))
+                .toList();
+        int total = withinDistance.size();
+        int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / pageSize);
+        int fromIndex = (page - 1) * pageSize;
+        if (fromIndex >= total) {
+            return new PageResult<>(List.of(), (long) total, page, pageSize, totalPages);
+        }
+        int toIndex = Math.min(fromIndex + pageSize, total);
+        List<Activity> pageActivities = withinDistance.subList(fromIndex, toIndex);
+        Map<String, ActivityRegistrationCounts> countsByActivityId =
+                activityRegistrationCountService.countByActivityIds(
+                        pageActivities.stream().map(Activity::getActivityId).toList());
+        List<ActivityDtos.ActivitySummary> items = pageActivities.stream()
+                .map(activity -> toSummary(
+                        activity,
+                        countsByActivityId.getOrDefault(activity.getActivityId(), ActivityRegistrationCounts.zero())))
+                .toList();
+        return new PageResult<>(items, (long) total, page, pageSize, totalPages);
+    }
+
+    /**
+     * 判断搜索条件是否包含有效的距离筛选参数。
+     *
+     * <p>前置条件：criteria 非空。
+     *
+     * <p>后置条件：当经纬度和距离均非空时返回 true。
+     *
+     * @param criteria 搜索条件
+     * @return 是否包含距离筛选
+     */
+    private boolean hasDistanceCriteria(SearchCriteria criteria) {
+        return criteria.latitude() != null && criteria.longitude() != null && criteria.distanceMeters() != null;
+    }
+
+    /**
+     * 构建活动搜索的 JPA Specification，包含可见性过滤和所有非距离搜索条件。
+     *
+     * <p>前置条件：criteria 非空。
+     *
+     * <p>后置条件：返回仅匹配审核通过、未下架且满足搜索条件的 Specification。
+     *
+     * <p>不变量：纯函数，不修改入参或外部状态。
+     *
+     * @param criteria 搜索条件
+     * @return JPA Specification
+     */
+    public Specification<Activity> buildSpecification(SearchCriteria criteria) {
+        return toSpecification(criteria);
     }
 
     @Transactional(readOnly = true)

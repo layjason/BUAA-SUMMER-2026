@@ -15,6 +15,7 @@ import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
+import io.github.layjason.mayoistar.service.ActivitySearchService;
 import io.github.layjason.mayoistar.service.ai.AiContentReviewSnapshotMapper;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
@@ -35,7 +36,12 @@ import org.springframework.test.context.ActiveProfiles;
 @DataJpaTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = Replace.NONE)
-@Import({ActivityFeedService.class, ActivityDtoMapper.class, ActivityFeedServiceTest.TestConfig.class})
+@Import({
+    ActivityFeedService.class,
+    ActivitySearchService.class,
+    ActivityDtoMapper.class,
+    ActivityFeedServiceTest.TestConfig.class
+})
 class ActivityFeedServiceTest {
 
     @TestConfiguration
@@ -147,6 +153,23 @@ class ActivityFeedServiceTest {
         return a;
     }
 
+    /**
+     * 创建基础 SearchCriteria，仅含分页参数。
+     */
+    private ActivitySearchService.SearchCriteria criteriaWithPage(Integer page, Integer pageSize) {
+        return new ActivitySearchService.SearchCriteria(
+                null, null, null, null, null, null, null, null, null, null, page, pageSize);
+    }
+
+    /**
+     * 创建带坐标的 SearchCriteria，用于附近 Tab。
+     */
+    private ActivitySearchService.SearchCriteria criteriaWithLocation(
+            Double lat, Double lon, Integer distanceMeters, Integer page, Integer pageSize) {
+        return new ActivitySearchService.SearchCriteria(
+                null, null, null, null, null, null, null, lat, lon, distanceMeters, page, pageSize);
+    }
+
     @Test
     @DisplayName("最新 Tab 按创建时间降序排列")
     void shouldSortByCreatedAtDescForLatestTab() {
@@ -154,7 +177,8 @@ class ActivityFeedServiceTest {
         activityRepository.save(activity("旧活动", now.minusSeconds(7200)));
         activityRepository.save(activity("新活动", now));
 
-        PageResult<ActivityDtos.ActivitySummary> result = activityFeedService.getFeed("latest", 1, 20, null, null);
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityFeedService.getFeed("latest", criteriaWithPage(1, 20));
 
         assertThat(result.getItems()).hasSize(2);
         assertThat(result.getItems().get(0).getTitle()).isEqualTo("新活动");
@@ -168,8 +192,10 @@ class ActivityFeedServiceTest {
             activityRepository.save(activity("活动" + i, Instant.now()));
         }
 
-        PageResult<ActivityDtos.ActivitySummary> page1 = activityFeedService.getFeed("recommended", 1, 10, null, null);
-        PageResult<ActivityDtos.ActivitySummary> page2 = activityFeedService.getFeed("recommended", 2, 10, null, null);
+        PageResult<ActivityDtos.ActivitySummary> page1 =
+                activityFeedService.getFeed("recommended", criteriaWithPage(1, 10));
+        PageResult<ActivityDtos.ActivitySummary> page2 =
+                activityFeedService.getFeed("recommended", criteriaWithPage(2, 10));
 
         assertThat(page1.getItems()).hasSize(10);
         assertThat(page2.getItems()).hasSize(10);
@@ -185,11 +211,28 @@ class ActivityFeedServiceTest {
         activityRepository.save(activityWithLocation("故宫", 39.9180, 116.3975, now));
 
         PageResult<ActivityDtos.ActivitySummary> result =
-                activityFeedService.getFeed("nearby", 1, 20, 39.9042, 116.3975);
+                activityFeedService.getFeed("nearby", criteriaWithLocation(39.9042, 116.3975, null, 1, 20));
 
         assertThat(result.getItems()).hasSize(2);
         assertThat(result.getItems().get(0).getTitle()).isEqualTo("故宫");
         assertThat(result.getItems().get(1).getTitle()).isEqualTo("鸟巢");
+    }
+
+    @Test
+    @DisplayName("附近 Tab 按 distanceMeters 过滤范围内活动")
+    void shouldFilterByDistanceMetersForNearbyTab() {
+        Instant now = Instant.now();
+        // 故宫距离天安门约 1.5km，鸟巢距离天安门约 9.7km
+        activityRepository.save(activityWithLocation("故宫", 39.9180, 116.3975, now));
+        activityRepository.save(activityWithLocation("鸟巢", 39.9919, 116.3904, now));
+
+        // 以天安门为中心，5km 半径
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityFeedService.getFeed("nearby", criteriaWithLocation(39.9042, 116.3975, 5000, 1, 20));
+
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().get(0).getTitle()).isEqualTo("故宫");
+        assertThat(result.getTotal()).isEqualTo(1);
     }
 
     @Test
@@ -199,7 +242,8 @@ class ActivityFeedServiceTest {
         activityRepository.save(activity("旧活动", now.minusSeconds(3600)));
         activityRepository.save(activity("新活动", now));
 
-        PageResult<ActivityDtos.ActivitySummary> result = activityFeedService.getFeed("nearby", 1, 20, null, null);
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityFeedService.getFeed("nearby", criteriaWithPage(1, 20));
 
         assertThat(result.getItems()).hasSize(2);
         assertThat(result.getItems().get(0).getTitle()).isEqualTo("新活动");
@@ -213,7 +257,8 @@ class ActivityFeedServiceTest {
         activityRepository.save(activityWithStatus(ActivityReviewStatus.approved, ActivityRuntimeStatus.takenDown));
         activityRepository.save(activityWithStatus(ActivityReviewStatus.rejected, ActivityRuntimeStatus.ongoing));
 
-        PageResult<ActivityDtos.ActivitySummary> result = activityFeedService.getFeed("latest", 1, 20, null, null);
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityFeedService.getFeed("latest", criteriaWithPage(1, 20));
 
         assertThat(result.getItems()).hasSize(1);
     }
@@ -223,7 +268,7 @@ class ActivityFeedServiceTest {
     void shouldDefaultToRecommendedTab() {
         activityRepository.save(activity("默认测试", Instant.now()));
 
-        PageResult<ActivityDtos.ActivitySummary> result = activityFeedService.getFeed(null, 1, 20, null, null);
+        PageResult<ActivityDtos.ActivitySummary> result = activityFeedService.getFeed(null, criteriaWithPage(1, 20));
 
         assertThat(result.getItems()).hasSize(1);
     }
@@ -231,7 +276,8 @@ class ActivityFeedServiceTest {
     @Test
     @DisplayName("空结果返回正确元数据")
     void shouldReturnEmptyResultWithCorrectMetadata() {
-        PageResult<ActivityDtos.ActivitySummary> result = activityFeedService.getFeed("latest", 1, 20, null, null);
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityFeedService.getFeed("latest", criteriaWithPage(1, 20));
 
         assertThat(result.getItems()).isEmpty();
         assertThat(result.getTotal()).isZero();
