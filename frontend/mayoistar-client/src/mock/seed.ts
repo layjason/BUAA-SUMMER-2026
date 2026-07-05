@@ -1036,10 +1036,9 @@ export function createSeedData(): MockDatabase {
   /* ---- 黑名单 ---- */
   const blacklist: MockBlacklist[] = [
     {
-      id: 1,
       blockedBy: 10006,
       userId: 10001,
-      createdAt: iso(-5),
+      blockedAt: iso(-5),
     },
   ]
 

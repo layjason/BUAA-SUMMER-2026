@@ -1723,6 +1723,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/social/qr-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 生成当前用户的个人二维码，返回 PNG 格式的二维码图片，含 5 分钟有效期 JWT token。 */
+        get: operations["SocialOperations_getMyQrCode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social/qr-code/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 扫描他人二维码添加好友，解码 token 后自动创建好友申请。 */
+        post: operations["SocialOperations_scanQrCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/social/reports": {
         parameters: {
             query?: never;
@@ -4398,6 +4432,21 @@ export interface components {
              */
             message: "Friendship state does not allow this operation";
         };
+        /** @description 40021：二维码 token 无效或已过期。 */
+        "Errors.Social.QrCodeTokenInvalid": {
+            /**
+             * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+             * @enum {number}
+             */
+            code: 40021;
+            /** @description 错误上下文，默认无额外业务数据。 */
+            data: components["schemas"]["EmptyData"];
+            /**
+             * @description 平台错误消息，业务错误使用英文模板文案。
+             * @enum {string}
+             */
+            message: "QR code token is invalid";
+        };
         /** @description 40007：举报目标或举报内容不合法。 */
         "Errors.Social.ReportInvalid": {
             /**
@@ -5026,6 +5075,13 @@ export interface components {
             pointChange: number;
             /** @description 调整原因。 */
             reason: string;
+        };
+        /** @description 扫码添加好友请求，调用方通过扫描二维码获取 token 并提交，系统解码 token 后自动创建好友申请。 */
+        "Social.QrCodeScanRequest": {
+            /** @description 附加的好友申请附言。 */
+            message?: string;
+            /** @description 从二维码中解码得到的 token。 */
+            token: string;
         };
         /** @description 举报记录。 */
         "Social.Report": {
@@ -10302,6 +10358,8 @@ export interface operations {
     SocialOperations_listFriends: {
         parameters: {
             query?: {
+                /** @description 好友昵称或备注筛选关键字。 */
+                keyword?: string;
                 /** @description 页码，从 1 开始。 */
                 page?: components["parameters"]["PageQuery.page"];
                 /** @description 每页数量。 */
@@ -10465,6 +10523,63 @@ export interface operations {
                          */
                         message: "For Super Earth!";
                     } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Social.UserNotVisible"] | components["schemas"]["Errors.Social.BlacklistRelationExists"];
+                };
+            };
+        };
+    };
+    SocialOperations_getMyQrCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+        };
+    };
+    SocialOperations_scanQrCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Social.QrCodeScanRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["Social.FriendRequest"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Social.UserNotVisible"] | components["schemas"]["Errors.Social.BlacklistRelationExists"] | components["schemas"]["Errors.Social.FriendshipStateInvalid"] | components["schemas"]["Errors.Social.DuplicateFriendRequest"] | components["schemas"]["Errors.Social.QrCodeTokenInvalid"];
                 };
             };
         };
