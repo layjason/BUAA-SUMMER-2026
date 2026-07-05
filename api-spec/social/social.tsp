@@ -599,6 +599,11 @@ interface SocialOperations {
   ): APIResult<PageResult<TeamProfile>>;
 
   @get
+  @route("/teams/mine")
+  @doc("获取当前用户加入的小队列表，含已解散/已停用的历史小队，按加入时间倒序。")
+  listMyTeams(...PageQuery): APIResult<PageResult<TeamProfile>>;
+
+  @get
   @route("/teams/{teamId}")
   @doc("获取兴趣小队详情，用户可查看未解散且可见的小队资料，小队成员可据此进入群聊、活动、文件、相册和积分榜。")
   getTeam(@path teamId: EntityId): APIResponse<TeamProfile>;

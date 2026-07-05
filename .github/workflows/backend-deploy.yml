@@ -1,0 +1,79 @@
+name: Backend Full-Stack Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-deploy.yml"
+
+jobs:
+  deploy:
+    name: Full Stack Deployment
+    runs-on: [self-hosted, internal]
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 关键步骤：创建 .env 文件
+      # docker-compose 会自动读取同目录下的 .env 文件来填充变量
+      - name: Setup Environment Variables
+        run: |
+          # 清空/创建 .env 文件
+          touch .env
+
+          # ===== PostgreSQL =====
+          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env
+          echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+          echo "POSTGRES_IMAGE=postgres:17-alpine" >> .env
+
+          # ===== Redis =====
+          echo "REDIS_IMAGE=redis:7-alpine" >> .env
+          echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> .env
+
+          # ===== RustFS / S3 =====
+          echo "RUSTFS_ACCESS_KEY=${{ secrets.RUSTFS_ACCESS_KEY }}" >> .env
+          echo "RUSTFS_SECRET_KEY=${{ secrets.RUSTFS_SECRET_KEY }}" >> .env
+          echo "MAYOISTAR_S3_ENDPOINT=http://rustfs:9000" >> .env
+          echo "MAYOISTAR_S3_REGION=us-east-1" >> .env
+          echo "MAYOISTAR_S3_BUCKET=mayoistar-media" >> .env
+
+          # ===== JWT & Security =====
+          echo "MAYOISTAR_JWT_SECRET=${{ secrets.MAYOISTAR_JWT_SECRET }}" >> .env
+
+          # ===== SMTP Mail =====
+          echo "MAYOISTAR_MAIL_SENDER=mayoistar@stellan.cloud" >> .env
+          echo "MAYOISTAR_MAIL_USERNAME=a0bf5e001@smtp-brevo.com" >> .env
+          echo "MAYOISTAR_MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}" >> .env
+          echo "MAYOISTAR_MAIL_HOST=smtp-relay.brevo.com" >> .env
+          echo "MAYOISTAR_MAIL_PORT=587" >> .env
+
+          # ===== Base URLs (生产环境应指向你的服务器 IP 或域名) =====
+          echo "MAYOISTAR_ACTIVATION_BASE_URL=https://${{ secrets.HOSTNAME }}/activate" >> .env
+          echo "MAYOISTAR_PASSWORD_RESET_BASE_URL=https://${{ secrets.HOSTNAME }}/reset-password" >> .env
+
+          # ===== AI Audit =====
+          echo "MAYOISTAR_ALIYUN_IMAGEAUDIT_ENDPOINT=imageaudit.cn-shanghai.aliyuncs.com" >> .env
+          echo "ALIBABA_CLOUD_ACCESS_KEY_ID=${{ secrets.ALIBABA_AK }}" >> .env
+          echo "ALIBABA_CLOUD_ACCESS_KEY_SECRET=${{ secrets.ALIBABA_SK }}" >> .env
+
+          echo ".env file generated successfully."
+
+      - name: Docker Compose Deploy
+        run: |
+          echo "Starting Full Stack Deployment..."
+
+          docker-compose down --remove-orphans
+
+          docker-compose up -d --build
+
+          docker image prune -f
+
+          echo "Deployment Successful!"

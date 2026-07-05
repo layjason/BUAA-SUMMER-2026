@@ -4,6 +4,8 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9093}
 
 mayoistar:
   media:

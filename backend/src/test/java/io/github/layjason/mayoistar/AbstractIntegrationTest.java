@@ -1,5 +1,6 @@
 package io.github.layjason.mayoistar;
 
+import io.github.layjason.mayoistar.config.TestRedisConfiguration;
 import io.github.layjason.mayoistar.config.TestSecurityConfiguration;
 import io.github.layjason.mayoistar.config.TestStorageConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,5 +17,5 @@ import org.springframework.test.context.ActiveProfiles;
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Import({TestSecurityConfiguration.class, TestStorageConfiguration.class})
+@Import({TestSecurityConfiguration.class, TestStorageConfiguration.class, TestRedisConfiguration.class})
 public abstract class AbstractIntegrationTest {}
