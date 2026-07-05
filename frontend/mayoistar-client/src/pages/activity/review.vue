@@ -198,13 +198,28 @@ function removeReviewImage(index: number): void {
   if (removedUrl) content.value = content.value.replace(`![评价图片](${removedUrl})`, '').trim()
 }
 
+interface PageRouteSnapshot {
+  route?: string
+  options?: Record<string, string | undefined>
+}
+
 /** 返回活动详情页
  *
  * 前置条件：activityId 已由页面 query 初始化。
- * 后置条件：当前评价页被活动详情页替换，避免直接进入评价页时 navigateBack 无可返回页面。
- * 不变量：跳转目标始终为当前活动详情页。
+ * 后置条件：若上一页是同一活动详情页则后退，否则当前评价页被活动详情页替换。
+ * 不变量：最终目标始终为当前活动详情页，且不重复堆叠同一详情页。
  */
 function returnToActivityDetail(): void {
+  const pages = getCurrentPages() as PageRouteSnapshot[]
+  const previousPage = pages[pages.length - 2]
+  if (
+    previousPage?.route === 'pages/activity/detail' &&
+    previousPage.options?.activityId === activityId.value
+  ) {
+    uni.navigateBack()
+    return
+  }
+
   uni.redirectTo({ url: `/pages/activity/detail?activityId=${activityId.value}` })
 }
 

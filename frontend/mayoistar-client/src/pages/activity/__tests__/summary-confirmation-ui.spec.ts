@@ -37,6 +37,10 @@ describe('活动总结 AI 分类人工确认 UI', () => {
     expect(source).toContain('content.value += `![评价图片](${markdownUrl})`')
     expect(source).toContain('const removedUrl = reviewMarkdownImageUrls.value[index]')
     expect(source).toContain('function returnToActivityDetail(): void')
+    expect(source).toContain('getCurrentPages() as PageRouteSnapshot[]')
+    expect(source).toContain("previousPage?.route === 'pages/activity/detail'")
+    expect(source).toContain('previousPage.options?.activityId === activityId.value')
+    expect(source).toContain('uni.navigateBack()')
     expect(source).toContain(
       'uni.redirectTo({ url: `/pages/activity/detail?activityId=${activityId.value}` })',
     )
