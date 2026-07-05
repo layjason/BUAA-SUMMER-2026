@@ -54,6 +54,57 @@ export interface MockDatabase {
 
 let db: MockDatabase
 
+/** 合并缺失的 mock 演示数据
+ *
+ * 前置条件：target 和 seed 均为完整 MockDatabase。
+ * 后置条件：target 补齐 seed 中新增的演示活动、报名和签到记录。
+ * 不变量：不覆盖用户已产生的同 ID 数据，仅追加缺失记录并提升 nextId 下限。
+ */
+function mergeMissingDemoData(target: MockDatabase, seed: MockDatabase): boolean {
+  let changed = false
+
+  const activityIds = new Set(target.activities.map((item) => item.id))
+  for (const activity of seed.activities.filter((item) => item.id === 13 || item.id === 14)) {
+    if (!activityIds.has(activity.id)) {
+      target.activities.push(activity)
+      changed = true
+    }
+  }
+
+  const registrationKeys = new Set(
+    target.registrations.map((item) => `${item.activityId}:${item.userId}:${item.status}`),
+  )
+  for (const registration of seed.registrations.filter(
+    (item) => item.activityId === 13 || item.activityId === 14,
+  )) {
+    const key = `${registration.activityId}:${registration.userId}:${registration.status}`
+    if (!registrationKeys.has(key)) {
+      target.registrations.push(registration)
+      changed = true
+    }
+  }
+
+  const checkInKeys = new Set(target.checkins.map((item) => `${item.activityId}:${item.userId}`))
+  for (const checkIn of seed.checkins.filter(
+    (item) => item.activityId === 13 || item.activityId === 14,
+  )) {
+    const key = `${checkIn.activityId}:${checkIn.userId}`
+    if (!checkInKeys.has(key)) {
+      target.checkins.push(checkIn)
+      changed = true
+    }
+  }
+
+  for (const [entity, nextValue] of Object.entries(seed.nextId)) {
+    if ((target.nextId[entity] ?? 0) < nextValue) {
+      target.nextId[entity] = nextValue
+      changed = true
+    }
+  }
+
+  return changed
+}
+
 /**
  * 初始化数据库（从 storage 恢复或使用种子数据）
  *
@@ -67,6 +118,8 @@ export function initMockDb(): MockDatabase {
       db = JSON.parse(raw as string) as MockDatabase
       // 基本完整性校验：确保关键数组存在
       if (db.users && db.activities && db.nextId) {
+        const seed = createSeedData()
+        if (mergeMissingDemoData(db, seed)) persistMockDb()
         return db
       }
     }

@@ -17,8 +17,18 @@
             <text v-for="tag in review.tags" :key="tag" class="tag-chip">{{ tag }}</text>
           </view>
 
-          <text v-if="review.content" class="content">{{ review.content }}</text>
+          <text v-if="reviewTextContent" class="content">{{ reviewTextContent }}</text>
           <text v-else class="empty-content">该用户未填写文字评价</text>
+
+          <view v-if="reviewImageUrls.length > 0" class="review-image-grid">
+            <image
+              v-for="url in reviewImageUrls"
+              :key="url"
+              class="review-image"
+              :src="url"
+              mode="aspectFill"
+            />
+          </view>
         </view>
       </view>
     </scroll-view>
@@ -33,7 +43,7 @@
  * 前置条件：activityId 和 reviewId 通过 query 传入。
  * 后置条件：成功时展示评价人、评分、标签、正文和创建时间。
  */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { getActivityReviews, type ActivityReviewListItem } from '@/api/modules/activities'
@@ -46,6 +56,20 @@ const errorMsg = ref('')
 const activityId = ref('')
 const reviewId = ref('')
 const review = ref<ActivityReviewListItem | null>(null)
+
+const markdownImagePattern = /!\[[^\]]*]\(([^)]+)\)/g
+
+/** 评价正文中的 Markdown 图片 URL 列表 */
+const reviewImageUrls = computed(() => {
+  const content = review.value?.content ?? ''
+  return [...content.matchAll(markdownImagePattern)].map((match) => match[1]).filter(Boolean)
+})
+
+/** 去除 Markdown 图片后的评价文本 */
+const reviewTextContent = computed(() => {
+  const content = review.value?.content ?? ''
+  return content.replace(markdownImagePattern, '').trim()
+})
 
 /** 加载活动评价详情
  *
@@ -148,6 +172,20 @@ onLoad((query) => {
   line-height: 1.7;
   color: #323233;
   white-space: pre-wrap;
+}
+
+.review-image-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 28rpx;
+}
+
+.review-image {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 12rpx;
+  background-color: #f2f3f5;
 }
 
 .empty-content {
