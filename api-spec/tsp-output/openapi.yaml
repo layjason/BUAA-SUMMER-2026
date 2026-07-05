@@ -6149,6 +6149,13 @@ paths:
       operationId: SocialOperations_listFriends
       description: 获取好友列表，调用方已登录，分页返回好友，删除好友后双方关系解除。
       parameters:
+        - name: keyword
+          in: query
+          required: false
+          description: 好友昵称或备注筛选关键字。
+          schema:
+            type: string
+          explode: false
         - $ref: '#/components/parameters/PageQuery.page'
         - $ref: '#/components/parameters/PageQuery.pageSize'
       responses:
@@ -6353,6 +6360,71 @@ paths:
                   - $ref: '#/components/schemas/Errors.Social.BlacklistRelationExists'
       tags:
         - 好友社群
+  /social/qr-code:
+    get:
+      operationId: SocialOperations_getMyQrCode
+      description: 生成当前用户的个人二维码，返回 PNG 格式的二维码图片，含 5 分钟有效期 JWT token。
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+      tags:
+        - 好友社群
+  /social/qr-code/scan:
+    post:
+      operationId: SocialOperations_scanQrCode
+      description: 扫描他人二维码添加好友，解码 token 后自动创建好友申请。
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Social.FriendRequest'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Social.UserNotVisible'
+                  - $ref: '#/components/schemas/Errors.Social.BlacklistRelationExists'
+                  - $ref: '#/components/schemas/Errors.Social.FriendshipStateInvalid'
+                  - $ref: '#/components/schemas/Errors.Social.DuplicateFriendRequest'
+                  - $ref: '#/components/schemas/Errors.Social.QrCodeTokenInvalid'
+      tags:
+        - 好友社群
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Social.QrCodeScanRequest'
   /social/reports:
     post:
       operationId: SocialOperations_createReport
@@ -12001,6 +12073,31 @@ components:
               description: 错误上下文，默认无额外业务数据。
           description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
       description: 40004：好友关系状态不允许当前操作。
+    Errors.Social.QrCodeTokenInvalid:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - code
+            - message
+            - data
+          properties:
+            code:
+              type: number
+              enum:
+                - 40021
+              description: 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+            message:
+              type: string
+              enum:
+                - QR code token is invalid
+              description: 平台错误消息，业务错误使用英文模板文案。
+            data:
+              allOf:
+                - $ref: '#/components/schemas/EmptyData'
+              description: 错误上下文，默认无额外业务数据。
+          description: 平台统一 JSON 错误响应，code 与 message 由通用错误或业务错误类型固定，data 默认为空对象。
+      description: 40021：二维码 token 无效或已过期。
     Errors.Social.ReportInvalid:
       type: object
       allOf:
@@ -13125,6 +13222,19 @@ components:
           maxLength: 50
           description: 调整原因。
       description: 手动调整小队成员积分请求。
+    Social.QrCodeScanRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: 从二维码中解码得到的 token。
+        message:
+          type: string
+          maxLength: 500
+          description: 附加的好友申请附言。
+      description: 扫码添加好友请求，调用方通过扫描二维码获取 token 并提交，系统解码 token 后自动创建好友申请。
     Social.Report:
       type: object
       required:
