@@ -22,12 +22,14 @@ services:
     image: ${REDIS_IMAGE:-redis:7-alpine}
     command: >
       redis-server
+      --appendonly yes
       --tcp-keepalive 60
       --timeout 0
+      --requirepass ${REDIS_PASSWORD}
     ports:
       - "${DEV_REDIS_PORT:-6379}:6379"
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      test: ["CMD-SHELL", "redis-cli -a \"$REDIS_PASSWORD\" ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
