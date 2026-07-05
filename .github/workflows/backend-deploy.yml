@@ -56,8 +56,8 @@ jobs:
           echo "MAYOISTAR_MAIL_PORT=587" >> .env
 
           # ===== Base URLs (生产环境应指向你的服务器 IP 或域名) =====
-          echo "MAYOISTAR_ACTIVATION_BASE_URL=http://10.251.252.62:5173/activate" >> .env
-          echo "MAYOISTAR_PASSWORD_RESET_BASE_URL=http://10.251.252.62:5173/reset-password" >> .env
+          echo "MAYOISTAR_ACTIVATION_BASE_URL=https://${{ secrets.HOSTNAME }}/activate" >> .env
+          echo "MAYOISTAR_PASSWORD_RESET_BASE_URL=https://${{ secrets.HOSTNAME }}/reset-password" >> .env
 
           # ===== AI Audit =====
           echo "MAYOISTAR_ALIYUN_IMAGEAUDIT_ENDPOINT=imageaudit.cn-shanghai.aliyuncs.com" >> .env
