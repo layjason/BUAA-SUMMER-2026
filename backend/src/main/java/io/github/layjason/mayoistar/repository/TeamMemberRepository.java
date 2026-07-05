@@ -38,4 +38,6 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, String> 
     Optional<TeamMember> findByTeamIdAndUserIdForUpdate(@Param("teamId") String teamId, @Param("userId") String userId);
 
     long countByUserId(String userId);
+
+    Page<TeamMember> findByUserId(String userId, Pageable pageable);
 }
