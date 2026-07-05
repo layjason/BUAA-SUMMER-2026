@@ -11,6 +11,10 @@
         <text>{{ tab.label }}</text>
       </view>
     </view>
+    <view v-if="activeTab === 'nearby'" class="map-entry" @click="goMap">
+      <text class="map-entry-text">地图模式查看附近活动</text>
+      <text class="map-entry-arrow">&gt;</text>
+    </view>
 
     <scroll-view
       class="scroll-area"
@@ -70,11 +74,7 @@
                 <text class="fee" :class="{ free: !item.feeAmount }">{{
                   item.feeAmount ? '¥' + item.feeAmount : t('home.free')
                 }}</text>
-                <text class="registered">{{
-                  item.registeredCount >= item.capacity
-                    ? t('home.full')
-                    : t('home.registered', { count: item.registeredCount, total: item.capacity })
-                }}</text>
+                <text class="registered">{{ formatRegisteredText(item) }}</text>
               </view>
             </view>
           </view>
@@ -89,10 +89,6 @@
         </view>
       </view>
     </scroll-view>
-
-    <view class="fab" @click="goCreate">
-      <text class="fab-icon">+</text>
-    </view>
   </view>
 </template>
 
@@ -156,6 +152,20 @@ interface ActivityItem {
 
 function getStatusText(status: string): string {
   return runtimeStatusText(status, t)
+}
+
+/**
+ * 格式化首页活动卡片报名人数。
+ *
+ * 前置条件：activity.registeredCount 与 activity.capacity 来自活动流接口或 mockServer，均为非负数字。
+ * 后置条件：满员活动显示本地化“已满”，未满活动显示“已报名/总人数人”的确定文本。
+ * 不变量：该函数只负责展示文案，不修改活动列表状态。
+ *
+ * @param activity 首页活动卡片数据
+ */
+function formatRegisteredText(activity: ActivityItem): string {
+  if (activity.registeredCount >= activity.capacity) return t('home.full')
+  return `${activity.registeredCount}/${activity.capacity}人`
 }
 
 async function loadFeed(): Promise<void> {
@@ -231,8 +241,15 @@ function goDetail(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
 }
 
-function goCreate(): void {
-  uni.navigateTo({ url: '/pages/activity/templates' })
+/**
+ * 跳转附近地图模式
+ *
+ * 前置条件：首页附近 Tab 已展示或用户希望查看附近活动分布。
+ * 后置条件：进入地图发现页，由地图页通过 uni.getLocation 加载附近活动。
+ * 不变量：不改变当前信息流列表。
+ */
+function goMap(): void {
+  uni.navigateTo({ url: '/pages/discover/map' })
 }
 </script>
 
@@ -266,6 +283,27 @@ function goCreate(): void {
   color: #5ec8a7;
   border-bottom-color: #5ec8a7;
   font-weight: 600;
+}
+
+.map-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16rpx 32rpx 0;
+  padding: 20rpx 24rpx;
+  background-color: #e8f7f0;
+  border-radius: 12rpx;
+}
+
+.map-entry-text {
+  font-size: 26rpx;
+  color: #5ec8a7;
+  font-weight: 600;
+}
+
+.map-entry-arrow {
+  font-size: 28rpx;
+  color: #5ec8a7;
 }
 
 .scroll-area {
@@ -462,27 +500,6 @@ function goCreate(): void {
 
 .load-error {
   color: #ee0a24;
-}
-
-.fab {
-  position: fixed;
-  right: 32rpx;
-  bottom: calc(32rpx + env(safe-area-inset-bottom) + 120rpx);
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 50%;
-  background-color: #5ec8a7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4rpx 16rpx rgba(94, 200, 167, 0.4);
-}
-
-.fab-icon {
-  font-size: 56rpx;
-  color: #fff;
-  line-height: 1;
-  margin-top: -4rpx;
 }
 </style>
 

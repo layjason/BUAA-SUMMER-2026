@@ -371,6 +371,65 @@ function activityToFeedItem(db: ReturnType<typeof getMockDb>, a: MockActivity): 
   }
 }
 
+/**
+ * 根据活动构建审核记录列表
+ *
+ * 前置条件：activity 存在
+ * 后置条件：返回该活动的审核记录列表
+ *
+ * @param a MockActivity 对象
+ * @returns 审核记录列表
+ */
+function buildReviewRecords(a: MockActivity): Array<{
+  reviewId: string
+  result: 'pending' | 'approved' | 'rejected' | 'changeRequired'
+  reason?: string
+  reviewedAt: string
+  reviewerId?: string
+}> {
+  // 如果已有存储的审核记录，直接返回
+  if (a.reviewRecords && a.reviewRecords.length > 0) {
+    return a.reviewRecords
+  }
+
+  // 根据 aiContentReview 构造审核记录
+  if (a.aiContentReview) {
+    return [
+      {
+        reviewId: `auto-${a.id}`,
+        result: a.aiContentReview.suggestedReviewStatus,
+        reason: a.aiContentReview.reasons.join('; '),
+        reviewedAt: a.createdAt,
+      },
+    ]
+  }
+
+  // 根据 reviewStatus 构造默认审核记录
+  if (a.reviewStatus === 'approved') {
+    return [
+      {
+        reviewId: `auto-${a.id}`,
+        result: 'approved' as const,
+        reason: 'AI 自动审核通过',
+        reviewedAt: a.createdAt,
+      },
+    ]
+  }
+
+  if (a.reviewStatus === 'pending') {
+    return [
+      {
+        reviewId: `auto-${a.id}`,
+        result: 'pending' as const,
+        reason: '活动已提交审核，等待处理',
+        reviewedAt: a.createdAt,
+      },
+    ]
+  }
+
+  return []
+}
+
 /* ================================================================
  *  4. 活动详情
  * ================================================================ */
@@ -416,16 +475,7 @@ export function getActivityDetail(activityId: number): ActivityDetail {
     images: mediaFilesFromActivity(a),
     organizerId: String(a.creatorId),
     organizerName: creator?.nickname ?? '未知',
-    reviewRecords: a.aiContentReview
-      ? [
-          {
-            reviewId: `auto-${a.id}`,
-            result: 'pending' as const,
-            reason: a.aiContentReview.reasons.join('; '),
-            reviewedAt: a.createdAt,
-          },
-        ]
-      : [],
+    reviewRecords: buildReviewRecords(a),
     aiContentReview: a.aiContentReview ?? undefined,
     requireLocationCheck: readRequireLocationCheck(a),
   }
@@ -814,6 +864,7 @@ export function createDraft(creatorId: number, data: MockDraftUpsertInput): Acti
     capacity: input.capacity ?? 0,
     minAge: input.minAge ?? 0,
     tags: input.tags ?? [],
+    requireLocationCheck: input.requireLocationCheck ?? false,
     reviewStatus: 'draft',
     sourceType: input.sourceType ?? 'manual',
     createdAt: now,
@@ -839,7 +890,51 @@ export function updateDraft(draftId: number, data: MockDraftUpsertInput): Activi
   const db = getMockDb()
   const draft = db.drafts.find((d) => d.id === draftId)
   if (!draft) {
-    throw new MockBusinessError(20004, '草稿不存在')
+    const activity = db.activities.find(
+      (a) =>
+        a.id === draftId && (a.reviewStatus === 'rejected' || a.reviewStatus === 'changeRequired'),
+    )
+    if (!activity) {
+      throw new MockBusinessError(20004, '草稿不存在')
+    }
+    if (activity.creatorId !== currentUserId) {
+      throw new MockBusinessError(20003, '无权操作该活动')
+    }
+    const input = normalizeDraftInput(data)
+    if (input.title !== undefined) activity.title = input.title
+    if (input.introduction !== undefined) activity.introduction = input.introduction
+    if (input.safetyNotice !== undefined) activity.safetyNotice = input.safetyNotice
+    if (input.coverUrl !== undefined) activity.coverUrl = input.coverUrl
+    if (input.imageIds !== undefined) {
+      activity.imageIds = input.imageIds
+      activity.images = input.imageIds.map(
+        (mediaId) => mediaFileFromId(mediaId, activity.createdAt, mediaId).signedUrl as string,
+      )
+    } else if (input.images !== undefined) {
+      activity.images = input.images
+    }
+    if (input.startAt !== undefined || input.startTime !== undefined) {
+      activity.startTime = input.startAt ?? input.startTime ?? ''
+    }
+    if (input.endAt !== undefined || input.endTime !== undefined) {
+      activity.endTime = input.endAt ?? input.endTime ?? ''
+    }
+    if (input.registrationDeadline !== undefined) {
+      activity.registrationDeadline = input.registrationDeadline
+    }
+    if (input.location !== undefined) activity.location = normalizeLocation(input.location)
+    if (input.feeAmount !== undefined || input.fee !== undefined) {
+      activity.fee = input.feeAmount ?? input.fee ?? 0
+    }
+    if (input.feeDescription !== undefined) activity.feeDescription = input.feeDescription
+    if (input.capacity !== undefined) activity.capacity = input.capacity
+    if (input.minAge !== undefined) activity.minAge = input.minAge
+    if (input.tags !== undefined) activity.tags = input.tags
+    if (input.requireLocationCheck !== undefined) {
+      activity.requireLocationCheck = input.requireLocationCheck
+    }
+    persistMockDb()
+    return activityToDraftResponse(activity)
   }
   if (draft.creatorId !== currentUserId) {
     throw new MockBusinessError(20003, '无权操作该草稿')
@@ -873,6 +968,9 @@ export function updateDraft(draftId: number, data: MockDraftUpsertInput): Activi
   if (input.capacity !== undefined) draft.capacity = input.capacity
   if (input.minAge !== undefined) draft.minAge = input.minAge
   if (input.tags !== undefined) draft.tags = input.tags
+  if (input.requireLocationCheck !== undefined) {
+    draft.requireLocationCheck = input.requireLocationCheck
+  }
   draft.updatedAt = new Date().toISOString()
   persistMockDb()
 
@@ -886,14 +984,82 @@ export function updateDraft(draftId: number, data: MockDraftUpsertInput): Activi
 /**
  * 提交活动审核
  *
- * 前置条件：草稿存在且信息完整
- * 后置条件：草稿转为活动，根据规则决定审核状态
+ * 前置条件：草稿存在，或同 ID 活动处于 rejected/changeRequired 且归当前用户所有。
+ * 后置条件：草稿转为活动，或驳回/需修改活动原地重新提交，并根据规则决定审核状态。
  */
 export function submitActivity(draftId: number): ActivityDetail {
   const db = getMockDb()
   const draftIdx = db.drafts.findIndex((d) => d.id === draftId)
   if (draftIdx === -1) {
-    throw new MockBusinessError(20004, '草稿不存在')
+    const activity = db.activities.find(
+      (a) =>
+        a.id === draftId && (a.reviewStatus === 'rejected' || a.reviewStatus === 'changeRequired'),
+    )
+    if (!activity) {
+      throw new MockBusinessError(20004, '草稿不存在')
+    }
+    if (activity.creatorId !== currentUserId) {
+      throw new MockBusinessError(20003, '无权操作该活动')
+    }
+    if (!activity.title || !activity.startTime || !activity.endTime || !activity.location.city) {
+      throw new MockBusinessError(20005, '活动信息不完整，请补充后再提交')
+    }
+
+    const now = new Date().toISOString()
+    let reviewStatus: MockActivity['reviewStatus'] = 'approved'
+    let aiContentReview: MockActivity['aiContentReview'] | undefined = undefined
+    const riskKeywords = ['危险', '违规', '低俗', '违法', '暴力']
+    const textToCheck = (activity.title ?? '') + (activity.introduction ?? '')
+    const matchedKeywords = riskKeywords.filter((kw) => textToCheck.includes(kw))
+    if (matchedKeywords.length > 0) {
+      reviewStatus = 'pending'
+      aiContentReview = {
+        status: 'succeeded',
+        riskLevel: 'high',
+        suggestedReviewStatus: 'pending',
+        reasons: [`内容包含敏感关键词（${matchedKeywords.join('、')}），需要人工审核`],
+      }
+    }
+    if (activity.capacity > 50) {
+      reviewStatus = 'pending'
+      if (!aiContentReview) {
+        aiContentReview = {
+          status: 'succeeded',
+          riskLevel: 'medium',
+          suggestedReviewStatus: 'pending',
+          reasons: ['活动人数超过50人，需要人工审核'],
+        }
+      } else {
+        aiContentReview.reasons.push('活动人数超过50人，需要人工审核')
+      }
+    }
+
+    activity.reviewStatus = reviewStatus
+    activity.runtimeStatus = 'registering'
+    activity.aiContentReview = aiContentReview
+    activity.isTakenDown = false
+    activity.reviewRecords = (() => {
+      if (aiContentReview) {
+        return [
+          {
+            reviewId: `auto-${activity.id}-${Date.now()}`,
+            result: aiContentReview.suggestedReviewStatus,
+            reason: aiContentReview.reasons.join('; '),
+            reviewedAt: now,
+          },
+        ]
+      }
+      return [
+        {
+          reviewId: `auto-${activity.id}-${Date.now()}`,
+          result: 'approved' as const,
+          reason: 'AI 自动审核通过',
+          reviewedAt: now,
+        },
+      ]
+    })()
+    persistMockDb()
+    return getActivityDetail(activity.id)
   }
   const draft = db.drafts[draftIdx]
   if (draft.creatorId !== currentUserId) {
@@ -961,6 +1127,30 @@ export function submitActivity(draftId: number): ActivityDetail {
     isTakenDown: false,
     createdAt: now,
     aiContentReview,
+    requireLocationCheck: draft.requireLocationCheck ?? false,
+    reviewRecords: (() => {
+      if (aiContentReview) {
+        return [
+          {
+            reviewId: `auto-${actId}`,
+            result: aiContentReview.suggestedReviewStatus,
+            reason: aiContentReview.reasons.join('; '),
+            reviewedAt: now,
+          },
+        ]
+      }
+      if (reviewStatus === 'approved') {
+        return [
+          {
+            reviewId: `auto-${actId}`,
+            result: 'approved' as const,
+            reason: 'AI 自动审核通过',
+            reviewedAt: now,
+          },
+        ]
+      }
+      return []
+    })(),
   }
   db.activities.push(activity)
   // 从草稿列表移除
@@ -1018,6 +1208,12 @@ export function checkIn(
   if (!request.qrCodeToken.trim()) {
     throw new MockBusinessError(20013, '签到二维码无效')
   }
+
+  const activity = db.activities.find((a) => a.id === activityId)
+  if (!activity) {
+    throw new MockBusinessError(20002, '活动不存在')
+  }
+  assertCheckInLocation(activity, request)
 
   const reg = db.registrations.find(
     (r) => r.activityId === activityId && r.userId === userId && r.status !== 'canceled',
@@ -1478,24 +1674,39 @@ export function getMapActivities(
   longitude: number,
   latitude: number,
   distanceMeters: number,
+  filters: Omit<ActivitySearchQuery, 'longitude' | 'latitude' | 'distanceMeters'> = {},
 ): ActivityMapPoint[] {
-  const db = getMockDb()
+  const page = searchActivities({ ...filters, longitude, latitude, distanceMeters }, 1, 1000)
+  return page.items.map((a) => ({
+    activityId: a.activityId,
+    title: a.title,
+    startAt: a.startAt,
+    runtimeStatus: a.runtimeStatus,
+    point: a.location.point,
+  }))
+}
 
-  return db.activities
-    .filter((a) => {
-      if (a.reviewStatus !== 'approved' || a.isTakenDown || a.runtimeStatus === 'takenDown') {
-        return false
-      }
-      const dist = haversineDistance(latitude, longitude, a.location.latitude, a.location.longitude)
-      return dist <= distanceMeters
-    })
-    .map((a) => ({
-      activityId: String(a.id),
-      title: a.title,
-      startAt: a.startTime,
-      runtimeStatus: a.runtimeStatus,
-      point: { longitude: a.location.longitude, latitude: a.location.latitude },
-    }))
+/**
+ * 校验签到位置是否满足活动现场要求
+ *
+ * 前置条件：activity 为已存在活动，request 为 OpenAPI CheckInRequest。
+ * 后置条件：开启位置校验时缺少坐标或距离超过阈值会抛出业务错误。
+ * 不变量：位置阈值仅影响 mock 签到校验，不改变活动地点数据。
+ */
+function assertCheckInLocation(activity: MockActivity, request: CheckInRequest): void {
+  if (!readRequireLocationCheck(activity)) return
+  if (!request.currentLocation) {
+    throw new MockBusinessError(20018, '活动要求位置校验，请允许定位后再签到')
+  }
+  const distance = haversineDistance(
+    request.currentLocation.latitude,
+    request.currentLocation.longitude,
+    activity.location.latitude,
+    activity.location.longitude,
+  )
+  if (distance > 500) {
+    throw new MockBusinessError(20019, '当前位置距离活动地点过远，无法签到')
+  }
 }
 
 /* ================================================================
@@ -1554,9 +1765,43 @@ function draftToResponse(d: MockDraft): ActivityDraftDetail {
     tags: d.tags,
     reviewStatus: d.reviewStatus,
     location: d.location.city ? toLocationInfo(d.location) : undefined,
+    requireLocationCheck: d.requireLocationCheck ?? false,
     images: mediaFilesFromDraft(d),
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
+  }
+}
+
+/**
+ * 活动转为草稿编辑回显响应。
+ *
+ * 前置条件：activity 为当前用户可编辑的 rejected 或 changeRequired 活动。
+ * 后置条件：返回 OpenAPI ActivityDraftDetail 形态，供编辑页复用草稿回填逻辑。
+ * 不变量：只做字段映射，不修改 mock 数据库中的活动状态。
+ */
+function activityToDraftResponse(activity: MockActivity): ActivityDraftDetail {
+  return {
+    activityId: String(activity.id),
+    title: activity.title || undefined,
+    introduction: activity.introduction || undefined,
+    safetyNotice: activity.safetyNotice || undefined,
+    startAt: activity.startTime || undefined,
+    endAt: activity.endTime || undefined,
+    registrationDeadline: activity.registrationDeadline || undefined,
+    capacity: activity.capacity || undefined,
+    feeAmount: activity.fee || undefined,
+    feeDescription: activity.feeDescription || undefined,
+    minAge: activity.minAge || undefined,
+    tags: activity.tags,
+    reviewStatus: activity.reviewStatus,
+    location: activity.location.city ? toLocationInfo(activity.location) : undefined,
+    requireLocationCheck: activity.requireLocationCheck ?? false,
+    images: mediaFilesFromActivity(activity),
+    createdAt: activity.createdAt,
+    updatedAt:
+      activity.reviewRecords && activity.reviewRecords.length > 0
+        ? activity.reviewRecords[activity.reviewRecords.length - 1].reviewedAt
+        : activity.createdAt,
   }
 }
 
@@ -1594,12 +1839,22 @@ export function getMyDrafts(
   return paginate(mine, page, pageSize)
 }
 
-/** 获取单个草稿详情 */
+/** 获取单个草稿详情；驳回/需修改活动按草稿形态回显。 */
 export function getDraft(draftId: number): ActivityDraftDetail {
   const db = getMockDb()
   const draft = db.drafts.find((d) => d.id === draftId)
   if (!draft) {
-    throw new MockBusinessError(20004, '草稿不存在')
+    const activity = db.activities.find(
+      (a) =>
+        a.id === draftId && (a.reviewStatus === 'rejected' || a.reviewStatus === 'changeRequired'),
+    )
+    if (!activity) {
+      throw new MockBusinessError(20004, '草稿不存在')
+    }
+    if (activity.creatorId !== currentUserId) {
+      throw new MockBusinessError(20003, '无权操作该活动')
+    }
+    return activityToDraftResponse(activity)
   }
   return draftToResponse(draft)
 }
@@ -1612,6 +1867,9 @@ export function getMyRegistrations(
 ): MockPageResult<RegisteredActivitySummary> {
   const db = getMockDb()
   const myRegs = db.registrations.filter((r) => r.userId === userId && r.status !== 'canceled')
+  const myWaitlist = db.waitlist.filter(
+    (w) => w.userId === userId && (w.status === 'waiting' || w.status === 'waitingConfirmation'),
+  )
 
   const items: RegisteredActivitySummary[] = []
   for (const r of myRegs) {
@@ -1639,6 +1897,38 @@ export function getMyRegistrations(
       requireLocationCheck: readRequireLocationCheck(act),
     })
   }
+  for (const w of myWaitlist) {
+    if (items.some((item) => item.activityId === String(w.activityId))) continue
+    const act = db.activities.find((a) => a.id === w.activityId)
+    if (!act) continue
+    const registrationStatus =
+      w.status === 'waitingConfirmation' ? 'waitingConfirmation' : 'waiting'
+    items.push({
+      activityId: String(act.id),
+      registrationId: String(w.id),
+      registrationStatus,
+      registeredAt: w.joinedAt,
+      title: act.title,
+      startAt: act.startTime,
+      endAt: act.endTime,
+      capacity: act.capacity,
+      registeredCount: countRegisteredParticipants(db, act.id),
+      occupiedCount: computeOccupiedCount(db, act.id),
+      feeAmount: act.fee,
+      reviewStatus: act.reviewStatus,
+      runtimeStatus: act.runtimeStatus,
+      tags: act.tags,
+      location: toLocationInfo(act.location),
+      coverImage: mediaFilesFromActivity(act)[0],
+      waitingRank: w.position,
+      confirmationDeadline:
+        registrationStatus === 'waitingConfirmation'
+          ? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+          : undefined,
+      requireLocationCheck: readRequireLocationCheck(act),
+    })
+  }
+  items.sort((a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime())
 
   return paginate(items, page, pageSize)
 }
@@ -1696,7 +1986,51 @@ export function getCheckIns(
       checkedInAt: checkIn?.checkedInAt,
     }
   })
+  const waitItems = db.waitlist
+    .filter(
+      (w) =>
+        w.activityId === activityId &&
+        (w.status === 'waiting' || w.status === 'waitingConfirmation') &&
+        !items.some((item) => item.userId === String(w.userId)),
+    )
+    .map((w) => {
+      const user = db.users.find((u) => u.id === w.userId)
+      const registrationStatus: 'waiting' | 'waitingConfirmation' =
+        w.status === 'waitingConfirmation' ? 'waitingConfirmation' : 'waiting'
+      return {
+        userId: String(w.userId),
+        nickname: user?.nickname ?? '未知',
+        registrationId: String(w.id),
+        registrationStatus,
+        checkedInAt: undefined,
+      }
+    })
+  items.push(...waitItems)
   return paginate(items, page, pageSize)
+}
+
+/**
+ * 导出签到数据为 CSV 文本。
+ *
+ * 前置条件：activityId 对应活动存在，调用方有权限由路由层/真实后端校验。
+ * 后置条件：返回可作为二进制导出内容模拟的 CSV 字符串。
+ * 不变量：导出字段均来自 OpenAPI CheckInRecord 已定义字段，不新增业务结构。
+ */
+export function exportCheckInsCsv(activityId: number): string {
+  const records = getCheckIns(activityId, 1, 1000).items
+  const header = ['registrationId', 'userId', 'nickname', 'registrationStatus', 'checkedInAt']
+  const rows = records.map((record) =>
+    [
+      record.registrationId,
+      record.userId,
+      record.nickname,
+      record.registrationStatus,
+      record.checkedInAt ?? '',
+    ]
+      .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+      .join(','),
+  )
+  return [header.join(','), ...rows].join('\n')
 }
 
 /**
@@ -1975,7 +2309,7 @@ export function createDraftFromTemplate(templateId: number, userId: number): Act
     creatorId: userId,
     title: template.defaultTitle,
     introduction: template.defaultIntroduction,
-    safetyNotice: '',
+    safetyNotice: template.defaultSafetyNotice,
     coverUrl: template.coverUrl,
     images: [],
     startTime: '',
@@ -1989,7 +2323,7 @@ export function createDraftFromTemplate(templateId: number, userId: number): Act
       placeName: '',
     },
     fee: 0,
-    capacity: 0,
+    capacity: template.defaultCapacity,
     minAge: 0,
     tags: [...template.tags],
     reviewStatus: 'draft',
@@ -2201,22 +2535,23 @@ export function getInterestTags(): InterestTagItem[] {
 }
 
 /** 获取模板列表 */
-export function getTemplates(): ActivityTemplate[] {
+export function getTemplates(page = 1, pageSize = 20): MockPageResult<ActivityTemplate> {
   const db = getMockDb()
-  return db.templates.map((t) => ({
+  const all = db.templates.map((t) => ({
     templateId: String(t.id),
     name: t.name,
-    activityType: t.tags[0] ?? '通用',
+    activityType: t.activityType,
     defaultTags: t.tags,
     defaultIntroduction: t.defaultIntroduction,
-    defaultSafetyNotice: '',
-    defaultCapacity: 20,
+    defaultSafetyNotice: t.defaultSafetyNotice,
+    defaultCapacity: t.defaultCapacity,
     defaultCoverImage: mediaFileFromId(
       `media_tpl_${t.id}`,
       new Date().toISOString(),
       `tpl_${t.id}`,
     ),
   }))
+  return paginate(all, page, pageSize)
 }
 
 /** 获取商家资料 */

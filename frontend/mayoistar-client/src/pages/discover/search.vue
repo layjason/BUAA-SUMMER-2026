@@ -84,21 +84,49 @@ function refreshSearchIfNeeded(): void {
   }
 }
 
+/**
+ * 切换活动类型筛选
+ *
+ * 前置条件：type 来自预设类型列表。
+ * 后置条件：选中同一类型时取消筛选，否则切换为该类型。
+ * 不变量：筛选值只使用 OpenAPI activityTypes 支持的字符串数组。
+ */
 function toggleTypeFilter(type: ActivityTypeFilter): void {
   selectedType.value = selectedType.value === type ? null : type
   refreshSearchIfNeeded()
 }
 
+/**
+ * 切换城市筛选
+ *
+ * 前置条件：city 来自预设城市列表。
+ * 后置条件：选中同一城市时取消筛选，否则切换为该城市。
+ * 不变量：不直接触发地图查询。
+ */
 function toggleCityFilter(city: CityFilter): void {
   selectedCity.value = selectedCity.value === city ? null : city
   refreshSearchIfNeeded()
 }
 
+/**
+ * 切换费用筛选
+ *
+ * 前置条件：fee 为 free 或 paid。
+ * 后置条件：更新费用筛选并按需刷新搜索结果。
+ * 不变量：费用筛选最终由 buildSearchActivitiesQuery 转为 OpenAPI minFee/maxFee。
+ */
 function toggleFeeFilter(fee: FeeFilter): void {
   selectedFee.value = selectedFee.value === fee ? null : fee
   refreshSearchIfNeeded()
 }
 
+/**
+ * 切换时间筛选
+ *
+ * 前置条件：time 为 today/week/month。
+ * 后置条件：更新时间筛选并按需刷新搜索结果。
+ * 不变量：时间筛选最终由 buildSearchActivitiesQuery 转为 OpenAPI startAtFrom/startAtTo。
+ */
 function toggleTimeFilter(time: TimeFilter): void {
   selectedTime.value = selectedTime.value === time ? null : time
   refreshSearchIfNeeded()
@@ -130,7 +158,18 @@ async function doSearch(): Promise<void> {
 
 /** 跳转到地图模式 */
 function goToMap(): void {
-  uni.navigateTo({ url: '/pages/discover/map' })
+  const query = buildSearchActivitiesQuery(keyword.value, getFilterSelection(), 1, 20)
+  const params: string[] = []
+  if (query.keyword) params.push(`keyword=${encodeURIComponent(query.keyword)}`)
+  if (query.city) params.push(`city=${encodeURIComponent(query.city)}`)
+  if (query.activityTypes?.length) {
+    params.push(`activityTypes=${encodeURIComponent(query.activityTypes.join(','))}`)
+  }
+  if (query.startAtFrom) params.push(`startAtFrom=${encodeURIComponent(query.startAtFrom)}`)
+  if (query.startAtTo) params.push(`startAtTo=${encodeURIComponent(query.startAtTo)}`)
+  if (query.minFee !== undefined) params.push(`minFee=${query.minFee}`)
+  if (query.maxFee !== undefined) params.push(`maxFee=${query.maxFee}`)
+  uni.navigateTo({ url: `/pages/discover/map${params.length ? `?${params.join('&')}` : ''}` })
 }
 
 /** 跳转到活动详情 */

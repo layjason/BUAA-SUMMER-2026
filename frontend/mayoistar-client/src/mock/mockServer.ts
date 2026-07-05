@@ -53,6 +53,7 @@ import {
   getMyRegistrations,
   getParticipants,
   getCheckIns,
+  exportCheckInsCsv,
   createReview,
   createSummary,
   listActivityReviews,
@@ -299,7 +300,20 @@ const routes: Route[] = [
       const lng = parseFloat(query.longitude ?? '116.4')
       const lat = parseFloat(query.latitude ?? '39.9')
       const dist = parseFloat(query.distanceMeters ?? '10000')
-      return ok(getMapActivities(lng, lat, dist))
+      const filters: ActivitySearchQuery = {}
+      if (query.keyword) filters.keyword = query.keyword
+      if (query.city) filters.city = query.city
+      if (query.startAtFrom) filters.startAtFrom = query.startAtFrom
+      if (query.startAtTo) filters.startAtTo = query.startAtTo
+      if (query.minFee !== undefined) filters.minFee = parseFloat(query.minFee)
+      if (query.maxFee !== undefined) filters.maxFee = parseFloat(query.maxFee)
+      if (query.activityTypes) {
+        filters.activityTypes = query.activityTypes
+          .split(',')
+          .map((type) => type.trim())
+          .filter(Boolean)
+      }
+      return ok(getMapActivities(lng, lat, dist, filters))
     },
   },
 
@@ -343,7 +357,11 @@ const routes: Route[] = [
   {
     method: 'GET',
     pattern: '/activities/templates',
-    handler: () => ok(getTemplates()),
+    handler: (_p, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(getTemplates(page, pageSize))
+    },
   },
   {
     method: 'POST',
@@ -473,6 +491,11 @@ const routes: Route[] = [
       const pageSize = parseInt(query.pageSize ?? '100', 10)
       return ok(getCheckIns(parseInt(params.activityId, 10), page, pageSize))
     },
+  },
+  {
+    method: 'GET',
+    pattern: '/activities/{activityId}/check-ins/export',
+    handler: (params) => ok(exportCheckInsCsv(parseInt(params.activityId, 10))),
   },
 
   /* ===== 评价 / 总结 ===== */

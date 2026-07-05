@@ -82,7 +82,8 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import { getMyRegistrations } from '@/api/modules/registrations'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
 
@@ -121,11 +122,18 @@ interface RegistrationItem {
 
 const items = ref<RegistrationItem[]>([])
 
+/**
+ * 加载当前用户报名记录
+ *
+ * 前置条件：用户已登录，mock/真实请求层已初始化。
+ * 后置条件：items 更新为 OpenAPI RegisteredActivitySummary 分页结果。
+ * 不变量：页面只通过 registrations API 模块访问业务接口。
+ */
 async function loadData(): Promise<void> {
   loading.value = true
   errorMsg.value = ''
   try {
-    const result = await api.get('/activities/registrations/mine')
+    const result = await getMyRegistrations(1, 100)
     items.value = (result.items ?? []) as RegistrationItem[]
   } catch (error) {
     if (error instanceof BusinessError) {
@@ -138,11 +146,18 @@ async function loadData(): Promise<void> {
   }
 }
 
+/**
+ * 下拉刷新报名记录
+ *
+ * 前置条件：用户触发 scroll-view refresher。
+ * 后置条件：刷新成功时替换 items，失败时保留现有列表。
+ * 不变量：刷新过程不改变当前页面路由。
+ */
 async function onRefresh(): Promise<void> {
   refreshing.value = true
   errorMsg.value = ''
   try {
-    const result = await api.get('/activities/registrations/mine')
+    const result = await getMyRegistrations(1, 100)
     items.value = (result.items ?? []) as RegistrationItem[]
   } catch {
     /* 静默 */
@@ -155,10 +170,24 @@ onShow(() => {
   loadData()
 })
 
+/**
+ * 获取报名状态展示文本
+ *
+ * 前置条件：status 来自 OpenAPI RegistrationStatus。
+ * 后置条件：返回本地化展示文本或原始状态值。
+ * 不变量：不修改报名状态。
+ */
 function statusText(status: string): string {
   return statusMap[status] ?? status
 }
 
+/**
+ * 跳转活动详情页
+ *
+ * 前置条件：activityId 非空。
+ * 后置条件：通过 uni.navigateTo 进入活动详情。
+ * 不变量：不直接读取活动详情数据。
+ */
 function goDetail(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
 }

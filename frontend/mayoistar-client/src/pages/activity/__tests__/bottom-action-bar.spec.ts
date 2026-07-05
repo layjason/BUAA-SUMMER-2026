@@ -25,7 +25,7 @@ describe('活动页面底部操作栏', () => {
   it('详情页主操作按钮应复用固定底部操作栏样式', () => {
     const source = readActivityPage('detail.vue')
 
-    expect(source).toContain('<BottomActionBar>')
+    expect(source).toContain('<BottomActionBar v-if=')
     expect(source).toMatch(/import\s+\{[^}]*BottomActionBar[^}]*}\s+from\s+['"]@\/components['"]/)
     expect(source).toContain('class="bar-btn bar-btn-primary"')
     expect(source).not.toContain('class="action-bar"')

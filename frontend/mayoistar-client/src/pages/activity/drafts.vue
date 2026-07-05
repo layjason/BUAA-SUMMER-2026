@@ -1,42 +1,32 @@
 <script setup lang="ts">
 /**
- * 草稿列表页
+ * 我的草稿页。
  *
- * 展示用户创建的活动草稿，支持打开编辑和新建。
- *
- * 前置条件：用户已登录
- * 后置条件：展示草稿列表，点击跳转编辑
+ * 前置条件：用户已登录，草稿接口返回 ActivityDraftSummary 列表。
+ * 后置条件：仅展示 reviewStatus 为 draft 的活动。
+ * 不变量：审核中、需修改、已驳回和已发布活动不在本页展示。
  */
-import { ref, onMounted } from 'vue'
-import { getDrafts } from '@/api/modules/activities'
+import { computed, onMounted, ref } from 'vue'
+import { getDrafts, type ActivityDraftSummary } from '@/api/modules/activities'
 import { formatDate } from '@/utils/date'
 
-/** 草稿列表条目 */
-interface DraftItem {
-  activityId: string
-  title?: string
-  reviewStatus: string
-  createdAt: string
-  updatedAt: string
-}
-
-const drafts = ref<DraftItem[]>([])
+const drafts = ref<ActivityDraftSummary[]>([])
 const isLoading = ref(false)
 
-onMounted(async () => {
-  await loadDrafts()
-})
+const visibleDrafts = computed(() => drafts.value.filter((draft) => draft.reviewStatus === 'draft'))
 
 /**
- * 加载草稿列表
+ * 加载草稿列表。
  *
- * 调用 getDrafts API 获取当前用户的所有草稿
+ * 前置条件：草稿接口按 OpenAPI 返回 items。
+ * 后置条件：成功时刷新本地列表，失败时置空。
+ * 不变量：展示层会继续只过滤 draft 状态。
  */
 async function loadDrafts(): Promise<void> {
   isLoading.value = true
   try {
     const result = await getDrafts()
-    drafts.value = ((result as Record<string, unknown>).items ?? []) as DraftItem[]
+    drafts.value = result.items ?? []
   } catch {
     drafts.value = []
   } finally {
@@ -44,15 +34,33 @@ async function loadDrafts(): Promise<void> {
   }
 }
 
-/** 打开草稿编辑 */
+/**
+ * 打开草稿编辑页。
+ *
+ * 前置条件：activityId 来自可见草稿列表。
+ * 后置条件：跳转到活动编辑页并回显草稿。
+ * 不变量：不修改草稿状态。
+ *
+ * @param activityId 草稿活动标识
+ */
 function openDraft(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/edit?activityId=${activityId}` })
 }
 
-/** 新建空白草稿 */
+/**
+ * 新建空白活动。
+ *
+ * 前置条件：无。
+ * 后置条件：跳转到活动编辑页。
+ * 不变量：不立即保存草稿。
+ */
 function createNew(): void {
   uni.navigateTo({ url: '/pages/activity/edit' })
 }
+
+onMounted(() => {
+  void loadDrafts()
+})
 </script>
 
 <template>
@@ -61,10 +69,9 @@ function createNew(): void {
       <text>加载中...</text>
     </view>
 
-    <view v-else-if="drafts.length === 0" class="empty-state">
-      <text class="empty-icon">📝</text>
+    <view v-else-if="visibleDrafts.length === 0" class="empty-state">
       <text class="empty-title">暂无草稿</text>
-      <text class="empty-desc">创建活动时会自动保存为草稿</text>
+      <text class="empty-desc">只有未提交审核的活动会显示在这里</text>
       <view class="create-btn" @tap="createNew">
         <text>创建第一个活动</text>
       </view>
@@ -72,27 +79,18 @@ function createNew(): void {
 
     <view v-else class="draft-list">
       <view
-        v-for="draft in drafts"
+        v-for="draft in visibleDrafts"
         :key="draft.activityId"
         class="draft-card"
         @tap="openDraft(draft.activityId)"
       >
         <view class="draft-header">
           <text class="draft-title">{{ draft.title || '未命名草稿' }}</text>
-          <text class="draft-status" :class="`status-${draft.reviewStatus}`">
-            {{
-              draft.reviewStatus === 'draft'
-                ? '草稿'
-                : draft.reviewStatus === 'rejected'
-                  ? '已驳回'
-                  : draft.reviewStatus === 'pending'
-                    ? '审核中'
-                    : '待修改'
-            }}
-          </text>
+          <text class="draft-status">草稿</text>
         </view>
         <view class="draft-footer">
-          <text class="draft-time">{{ formatDate(draft.updatedAt) }}</text>
+          <text class="draft-time">更新于 {{ formatDate(draft.updatedAt) }}</text>
+          <text class="draft-action">继续编辑</text>
         </view>
       </view>
     </view>
@@ -124,11 +122,7 @@ function createNew(): void {
   flex-direction: column;
   align-items: center;
   padding: 80px $spacing-xl;
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: $spacing-lg;
+  text-align: center;
 }
 
 .empty-title {
@@ -171,7 +165,7 @@ function createNew(): void {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid $color-border-light;
-  border-left: 3px solid $color-accent;
+  border-left: 3px solid $color-primary;
   border-radius: $radius-xl;
   padding: $spacing-lg;
 
@@ -189,6 +183,7 @@ function createNew(): void {
 
 .draft-title {
   flex: 1;
+  min-width: 0;
   font-size: $font-base;
   font-weight: $weight-semibold;
   color: $color-text;
@@ -198,36 +193,36 @@ function createNew(): void {
 }
 
 .draft-status {
-  font-size: $font-xs;
+  margin-left: $spacing-sm;
   padding: 2px 8px;
   border-radius: $radius-full;
-  margin-left: $spacing-sm;
-}
-
-.status-draft {
-  color: $color-text-sub;
-  background: rgba(123, 129, 144, 0.1);
-}
-
-.status-rejected {
-  color: $color-danger;
-  background: rgba(242, 156, 163, 0.1);
-}
-
-.status-changeRequired {
-  color: $color-accent;
-  background: $color-accent-light;
+  background: rgba(94, 200, 167, 0.12);
+  color: $color-primary;
+  font-size: $font-xs;
+  font-weight: $weight-semibold;
 }
 
 .draft-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: $spacing-md;
 }
 
-.draft-source,
 .draft-time {
+  flex: 1;
+  min-width: 0;
   font-size: $font-xs;
   color: $color-text-muted;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draft-action {
+  flex-shrink: 0;
+  font-size: $font-xs;
+  font-weight: $weight-semibold;
+  color: $color-primary;
 }
 </style>

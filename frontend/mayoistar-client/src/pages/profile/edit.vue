@@ -454,7 +454,7 @@ async function handleSave(): Promise<void> {
 }
 
 .edit-container {
-  padding: 32rpx 32rpx calc(160rpx + env(safe-area-inset-bottom));
+  padding: 32rpx;
 }
 
 .action-bar {
