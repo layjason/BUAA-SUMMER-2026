@@ -97,18 +97,18 @@ public class ActivityDraftService {
         Activity activity = Activity.builder()
                 .activityId(UUID.randomUUID().toString())
                 .organizerId(organizerId)
-                .title(request.getTitle())
+                .title(request.getTitle() == null ? ActivityDraftPlaceholders.TITLE : request.getTitle())
                 .tags(copyTags(request.getTags()))
                 .introduction(request.getIntroduction())
-                .startAt(parseInstant(request.getStartAt(), "活动开始时间"))
-                .endAt(parseInstant(request.getEndAt(), "活动结束时间"))
+                .startAt(parseRequiredDraftInstant(request.getStartAt(), "活动开始时间"))
+                .endAt(parseRequiredDraftInstant(request.getEndAt(), "活动结束时间"))
                 .pointLon(locationPointLongitude(location))
                 .pointLat(locationPointLatitude(location))
                 .city(location == null ? null : location.getCity())
                 .address(location == null ? null : location.getAddress())
                 .placeName(location == null ? null : location.getPlaceName())
                 .safetyNotice(request.getSafetyNotice())
-                .capacity(request.getCapacity())
+                .capacity(request.getCapacity() == null ? ActivityDraftPlaceholders.CAPACITY : request.getCapacity())
                 .feeAmount(request.getFeeAmount())
                 .feeDescription(request.getFeeDescription())
                 .minAge(request.getMinAge())
@@ -335,29 +335,98 @@ public class ActivityDraftService {
         CommonDtos.LocationInfo location = request.getLocation();
         validateDraftRequest(request, location);
 
-        activity.setTitle(request.getTitle());
-        activity.setTags(copyTags(request.getTags()));
-        activity.setIntroduction(request.getIntroduction());
-        activity.setStartAt(parseInstant(request.getStartAt(), "活动开始时间"));
-        activity.setEndAt(parseInstant(request.getEndAt(), "活动结束时间"));
-        activity.setPointLon(locationPointLongitude(location));
-        activity.setPointLat(locationPointLatitude(location));
-        activity.setCity(location == null ? null : location.getCity());
-        activity.setAddress(location == null ? null : location.getAddress());
-        activity.setPlaceName(location == null ? null : location.getPlaceName());
-        activity.setSafetyNotice(request.getSafetyNotice());
-        activity.setCapacity(request.getCapacity());
-        activity.setFeeAmount(request.getFeeAmount());
-        activity.setFeeDescription(request.getFeeDescription());
-        activity.setMinAge(request.getMinAge());
-        activity.setRequireLocationCheck(
-                request.getRequireLocationCheck() != null ? request.getRequireLocationCheck() : false);
-        activity.setRegistrationDeadline(parseInstant(request.getRegistrationDeadline(), "报名截止时间"));
+        applyDraftPatch(activity, request, location);
+        validatePatchedDraft(activity);
         activity.setUpdatedAt(Instant.now());
         Activity savedActivity = activityRepository.save(activity);
-        replaceImages(organizerId, savedActivity.getActivityId(), request.getImageIds());
+        if (request.getImageIds() != null) {
+            replaceImages(organizerId, savedActivity.getActivityId(), request.getImageIds());
+        }
         log.info("已更新活动草稿，activityId={}, organizerId={}", savedActivity.getActivityId(), organizerId);
         return loadDraftDetail(savedActivity);
+    }
+
+    /**
+     * 将草稿 PATCH 请求合并到活动实体。
+     *
+     * <p>前置条件：activity 为调用者拥有的草稿；request 已通过草稿字段合法性校验。
+     *
+     * <p>后置条件：仅请求中非 null 的字段会覆盖实体原值；未传字段保持不变，避免部分更新误清空草稿。
+     *
+     * <p>不变量：不修改 organizerId、reviewStatus、runtimeStatus、createdAt 与图片关联。
+     *
+     * @param activity 待更新的草稿实体
+     * @param request 草稿 PATCH 请求
+     * @param location 请求中的地点信息，可为空表示不更新地点
+     */
+    private void applyDraftPatch(
+            Activity activity, ActivityDtos.ActivityDraftUpsertRequest request, CommonDtos.LocationInfo location) {
+        if (request.getTitle() != null) {
+            activity.setTitle(request.getTitle());
+        }
+        if (request.getTags() != null) {
+            activity.setTags(copyTags(request.getTags()));
+        }
+        if (request.getIntroduction() != null) {
+            activity.setIntroduction(request.getIntroduction());
+        }
+        if (request.getStartAt() != null) {
+            activity.setStartAt(parseInstant(request.getStartAt(), "活动开始时间"));
+        }
+        if (request.getEndAt() != null) {
+            activity.setEndAt(parseInstant(request.getEndAt(), "活动结束时间"));
+        }
+        if (location != null) {
+            activity.setPointLon(locationPointLongitude(location));
+            activity.setPointLat(locationPointLatitude(location));
+            activity.setCity(location.getCity());
+            activity.setAddress(location.getAddress());
+            activity.setPlaceName(location.getPlaceName());
+        }
+        if (request.getSafetyNotice() != null) {
+            activity.setSafetyNotice(request.getSafetyNotice());
+        }
+        if (request.getCapacity() != null) {
+            activity.setCapacity(request.getCapacity());
+        }
+        if (request.getFeeAmount() != null) {
+            activity.setFeeAmount(request.getFeeAmount());
+        }
+        if (request.getFeeDescription() != null) {
+            activity.setFeeDescription(request.getFeeDescription());
+        }
+        if (request.getMinAge() != null) {
+            activity.setMinAge(request.getMinAge());
+        }
+        if (request.getRequireLocationCheck() != null) {
+            activity.setRequireLocationCheck(request.getRequireLocationCheck());
+        }
+        if (request.getRegistrationDeadline() != null) {
+            activity.setRegistrationDeadline(parseInstant(request.getRegistrationDeadline(), "报名截止时间"));
+        }
+    }
+
+    /**
+     * 校验 PATCH 合并后的草稿内部一致性。
+     *
+     * <p>前置条件：activity 已应用本次 PATCH 的非空字段。
+     *
+     * <p>后置条件：当时间、报名截止时间等成组字段均存在时保持合法；不完整草稿仍允许保存。
+     *
+     * <p>不变量：仅检查合并后的草稿，不要求提交审核所需字段齐全。
+     *
+     * @param activity 已合并更新的草稿实体
+     */
+    private void validatePatchedDraft(Activity activity) {
+        Instant startAt = activity.getStartAt();
+        Instant endAt = activity.getEndAt();
+        if (isRealDraftTime(startAt) && isRealDraftTime(endAt) && !endAt.isAfter(startAt)) {
+            throw new BusinessException(ErrorCodes.INVALID_ACTIVITY_SCHEDULE, "活动结束时间必须晚于开始时间");
+        }
+        Instant registrationDeadline = activity.getRegistrationDeadline();
+        if (registrationDeadline != null && isRealDraftTime(startAt) && registrationDeadline.isAfter(startAt)) {
+            throw new BusinessException(ErrorCodes.INVALID_ACTIVITY_SCHEDULE, "报名截止时间不能晚于活动开始时间");
+        }
     }
 
     /**
@@ -739,6 +808,15 @@ public class ActivityDraftService {
         } catch (DateTimeParseException exception) {
             throw new BusinessException(ErrorCodes.INVALID_ACTIVITY_SCHEDULE, fieldName + "格式不合法");
         }
+    }
+
+    private Instant parseRequiredDraftInstant(String value, String fieldName) {
+        Instant parsed = parseInstant(value, fieldName);
+        return parsed == null ? ActivityDraftPlaceholders.REQUIRED_TIME : parsed;
+    }
+
+    private boolean isRealDraftTime(Instant instant) {
+        return instant != null && !ActivityDraftPlaceholders.isTimePlaceholder(instant);
     }
 
     private List<String> copyTags(List<String> tags) {

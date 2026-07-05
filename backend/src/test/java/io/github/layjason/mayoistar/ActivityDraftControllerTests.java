@@ -103,6 +103,23 @@ class ActivityDraftControllerTests {
     }
 
     @Test
+    void saveDraftShouldAcceptPartialRequest() throws Exception {
+        saveUser("user-a");
+
+        mockMvc.perform(post("/activities/drafts")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"未完成的活动草稿\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.activityId").isNotEmpty())
+                .andExpect(jsonPath("$.data.title").value("未完成的活动草稿"))
+                .andExpect(jsonPath("$.data.startAt").doesNotExist())
+                .andExpect(jsonPath("$.data.endAt").doesNotExist())
+                .andExpect(jsonPath("$.data.capacity").doesNotExist());
+    }
+
+    @Test
     void listDraftsShouldReturnCurrentUsersDrafts() throws Exception {
         saveUser("user-a");
         saveUser("user-b");
