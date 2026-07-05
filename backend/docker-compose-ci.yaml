@@ -57,11 +57,11 @@ services:
   redis:
     image: ${REDIS_IMAGE}
     command: >
-      redis-server
+      sh -c "exec redis-server
       --appendonly yes
       --tcp-keepalive 60
       --timeout 0
-      ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+      ${REDIS_PASSWORD:+--requirepass $REDIS_PASSWORD}"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
       interval: 10s
