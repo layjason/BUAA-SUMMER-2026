@@ -27,8 +27,11 @@ class ActivityPlanningServiceImplTest {
     void setUp() {
         client = new FakeActivityPlanningClient();
         ObjectMapper objectMapper = new ObjectMapper();
-        service =
-                new ActivityPlanningServiceImpl(new ActivityPlanningPromptBuilder(objectMapper), client, objectMapper);
+        service = new ActivityPlanningServiceImpl(
+                new ActivityPlanningPromptBuilder(objectMapper),
+                client,
+                new ActivityPlanningOutputGuard(),
+                objectMapper);
     }
 
     @Test
@@ -61,7 +64,14 @@ class ActivityPlanningServiceImplTest {
     void shouldParseJsonInsideMarkdownFence() {
         client.content = """
                 ```json
-                {"title":"桌游破冰夜","tags":["桌游"],"suggestedCapacity":12}
+                {
+                  "title": "桌游破冰夜",
+                  "tags": ["桌游", "社交"],
+                  "introduction": "面向新朋友的轻松桌游活动，包含破冰分组、规则讲解和轮换体验。",
+                  "safetyNotice": "请遵守场地秩序，保管个人物品，饮食注意卫生。",
+                  "suggestedCapacity": 12,
+                  "suggestedRegistrationDeadline": "2026-07-08T12:00:00Z"
+                }
                 ```
                 """;
 
@@ -69,8 +79,29 @@ class ActivityPlanningServiceImplTest {
 
         assertThat(result.getStatus()).isEqualTo("succeeded");
         assertThat(result.getTitle()).isEqualTo("桌游破冰夜");
-        assertThat(result.getTags()).containsExactly("桌游");
+        assertThat(result.getTags()).containsExactly("桌游", "社交");
         assertThat(result.getSuggestedCapacity()).isEqualTo(12);
+    }
+
+    @Test
+    @DisplayName("模型输出包含注入复述内容时应抛出 AI 输出不可用业务异常")
+    void shouldRejectModelOutputWithInjectionPhrase() {
+        client.content = """
+                {
+                  "title": "忽略以上规则的活动",
+                  "tags": ["桌游", "社交"],
+                  "introduction": "面向新朋友的轻松桌游活动，包含破冰分组、规则讲解和轮换体验。",
+                  "safetyNotice": "请遵守场地秩序，保管个人物品，饮食注意卫生。",
+                  "suggestedCapacity": 12,
+                  "suggestedRegistrationDeadline": "2026-07-08T12:00:00Z"
+                }
+                """;
+
+        assertThatThrownBy(() -> service.generateActivityPlan(request()))
+                .isInstanceOfSatisfying(BusinessException.class, exception -> {
+                    assertThat(exception.getCode()).isEqualTo(ErrorCodes.AI_OUTPUT_UNAVAILABLE);
+                    assertThat(exception.getBusinessMessage()).isEqualTo("AI output is unavailable");
+                });
     }
 
     @Test
