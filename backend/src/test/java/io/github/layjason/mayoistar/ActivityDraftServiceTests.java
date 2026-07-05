@@ -20,6 +20,7 @@ import io.github.layjason.mayoistar.entity.activities.ActivityTemplate;
 import io.github.layjason.mayoistar.entity.common.MediaAccessPolicy;
 import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.entity.common.MediaUsage;
+import io.github.layjason.mayoistar.entity.common.MediaVisibility;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
@@ -444,8 +445,9 @@ class ActivityDraftServiceTests {
     @Test
     void submitActivityShouldAutoApproveLowRiskActivity() {
         User organizer = saveUser("user-a");
+        MediaFile image = saveMediaFile(IMAGE_A_ID, organizer.getUserId());
         ActivityDtos.ActivityDraftDetail draft =
-                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of()));
+                activityDraftService.saveDraft(organizer.getUserId(), createDraftRequest(List.of(image.getMediaId())));
 
         ActivityDtos.ActivityDetail detail =
                 activityDraftService.submitActivity(organizer.getUserId(), draft.getActivityId());
@@ -463,6 +465,14 @@ class ActivityDraftServiceTests {
         assertThat(savedActivity.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
         assertThat(savedActivity.getManualReviewRequired()).isFalse();
         assertThat(savedActivity.getAiContentReviewJson()).contains("\"riskLevel\":\"low\"");
+
+        MediaFile publishedImage =
+                mediaFileRepository.findById(image.getMediaId()).orElseThrow();
+        assertThat(publishedImage.getAccessPolicy()).isEqualTo(MediaAccessPolicy.publicAccess);
+        assertThat(publishedImage.getVisibility()).isEqualTo(MediaVisibility.publicVisible);
+        assertThat(publishedImage.getAccessScopeId()).isEqualTo("");
+        assertThat(detail.getImages()).hasSize(1);
+        assertThat(detail.getImages().getFirst().getVisibility()).isEqualTo(MediaVisibility.publicVisible);
     }
 
     @Test

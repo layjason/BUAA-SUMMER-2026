@@ -2,6 +2,8 @@
 
 ## 更新日志
 
+- Version: 7 20260705 105038
+  - 明确活动图片在 AI 自动审核通过时也会随活动发布升级为 publicAccess/publicVisible，避免公开活动仍返回私有可见性媒体
 - Version: 6 20260704 003244
   - 新增「URL 生命周期与缓存策略」统一章节：按稳定公开 / 上传即定型 / 业务动作翻转 / 长期私有四类说明，并给出逐用途矩阵、缓存策略建议与失效信号总表，便于制定缓存策略
   - 修正上传阶段「初始访问策略为 owner」的笼统表述，补充头像、商家资质条目，标注 summaryImage、activityReviewImage 为未接入 / 待实现
@@ -84,7 +86,7 @@ mediaId + v + policy + scope
 
 - **小队相册**（`POST /chat/teams/{teamId}/album-images`）：同群文件，上传后策略即时升级为 `teamMember`。
 
-- **活动图片**（`POST /activities/media/images`）：上传时活动尚不存在，无法确定 `scope=activityId`，因此初始策略为 `owner`（`scope=上传者`），仅上传者可预览。绑定到活动草稿时（`ActivityDraftService.saveDraft/updateDraft`）升级为 `activityOwner`（`scope=activityId`），仅活动组织者可见；从草稿移除的图片会被软删除，旧签名 URL 立即失效。活动审核通过或下架后恢复上架时（`AdminActivityService.reviewActivity(approved)`、`restoreActivity`），图片升级为 `publicAccess`/`publicVisible`，任何人（含匿名）可经签名 URL 访问，并可被 CDN 缓存；活动被下架时（`takeDownActivity`）图片回退为 `activityOwner`，公开 URL 因 `accessVersion` 递增立即失效。
+- **活动图片**（`POST /activities/media/images`）：上传时活动尚不存在，无法确定 `scope=activityId`，因此初始策略为 `owner`（`scope=上传者`），仅上传者可预览。绑定到活动草稿时（`ActivityDraftService.saveDraft/updateDraft`）升级为 `activityOwner`（`scope=activityId`），仅活动组织者可见；从草稿移除的图片会被软删除，旧签名 URL 立即失效。活动审核通过或下架后恢复上架时（`ActivityDraftService.submitActivity` 自动通过、`AdminActivityService.reviewActivity(approved)`、`restoreActivity`），图片升级为 `publicAccess`/`publicVisible`，任何人（含匿名）可经签名 URL 访问，并可被 CDN 缓存；活动被下架时（`takeDownActivity`）图片回退为 `activityOwner`，公开 URL 因 `accessVersion` 递增立即失效。
 
   每次策略翻转都会递增 `accessVersion`，使此前签发的 URL 失效。这是刻意设计：发布前只有组织者持有 URL，发布后所有查询入口（活动详情、我的活动、管理端详情）都会在查询阶段重新签名并返回当前有效的 URL，因此不会有人被旧 URL 卡住。客户端不应跨"活动状态变更"复用旧 URL，而应重新查询活动接口获取。
 
