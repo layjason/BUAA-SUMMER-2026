@@ -131,7 +131,7 @@ onLoad(() => {
 
 <style scoped>
 .page {
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -156,13 +156,13 @@ onLoad(() => {
   display: block;
   font-size: 36rpx;
   font-weight: 700;
-  color: #323233;
+  color: var(--q-color-text);
 }
 
 .subtitle {
   display: block;
   font-size: 26rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   margin-top: 8rpx;
 }
 
@@ -174,7 +174,7 @@ onLoad(() => {
   display: block;
   font-size: 30rpx;
   font-weight: 600;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 16rpx;
 }
 
@@ -182,7 +182,7 @@ onLoad(() => {
 .empty-text {
   text-align: center;
   font-size: 26rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   padding-top: 40rpx;
 }
 
@@ -208,7 +208,7 @@ onLoad(() => {
 }
 
 .card-inner {
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 12rpx;
   overflow: hidden;
   height: 100%;
@@ -227,7 +227,7 @@ onLoad(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #e8f7f0;
+  background-color: var(--q-color-primary-light);
 }
 
 .placeholder-icon {
@@ -242,7 +242,7 @@ onLoad(() => {
   display: block;
   font-size: 28rpx;
   font-weight: 600;
-  color: #323233;
+  color: var(--q-color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -251,7 +251,7 @@ onLoad(() => {
 .card-tags {
   display: block;
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   margin-top: 6rpx;
   overflow: hidden;
   text-overflow: ellipsis;

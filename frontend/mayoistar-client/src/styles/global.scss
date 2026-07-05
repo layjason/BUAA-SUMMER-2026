@@ -9,12 +9,33 @@
 
 /* ===== 页面基础重置 ===== */
 page {
+  --q-color-primary: #{$color-primary};
+  --q-color-primary-light: #{$color-primary-light};
+  --q-color-primary-dark: #{$color-primary-dark};
+  --q-color-accent-light: #{$color-accent-light};
+  --q-color-info: #{$color-info};
+  --q-color-danger: #{$color-danger};
+  --q-color-danger-light: rgba(220, 38, 38, 0.08);
+  --q-color-success: #{$color-success};
+  --q-color-warning: #{$color-warning};
+  --q-color-text: #{$color-text};
+  --q-color-text-sub: #{$color-text-sub};
+  --q-color-text-muted: #{$color-text-muted};
+  --q-color-bg: #{$color-bg};
+  --q-color-bg-card: #{$color-bg-card};
+  --q-color-bg-soft: #{$color-bg-soft};
+  --q-color-border: #{$color-border};
+  --q-gradient-primary: #{$gradient-primary};
+  --q-gradient-primary-soft: #{$gradient-primary-soft};
+  --q-gradient-card: #{$gradient-card};
+  --q-radius-card: 24rpx;
+  --q-radius-control: 20rpx;
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC',
     'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   font-size: $font-base;
   color: $color-text;
-  background: linear-gradient(160deg, $color-bg 0%, $color-bg-warm 100%);
+  background: $color-bg;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -170,14 +191,38 @@ page {
 
 /* ===== 卡片（兼容旧写法） ===== */
 .card {
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $gradient-card;
   border: 1px solid $color-border-light;
   border-radius: $radius-xl;
   padding: $spacing-lg;
   margin: $spacing-sm $spacing-lg;
-  box-shadow: $shadow-sm;
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+}
+
+/* ===== 通用表单与按钮兜底 ===== */
+button {
+  border-radius: $radius-lg;
+  font-weight: $weight-semibold;
+}
+
+button::after {
+  border: none;
+}
+
+input,
+textarea {
+  color: $color-text;
+}
+
+.section {
+  box-sizing: border-box;
+}
+
+.status-tag,
+.tag,
+.chip,
+.filter-chip {
+  border-radius: $radius-full;
 }
 
 /* ===== 安全区域 ===== */

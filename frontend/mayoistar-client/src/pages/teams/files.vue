@@ -303,7 +303,7 @@ onLoad((query) => {
 }
 
 .toolbar {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   padding: $spacing-md;
   display: flex;
   gap: $spacing-sm;
@@ -331,7 +331,7 @@ onLoad((query) => {
 .toolbar-btn-text {
   font-size: $font-sm;
   font-weight: $weight-medium;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 
 .scroll-area {
@@ -360,7 +360,7 @@ onLoad((query) => {
 }
 
 .file-card {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-md;
   display: flex;
@@ -377,7 +377,7 @@ onLoad((query) => {
   width: 44px;
   height: 44px;
   border-radius: $radius-md;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -428,7 +428,7 @@ onLoad((query) => {
 
 .file-check-mark {
   font-size: 12px;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 
 .bottom-padding {
@@ -436,7 +436,7 @@ onLoad((query) => {
 }
 
 .action-sheet {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-xl $radius-xl 0 0;
   overflow: hidden;
 

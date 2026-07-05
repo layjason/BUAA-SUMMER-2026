@@ -106,7 +106,7 @@ onLoad((query) => {
 <style scoped>
 .page {
   height: 100%;
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
   overflow: hidden;
 }
 
@@ -121,7 +121,7 @@ onLoad((query) => {
 .card {
   padding: 28rpx;
   border-radius: 16rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
 }
 
 .header-row {
@@ -135,19 +135,19 @@ onLoad((query) => {
   flex: 1;
   font-size: 32rpx;
   font-weight: 700;
-  color: #323233;
+  color: var(--q-color-text);
 }
 
 .rating {
   font-size: 26rpx;
-  color: #ff9800;
+  color: var(--q-color-warning);
 }
 
 .meta {
   display: block;
   margin-top: 12rpx;
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .tag-row {
@@ -160,8 +160,8 @@ onLoad((query) => {
 .tag-chip {
   padding: 6rpx 16rpx;
   border-radius: 999rpx;
-  background-color: #f0faf7;
-  color: #5ec8a7;
+  background-color: var(--q-color-primary-light);
+  color: var(--q-color-primary);
   font-size: 24rpx;
 }
 
@@ -170,7 +170,7 @@ onLoad((query) => {
   margin-top: 28rpx;
   font-size: 28rpx;
   line-height: 1.7;
-  color: #323233;
+  color: var(--q-color-text);
   white-space: pre-wrap;
 }
 
@@ -185,25 +185,25 @@ onLoad((query) => {
   width: 200rpx;
   height: 200rpx;
   border-radius: 12rpx;
-  background-color: #f2f3f5;
+  background-color: var(--q-color-bg-soft);
 }
 
 .empty-content {
   display: block;
   margin-top: 28rpx;
   font-size: 26rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .state-text {
   padding: 80rpx 32rpx;
   text-align: center;
-  color: #969799;
+  color: var(--q-color-text-muted);
   font-size: 28rpx;
 }
 
 .state-text--error {
-  color: #ee0a24;
+  color: var(--q-color-danger);
 }
 </style>
 

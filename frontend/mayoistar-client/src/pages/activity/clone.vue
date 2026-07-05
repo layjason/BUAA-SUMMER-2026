@@ -197,7 +197,7 @@ onLoad(() => {
 .page {
   height: 100%;
   overflow: hidden;
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
 }
 
 .scroll-area {
@@ -218,7 +218,7 @@ onLoad(() => {
   display: block;
   font-size: 40rpx;
   font-weight: 700;
-  color: #323233;
+  color: var(--q-color-text);
 }
 
 .subtitle {
@@ -226,21 +226,21 @@ onLoad(() => {
   margin-top: 10rpx;
   font-size: 26rpx;
   line-height: 1.5;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .state-text,
 .empty-state {
   padding-top: 120rpx;
   text-align: center;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .empty-title {
   display: block;
   font-size: 30rpx;
   font-weight: 600;
-  color: #323233;
+  color: var(--q-color-text);
 }
 
 .empty-desc {
@@ -248,7 +248,7 @@ onLoad(() => {
   margin-top: 12rpx;
   font-size: 26rpx;
   line-height: 1.5;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .empty-button {
@@ -256,8 +256,8 @@ onLoad(() => {
   width: 320rpx;
   height: 76rpx;
   border-radius: 999rpx;
-  background-color: #5ec8a7;
-  color: #fff;
+  background: var(--q-gradient-primary);
+  color: var(--q-color-bg-card);
   font-size: 28rpx;
   line-height: 76rpx;
 }
@@ -273,7 +273,7 @@ onLoad(() => {
   gap: 20rpx;
   padding: 20rpx;
   border-radius: 16rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   box-shadow: 0 12rpx 32rpx rgba(50, 50, 51, 0.06);
 }
 
@@ -286,7 +286,7 @@ onLoad(() => {
   width: 168rpx;
   height: 168rpx;
   border-radius: 12rpx;
-  background-color: #e8f7f0;
+  background-color: var(--q-color-primary-light);
 }
 
 .activity-main {
@@ -307,7 +307,7 @@ onLoad(() => {
 .activity-title {
   flex: 1;
   min-width: 0;
-  color: #323233;
+  color: var(--q-color-text);
   font-size: 30rpx;
   font-weight: 700;
   overflow: hidden;
@@ -319,8 +319,8 @@ onLoad(() => {
   flex-shrink: 0;
   padding: 4rpx 12rpx;
   border-radius: 999rpx;
-  background-color: #e8f7f0;
-  color: #5ec8a7;
+  background-color: var(--q-color-primary-light);
+  color: var(--q-color-primary);
   font-size: 22rpx;
   font-weight: 600;
 }
@@ -328,7 +328,7 @@ onLoad(() => {
 .meta {
   display: block;
   margin-top: 8rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   font-size: 24rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -342,7 +342,7 @@ onLoad(() => {
 
 .clone-action {
   flex-shrink: 0;
-  color: #1989fa;
+  color: var(--q-color-primary);
   font-size: 24rpx;
   font-weight: 600;
 }

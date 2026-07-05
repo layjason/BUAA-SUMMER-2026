@@ -583,7 +583,7 @@ onHide(() => {
 
 /* ===== Action Sheet ===== */
 .action-sheet {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-xl $radius-xl 0 0;
   overflow: hidden;
   /* Tab 页底部菜单需抬高，避免被 tabBar 遮挡 */

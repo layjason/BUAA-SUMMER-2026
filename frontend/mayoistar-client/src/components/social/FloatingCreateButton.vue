@@ -28,17 +28,17 @@ function onTap() {
   bottom: calc($tabbar-height + $spacing-xl + $safe-bottom);
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, $color-primary 0%, $color-primary-dark 100%);
+  background: $gradient-primary;
   border-radius: $radius-full;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: $shadow-lg;
+  box-shadow: 0 10px 24px rgba(22, 160, 133, 0.24);
   z-index: 99;
   transition: all 0.2s ease;
 
   &:active {
-    transform: scale(0.9) rotate(45deg);
+    transform: scale(0.94);
   }
 
   &__icon {

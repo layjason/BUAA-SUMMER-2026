@@ -274,7 +274,7 @@ onMounted(() => {
 /* ===== Tab Bar ===== */
 .tab-bar {
   display: flex;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-bottom: 1px solid $color-border-light;
   padding: 0 $spacing-xl;
 }
@@ -310,7 +310,7 @@ onMounted(() => {
   min-width: 18px;
   height: 18px;
   background: $color-danger;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
   font-size: 10px;
   font-weight: $weight-semibold;
   border-radius: $radius-full;
@@ -351,7 +351,7 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   padding: $spacing-lg $spacing-xl;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   margin: 0 $spacing-lg $spacing-sm;
   border-radius: $radius-lg;
   box-shadow: $shadow-xs;
@@ -433,12 +433,12 @@ onMounted(() => {
   color: $color-text-muted;
 
   &--accepted {
-    background: rgba(52, 199, 89, 0.1);
+    background: $color-primary-light;
     color: $color-success;
   }
 
   &--rejected {
-    background: rgba(255, 59, 48, 0.1);
+    background: rgba(220, 38, 38, 0.08);
     color: $color-danger;
   }
 
@@ -486,7 +486,7 @@ onMounted(() => {
 .btn-text {
   font-size: $font-sm;
   font-weight: $weight-medium;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 
   &--reject {
     color: $color-text-sub;

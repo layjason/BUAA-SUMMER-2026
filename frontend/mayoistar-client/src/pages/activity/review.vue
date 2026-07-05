@@ -284,7 +284,7 @@ onLoad((query) => {
 
 <style scoped>
 .page {
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -305,7 +305,7 @@ onLoad((query) => {
   display: block;
   font-size: 32rpx;
   font-weight: 700;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 40rpx;
 }
 
@@ -313,13 +313,13 @@ onLoad((query) => {
   margin-bottom: 32rpx;
   padding: 20rpx 24rpx;
   border-radius: 12rpx;
-  background-color: #fff7e8;
+  background-color: var(--q-color-accent-light);
 }
 
 .deadline-text {
   font-size: 24rpx;
   line-height: 1.5;
-  color: #ed6a0c;
+  color: var(--q-color-warning);
 }
 
 .star-section {
@@ -329,7 +329,7 @@ onLoad((query) => {
 .label {
   display: block;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 16rpx;
 }
 
@@ -340,12 +340,12 @@ onLoad((query) => {
 
 .star {
   font-size: 56rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
   line-height: 1;
 }
 
 .star.active {
-  color: #ff9800;
+  color: var(--q-color-warning);
 }
 
 .form-item {
@@ -356,10 +356,10 @@ onLoad((query) => {
   width: 100%;
   min-height: 200rpx;
   padding: 20rpx 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   box-sizing: border-box;
 }
 
@@ -378,13 +378,13 @@ onLoad((query) => {
   font-size: 24rpx;
   padding: 8rpx 20rpx;
   border-radius: 8rpx;
-  background-color: #f2f3f5;
-  color: #646566;
+  background-color: var(--q-color-bg-soft);
+  color: var(--q-color-text-sub);
 }
 
 .tag-selected {
-  background-color: #e8f7f0;
-  color: #5ec8a7;
+  background-color: var(--q-color-primary-light);
+  color: var(--q-color-primary);
   font-weight: 500;
 }
 
@@ -417,7 +417,7 @@ onLoad((query) => {
   line-height: 32rpx;
   text-align: center;
   background-color: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  color: var(--q-color-bg-card);
   border-radius: 50%;
   font-size: 24rpx;
 }
@@ -425,17 +425,17 @@ onLoad((query) => {
 .image-add-btn {
   width: 160rpx;
   height: 160rpx;
-  border: 2rpx dashed #c8c9cc;
+  border: 2rpx dashed var(--q-color-text-muted);
   border-radius: 8rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
 }
 
 .image-add-btn .add-icon {
   font-size: 48rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
   line-height: 1;
 }
 </style>

@@ -192,9 +192,7 @@ function getStatusText(status: string): string {
 .search-bar {
   display: flex;
   align-items: center;
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $color-bg-card;
   border: 1px solid $color-border;
   border-radius: $radius-full;
   padding: $spacing-md $spacing-lg;
@@ -218,9 +216,7 @@ function getStatusText(status: string): string {
 
 .action-card {
   flex: 1;
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $color-bg-card;
   border: 1px solid $color-border-light;
   border-radius: $radius-xl;
   padding: $spacing-lg;
@@ -296,9 +292,7 @@ function getStatusText(status: string): string {
 }
 
 .recommend-card {
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $color-bg-card;
   border: 1px solid $color-border-light;
   border-radius: $radius-xl;
   overflow: hidden;

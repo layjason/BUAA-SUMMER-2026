@@ -400,7 +400,7 @@ onLoad((query) => {
 
 /* ===== Profile Card ===== */
 .profile-card {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   margin: $spacing-lg;
   border-radius: $radius-xl;
   padding: $spacing-xl;
@@ -423,7 +423,7 @@ onLoad((query) => {
   width: 100%;
   height: 100%;
   border-radius: $radius-full;
-  border: 3px solid #ffffff;
+  border: 3px solid var(--q-color-bg-card);
   box-shadow: $shadow-md;
 }
 
@@ -533,7 +533,7 @@ onLoad((query) => {
 
 .profile-reputation-fill {
   height: 100%;
-  background: linear-gradient(90deg, $color-primary 0%, $color-success 100%);
+  background: $color-primary;
   border-radius: $radius-full;
   transition: width 0.5s ease;
 }
@@ -568,7 +568,7 @@ onLoad((query) => {
   align-items: center;
   padding: $spacing-lg;
   border-radius: $radius-xl;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   box-shadow: $shadow-xs;
   transition: all 0.2s ease;
 
@@ -581,7 +581,7 @@ onLoad((query) => {
     background: $color-primary;
 
     .action-btn-label {
-      color: #ffffff;
+      color: var(--q-color-bg-card);
     }
   }
 
@@ -594,7 +594,7 @@ onLoad((query) => {
   }
 
   &--default {
-    background: #ffffff;
+    background: var(--q-color-bg-card);
   }
 
   &--pending {
@@ -652,7 +652,7 @@ onLoad((query) => {
   }
 
   &--danger {
-    background: rgba(255, 59, 48, 0.1);
+    background: rgba(220, 38, 38, 0.08);
   }
 }
 

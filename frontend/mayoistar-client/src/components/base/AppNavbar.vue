@@ -90,8 +90,8 @@ function handleBack() {
   position: relative;
   z-index: 1000;
   width: 100%;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $color-bg-card;
+  border-bottom: 1px solid $color-border-light;
 
   /* ===== 状态栏占位 ===== */
   &__status-bar {

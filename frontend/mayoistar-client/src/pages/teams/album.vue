@@ -222,7 +222,7 @@ onLoad((query) => {
 }
 
 .toolbar {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   padding: $spacing-md;
   display: flex;
   gap: $spacing-sm;
@@ -250,7 +250,7 @@ onLoad((query) => {
 .toolbar-btn-text {
   font-size: $font-sm;
   font-weight: $weight-medium;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 
 .scroll-area {
@@ -282,7 +282,7 @@ onLoad((query) => {
   position: relative;
   aspect-ratio: 1;
   overflow: hidden;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
 
   &--selected::after {
     content: '';
@@ -314,7 +314,7 @@ onLoad((query) => {
   width: 22px;
   height: 22px;
   border-radius: $radius-full;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--q-color-bg-card);
   background: rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
@@ -328,7 +328,7 @@ onLoad((query) => {
 
 .album-check-mark {
   font-size: 12px;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 
 .bottom-padding {

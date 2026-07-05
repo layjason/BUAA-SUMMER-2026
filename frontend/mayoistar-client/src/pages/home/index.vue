@@ -306,9 +306,11 @@ function goMap(): void {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@import '@/styles/theme.scss';
+
 .page {
-  background-color: #f7f8fa;
+  background-color: $color-bg;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -317,8 +319,8 @@ function goMap(): void {
 
 .top-bar {
   display: flex;
-  background-color: #fff;
-  border-bottom: 1rpx solid #ebedf0;
+  background-color: $color-bg-card;
+  border-bottom: 1rpx solid $color-border-light;
   flex-shrink: 0;
   align-items: center;
 }
@@ -334,20 +336,20 @@ function goMap(): void {
   text-align: center;
   padding: 24rpx 0;
   font-size: 28rpx;
-  color: #646566;
+  color: var(--q-color-text-sub);
   border-bottom: 4rpx solid transparent;
 }
 
 .tab.active {
-  color: #5ec8a7;
-  border-bottom-color: #5ec8a7;
+  color: var(--q-color-primary);
+  border-bottom-color: var(--q-color-primary);
   font-weight: 600;
 }
 
 .filter-entry {
   padding: 0 32rpx;
   font-size: 26rpx;
-  color: #5ec8a7;
+  color: var(--q-color-primary);
   white-space: nowrap;
 }
 
@@ -364,8 +366,8 @@ function goMap(): void {
 .home-search-entry {
   display: flex;
   align-items: center;
-  background-color: #fff;
-  border: 1rpx solid #ebedf0;
+  background-color: var(--q-color-bg-card);
+  border: 1rpx solid var(--q-color-bg-soft);
   border-radius: 999rpx;
   padding: 20rpx 24rpx;
   box-shadow: 0 8rpx 24rpx rgba(50, 50, 51, 0.06);
@@ -379,17 +381,17 @@ function goMap(): void {
 .home-search-placeholder {
   flex: 1;
   font-size: 28rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .home-search-action {
   flex-shrink: 0;
   margin-left: 16rpx;
   padding-left: 16rpx;
-  border-left: 1rpx solid #ebedf0;
+  border-left: 1rpx solid var(--q-color-bg-soft);
   font-size: 26rpx;
   font-weight: 600;
-  color: #5ec8a7;
+  color: var(--q-color-primary);
 }
 
 .advanced-actions {
@@ -402,35 +404,35 @@ function goMap(): void {
   flex: 1;
   margin: 0 8rpx;
   padding: 18rpx 20rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 16rpx;
-  border-left: 6rpx solid #5ec8a7;
+  border-left: 6rpx solid var(--q-color-primary);
   box-shadow: 0 8rpx 24rpx rgba(50, 50, 51, 0.05);
 }
 
 .map-action {
-  border-left-color: #6f8cff;
+  border-left-color: var(--q-color-info);
 }
 
 .advanced-action-title {
   display: block;
   font-size: 26rpx;
   font-weight: 600;
-  color: #323233;
+  color: var(--q-color-text);
 }
 
 .advanced-action-desc {
   display: block;
   margin-top: 6rpx;
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .loading-text,
 .empty-text {
   text-align: center;
   font-size: 28rpx;
-  color: #969799;
+  color: $color-text-muted;
   padding-top: 120rpx;
 }
 
@@ -443,23 +445,25 @@ function goMap(): void {
 
 .error-text {
   font-size: 28rpx;
-  color: #ee0a24;
+  color: $color-danger;
 }
 
 .retry-btn {
   margin-top: 24rpx;
   padding: 16rpx 48rpx;
   font-size: 26rpx;
-  color: #5ec8a7;
-  border: 2rpx solid #5ec8a7;
-  border-radius: 8rpx;
+  color: $color-primary;
+  border: 2rpx solid rgba(22, 160, 133, 0.35);
+  border-radius: 20rpx;
 }
 
 .card {
-  background-color: #fff;
+  background-color: $color-bg-card;
   margin: 16rpx 32rpx;
-  border-radius: 12rpx;
+  border: 1rpx solid $color-border-light;
+  border-radius: 24rpx;
   overflow: hidden;
+  box-shadow: $shadow-sm;
 }
 
 .card-hover {
@@ -481,7 +485,7 @@ function goMap(): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f2f3f5;
+  background-color: var(--q-color-bg-soft);
 }
 
 .placeholder-icon {
@@ -506,7 +510,7 @@ function goMap(): void {
 
 .card-title {
   font-size: 28rpx;
-  color: #323233;
+  color: $color-text;
   font-weight: 600;
   flex: 1;
   overflow: hidden;
@@ -517,38 +521,38 @@ function goMap(): void {
 .status-tag {
   font-size: 20rpx;
   padding: 2rpx 10rpx;
-  border-radius: 4rpx;
+  border-radius: 999rpx;
   flex-shrink: 0;
 }
 
 .status-registering {
-  background-color: rgba(94, 200, 167, 0.1);
-  color: #5ec8a7;
+  background-color: $color-primary-light;
+  color: $color-primary-dark;
 }
 
 .status-registrationClosed {
-  background-color: #fff7e6;
-  color: #ed6a0c;
+  background-color: var(--q-color-accent-light);
+  color: var(--q-color-warning);
 }
 
 .status-ongoing {
-  background-color: #ebf9e9;
-  color: #07c160;
+  background-color: $color-primary-light;
+  color: $color-primary;
 }
 
 .status-ended {
-  background-color: #f2f3f5;
-  color: #c8c9cc;
+  background-color: $color-bg-soft;
+  color: $color-text-muted;
 }
 
 .status-notStarted {
-  background-color: #ebedf0;
-  color: #969799;
+  background-color: $color-bg-soft;
+  color: $color-text-sub;
 }
 
 .status-takenDown {
-  background-color: #fff2f0;
-  color: #ee0a24;
+  background-color: rgba(220, 38, 38, 0.08);
+  color: $color-danger;
 }
 
 .card-tags {
@@ -560,10 +564,10 @@ function goMap(): void {
 
 .tag {
   font-size: 22rpx;
-  color: #5ec8a7;
-  background-color: rgba(94, 200, 167, 0.08);
+  color: $color-primary-dark;
+  background-color: $color-primary-light;
   padding: 2rpx 12rpx;
-  border-radius: 4rpx;
+  border-radius: 999rpx;
 }
 
 .card-meta {
@@ -575,12 +579,12 @@ function goMap(): void {
 
 .meta-item {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .meta-sep {
   font-size: 20rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
 }
 
 .card-bottom {
@@ -592,28 +596,28 @@ function goMap(): void {
 
 .fee {
   font-size: 26rpx;
-  color: #ee0a24;
+  color: var(--q-color-danger);
   font-weight: 600;
 }
 
 .fee.free {
-  color: #07c160;
+  color: var(--q-color-success);
 }
 
 .registered {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .footer-text {
   text-align: center;
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   padding: 32rpx 0;
 }
 
 .load-error {
-  color: #ee0a24;
+  color: var(--q-color-danger);
 }
 
 .fab {
@@ -623,16 +627,16 @@ function goMap(): void {
   width: 100rpx;
   height: 100rpx;
   border-radius: 50%;
-  background-color: #5ec8a7;
+  background: var(--q-gradient-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4rpx 16rpx rgba(94, 200, 167, 0.4);
+  box-shadow: 0 10rpx 24rpx rgba(22, 160, 133, 0.24);
 }
 
 .fab-icon {
   font-size: 56rpx;
-  color: #fff;
+  color: var(--q-color-bg-card);
   line-height: 1;
   margin-top: -4rpx;
 }

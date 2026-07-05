@@ -145,7 +145,7 @@ onLoad((query) => {
 .loc-bottom {
   flex-shrink: 0;
   padding: 28rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: 24rpx 24rpx 0 0;
   box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
 }

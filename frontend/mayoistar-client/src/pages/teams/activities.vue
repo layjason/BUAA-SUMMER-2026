@@ -221,7 +221,7 @@ onLoad((query) => {
 }
 
 .toolbar {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   padding: $spacing-md;
   display: flex;
   gap: $spacing-sm;
@@ -231,7 +231,7 @@ onLoad((query) => {
 .toolbar-input {
   flex: 1;
   height: 40px;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   border-radius: $radius-md;
   padding: 0 $spacing-md;
   font-size: $font-base;
@@ -253,7 +253,7 @@ onLoad((query) => {
 .toolbar-btn-text {
   font-size: $font-sm;
   font-weight: $weight-medium;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 
 .scroll-area {
@@ -282,7 +282,7 @@ onLoad((query) => {
 }
 
 .activity-card {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   overflow: hidden;
   display: flex;
@@ -290,7 +290,7 @@ onLoad((query) => {
   padding: $spacing-md;
 
   &:active {
-    background: #fafafa;
+    background: var(--q-color-bg-soft);
   }
 }
 
@@ -301,7 +301,7 @@ onLoad((query) => {
   flex-shrink: 0;
 
   &--placeholder {
-    background: #f0f2f5;
+    background: var(--q-color-bg-soft);
     display: flex;
     align-items: center;
     justify-content: center;

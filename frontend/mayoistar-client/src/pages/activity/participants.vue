@@ -243,7 +243,7 @@ async function sendFriendRequest_(item: ParticipantItem) {
 
 <style scoped>
 .page {
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -253,12 +253,12 @@ async function sendFriendRequest_(item: ParticipantItem) {
 .state-text {
   text-align: center;
   font-size: 28rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   padding-top: 120rpx;
 }
 
 .state-text--error {
-  color: #ee0a24;
+  color: var(--q-color-danger);
 }
 
 .scroll-area {
@@ -268,7 +268,7 @@ async function sendFriendRequest_(item: ParticipantItem) {
 }
 
 .card {
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   margin: 16rpx 32rpx;
   padding: 24rpx 32rpx;
   border-radius: 12rpx;
@@ -293,7 +293,7 @@ async function sendFriendRequest_(item: ParticipantItem) {
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
-  background-color: #1989fa;
+  background-color: var(--q-color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -301,13 +301,13 @@ async function sendFriendRequest_(item: ParticipantItem) {
 
 .avatar-text {
   font-size: 28rpx;
-  color: #fff;
+  color: var(--q-color-bg-card);
   font-weight: 600;
 }
 
 .nickname {
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
 }
 
 .status-tag {
@@ -317,49 +317,49 @@ async function sendFriendRequest_(item: ParticipantItem) {
 }
 
 .status-registered {
-  background-color: #e6f0fe;
-  color: #1989fa;
+  background-color: var(--q-color-primary-light);
+  color: var(--q-color-primary);
 }
 
 .status-checkedIn {
-  background-color: #ebf9e9;
-  color: #07c160;
+  background-color: var(--q-color-primary-light);
+  color: var(--q-color-success);
 }
 
 .status-canceled {
-  background-color: #ebedf0;
-  color: #969799;
+  background-color: var(--q-color-bg-soft);
+  color: var(--q-color-text-muted);
 }
 
 .status-waiting,
 .status-waitingConfirmation {
-  background-color: #fff7e6;
-  color: #ed6a0c;
+  background-color: var(--q-color-accent-light);
+  color: var(--q-color-warning);
 }
 
 .add-friend-btn {
-  background-color: #1989fa;
+  background: var(--q-gradient-primary);
   padding: 6rpx 16rpx;
   border-radius: 6rpx;
 }
 
 .add-friend-btn--muted {
-  background-color: #ebedf0;
+  background-color: var(--q-color-bg-soft);
 }
 
 .add-friend-text {
   font-size: 22rpx;
-  color: #fff;
+  color: var(--q-color-bg-card);
 }
 
 .add-friend-btn--muted .add-friend-text {
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .load-more {
   text-align: center;
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   padding: 24rpx 0;
 }
 </style>

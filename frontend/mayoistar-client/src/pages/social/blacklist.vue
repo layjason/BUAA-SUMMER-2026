@@ -140,7 +140,7 @@ onMounted(() => {
 }
 
 .list-item {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-md;
   display: flex;
@@ -152,7 +152,7 @@ onMounted(() => {
   width: 44px;
   height: 44px;
   border-radius: $radius-full;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;

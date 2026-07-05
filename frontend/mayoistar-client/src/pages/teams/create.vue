@@ -266,7 +266,7 @@ async function submit() {
 }
 
 .form-group {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-md;
   margin-bottom: $spacing-md;
@@ -286,7 +286,7 @@ async function submit() {
   padding: $spacing-sm;
   border: 1px solid $color-border;
   border-radius: $radius-md;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
 }
 
 .form-textarea {
@@ -295,7 +295,7 @@ async function submit() {
   padding: $spacing-sm;
   border: 1px solid $color-border;
   border-radius: $radius-md;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   height: 100px;
 }
 
@@ -316,13 +316,13 @@ async function submit() {
   width: 36px;
   height: 36px;
   border-radius: $radius-full;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
 
   &:active {
-    background: #e0e2e5;
+    background: var(--q-color-border);
   }
 }
 
@@ -425,7 +425,7 @@ async function submit() {
 }
 
 .submit-btn-text {
-  color: #ffffff;
+  color: var(--q-color-bg-card);
   font-size: $font-lg;
   font-weight: $weight-semibold;
 }

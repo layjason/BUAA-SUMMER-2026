@@ -109,11 +109,9 @@ function handleClick() {
 .poster-card {
   border-radius: $radius-xl;
   overflow: hidden;
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $gradient-card;
   border: 1px solid $color-border-light;
-  box-shadow: $shadow-md;
+  box-shadow: 0 8px 22px rgba(17, 24, 39, 0.08);
   transition: transform 0.15s ease;
 
   &:active {
@@ -127,6 +125,7 @@ function handleClick() {
     /* 4:3 比例，更大气 */
     padding-top: 75%;
     overflow: hidden;
+    background: $gradient-primary-soft;
   }
 
   &__cover {
@@ -171,7 +170,7 @@ function handleClick() {
     overflow: hidden;
     font-size: $font-xl;
     font-weight: $weight-bold;
-    color: #ffffff;
+    color: var(--q-color-bg-card);
     line-height: 1.4;
     margin-bottom: $spacing-xs;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
@@ -215,7 +214,7 @@ function handleClick() {
       font-size: $font-base;
       font-weight: $weight-semibold;
       color: $color-primary;
-      background: $color-primary-light;
+      background: $gradient-primary-soft;
       padding: 2px 10px;
       border-radius: $radius-full;
     }
@@ -234,7 +233,7 @@ function handleClick() {
   }
 
   &__tag {
-    background: rgba(94, 200, 167, 0.08);
+    background: $gradient-primary-soft;
     border-radius: $radius-full;
     padding: 2px 8px;
   }

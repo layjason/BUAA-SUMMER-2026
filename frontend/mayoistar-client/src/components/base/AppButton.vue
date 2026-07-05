@@ -18,7 +18,7 @@
  * 通用按钮组件
  *
  * 支持多种类型（主按钮、描边、幽灵、危险）、三种尺寸、加载态和禁用态。
- * 设计风格遵循趣聚平台的浅色、轻玻璃感、大圆角视觉语言。
+ * 设计风格遵循趣聚平台的清爽、克制、移动端优先视觉语言。
  *
  * 前置条件：无
  * 后置条件：点击时触发 click 事件（非加载/禁用态下）
@@ -106,30 +106,32 @@ function handleClick() {
 
   /* 主按钮：品牌色填充，白色文字 */
   &--primary {
-    background: $color-primary;
+    background: $gradient-primary;
     color: $color-text-inverse;
     border: none;
+    box-shadow: 0 8px 18px rgba(22, 160, 133, 0.22);
   }
 
   /* 次要按钮：品牌色描边 */
   &--secondary {
-    background: transparent;
+    background: $color-bg-card;
     color: $color-primary;
-    border: 1.5px solid $color-primary;
+    border: 1px solid rgba(22, 160, 133, 0.35);
   }
 
   /* 幽灵按钮：无边框无背景 */
   &--ghost {
-    background: transparent;
+    background: $color-bg-soft;
     color: $color-text-sub;
-    border: none;
+    border: 1px solid $color-border;
   }
 
   /* 危险按钮：危险色填充 */
   &--danger {
-    background: $color-danger;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: $color-text-inverse;
     border: none;
+    box-shadow: 0 8px 18px rgba(220, 38, 38, 0.18);
   }
 
   /* ===== 尺寸 ===== */

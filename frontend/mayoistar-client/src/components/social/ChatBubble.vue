@@ -108,20 +108,19 @@ const statusLabel = computed(() => {
 
     /* 自己的消息：品牌色背景，白色文字 */
     &--self {
-      background: $color-primary;
+      background: $gradient-primary;
       color: $color-text-inverse;
       border-radius: $radius-xl $radius-xl $radius-sm $radius-xl;
+      box-shadow: 0 6px 16px rgba(22, 160, 133, 0.18);
     }
 
-    /* 他人消息：白色/玻璃背景 */
+    /* 他人消息：白色卡片背景 */
     &--other {
-      background: $color-bg-glass-heavy;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: $gradient-card;
       color: $color-text;
       border: 1px solid $color-border-light;
       border-radius: $radius-xl $radius-xl $radius-xl $radius-sm;
-      box-shadow: $shadow-sm;
+      box-shadow: 0 4px 12px rgba(17, 24, 39, 0.05);
     }
 
     &__content {

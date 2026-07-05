@@ -809,7 +809,7 @@ onShow(() => {
             class="swiper"
             indicator-dots
             indicator-color="rgba(255,255,255,0.5)"
-            indicator-active-color="#fff"
+            indicator-active-color="#ffffff"
             autoplay
             interval="4000"
             circular
@@ -1077,9 +1077,11 @@ onShow(() => {
   </view>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@import '@/styles/theme.scss';
+
 .page {
-  background-color: #f7f8fa;
+  background-color: $color-bg;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -1089,12 +1091,12 @@ onShow(() => {
 .state-text {
   text-align: center;
   font-size: 28rpx;
-  color: #969799;
+  color: $color-text-muted;
   padding-top: 120rpx;
 }
 
 .state-text--error {
-  color: #ee0a24;
+  color: $color-danger;
 }
 
 .scroll-area {
@@ -1119,7 +1121,7 @@ onShow(() => {
 }
 
 .image-placeholder {
-  background-color: #ebedf0;
+  background-color: $color-bg-soft;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1134,9 +1136,11 @@ onShow(() => {
 }
 
 .card {
-  background-color: #fff;
-  border-radius: 12rpx;
+  background-color: $color-bg-card;
+  border: 1rpx solid $color-border-light;
+  border-radius: 24rpx;
   padding: 28rpx 32rpx;
+  box-shadow: $shadow-sm;
 }
 
 .title-row {
@@ -1149,7 +1153,7 @@ onShow(() => {
 .title {
   font-size: 36rpx;
   font-weight: 700;
-  color: #323233;
+  color: $color-text;
   flex: 1;
   line-height: 1.4;
 }
@@ -1157,35 +1161,35 @@ onShow(() => {
 .status-tag {
   font-size: 22rpx;
   padding: 6rpx 14rpx;
-  border-radius: 4rpx;
+  border-radius: 999rpx;
   flex-shrink: 0;
   margin-top: 4rpx;
 }
 
 .status-registering,
 .status-ongoing {
-  background-color: #e8f7f0;
-  color: #5ec8a7;
+  background-color: $color-primary-light;
+  color: $color-primary;
 }
 
 .status-registrationClosed {
-  background-color: #fff7e6;
-  color: #ed6a0c;
+  background-color: var(--q-color-accent-light);
+  color: var(--q-color-warning);
 }
 
 .status-ended {
-  background-color: #f2f3f5;
-  color: #c8c9cc;
+  background-color: $color-bg-soft;
+  color: $color-text-muted;
 }
 
 .status-notStarted {
-  background-color: #ebedf0;
-  color: #969799;
+  background-color: $color-bg-soft;
+  color: $color-text-sub;
 }
 
 .status-takenDown {
-  background-color: #fff2f0;
-  color: #ee0a24;
+  background-color: rgba(220, 38, 38, 0.08);
+  color: $color-danger;
 }
 
 .info-card {
@@ -1196,7 +1200,7 @@ onShow(() => {
   display: flex;
   align-items: flex-start;
   padding: 14rpx 0;
-  border-bottom: 2rpx solid #f5f5f5;
+  border-bottom: 2rpx solid var(--q-color-border);
 }
 
 .info-row:last-child {
@@ -1213,7 +1217,7 @@ onShow(() => {
 
 .info-label {
   font-size: 26rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   width: 120rpx;
   flex-shrink: 0;
 }
@@ -1228,14 +1232,14 @@ onShow(() => {
 
 .info-value {
   font-size: 26rpx;
-  color: #323233;
+  color: var(--q-color-text);
   flex: 1;
   line-height: 1.4;
 }
 
 .info-arrow {
   flex-shrink: 0;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
   font-size: 28rpx;
 }
 
@@ -1248,8 +1252,8 @@ onShow(() => {
 
 .tag-chip {
   font-size: 22rpx;
-  color: #5ec8a7;
-  background-color: #e8f7f0;
+  color: var(--q-color-primary);
+  background-color: var(--q-color-primary-light);
   padding: 4rpx 14rpx;
   border-radius: 4rpx;
 }
@@ -1258,14 +1262,14 @@ onShow(() => {
   display: block;
   font-size: 30rpx;
   font-weight: 600;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 12rpx;
 }
 
 .section-body {
   display: block;
   font-size: 26rpx;
-  color: #646566;
+  color: var(--q-color-text-sub);
   line-height: 1.7;
   white-space: pre-wrap;
 }
@@ -1285,7 +1289,7 @@ onShow(() => {
 .published-block + .published-block {
   margin-top: 24rpx;
   padding-top: 24rpx;
-  border-top: 1rpx solid #ebedf0;
+  border-top: 1rpx solid var(--q-color-bg-soft);
 }
 
 .published-title-row {
@@ -1299,7 +1303,7 @@ onShow(() => {
   display: block;
   flex: 1;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   font-weight: 600;
   margin-bottom: 8rpx;
 }
@@ -1307,7 +1311,7 @@ onShow(() => {
 .published-body {
   display: block;
   font-size: 26rpx;
-  color: #646566;
+  color: var(--q-color-text-sub);
   line-height: 1.6;
 }
 
@@ -1320,13 +1324,13 @@ onShow(() => {
 
 .review-rating {
   font-size: 24rpx;
-  color: #ff9800;
+  color: var(--q-color-warning);
 }
 
 .bar-btn-disabled {
-  background-color: #c8c9cc;
-  color: #fff;
-  border-color: #c8c9cc;
+  background-color: var(--q-color-text-muted);
+  color: var(--q-color-bg-card);
+  border-color: var(--q-color-text-muted);
 }
 
 .detail-action-stack {
@@ -1358,8 +1362,8 @@ onShow(() => {
   margin: 0;
   text-align: center;
   font-size: 24rpx;
-  color: #5ec8a7;
-  background-color: #e8f7f0;
+  color: var(--q-color-primary);
+  background-color: var(--q-color-primary-light);
   border-radius: 8rpx;
   border: none;
   padding: 0 12rpx;
@@ -1367,8 +1371,8 @@ onShow(() => {
 }
 
 .action-btn-warning {
-  color: #ed6a0c;
-  background-color: #fff7e6;
+  color: var(--q-color-warning);
+  background-color: var(--q-color-accent-light);
 }
 
 .review-deadline-text {
@@ -1376,7 +1380,7 @@ onShow(() => {
   margin-top: 8rpx;
   font-size: 22rpx;
   line-height: 1.4;
-  color: #ed6a0c;
+  color: var(--q-color-warning);
   text-align: center;
 }
 
@@ -1388,15 +1392,15 @@ onShow(() => {
   min-width: 160rpx;
   height: 64rpx;
   font-size: 24rpx;
-  color: #969799;
-  background-color: #f2f3f5;
+  color: var(--q-color-text-muted);
+  background-color: var(--q-color-bg-soft);
   border-radius: 8rpx;
   padding: 0 12rpx;
   box-sizing: border-box;
 }
 
 .menu-card {
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 12rpx;
   padding: 28rpx 32rpx;
   display: flex;
@@ -1410,7 +1414,7 @@ onShow(() => {
 
 .menu-text {
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
 }
 
 .menu-right {
@@ -1421,12 +1425,12 @@ onShow(() => {
 
 .menu-count {
   font-size: 26rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .menu-arrow {
   font-size: 28rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
 }
 
 .checkin-card {
@@ -1443,15 +1447,15 @@ onShow(() => {
 .checkin-desc {
   display: block;
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   line-height: 1.5;
 }
 
 .checkin-location-tag {
   flex-shrink: 0;
   font-size: 22rpx;
-  color: #ed6a0c;
-  background-color: #fff7e6;
+  color: var(--q-color-warning);
+  background-color: var(--q-color-accent-light);
   border-radius: 4rpx;
   padding: 6rpx 14rpx;
 }
@@ -1460,7 +1464,7 @@ onShow(() => {
   margin-top: 24rpx;
   padding: 24rpx;
   border-radius: 12rpx;
-  background-color: #f8f9fc;
+  background-color: var(--q-color-bg-soft);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1469,7 +1473,7 @@ onShow(() => {
 .qr-image {
   width: 320rpx;
   height: 320rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
 }
 
@@ -1483,20 +1487,20 @@ onShow(() => {
 
 .qr-title {
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   font-weight: 600;
 }
 
 .qr-expire {
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .qr-empty {
   margin-top: 24rpx;
   padding: 28rpx 24rpx;
   border-radius: 12rpx;
-  background-color: #f8f9fc;
+  background-color: var(--q-color-bg-soft);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1505,13 +1509,13 @@ onShow(() => {
 
 .qr-empty-text {
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   font-weight: 600;
 }
 
 .qr-empty-sub {
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .checkin-action-row {
@@ -1527,20 +1531,20 @@ onShow(() => {
   margin: 0;
   border: none;
   border-radius: 8rpx;
-  background-color: #5ec8a7;
-  color: #fff;
+  background: var(--q-gradient-primary);
+  color: var(--q-color-bg-card);
   font-size: 26rpx;
   font-weight: 600;
 }
 
 .checkin-action[disabled] {
-  background-color: #c8c9cc;
-  color: #fff;
+  background-color: var(--q-color-text-muted);
+  color: var(--q-color-bg-card);
 }
 
 .checkin-action-ghost {
-  background-color: #e8f7f0;
-  color: #5ec8a7;
+  background: var(--q-gradient-primary-soft);
+  color: var(--q-color-primary);
 }
 
 .review-progress-card {
@@ -1566,7 +1570,7 @@ onShow(() => {
   width: 40rpx;
   height: 40rpx;
   border-radius: 50%;
-  background-color: #ebedf0;
+  background-color: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1574,55 +1578,55 @@ onShow(() => {
 }
 
 .step-dot-done {
-  background-color: #07c160;
+  background-color: var(--q-color-success);
 }
 
 .step-dot-active {
-  background-color: #5ec8a7;
+  background-color: var(--q-color-primary);
 }
 
 .step-dot-error {
-  background-color: #ee0a24;
+  background-color: var(--q-color-danger);
 }
 
 .step-dot-icon {
   font-size: 20rpx;
-  color: #fff;
+  color: var(--q-color-bg-card);
   font-weight: 700;
 }
 
 .step-label {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   text-align: center;
 }
 
 .step-label-done {
-  color: #07c160;
+  color: var(--q-color-success);
 }
 
 .step-label-active {
-  color: #5ec8a7;
+  color: var(--q-color-primary);
 }
 
 .step-label-error {
-  color: #ee0a24;
+  color: var(--q-color-danger);
 }
 
 .step-connector {
   flex: 0.6;
   height: 2rpx;
-  background-color: #ebedf0;
+  background-color: var(--q-color-bg-soft);
   margin-top: 20rpx;
   align-self: flex-start;
 }
 
 .step-connector-done {
-  background-color: #07c160;
+  background-color: var(--q-color-success);
 }
 
 .step-connector-active {
-  background-color: #5ec8a7;
+  background-color: var(--q-color-primary);
 }
 
 .review-status-row {
@@ -1639,23 +1643,23 @@ onShow(() => {
 }
 
 .review-badge-pending {
-  background-color: #e8f7f0;
-  color: #5ec8a7;
+  background-color: var(--q-color-primary-light);
+  color: var(--q-color-primary);
 }
 
 .review-badge-approved {
-  background-color: #e8f7f0;
-  color: #07c160;
+  background-color: var(--q-color-primary-light);
+  color: var(--q-color-success);
 }
 
 .review-badge-rejected {
-  background-color: #fff2f0;
-  color: #ee0a24;
+  background-color: var(--q-color-danger-light);
+  color: var(--q-color-danger);
 }
 
 .review-badge-changeRequired {
-  background-color: #fff7e6;
-  color: #ed6a0c;
+  background-color: var(--q-color-accent-light);
+  color: var(--q-color-warning);
 }
 
 .review-tip {
@@ -1665,7 +1669,7 @@ onShow(() => {
   gap: 8rpx;
   margin: 12rpx 0;
   padding: 12rpx 20rpx;
-  background-color: #f0f9ff;
+  background-color: var(--q-color-primary-light);
   border-radius: 8rpx;
 }
 
@@ -1675,20 +1679,20 @@ onShow(() => {
 
 .tip-text {
   font-size: 24rpx;
-  color: #5ec8a7;
+  color: var(--q-color-primary);
 }
 
 .review-reason-card {
   margin-top: 12rpx;
   padding: 16rpx 20rpx;
-  background-color: #fff7e6;
+  background-color: var(--q-color-accent-light);
   border-radius: 8rpx;
 }
 
 .reason-label {
   display: block;
   font-size: 22rpx;
-  color: #ed6a0c;
+  color: var(--q-color-warning);
   font-weight: 600;
   margin-bottom: 6rpx;
 }
@@ -1696,14 +1700,14 @@ onShow(() => {
 .reason-text {
   display: block;
   font-size: 24rpx;
-  color: #323233;
+  color: var(--q-color-text);
   line-height: 1.5;
 }
 
 .ai-review-summary {
   margin-top: 16rpx;
   padding: 16rpx 20rpx;
-  background-color: #f8f9fc;
+  background-color: var(--q-color-bg-soft);
   border-radius: 8rpx;
 }
 
@@ -1716,7 +1720,7 @@ onShow(() => {
 
 .ai-review-section-title {
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   font-weight: 600;
 }
 
@@ -1728,23 +1732,23 @@ onShow(() => {
 }
 
 .review-risk-low {
-  background-color: #e8f7f0;
-  color: #07c160;
+  background-color: var(--q-color-primary-light);
+  color: var(--q-color-success);
 }
 
 .review-risk-medium {
-  background-color: #fff7e6;
-  color: #ed6a0c;
+  background-color: var(--q-color-accent-light);
+  color: var(--q-color-warning);
 }
 
 .review-risk-high {
-  background-color: #fff2f0;
-  color: #ee0a24;
+  background-color: var(--q-color-danger-light);
+  color: var(--q-color-danger);
 }
 
 .review-risk-uncertain {
-  background-color: #f2f3f5;
-  color: #969799;
+  background-color: var(--q-color-bg-soft);
+  color: var(--q-color-text-muted);
 }
 
 .ai-review-detail {
@@ -1753,7 +1757,7 @@ onShow(() => {
 
 .review-risk-reason {
   font-size: 24rpx;
-  color: #646566;
+  color: var(--q-color-text-sub);
   line-height: 1.6;
 }
 </style>

@@ -155,9 +155,7 @@ function goToAiDraft(): void {
   display: flex;
   align-items: center;
   padding: $spacing-lg;
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $color-bg-card;
   border: 1px solid $color-border-light;
   border-radius: $radius-xl;
   box-shadow: $shadow-sm;
@@ -169,8 +167,8 @@ function goToAiDraft(): void {
 }
 
 .main-option {
-  background: linear-gradient(135deg, $color-primary-light 0%, $color-bg-glass 100%);
-  border-color: rgba(94, 200, 167, 0.15);
+  background: $color-primary-light;
+  border-color: rgba(22, 160, 133, 0.18);
 }
 
 .option-icon {
@@ -210,10 +208,8 @@ function goToAiDraft(): void {
   display: flex;
   align-items: center;
   padding: $spacing-lg;
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px dashed rgba(94, 200, 167, 0.3);
+  background: $color-bg-card;
+  border: 1px dashed rgba(22, 160, 133, 0.3);
   border-radius: $radius-xl;
 
   &:active {

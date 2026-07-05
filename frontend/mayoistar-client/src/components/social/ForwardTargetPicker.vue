@@ -152,7 +152,7 @@ onMounted(() => {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: #ffffff;
+  background: $color-bg;
   display: flex;
   flex-direction: column;
 }
@@ -164,7 +164,7 @@ onMounted(() => {
   justify-content: space-between;
   padding: calc($spacing-sm + $safe-top) $spacing-md $spacing-sm;
   border-bottom: 1px solid $color-border-light;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .forward-back {
@@ -224,17 +224,17 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
 
   &--checked {
     border-color: $color-primary;
-    background: $color-primary;
+    background: $gradient-primary;
   }
 }
 
 .forward-checkbox-mark {
   font-size: 12px;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
   font-weight: $weight-bold;
   line-height: 1;
 }
@@ -244,7 +244,7 @@ onMounted(() => {
   height: 44px;
   border-radius: $radius-md;
   overflow: hidden;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -276,20 +276,22 @@ onMounted(() => {
   justify-content: flex-end;
   padding: $spacing-md $spacing-lg calc($spacing-md + $safe-bottom);
   border-top: 1px solid $color-border-light;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .forward-submit {
   min-width: 96px;
   padding: $spacing-sm $spacing-xl;
   border-radius: $radius-full;
-  background: $color-primary;
+  background: $gradient-primary;
+  box-shadow: 0 6px 14px rgba(22, 160, 133, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
 
   &--disabled {
-    background: rgba(0, 0, 0, 0.12);
+    background: $color-bg-soft;
+    box-shadow: none;
 
     .forward-submit-text {
       color: $color-text-muted;
@@ -300,6 +302,6 @@ onMounted(() => {
 .forward-submit-text {
   font-size: $font-base;
   font-weight: $weight-medium;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 </style>

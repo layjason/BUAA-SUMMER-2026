@@ -414,11 +414,21 @@ onLoad((query) => {
   position: relative;
   flex: 1;
   min-height: 0;
+  background: $color-bg-soft;
 }
 
 .activity-map {
   width: 100%;
   height: 100%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(22, 160, 133, 0.14) 0 3rpx, transparent 4rpx),
+    linear-gradient(90deg, rgba(22, 160, 133, 0.08) 1rpx, transparent 1rpx),
+    linear-gradient(0deg, rgba(37, 99, 235, 0.06) 1rpx, transparent 1rpx), $color-bg-soft;
+  background-size:
+    96rpx 96rpx,
+    80rpx 80rpx,
+    80rpx 80rpx,
+    auto;
 }
 
 .map-topbar {
@@ -590,7 +600,7 @@ onLoad((query) => {
   margin: 0;
   font-size: $font-xs;
   color: $color-primary;
-  background: #fff;
+  background: var(--q-color-bg-card);
   border: 1px solid rgba(94, 200, 167, 0.35);
   border-radius: $radius-full;
 }

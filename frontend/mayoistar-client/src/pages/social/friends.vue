@@ -402,7 +402,7 @@ onHide(() => {
 }
 
 .empty-action-text {
-  color: #ffffff;
+  color: var(--q-color-bg-card);
   font-size: $font-base;
   font-weight: $weight-medium;
 }
@@ -416,7 +416,7 @@ onHide(() => {
   display: flex;
   align-items: center;
   padding: $spacing-lg $spacing-xl;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   margin: 0 $spacing-lg $spacing-sm;
   border-radius: $radius-lg;
   box-shadow: $shadow-xs;
@@ -439,7 +439,7 @@ onHide(() => {
   width: 100%;
   height: 100%;
   border-radius: $radius-full;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--q-color-bg-card);
   box-shadow: $shadow-sm;
 }
 
@@ -542,7 +542,7 @@ onHide(() => {
 
 /* ===== Action Sheet ===== */
 .action-sheet {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-xl $radius-xl 0 0;
   overflow: hidden;
 
@@ -609,7 +609,7 @@ onHide(() => {
 
 /* ===== Edit Remark & Groups Sheet ===== */
 .edit-sheet {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-xl $radius-xl 0 0;
   padding-bottom: calc($spacing-md + $safe-bottom);
 
@@ -652,7 +652,7 @@ onHide(() => {
   }
 
   &__input {
-    background: #f0f2f5;
+    background: var(--q-color-bg-soft);
     border-radius: $radius-md;
     padding: $spacing-md;
     font-size: $font-base;
@@ -669,7 +669,7 @@ onHide(() => {
   &__tag {
     padding: $spacing-xs $spacing-md;
     border-radius: $radius-full;
-    background: #f0f2f5;
+    background: var(--q-color-bg-soft);
     border: 1px solid transparent;
 
     &--active {
@@ -700,13 +700,13 @@ onHide(() => {
     font-weight: $weight-medium;
 
     &--ghost {
-      background: #f0f2f5;
+      background: var(--q-color-bg-soft);
       color: $color-text;
     }
 
     &--primary {
       background: $color-primary;
-      color: #ffffff;
+      color: var(--q-color-bg-card);
     }
   }
 }

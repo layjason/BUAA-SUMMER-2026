@@ -7,10 +7,10 @@ function readActivityPage(filename: string): string {
 }
 
 describe('活动页面底部操作栏', () => {
-  it('编辑页应显式导入 BottomActionBar 以确保样式组件被解析', () => {
+  it('编辑页应显式导入并固定 BottomActionBar 以避免移动端裁切', () => {
     const source = readActivityPage('edit.vue')
 
-    expect(source).toContain('<BottomActionBar>')
+    expect(source).toMatch(/<BottomActionBar\b[^>]*\bfixed\b[^>]*>/)
     expect(source).toMatch(/import\s+\{[^}]*BottomActionBar[^}]*}\s+from\s+['"]@\/components['"]/)
   })
 

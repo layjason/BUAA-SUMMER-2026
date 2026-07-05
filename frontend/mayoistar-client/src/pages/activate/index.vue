@@ -186,7 +186,7 @@ function goRegister(): void {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
 }
 
 .activate-container {
@@ -194,7 +194,7 @@ function goRegister(): void {
 }
 
 .status-box {
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 12rpx;
   padding: 56rpx 32rpx;
   text-align: center;
@@ -210,7 +210,7 @@ function goRegister(): void {
 .status-text {
   display: block;
   font-size: 30rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 16rpx;
   line-height: 1.6;
 }
@@ -218,7 +218,7 @@ function goRegister(): void {
 .status-email {
   display: block;
   font-size: 32rpx;
-  color: #1989fa;
+  color: var(--q-color-primary);
   font-weight: 600;
   margin-bottom: 12rpx;
   word-break: break-all;
@@ -227,7 +227,7 @@ function goRegister(): void {
 .status-hint {
   display: block;
   font-size: 26rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   line-height: 1.6;
 }
 
@@ -239,7 +239,7 @@ function goRegister(): void {
   display: block;
   text-align: center;
   font-size: 24rpx;
-  color: #07c160;
+  color: var(--q-color-success);
   margin-bottom: 16rpx;
 }
 </style>

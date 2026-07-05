@@ -256,7 +256,7 @@ onMounted(() => {
 
 .action-text {
   font-size: $font-sm;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
   font-weight: $weight-medium;
 }
 

@@ -349,7 +349,7 @@ onLoad((query) => {
 
 <style scoped>
 .page {
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -361,7 +361,7 @@ onLoad((query) => {
   display: flex;
   gap: 12rpx;
   padding: 20rpx 32rpx 12rpx;
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
   box-sizing: border-box;
 }
 
@@ -372,27 +372,27 @@ onLoad((query) => {
   padding: 0 24rpx;
   border: none;
   border-radius: 30rpx;
-  background-color: #fff;
-  color: #646566;
+  background-color: var(--q-color-bg-card);
+  color: var(--q-color-text-sub);
   font-size: 24rpx;
 }
 
 .filter-chip-active {
-  background-color: #5ec8a7;
-  color: #fff;
+  background: var(--q-gradient-primary);
+  color: var(--q-color-bg-card);
   font-weight: 600;
 }
 
 .state-text {
   text-align: center;
   font-size: 28rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   padding-top: 120rpx;
   flex: 1;
 }
 
 .state-text--error {
-  color: #ee0a24;
+  color: var(--q-color-danger);
 }
 
 .scroll-area {
@@ -404,7 +404,7 @@ onLoad((query) => {
 }
 
 .summary-card {
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   margin: 16rpx 32rpx;
   padding: 28rpx 16rpx;
   border-radius: 12rpx;
@@ -422,23 +422,23 @@ onLoad((query) => {
 
 .summary-num {
   font-size: 36rpx;
-  color: #323233;
+  color: var(--q-color-text);
   font-weight: 700;
 }
 
 .summary-label {
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .summary-divider {
   width: 1rpx;
   height: 52rpx;
-  background-color: #ebedf0;
+  background-color: var(--q-color-bg-soft);
 }
 
 .card {
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   margin: 16rpx 32rpx;
   padding: 24rpx 32rpx;
   border-radius: 12rpx;
@@ -459,7 +459,7 @@ onLoad((query) => {
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
-  background-color: #5ec8a7;
+  background-color: var(--q-color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -468,7 +468,7 @@ onLoad((query) => {
 
 .avatar-text {
   font-size: 28rpx;
-  color: #fff;
+  color: var(--q-color-bg-card);
   font-weight: 600;
 }
 
@@ -481,18 +481,18 @@ onLoad((query) => {
 
 .nickname {
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   font-weight: 600;
 }
 
 .meta-text,
 .checkin-time {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .checkin-time-muted {
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
 }
 
 .status-tag {
@@ -504,29 +504,29 @@ onLoad((query) => {
 
 .status-registered {
   background-color: rgba(94, 200, 167, 0.1);
-  color: #5ec8a7;
+  color: var(--q-color-primary);
 }
 
 .status-checkedIn {
-  background-color: #ebf9e9;
-  color: #07c160;
+  background-color: var(--q-color-primary-light);
+  color: var(--q-color-success);
 }
 
 .status-canceled {
-  background-color: #ebedf0;
-  color: #969799;
+  background-color: var(--q-color-bg-soft);
+  color: var(--q-color-text-muted);
 }
 
 .status-waiting,
 .status-waitingConfirmation {
-  background-color: #fff7e6;
-  color: #ed6a0c;
+  background-color: var(--q-color-accent-light);
+  color: var(--q-color-warning);
 }
 
 .load-more {
   text-align: center;
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   padding: 24rpx 0;
 }
 
@@ -537,15 +537,15 @@ onLoad((query) => {
   margin: 0;
   border: none;
   border-radius: 8rpx;
-  background-color: #5ec8a7;
-  color: #fff;
+  background: var(--q-gradient-primary);
+  color: var(--q-color-bg-card);
   font-size: 28rpx;
   font-weight: 600;
 }
 
 .export-btn[disabled] {
-  background-color: #c8c9cc;
-  color: #fff;
+  background-color: var(--q-color-text-muted);
+  color: var(--q-color-bg-card);
 }
 </style>
 

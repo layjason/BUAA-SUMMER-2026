@@ -214,7 +214,7 @@
         <FormError :message="formError" />
       </view>
     </scroll-view>
-    <BottomActionBar>
+    <BottomActionBar fixed>
       <button class="bar-btn bar-btn-secondary" :disabled="savingDraft" @click="handleSaveDraft">
         {{ savingDraft ? '保存中...' : t('activityEdit.saveDraft') }}
       </button>
@@ -782,7 +782,7 @@ onUnload(() => {
 
 <style scoped>
 .page {
-  background: linear-gradient(160deg, #f8fafc 0%, #fff9f5 100%);
+  background: var(--q-color-bg);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -796,7 +796,7 @@ onUnload(() => {
 }
 
 .edit-container {
-  padding: 32rpx;
+  padding: 32rpx 32rpx calc(48rpx + env(safe-area-inset-bottom));
 }
 
 .section {
@@ -806,7 +806,7 @@ onUnload(() => {
 .section-title {
   display: block;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 12rpx;
   font-weight: 600;
 }
@@ -840,7 +840,7 @@ onUnload(() => {
   line-height: 36rpx;
   text-align: center;
   background-color: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  color: var(--q-color-bg-card);
   border-radius: 50%;
   font-size: 28rpx;
 }
@@ -848,24 +848,24 @@ onUnload(() => {
 .image-add-btn {
   width: 200rpx;
   height: 200rpx;
-  border: 2rpx dashed #c8c9cc;
+  border: 2rpx dashed var(--q-color-text-muted);
   border-radius: 8rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
 }
 
 .add-icon {
   font-size: 48rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
   line-height: 1;
 }
 
 .add-text {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   margin-top: 8rpx;
 }
 
@@ -877,12 +877,12 @@ onUnload(() => {
 .label {
   display: block;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 12rpx;
 }
 
 .req {
-  color: #ee0a24;
+  color: var(--q-color-danger);
 }
 
 /* ---- 标签 ---- */
@@ -894,22 +894,22 @@ onUnload(() => {
 
 .tag-chip {
   padding: 12rpx 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
-  border: 2rpx solid #ebedf0;
+  border: 2rpx solid var(--q-color-bg-soft);
   font-size: 26rpx;
-  color: #646566;
+  color: var(--q-color-text-sub);
 }
 
 .tag-chip.active {
-  border-color: #5ec8a7;
-  color: #5ec8a7;
-  background-color: #e8f7f0;
+  border-color: var(--q-color-primary);
+  color: var(--q-color-primary);
+  background-color: var(--q-color-primary-light);
 }
 
 .hint {
   font-size: 26rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 /* ---- 日期时间 ---- */
@@ -922,7 +922,7 @@ onUnload(() => {
   flex: 1;
   height: 88rpx;
   padding: 0 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   display: flex;
   align-items: center;
@@ -931,11 +931,11 @@ onUnload(() => {
 
 .datetime-row .picker-value text {
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
 }
 
 .datetime-row .picker-value text.placeholder {
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
 }
 
 /* ---- 文本框 ---- */
@@ -943,10 +943,10 @@ onUnload(() => {
   width: 100%;
   min-height: 160rpx;
   padding: 20rpx 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   box-sizing: border-box;
 }
 
@@ -956,7 +956,7 @@ onUnload(() => {
   justify-content: space-between;
   gap: 24rpx;
   padding: 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
 }
 
@@ -969,7 +969,7 @@ onUnload(() => {
 
 .switch-hint {
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   line-height: 1.4;
 }
 
@@ -977,7 +977,7 @@ onUnload(() => {
 .location-map-preview {
   display: flex;
   flex-direction: column;
-  background-color: #ffffff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   overflow: hidden;
 }
@@ -992,7 +992,7 @@ onUnload(() => {
   width: 100%;
   height: 240rpx;
   display: block;
-  background-color: #e8f7f0;
+  background-color: var(--q-color-primary-light);
 }
 
 .preview-footer {
@@ -1000,14 +1000,14 @@ onUnload(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16rpx 24rpx;
-  background-color: #ffffff;
-  border-top: 2rpx solid #f5f5f5;
+  background-color: var(--q-color-bg-card);
+  border-top: 2rpx solid var(--q-color-border);
 }
 
 .preview-address-text {
   flex: 1;
   font-size: 26rpx;
-  color: #323233;
+  color: var(--q-color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1015,7 +1015,7 @@ onUnload(() => {
 
 .preview-arrow {
   font-size: 28rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
   margin-left: 12rpx;
   flex-shrink: 0;
 }
@@ -1025,7 +1025,7 @@ onUnload(() => {
   flex-direction: column;
   align-items: center;
   padding: 40rpx 24rpx;
-  background-color: #fafbfc;
+  background-color: var(--q-color-bg-soft);
   min-height: 160rpx;
   justify-content: center;
 }
@@ -1040,21 +1040,21 @@ onUnload(() => {
 
 .placeholder-main {
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   font-weight: 500;
   margin-bottom: 8rpx;
 }
 
 .placeholder-sub {
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 /* ---- 字段错误 ---- */
 .field-error {
   display: block;
   font-size: 24rpx;
-  color: #ee0a24;
+  color: var(--q-color-danger);
   margin-top: 8rpx;
 }
 

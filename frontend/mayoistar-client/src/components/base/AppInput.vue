@@ -54,7 +54,7 @@ import { ref } from 'vue'
  * 通用输入框组件
  *
  * 带标签、错误提示和字数统计的输入框，支持 v-model 双向绑定。
- * 支持单行输入和多行文本域两种模式，采用轻玻璃感卡片背景。
+ * 支持单行输入和多行文本域两种模式，采用白底细边框输入区域。
  *
  * 前置条件：无
  * 后置条件：输入变化时通过 update:modelValue 事件通知父组件
@@ -138,11 +138,9 @@ function onBlur() {
 
   /* ===== 输入框容器 ===== */
   &__wrapper {
-    background: $color-bg-glass;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1.5px solid $color-border;
-    border-radius: $radius-lg;
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
     transition:
       border-color 0.2s ease,
       box-shadow 0.2s ease;
@@ -176,15 +174,15 @@ function onBlur() {
     font-size: $font-base;
   }
 
-  /* ===== 聚焦状态：品牌色边框光晕 ===== */
+  /* ===== 聚焦状态：品牌色边框 ===== */
   &--focused &__wrapper {
-    border-color: rgba(94, 200, 167, 0.4);
-    box-shadow: 0 0 0 3px rgba(94, 200, 167, 0.1);
+    border-color: rgba(22, 160, 133, 0.45);
+    box-shadow: 0 0 0 2px rgba(22, 160, 133, 0.08);
   }
 
   /* ===== 错误状态 ===== */
   &--error &__wrapper {
-    border-color: rgba(242, 156, 163, 0.5);
+    border-color: rgba(220, 38, 38, 0.4);
   }
 
   &--error &__label {

@@ -704,7 +704,7 @@ async function handleSave(): Promise<void> {
 
 <style scoped>
 .page {
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -740,7 +740,7 @@ async function handleSave(): Promise<void> {
   width: 120rpx;
   height: 120rpx;
   border-radius: 50%;
-  background-color: #1989fa;
+  background-color: var(--q-color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -749,13 +749,13 @@ async function handleSave(): Promise<void> {
 
 .avatar-placeholder-text {
   font-size: 48rpx;
-  color: #fff;
+  color: var(--q-color-bg-card);
   font-weight: 600;
 }
 
 .avatar-hint {
   font-size: 24rpx;
-  color: #1989fa;
+  color: var(--q-color-primary);
 }
 
 .form {
@@ -769,14 +769,14 @@ async function handleSave(): Promise<void> {
 .label {
   display: block;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 12rpx;
 }
 
 .sub-label {
   display: block;
   font-size: 26rpx;
-  color: #646566;
+  color: var(--q-color-text-sub);
   margin-bottom: 12rpx;
 }
 
@@ -789,23 +789,23 @@ async function handleSave(): Promise<void> {
   flex: 1;
   text-align: center;
   padding: 20rpx 0;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   border: 2rpx solid transparent;
 }
 
 .gender-option.active {
-  border-color: #1989fa;
-  color: #1989fa;
+  border-color: var(--q-color-primary);
+  color: var(--q-color-primary);
 }
 
 .picker-value {
   width: 100%;
   height: 88rpx;
   padding: 0 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   display: flex;
   align-items: center;
@@ -814,21 +814,21 @@ async function handleSave(): Promise<void> {
 
 .picker-value text {
   font-size: 30rpx;
-  color: #323233;
+  color: var(--q-color-text);
 }
 
 .picker-value text.placeholder {
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
 }
 
 .textarea {
   width: 100%;
   min-height: 140rpx;
   padding: 20rpx 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   font-size: 30rpx;
-  color: #323233;
+  color: var(--q-color-text);
   box-sizing: border-box;
 }
 
@@ -836,7 +836,7 @@ async function handleSave(): Promise<void> {
   display: block;
   text-align: right;
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   margin-top: 8rpx;
 }
 
@@ -854,27 +854,27 @@ async function handleSave(): Promise<void> {
 .tag-chip {
   display: inline-flex;
   padding: 12rpx 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
-  border: 2rpx solid #ebedf0;
+  border: 2rpx solid var(--q-color-bg-soft);
   font-size: 26rpx;
-  color: #646566;
+  color: var(--q-color-text-sub);
   flex-shrink: 0;
 }
 
 .tag-chip.active {
-  border-color: #1989fa;
-  color: #1989fa;
-  background-color: #e6f0fe;
+  border-color: var(--q-color-primary);
+  color: var(--q-color-primary);
+  background-color: var(--q-color-primary-light);
 }
 
 .hint {
   font-size: 26rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .qualification-status {
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   padding: 20rpx 24rpx;
 }
@@ -882,20 +882,20 @@ async function handleSave(): Promise<void> {
 .qualification-text {
   display: block;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
 }
 
 .qualification-meta {
   display: block;
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   margin-top: 8rpx;
 }
 
 .qualification-reject {
   display: block;
   font-size: 26rpx;
-  color: #ee0a24;
+  color: var(--q-color-danger);
   margin-top: 8rpx;
 }
 
@@ -936,15 +936,15 @@ async function handleSave(): Promise<void> {
   height: 36rpx;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  color: var(--q-color-bg-card);
   font-size: 28rpx;
   text-align: center;
   line-height: 36rpx;
 }
 
 .license-add {
-  border: 2rpx dashed #c8c9cc;
-  background: #fff;
+  border: 2rpx dashed var(--q-color-text-muted);
+  background: var(--q-color-bg-card);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -954,20 +954,20 @@ async function handleSave(): Promise<void> {
 
 .license-add-icon {
   font-size: 44rpx;
-  color: #1989fa;
+  color: var(--q-color-primary);
 }
 
 .license-add-text {
   font-size: 24rpx;
-  color: #646566;
+  color: var(--q-color-text-sub);
 }
 
 .qualification-submit {
   width: 100%;
   height: 76rpx;
   border-radius: 38rpx;
-  background: #1989fa;
-  color: #fff;
+  background: var(--q-gradient-primary);
+  color: var(--q-color-bg-card);
   font-size: 28rpx;
   line-height: 76rpx;
 }
@@ -980,14 +980,14 @@ async function handleSave(): Promise<void> {
   display: block;
   margin-top: 12rpx;
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .profile-summary {
   margin-top: 32rpx;
   padding: 20rpx 24rpx;
   border-radius: 12rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
 }
 
 .summary-row {
@@ -999,12 +999,12 @@ async function handleSave(): Promise<void> {
 
 .summary-label {
   font-size: 26rpx;
-  color: #646566;
+  color: var(--q-color-text-sub);
 }
 
 .summary-value {
   font-size: 26rpx;
-  color: #323233;
+  color: var(--q-color-text);
   font-weight: 500;
 }
 </style>

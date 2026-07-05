@@ -136,7 +136,7 @@ onLoad((query) => {
 }
 
 .rank-card {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-md $spacing-lg;
   display: flex;
@@ -144,7 +144,7 @@ onLoad((query) => {
   gap: $spacing-md;
 
   &--top {
-    background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
+    background: linear-gradient(135deg, #fff9e6 0%, var(--q-color-bg-card) 100%);
     border: 1px solid rgba(255, 193, 7, 0.2);
   }
 }
@@ -153,7 +153,7 @@ onLoad((query) => {
   width: 36px;
   height: 36px;
   border-radius: $radius-full;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -180,7 +180,7 @@ onLoad((query) => {
   .rank-badge--1 &,
   .rank-badge--2 &,
   .rank-badge--3 & {
-    color: #ffffff;
+    color: var(--q-color-bg-card);
   }
 }
 

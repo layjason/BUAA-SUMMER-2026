@@ -403,13 +403,15 @@ onShow(() => {
   </view>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@import '@/styles/theme.scss';
+
 .page {
   height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #f7f8fa;
+  background-color: $color-bg;
 }
 
 .scroll-area {
@@ -422,23 +424,23 @@ onShow(() => {
   display: flex;
   flex-shrink: 0;
   padding: 12rpx 32rpx;
-  background-color: #fff;
-  border-bottom: 1rpx solid #ebedf0;
+  background-color: $color-bg-card;
+  border-bottom: 1rpx solid $color-border-light;
 }
 
 .tab {
   flex: 1;
   height: 64rpx;
   border-radius: 32rpx;
-  color: #646566;
+  color: $color-text-sub;
   font-size: 28rpx;
   line-height: 64rpx;
   text-align: center;
 }
 
 .tab.active {
-  background-color: #e8f7f0;
-  color: #5ec8a7;
+  background-color: $color-primary-light;
+  color: $color-primary;
   font-weight: 700;
 }
 
@@ -447,12 +449,12 @@ onShow(() => {
 .empty-text {
   text-align: center;
   font-size: 28rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   padding-top: 120rpx;
 }
 
 .error-text {
-  color: #ee0a24;
+  color: $color-danger;
 }
 
 .list-content {
@@ -461,16 +463,17 @@ onShow(() => {
 
 .list-hint {
   margin: 8rpx 32rpx 4rpx;
-  color: #969799;
+  color: $color-text-muted;
   font-size: 24rpx;
 }
 
 .card {
   margin: 16rpx 32rpx;
   padding: 28rpx 32rpx;
-  border-radius: 16rpx;
-  background-color: #fff;
-  box-shadow: 0 12rpx 32rpx rgba(50, 50, 51, 0.06);
+  border: 1rpx solid $color-border-light;
+  border-radius: 24rpx;
+  background-color: $color-bg-card;
+  box-shadow: $shadow-sm;
 }
 
 .card-hover {
@@ -478,7 +481,7 @@ onShow(() => {
 }
 
 .card-unpublished {
-  border-left: 6rpx solid #5ec8a7;
+  border-left: 6rpx solid $color-primary;
 }
 
 .card-header,
@@ -496,7 +499,7 @@ onShow(() => {
 .card-title {
   flex: 1;
   min-width: 0;
-  color: #323233;
+  color: $color-text;
   font-size: 30rpx;
   font-weight: 700;
   overflow: hidden;
@@ -507,7 +510,7 @@ onShow(() => {
 .tag {
   flex: 1;
   min-width: 0;
-  color: #1989fa;
+  color: $color-primary;
   font-size: 24rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -516,7 +519,7 @@ onShow(() => {
 
 .meta {
   min-width: 0;
-  color: #969799;
+  color: $color-text-muted;
   font-size: 24rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -533,49 +536,49 @@ onShow(() => {
 
 .runtime-registering,
 .runtime-ongoing {
-  background-color: #e8f7f0;
-  color: #5ec8a7;
+  background-color: $color-primary-light;
+  color: $color-primary;
 }
 
 .review-draft,
 .runtime-notStarted {
-  background-color: #f2f3f5;
-  color: #969799;
+  background-color: $color-bg-soft;
+  color: $color-text-sub;
 }
 
 .review-pending,
 .runtime-registrationClosed {
-  background-color: #fff7e6;
-  color: #ed6a0c;
+  background-color: var(--q-color-accent-light);
+  color: var(--q-color-warning);
 }
 
 .review-changeRequired {
-  background-color: #fff7e6;
-  color: #ff9800;
+  background-color: var(--q-color-accent-light);
+  color: var(--q-color-warning);
 }
 
 .review-rejected,
 .runtime-takenDown {
-  background-color: #fff2f0;
-  color: #ee0a24;
+  background-color: rgba(220, 38, 38, 0.08);
+  color: $color-danger;
 }
 
 .runtime-ended {
-  background-color: #f2f3f5;
-  color: #c8c9cc;
+  background-color: $color-bg-soft;
+  color: $color-text-muted;
 }
 
 .unpublished-desc {
   display: block;
   margin-top: 12rpx;
-  color: #646566;
+  color: var(--q-color-text-sub);
   font-size: 24rpx;
   line-height: 1.5;
 }
 
 .edit-action {
   flex-shrink: 0;
-  color: #5ec8a7;
+  color: var(--q-color-primary);
   font-size: 24rpx;
   font-weight: 700;
 }

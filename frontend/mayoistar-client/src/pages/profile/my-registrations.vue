@@ -193,9 +193,11 @@ function goDetail(activityId: string): void {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@import '@/styles/theme.scss';
+
 .page {
-  background-color: #f7f8fa;
+  background-color: $color-bg;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -213,19 +215,21 @@ function goDetail(activityId: string): void {
 .empty-text {
   text-align: center;
   font-size: 28rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   padding-top: 120rpx;
 }
 
 .error-text {
-  color: #ee0a24;
+  color: $color-danger;
 }
 
 .card {
-  background-color: #fff;
+  background-color: $color-bg-card;
   margin: 16rpx 32rpx;
-  border-radius: 12rpx;
+  border: 1rpx solid $color-border-light;
+  border-radius: 24rpx;
   overflow: hidden;
+  box-shadow: $shadow-sm;
 }
 
 .card-hover {
@@ -237,7 +241,7 @@ function goDetail(activityId: string): void {
 }
 
 .card-checkedIn {
-  border-left: 6rpx solid #07c160;
+  border-left: 6rpx solid $color-primary;
 }
 
 .card-inner {
@@ -255,7 +259,7 @@ function goDetail(activityId: string): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f2f3f5;
+  background-color: $color-bg-soft;
 }
 
 .placeholder-icon {
@@ -280,7 +284,7 @@ function goDetail(activityId: string): void {
 
 .card-title {
   font-size: 28rpx;
-  color: #323233;
+  color: $color-text;
   font-weight: 600;
   flex: 1;
   overflow: hidden;
@@ -291,29 +295,29 @@ function goDetail(activityId: string): void {
 .status-tag {
   font-size: 20rpx;
   padding: 2rpx 10rpx;
-  border-radius: 4rpx;
+  border-radius: 999rpx;
   flex-shrink: 0;
 }
 
 .status-registered {
-  background-color: #e6f0fe;
-  color: #1989fa;
+  background-color: $color-secondary-light;
+  color: $color-info;
 }
 
 .status-checkedIn {
-  background-color: #ebf9e9;
-  color: #07c160;
+  background-color: $color-primary-light;
+  color: $color-primary;
 }
 
 .status-canceled {
-  background-color: #ebedf0;
-  color: #969799;
+  background-color: $color-bg-soft;
+  color: $color-text-muted;
 }
 
 .status-waiting,
 .status-waitingConfirmation {
-  background-color: #fff7e6;
-  color: #ed6a0c;
+  background-color: var(--q-color-accent-light);
+  color: var(--q-color-warning);
 }
 
 .card-tags {
@@ -325,8 +329,8 @@ function goDetail(activityId: string): void {
 
 .tag {
   font-size: 20rpx;
-  color: #1989fa;
-  background-color: #e6f0fe;
+  color: $color-primary-dark;
+  background-color: $color-primary-light;
   padding: 2rpx 10rpx;
   border-radius: 4rpx;
 }
@@ -340,12 +344,12 @@ function goDetail(activityId: string): void {
 
 .meta-item {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .meta-sep {
   font-size: 18rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
 }
 
 .card-bottom {
@@ -363,17 +367,17 @@ function goDetail(activityId: string): void {
 
 .fee {
   font-size: 24rpx;
-  color: #ee0a24;
+  color: var(--q-color-danger);
   font-weight: 600;
 }
 
 .fee.free {
-  color: #07c160;
+  color: var(--q-color-success);
 }
 
 .registered {
   font-size: 20rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 </style>
 
