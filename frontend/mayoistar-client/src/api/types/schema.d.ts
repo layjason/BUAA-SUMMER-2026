@@ -885,8 +885,42 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description 分类活动或总结图片，图片已上传，返回建议标签，标签需由人工确认后才成为最终标签。 */
+        /** @description 提交图片分类任务（异步）。已上传的图片通过后台 GPU 集群分类，返回 taskId 供轮询 GET /ai/image-classifications/{taskId} 获取结果。已分类过的图片直接命中缓存无需重复推理。 */
         post: operations["AiOperations_classifyImages"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai/image-classifications/{taskId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 查询图片分类任务结果。pending 时仅返回状态，succeeded 时返回所有 media（含缓存命中）的分类结果，failed/timeout 时包含错误信息。任务超时时间为 30 秒。 */
+        get: operations["AiOperations_getClassifyTaskResult"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai/image-classifications/media/{mediaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 按媒体 ID 查询单张图片的分类缓存。命中缓存时返回包括 classifiedAt 的完整分类结果，未命中时返回 30004。 */
+        get: operations["AiOperations_getClassificationByMediaId"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1880,6 +1914,40 @@ export interface paths {
         patch: operations["SocialOperations_updateTeamMemberRole"];
         trace?: never;
     };
+    "/social/teams/{teamId}/members/{userId}/points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 手动调整小队成员积分，仅队长和管理员可执行。 */
+        post: operations["SocialOperations_adjustTeamMemberPoints"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social/teams/{teamId}/members/{userId}/points/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 查看小队成员积分变动历史。 */
+        get: operations["SocialOperations_getTeamMemberPointHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/social/teams/{teamId}/points": {
         parameters: {
             query?: never;
@@ -1889,6 +1957,23 @@ export interface paths {
         };
         /** @description 查看小队积分榜，调用方可查看该小队，返回积分排名，排名由成员积分降序生成。 */
         get: operations["SocialOperations_getTeamPointRanks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/social/teams/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 获取当前用户加入的小队列表，含已解散/已停用的历史小队，按加入时间倒序。 */
+        get: operations["SocialOperations_listMyTeams"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2697,6 +2782,11 @@ export interface components {
          * @enum {string}
          */
         "Ai.AiRiskLevel": "low" | "medium" | "high" | "uncertain";
+        /**
+         * @description 分类任务状态。
+         * @enum {string}
+         */
+        "Ai.ClassifyTaskStatus": "pending" | "succeeded" | "failed" | "timeout";
         /** @description 单张图片 AI 分类结果。 */
         "Ai.ImageClassificationItem": {
             /**
@@ -2709,19 +2799,40 @@ export interface components {
             /** @description AI 建议的图片标签。 */
             suggestedTags: string[];
         };
-        /** @description AI 图片分类请求，mediaIds 指向已上传图片，返回建议标签供人工确认，最终标签以人工确认结果为准。 */
+        /** @description AI 图片分类请求，mediaIds 指向已上传图片，任务异步提交，通过返回的 taskId 轮询结果。 */
         "Ai.ImageClassificationRequest": {
             /** @description 需要进行图片分类的媒体文件标识列表。 */
             mediaIds: components["schemas"]["EntityId"][];
         };
-        /** @description AI 图片分类响应。 */
-        "Ai.ImageClassificationResult": {
-            /** @description AI 调用失败时可展示给用户的友好错误信息。 */
-            friendlyErrorMessage?: string;
-            /** @description 逐图片分类结果。 */
-            items: components["schemas"]["Ai.ImageClassificationItem"][];
-            /** @description AI 调用状态。 */
-            status: components["schemas"]["Ai.AiCallStatus"];
+        /** @description 图片分类任务提交响应，包含 taskId 供后续轮询。 */
+        "Ai.ImageClassificationSubmitResponse": {
+            /** @description 任务初始状态：若全部图片已有缓存则为 succeeded，否则为 pending。 */
+            status: components["schemas"]["Ai.ClassifyTaskStatus"];
+            /** @description 任务唯一标识，用于轮询 GET /ai/image-classifications/{taskId} 获取结果。 */
+            taskId: components["schemas"]["EntityId"];
+        };
+        /** @description 图片分类任务查询响应。 */
+        "Ai.ImageClassificationTaskQueryResponse": {
+            /** @description 失败或超时时的错误信息。 */
+            errorMessage?: string;
+            /** @description 逐图片分类结果（仅 succeeded 时非空）。 */
+            items?: components["schemas"]["Ai.ImageClassificationItem"][];
+            /** @description 任务状态：pending 时仅返回状态，succeeded 时包含全部结果，failed/timeout 时包含 errorMessage。 */
+            status: components["schemas"]["Ai.ClassifyTaskStatus"];
+        };
+        /** @description 按 mediaId 查询单张图片的分类缓存。 */
+        "Ai.MediaClassificationResponse": {
+            /** @description 分类完成时间（ISO-8601）。 */
+            classifiedAt: components["schemas"]["DateTimeString"];
+            /**
+             * Format: double
+             * @description AI 对分类结果的置信度。
+             */
+            confidence: number;
+            /** @description 图片媒体文件标识。 */
+            mediaId: components["schemas"]["EntityId"];
+            /** @description AI 建议的图片标签。 */
+            suggestedTags: string[];
         };
         /** @description 请求体或 URL 参数无法解析，或不符合 TypeSpec Schema。 */
         BadRequestResponse: {
@@ -3521,6 +3632,36 @@ export interface components {
              * @enum {string}
              */
             message: "AI service is unavailable";
+        };
+        /** @description 30004：分类任务不存在或已过期（含 mediaId 未分类时）。 */
+        "Errors.Ai.AiTaskNotFound": {
+            /**
+             * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+             * @enum {number}
+             */
+            code: 30004;
+            /** @description 错误上下文，默认无额外业务数据。 */
+            data: components["schemas"]["EmptyData"];
+            /**
+             * @description 平台错误消息，业务错误使用英文模板文案。
+             * @enum {string}
+             */
+            message: "Classification task not found";
+        };
+        /** @description 30005：分类任务超时，GPU 服务在 30 秒内未响应。 */
+        "Errors.Ai.AiTaskTimeout": {
+            /**
+             * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+             * @enum {number}
+             */
+            code: 30005;
+            /** @description 错误上下文，默认无额外业务数据。 */
+            data: components["schemas"]["EmptyData"];
+            /**
+             * @description 平台错误消息，业务错误使用英文模板文案。
+             * @enum {string}
+             */
+            message: "Classification task timed out";
         };
         /** @description 30003：图片媒体文件不存在或不支持 AI 分类。 */
         "Errors.Ai.ImageMediaUnavailable": {
@@ -4876,6 +5017,16 @@ export interface components {
             /** @description 入队申请附言。 */
             message?: string;
         };
+        /** @description 手动调整小队成员积分请求。 */
+        "Social.ManualPointAdjustmentRequest": {
+            /**
+             * Format: int32
+             * @description 积分变动值，正数为加、负数为减。
+             */
+            pointChange: number;
+            /** @description 调整原因。 */
+            reason: string;
+        };
         /** @description 举报记录。 */
         "Social.Report": {
             /** @description 举报创建时间。 */
@@ -4992,6 +5143,11 @@ export interface components {
             /** @description 调整后的成员角色。 */
             role: components["schemas"]["Social.TeamMemberRole"];
         };
+        /**
+         * @description 小队积分变动来源枚举。
+         * @enum {string}
+         */
+        "Social.TeamPointChangeSource": "checkin" | "no_show" | "summary_post" | "manual";
         /** @description 小队积分项。 */
         "Social.TeamPointRankItem": {
             /** @description 成员昵称。 */
@@ -5006,6 +5162,31 @@ export interface components {
              * @description 积分排名。
              */
             rank: number;
+            /** @description 成员用户标识。 */
+            userId: components["schemas"]["EntityId"];
+        };
+        /** @description 小队积分变动记录项。 */
+        "Social.TeamPointRecordItem": {
+            /**
+             * Format: date-time
+             * @description 变动时间。
+             */
+            createdAt: string;
+            /** @description 成员昵称。 */
+            nickname: string;
+            /**
+             * Format: int32
+             * @description 积分变动值。
+             */
+            pointChange: number;
+            /** @description 变动原因。 */
+            reason: string;
+            /** @description 记录唯一标识。 */
+            recordId: components["schemas"]["EntityId"];
+            /** @description 关联实体 ID，如报名记录 ID。 */
+            referenceId?: components["schemas"]["EntityId"];
+            /** @description 变动来源。 */
+            source: components["schemas"]["Social.TeamPointChangeSource"];
             /** @description 成员用户标识。 */
             userId: components["schemas"]["EntityId"];
         };
@@ -7784,13 +7965,85 @@ export interface operations {
                          */
                         code: 200;
                         /** @description 响应数据。 */
-                        data: components["schemas"]["Ai.ImageClassificationResult"];
+                        data: components["schemas"]["Ai.ImageClassificationSubmitResponse"];
                         /**
                          * @description 平台响应消息，成功响应固定为 For Super Earth!。
                          * @enum {string}
                          */
                         message: "For Super Earth!";
-                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Ai.AiRateLimited"] | components["schemas"]["Errors.Ai.AiServiceUnavailable"] | components["schemas"]["Errors.Ai.AiOutputUnavailable"] | components["schemas"]["Errors.Ai.ImageMediaUnavailable"];
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Ai.AiRateLimited"] | components["schemas"]["Errors.Ai.AiServiceUnavailable"] | components["schemas"]["Errors.Ai.ImageMediaUnavailable"];
+                };
+            };
+        };
+    };
+    AiOperations_getClassifyTaskResult: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 图片分类任务 ID，由 POST /ai/image-classifications 返回。 */
+                taskId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["Ai.ImageClassificationTaskQueryResponse"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Ai.AiTaskNotFound"] | components["schemas"]["Errors.Ai.AiTaskTimeout"];
+                };
+            };
+        };
+    };
+    AiOperations_getClassificationByMediaId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 媒体文件 ID。 */
+                mediaId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["Ai.MediaClassificationResponse"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Ai.AiTaskNotFound"];
                 };
             };
         };
@@ -10906,6 +11159,110 @@ export interface operations {
             };
         };
     };
+    SocialOperations_adjustTeamMemberPoints: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: components["schemas"]["EntityId"];
+                userId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Social.ManualPointAdjustmentRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["EmptyData"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Social.TeamNotVisible"] | components["schemas"]["Errors.Social.TeamMemberNotFound"] | components["schemas"]["Errors.Social.TeamPermissionDenied"];
+                };
+            };
+        };
+    };
+    SocialOperations_getTeamMemberPointHistory: {
+        parameters: {
+            query?: {
+                /** @description 页码，从 1 开始。 */
+                page?: components["parameters"]["PageQuery.page"];
+                /** @description 每页数量。 */
+                pageSize?: components["parameters"]["PageQuery.pageSize"];
+            };
+            header?: never;
+            path: {
+                teamId: components["schemas"]["EntityId"];
+                userId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: {
+                            /** @description 当前页数据。 */
+                            items: components["schemas"]["Social.TeamPointRecordItem"][];
+                            /**
+                             * Format: int32
+                             * @description 当前页码。
+                             */
+                            page: number;
+                            /**
+                             * Format: int32
+                             * @description 每页数量。
+                             */
+                            pageSize: number;
+                            /**
+                             * Format: int64
+                             * @description 匹配总数。
+                             */
+                            total: number;
+                            /**
+                             * Format: int32
+                             * @description 匹配总页数。
+                             */
+                            totalPages: number;
+                        };
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Social.TeamNotVisible"] | components["schemas"]["Errors.Social.TeamMemberNotFound"];
+                };
+            };
+        };
+    };
     SocialOperations_getTeamPointRanks: {
         parameters: {
             query?: {
@@ -10965,6 +11322,67 @@ export interface operations {
                          */
                         message: "For Super Earth!";
                     } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Social.TeamNotVisible"] | components["schemas"]["Errors.Social.TeamMemberNotFound"];
+                };
+            };
+        };
+    };
+    SocialOperations_listMyTeams: {
+        parameters: {
+            query?: {
+                /** @description 页码，从 1 开始。 */
+                page?: components["parameters"]["PageQuery.page"];
+                /** @description 每页数量。 */
+                pageSize?: components["parameters"]["PageQuery.pageSize"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: {
+                            /** @description 当前页数据。 */
+                            items: components["schemas"]["Social.TeamProfile"][];
+                            /**
+                             * Format: int32
+                             * @description 当前页码。
+                             */
+                            page: number;
+                            /**
+                             * Format: int32
+                             * @description 每页数量。
+                             */
+                            pageSize: number;
+                            /**
+                             * Format: int64
+                             * @description 匹配总数。
+                             */
+                            total: number;
+                            /**
+                             * Format: int32
+                             * @description 匹配总页数。
+                             */
+                            totalPages: number;
+                        };
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"];
                 };
             };
         };

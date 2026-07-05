@@ -3,15 +3,22 @@
     <scroll-view class="scroll-area" scroll-y>
       <view class="profile-container">
         <!-- 用户卡片：未登录/已登录共用布局 -->
-        <view class="user-card" @click="onCardClick">
-          <view class="avatar-placeholder">
-            <text class="avatar-text">{{ initialChar }}</text>
+        <view class="user-card">
+          <view class="user-card-main" @tap="onCardClick">
+            <view class="avatar-placeholder">
+              <text class="avatar-text">{{ initialChar }}</text>
+            </view>
+            <view class="user-info">
+              <view class="user-name-row">
+                <text class="user-id">{{ displayName }}</text>
+              </view>
+              <text v-if="authStore.isLoggedIn" class="user-kind">{{
+                authStore.userKind === 'merchant' ? t('profile.merchant') : t('profile.personal')
+              }}</text>
+            </view>
           </view>
-          <view class="user-info">
-            <text class="user-id">{{ displayName }}</text>
-            <text v-if="authStore.isLoggedIn" class="user-kind">{{
-              authStore.userKind === 'merchant' ? t('profile.merchant') : t('profile.personal')
-            }}</text>
+          <view v-if="authStore.isLoggedIn" class="qr-btn" @tap="openMyQrCode">
+            <image class="qr-btn__icon" src="/static/icons/qr-code.png" mode="aspectFit" />
           </view>
         </view>
 
@@ -112,14 +119,14 @@ const menuSections: MenuSection[] = [
   {
     title: t('profile.sectionSocial'),
     items: [
-      { key: 'myFriends', label: t('profile.myFriends'), route: '/pages/profile/my-friends' },
+      { key: 'myFriends', label: t('profile.myFriends'), route: '/pages/social/friends' },
       {
         key: 'friendRequests',
         label: t('profile.friendRequests'),
-        route: '/pages/profile/friend-requests',
+        route: '/pages/social/friend-requests',
       },
-      { key: 'myTeams', label: t('profile.myTeams'), route: '/pages/profile/my-teams' },
-      { key: 'blacklist', label: t('profile.blacklist'), route: '/pages/profile/blacklist' },
+      { key: 'myTeams', label: t('profile.myTeams'), route: '/pages/teams/index' },
+      { key: 'blacklist', label: t('profile.blacklist'), route: '/pages/social/blacklist' },
     ],
   },
   {
@@ -138,6 +145,11 @@ const menuSections: MenuSection[] = [
  */
 function goToPage(route: string): void {
   uni.navigateTo({ url: route })
+}
+
+/** 打开添加好友页并直接展示「我的二维码」 */
+function openMyQrCode(): void {
+  uni.navigateTo({ url: '/pages/social/add-friend?showQr=1' })
 }
 
 const nickname = ref('')
@@ -241,6 +253,14 @@ async function handleLogout(): Promise<void> {
   border-radius: 12rpx;
   padding: 32rpx;
   margin-bottom: 24rpx;
+  gap: 16rpx;
+}
+
+.user-card-main {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
 }
 
 .avatar-placeholder {
@@ -252,6 +272,7 @@ async function handleLogout(): Promise<void> {
   align-items: center;
   justify-content: center;
   margin-right: 24rpx;
+  flex-shrink: 0;
 }
 
 .avatar-text {
@@ -262,13 +283,37 @@ async function handleLogout(): Promise<void> {
 
 .user-info {
   flex: 1;
+  min-width: 0;
+}
+
+.user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
 }
 
 .user-id {
-  display: block;
+  flex: 1;
+  min-width: 0;
   font-size: 32rpx;
   color: #323233;
   font-weight: 600;
+}
+
+.qr-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
+  background-color: #f2f3f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.qr-btn__icon {
+  width: 55rpx;
+  height: 55rpx;
 }
 
 .user-kind {

@@ -26,8 +26,15 @@
           <text class="status-tag" :class="'status-' + item.registrationStatus">{{
             registrationStatusText(item.registrationStatus)
           }}</text>
-          <view v-if="item.userId !== currentUserId" class="add-friend-btn" @tap="addFriend(item)">
-            <text class="add-friend-text">加好友</text>
+          <view
+            v-if="getActionState(item.userId) !== 'self'"
+            class="add-friend-btn"
+            :class="{
+              'add-friend-btn--muted': !canTapAction(item.userId),
+            }"
+            @tap="onFriendActionTap(item)"
+          >
+            <text class="add-friend-text">{{ getActionLabel(item.userId) }}</text>
           </view>
         </view>
       </view>
@@ -53,6 +60,14 @@ import { getParticipants } from '@/api/modules/activities'
 import { sendFriendRequest } from '@/api/modules/social'
 import { useAuthStore } from '@/stores/auth'
 import { getErrorMessage } from '@/utils/error'
+import {
+  fetchBulkSocialRelationContext,
+  resolveFriendListActionState,
+  friendListActionLabel,
+  canTapFriendListAction,
+  type BulkSocialRelationContext,
+  type FriendListActionState,
+} from '@/utils/social-relation'
 
 const { t } = useI18n()
 
@@ -70,13 +85,14 @@ interface ParticipantItem {
 }
 
 const authStore = useAuthStore()
-const currentUserId = authStore.userId || '10001'
+const currentUserId = authStore.userId ?? ''
 
 const items = ref<ParticipantItem[]>([])
 const currentPage = ref(1)
 const totalPages = ref(1)
 const noMore = ref(false)
 const PAGE_SIZE = 20
+const relationCtx = ref<BulkSocialRelationContext | null>(null)
 
 const statusTextMap: Record<string, string> = {
   registered: t('myRegistrations.statusRegistered'),
@@ -96,10 +112,35 @@ function registrationStatusText(status: string): string {
  * @param page 目标页码
  * @param reset 是否重置列表
  */
+/**
+ * 加载与参与者列表相关的好友/黑名单/申请关系索引
+ */
+async function loadRelationContext(): Promise<void> {
+  try {
+    relationCtx.value = await fetchBulkSocialRelationContext()
+  } catch {
+    relationCtx.value = null
+  }
+}
+
+function getActionState(userId: string): FriendListActionState {
+  if (!relationCtx.value) return userId === currentUserId ? 'self' : 'add'
+  return resolveFriendListActionState(relationCtx.value, userId, currentUserId)
+}
+
+function getActionLabel(userId: string): string {
+  return friendListActionLabel(getActionState(userId))
+}
+
+function canTapAction(userId: string): boolean {
+  return canTapFriendListAction(getActionState(userId))
+}
+
 async function loadData(page: number, reset = false): Promise<void> {
   if (reset) {
     noMore.value = false
     loading.value = true
+    await loadRelationContext()
   }
 
   try {
@@ -161,22 +202,41 @@ onLoad((query) => {
 /** 跳转到用户资料 */
 function goToProfile(item: ParticipantItem) {
   if (item.userId) {
-    uni.navigateTo({ url: `/pages/social/user-profile?id=${item.userId}` })
+    uni.navigateTo({
+      url: `/pages/social/user-profile?id=${item.userId}&source=activityParticipants`,
+    })
   }
 }
 
-/** 加好友 */
-async function addFriend(item: ParticipantItem) {
+/** 处理参与者行的加好友相关操作 */
+function onFriendActionTap(item: ParticipantItem) {
+  if (!item.userId || !canTapAction(item.userId)) return
+  const state = getActionState(item.userId)
+  if (state === 'pending_received') {
+    uni.navigateTo({ url: '/pages/social/friend-requests' })
+    return
+  }
+  sendFriendRequest_(item)
+}
+
+/** 发送好友申请并更新本地关系索引 */
+async function sendFriendRequest_(item: ParticipantItem) {
   if (!item.userId) return
+  if (!currentUserId) {
+    uni.navigateTo({ url: '/pages/login/index' })
+    return
+  }
   try {
     await sendFriendRequest(
       item.userId,
       '你好，我们一起参加了活动，加个好友吧！',
       'activityParticipants',
     )
+    relationCtx.value?.sentPendingIds.add(item.userId)
     uni.showToast({ title: '好友请求已发送', icon: 'success' })
-  } catch {
-    uni.showToast({ title: '发送失败', icon: 'none' })
+  } catch (error) {
+    const code = (error as { code?: number }).code ?? 0
+    uni.showToast({ title: getErrorMessage(code, '发送失败'), icon: 'none' })
   }
 }
 </script>
@@ -283,9 +343,17 @@ async function addFriend(item: ParticipantItem) {
   border-radius: 6rpx;
 }
 
+.add-friend-btn--muted {
+  background-color: #ebedf0;
+}
+
 .add-friend-text {
   font-size: 22rpx;
   color: #fff;
+}
+
+.add-friend-btn--muted .add-friend-text {
+  color: #969799;
 }
 
 .load-more {

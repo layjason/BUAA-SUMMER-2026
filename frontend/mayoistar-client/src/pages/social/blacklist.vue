@@ -28,13 +28,8 @@
             <text class="item-time">屏蔽于 {{ formatDate(item.blockedAt) }}</text>
           </view>
 
-          <view class="item-actions">
-            <view class="item-action" @tap="trySendFriendRequest(item)">
-              <text class="action-text action-text--muted">测试申请</text>
-            </view>
-            <view class="item-action" @tap="confirmUnblock(item)">
-              <text class="action-text">解除屏蔽</text>
-            </view>
+          <view class="item-action" @tap="confirmUnblock(item)">
+            <text class="action-text">解除屏蔽</text>
           </view>
         </view>
       </view>
@@ -53,8 +48,7 @@
 import { ref, onMounted } from 'vue'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
-import { getBlacklist, unblockUser, sendFriendRequest } from '@/api/modules/social'
-import { getErrorMessage } from '@/utils/error'
+import { getBlacklist, unblockUser } from '@/api/modules/social'
 import type { components } from '@/api/types/schema'
 
 type BlacklistItem = components['schemas']['Social.BlacklistItem']
@@ -79,26 +73,6 @@ async function loadData() {
     uni.showToast({ title: '加载失败', icon: 'none' })
   } finally {
     loading.value = false
-  }
-}
-
-/** 验收：黑名单用户不可再次发送好友申请 */
-async function trySendFriendRequest(item: BlacklistItem) {
-  try {
-    await sendFriendRequest(item.userId, '测试黑名单拦截')
-    uni.showModal({
-      title: '验收失败',
-      content: '黑名单用户仍能收到好友申请，请检查后端/mock。',
-      showCancel: false,
-    })
-  } catch (error) {
-    const code = (error as { code?: number }).code ?? 0
-    const message = getErrorMessage(code, (error as Error).message || '无法发送好友申请')
-    uni.showModal({
-      title: '黑名单生效',
-      content: `向「${item.nickname}」发送申请被拒绝：${message}`,
-      showCancel: false,
-    })
   }
 }
 
@@ -213,14 +187,6 @@ onMounted(() => {
   color: $color-text-sub;
 }
 
-.item-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: $spacing-xs;
-  flex-shrink: 0;
-}
-
 .item-action {
   flex-shrink: 0;
 }
@@ -229,11 +195,6 @@ onMounted(() => {
   font-size: $font-sm;
   color: $color-primary;
   font-weight: $weight-medium;
-
-  &--muted {
-    color: $color-text-muted;
-    font-size: $font-xs;
-  }
 }
 
 .bottom-padding {

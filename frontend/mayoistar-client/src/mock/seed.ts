@@ -22,6 +22,9 @@ import type {
   MockTeam,
   MockTeamMember,
   MockTeamJoinRequest,
+  MockTeamAnnouncement,
+  MockTeamPoll,
+  MockTeamMedia,
   MockInterestTag,
   MockTemplate,
 } from './types'
@@ -980,6 +983,22 @@ export function createSeedData(): MockDatabase {
       source: 'team',
       createdAt: iso(-30),
     },
+    {
+      userId: 10001,
+      friendId: 10009,
+      remark: '',
+      groupTags: [],
+      source: 'profile',
+      createdAt: iso(-20),
+    },
+    {
+      userId: 10009,
+      friendId: 10001,
+      remark: '',
+      groupTags: [],
+      source: 'profile',
+      createdAt: iso(-20),
+    },
   ]
 
   /* ---- 好友申请 ---- */
@@ -1059,6 +1078,14 @@ export function createSeedData(): MockDatabase {
       lastMessage: '',
       lastMessageAt: iso(-90),
     },
+    {
+      id: 6,
+      kind: 'team',
+      name: '满员测试小队',
+      participantIds: [10006, 10008],
+      lastMessage: '',
+      lastMessageAt: iso(-20),
+    },
   ]
 
   /* ---- 消息 ---- */
@@ -1131,6 +1158,7 @@ export function createSeedData(): MockDatabase {
       status: 'active',
       maxMembers: 50,
       memberCount: 3,
+      tags: ['户外', '徒步'],
       conversationId: 3,
       createdAt: iso(-60),
     },
@@ -1144,6 +1172,7 @@ export function createSeedData(): MockDatabase {
       status: 'active',
       maxMembers: 20,
       memberCount: 2,
+      tags: ['桌游', '社交'],
       conversationId: 4,
       createdAt: iso(-40),
     },
@@ -1157,8 +1186,36 @@ export function createSeedData(): MockDatabase {
       status: 'dissolved',
       maxMembers: 10,
       memberCount: 0,
+      tags: ['测试'],
       conversationId: 5,
       createdAt: iso(-90),
+    },
+    {
+      id: 4,
+      name: '满员测试小队',
+      description: '用于验收满员不可加入场景。',
+      coverUrl: `https://picsum.photos/seed/team4/400/200`,
+      leaderId: 10006,
+      joinMode: 'publicJoin',
+      status: 'active',
+      maxMembers: 2,
+      memberCount: 2,
+      tags: ['测试'],
+      conversationId: 6,
+      createdAt: iso(-20),
+    },
+    {
+      id: 5,
+      name: '停用演示小队',
+      description: '平台管理员已停用，仅可查看历史。',
+      coverUrl: `https://picsum.photos/seed/team5/400/200`,
+      leaderId: 10009,
+      joinMode: 'publicJoin',
+      status: 'disabled',
+      maxMembers: 30,
+      memberCount: 1,
+      tags: ['测试'],
+      createdAt: iso(-30),
     },
   ]
 
@@ -1169,6 +1226,7 @@ export function createSeedData(): MockDatabase {
       teamId: 1,
       userId: 10003,
       role: 'leader',
+      points: 120,
       joinedAt: iso(-60),
     },
     {
@@ -1176,6 +1234,7 @@ export function createSeedData(): MockDatabase {
       teamId: 1,
       userId: 10001,
       role: 'member',
+      points: 85,
       joinedAt: iso(-55),
     },
     {
@@ -1183,6 +1242,7 @@ export function createSeedData(): MockDatabase {
       teamId: 1,
       userId: 10009,
       role: 'member',
+      points: 60,
       joinedAt: iso(-40),
     },
     {
@@ -1190,14 +1250,40 @@ export function createSeedData(): MockDatabase {
       teamId: 2,
       userId: 10007,
       role: 'leader',
+      points: 95,
       joinedAt: iso(-40),
     },
     {
       id: 5,
       teamId: 2,
       userId: 10010,
-      role: 'member',
+      role: 'admin',
+      points: 70,
       joinedAt: iso(-35),
+    },
+    {
+      id: 6,
+      teamId: 4,
+      userId: 10006,
+      role: 'leader',
+      points: 10,
+      joinedAt: iso(-20),
+    },
+    {
+      id: 7,
+      teamId: 4,
+      userId: 10008,
+      role: 'member',
+      points: 5,
+      joinedAt: iso(-18),
+    },
+    {
+      id: 8,
+      teamId: 5,
+      userId: 10009,
+      role: 'leader',
+      points: 0,
+      joinedAt: iso(-30),
     },
   ]
 
@@ -1210,6 +1296,53 @@ export function createSeedData(): MockDatabase {
       status: 'pending',
       message: '我是桌游爱好者，想加入你们！',
       createdAt: iso(-2),
+    },
+  ]
+
+  const teamAnnouncements: MockTeamAnnouncement[] = [
+    {
+      id: 1,
+      teamId: 1,
+      content: '本周六集合点：奥林匹克森林公园南门，请准时到达。',
+      publisherId: 10003,
+      publishedAt: iso(-1),
+      readByUserIds: [10003],
+    },
+  ]
+
+  const teamPolls: MockTeamPoll[] = [
+    {
+      id: 1,
+      teamId: 2,
+      title: '下次聚会选周六还是周日？',
+      options: [
+        { id: 1, content: '周六', voteCount: 1 },
+        { id: 2, content: '周日', voteCount: 0 },
+      ],
+      deadline: iso(7),
+      createdAt: iso(-3),
+      votes: [{ userId: 10010, optionId: 1 }],
+    },
+  ]
+
+  const teamMedia: MockTeamMedia[] = [
+    {
+      id: 1,
+      teamId: 1,
+      mediaId: 'media_team_file_1',
+      kind: 'file',
+      fileName: '徒步路线.pdf',
+      uploadedBy: 10003,
+      uploadedAt: iso(-5),
+    },
+    {
+      id: 2,
+      teamId: 1,
+      mediaId: 'media_team_album_1',
+      kind: 'album',
+      fileName: 'album_1.jpg',
+      uploadedBy: 10001,
+      uploadedAt: iso(-4),
     },
   ]
 
@@ -1278,8 +1411,12 @@ export function createSeedData(): MockDatabase {
     teams,
     teamMembers,
     teamJoinRequests,
+    teamAnnouncements,
+    teamPolls,
+    teamMedia,
     interestTags,
     templates,
+    reports: [],
     nextId: {
       users: 10011,
       activities: 13,
@@ -1292,11 +1429,15 @@ export function createSeedData(): MockDatabase {
       friendRequests: 3,
       conversations: 6,
       messages: 7,
-      teams: 4,
-      teamMembers: 6,
+      teams: 6,
+      teamMembers: 9,
       teamJoinRequests: 2,
+      teamAnnouncements: 2,
+      teamPolls: 2,
+      teamMedia: 3,
       interestTags: 13,
       templates: 6,
+      reports: 1,
     },
   }
 }

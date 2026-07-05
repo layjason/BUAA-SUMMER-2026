@@ -85,7 +85,8 @@
 /**
  * 小队成员管理页
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import { getTeamMembers, updateMemberRole } from '@/api/modules/teams'
@@ -107,7 +108,7 @@ const currentUserId = ref(authStore.userId || '10001')
 
 const canManage = computed(() => {
   const me = members.value.find((m) => m.userId === currentUserId.value)
-  return me?.role === 'leader' || me?.role === 'admin'
+  return me?.role === 'leader'
 })
 
 function formatTime(isoTime: string): string {
@@ -136,7 +137,9 @@ async function loadMembers() {
 }
 
 function onMemberTap(member: TeamMember) {
-  uni.navigateTo({ url: `/pages/social/user-profile?id=${member.userId}` })
+  uni.navigateTo({
+    url: `/pages/social/user-profile?id=${member.userId}&source=team`,
+  })
 }
 
 function showMemberMenu(member: TeamMember) {
@@ -153,7 +156,7 @@ async function setRole(role: 'admin' | 'member') {
   if (!selectedMember.value) return
 
   try {
-    await updateMemberRole(teamId.value, selectedMember.value.userId, role)
+    await updateMemberRole(teamId.value, selectedMember.value.userId, role as 'admin' | 'member')
     uni.showToast({ title: '角色已更新', icon: 'success' })
     await loadMembers()
   } catch (error) {
@@ -162,13 +165,8 @@ async function setRole(role: 'admin' | 'member') {
   }
 }
 
-onMounted(() => {
-  const pages = getCurrentPages()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const currentPage = pages[pages.length - 1] as any
-  const options = currentPage.options || {}
-  teamId.value = options.teamId || ''
-
+onLoad((query) => {
+  teamId.value = query?.teamId || ''
   loadMembers()
 })
 </script>

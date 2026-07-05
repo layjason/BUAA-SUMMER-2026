@@ -18,11 +18,15 @@ import type {
   MockFriendRequest,
   MockFollow,
   MockBlacklist,
+  MockReport,
   MockConversation,
   MockMessage,
   MockTeam,
   MockTeamMember,
   MockTeamJoinRequest,
+  MockTeamAnnouncement,
+  MockTeamPoll,
+  MockTeamMedia,
   MockInterestTag,
   MockTemplate,
 } from './types'
@@ -43,11 +47,15 @@ export interface MockDatabase {
   friendRequests: MockFriendRequest[]
   follows: MockFollow[]
   blacklist: MockBlacklist[]
+  reports: MockReport[]
   conversations: MockConversation[]
   messages: MockMessage[]
   teams: MockTeam[]
   teamMembers: MockTeamMember[]
   teamJoinRequests: MockTeamJoinRequest[]
+  teamAnnouncements: MockTeamAnnouncement[]
+  teamPolls: MockTeamPoll[]
+  teamMedia: MockTeamMedia[]
   interestTags: MockInterestTag[]
   templates: MockTemplate[]
   /** 各实体的自增 ID 生成器 */
@@ -69,6 +77,7 @@ export function initMockDb(): MockDatabase {
       db = JSON.parse(raw as string) as MockDatabase
       // 基本完整性校验：确保关键数组存在
       if (db.users && db.activities && db.nextId) {
+        repairMockDbShape(db)
         repairConversationStore()
         persistMockDb()
         return db
@@ -133,6 +142,75 @@ export function nextId(entity: string): number {
   const id = db.nextId[entity]
   db.nextId[entity] = id + 1
   return id
+}
+
+/** 补齐持久化数据中可能缺失的数组字段，避免 workflow 运行时异常 */
+export function repairMockDbShape(database: MockDatabase): void {
+  const arrayKeys: (keyof MockDatabase)[] = [
+    'users',
+    'activities',
+    'drafts',
+    'registrations',
+    'waitlist',
+    'checkins',
+    'reviews',
+    'summaries',
+    'friends',
+    'friendRequests',
+    'follows',
+    'blacklist',
+    'reports',
+    'conversations',
+    'messages',
+    'teams',
+    'teamMembers',
+    'teamJoinRequests',
+    'teamAnnouncements',
+    'teamPolls',
+    'teamMedia',
+    'interestTags',
+    'templates',
+  ]
+  for (const key of arrayKeys) {
+    if (!Array.isArray(database[key])) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(database as any)[key] = []
+    }
+  }
+  if (!database.nextId || typeof database.nextId !== 'object') {
+    database.nextId = {}
+  }
+  repairAcceptedFriendships(database)
+}
+
+/** 将已接受但未落库的好友申请同步为双向好友关系 */
+function repairAcceptedFriendships(database: MockDatabase): void {
+  for (const req of database.friendRequests) {
+    if (req.status !== 'accepted') continue
+    const { fromUserId: a, toUserId: b, source, createdAt } = req
+    const hasAB = database.friends.some((f) => f.userId === a && f.friendId === b)
+    const hasBA = database.friends.some((f) => f.userId === b && f.friendId === a)
+    if (!hasAB) {
+      database.friends.push({
+        userId: a,
+        friendId: b,
+        remark: '',
+        groupTags: [],
+        source,
+        createdAt,
+      })
+    }
+    if (!hasBA) {
+      database.friends.push({
+        userId: b,
+        friendId: a,
+        remark: '',
+        groupTags: [],
+        source,
+        createdAt,
+      })
+    }
+  }
 }
 
 /** 好友会话参与者对唯一键 */

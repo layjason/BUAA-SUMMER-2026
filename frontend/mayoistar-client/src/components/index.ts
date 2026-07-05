@@ -4,5 +4,7 @@ export { default as FormError } from './FormError.vue'
 export { default as SubmitButton } from './SubmitButton.vue'
 export { default as CooldownButton } from './CooldownButton.vue'
 export { default as BottomActionBar } from './base/BottomActionBar.vue'
+export { default as AppNavbar } from './base/AppNavbar.vue'
+export { default as EmptyState } from './base/EmptyState.vue'
 
 export { useCooldown } from '@/composables/useCooldown'

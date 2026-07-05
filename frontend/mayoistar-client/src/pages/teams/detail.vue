@@ -52,7 +52,7 @@
             <view class="action-btn action-btn--primary" @tap="goToChat">
               <text class="action-btn-text">进入群聊</text>
             </view>
-            <view v-if="isLeader" class="action-btn action-btn--secondary" @tap="showManageMenu">
+            <view v-if="canManage" class="action-btn action-btn--secondary" @tap="showManageMenu">
               <text class="action-btn-text-secondary">管理小队</text>
             </view>
             <view v-else class="action-btn action-btn--danger" @tap="confirmLeave">
@@ -169,6 +169,8 @@ import {
   leaveTeam,
   dissolveTeam,
 } from '@/api/modules/teams'
+import { BusinessError } from '@/api'
+import { getTeamErrorMessage } from '@/utils/team-error-message'
 import { useAuthStore } from '@/stores/auth'
 import type { components } from '@/api/types/schema'
 
@@ -188,6 +190,8 @@ const currentUserId = ref(authStore.userId || '10001')
 
 const isMember = computed(() => members.value.some((m) => m.userId === currentUserId.value))
 const isLeader = computed(() => team.value?.leaderId === currentUserId.value)
+const myRole = computed(() => members.value.find((m) => m.userId === currentUserId.value)?.role)
+const canManage = computed(() => myRole.value === 'leader' || myRole.value === 'admin')
 
 /** 加载小队详情 */
 async function loadTeam() {
@@ -217,12 +221,18 @@ async function loadTeam() {
 /** 加入小队 */
 async function joinTeam_() {
   try {
-    await joinTeam(teamId.value)
-    uni.showToast({ title: '申请已发送', icon: 'success' })
+    const result = await joinTeam(teamId.value)
+    const status = (result as { status?: string }).status
+    uni.showToast({
+      title: status === 'accepted' ? '加入成功' : '申请已发送',
+      icon: 'success',
+    })
     await loadTeam()
   } catch (error) {
     console.error('Failed to join team:', error)
-    uni.showToast({ title: '加入失败', icon: 'none' })
+    const message =
+      error instanceof BusinessError ? getTeamErrorMessage(error.code, error.message) : '加入失败'
+    uni.showToast({ title: message, icon: 'none' })
   }
 }
 
@@ -270,7 +280,7 @@ function confirmDissolve() {
 function goToChat() {
   if (!team.value) return
   uni.navigateTo({
-    url: `/pages/messages/chat?conversationId=${team.value.chatId}&kind=team`,
+    url: `/pages/messages/chat?conversationId=${team.value.chatId}&kind=team&teamId=${teamId.value}`,
   })
 }
 
@@ -289,12 +299,12 @@ function goToMembers() {
 
 function goToJoinRequests() {
   closeManageMenu()
-  uni.showToast({ title: '入队申请功能开发中', icon: 'none' })
+  uni.navigateTo({ url: `/pages/teams/join-requests?teamId=${teamId.value}` })
 }
 
 function goToPoints() {
   closeManageMenu()
-  uni.showToast({ title: '积分榜功能开发中', icon: 'none' })
+  uni.navigateTo({ url: `/pages/teams/points?teamId=${teamId.value}` })
 }
 
 onHide(() => {

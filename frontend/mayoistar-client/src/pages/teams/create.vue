@@ -4,6 +4,13 @@
 
     <scroll-view class="scroll-area" scroll-y>
       <view class="form">
+        <view class="avatar-section" @tap="pickAvatar">
+          <image v-if="avatarPreview" :src="avatarPreview" class="avatar-image" mode="aspectFill" />
+          <view v-else class="avatar-placeholder">
+            <text class="avatar-placeholder-text">上传小队头像</text>
+          </view>
+        </view>
+
         <!-- Team Name -->
         <view class="form-group">
           <text class="form-label">小队名称 *</text>
@@ -104,6 +111,7 @@
  */
 import { ref, computed, reactive } from 'vue'
 import AppNavbar from '@/components/base/AppNavbar.vue'
+import { api } from '@/api'
 import { createTeam } from '@/api/modules/teams'
 import type { components } from '@/api/types/schema'
 
@@ -111,6 +119,8 @@ type TeamCreateRequest = components['schemas']['Social.TeamCreateRequest']
 
 const tagInput = ref('')
 const submitting = ref(false)
+const avatarPreview = ref('')
+const avatarMediaId = ref('')
 
 const form = reactive({
   name: '',
@@ -142,6 +152,32 @@ function removeTag(idx: number) {
   form.tags.splice(idx, 1)
 }
 
+async function pickAvatar() {
+  try {
+    const res = await uni.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+    })
+    const tempPath = res.tempFilePaths[0]
+    if (!tempPath) return
+
+    avatarPreview.value = tempPath
+    try {
+      const result = (await api.upload('/identity/media/avatar', tempPath)) as {
+        mediaId: string
+        signedUrl: string
+      }
+      avatarMediaId.value = result.mediaId
+      avatarPreview.value = result.signedUrl
+    } catch {
+      uni.showToast({ title: '头像上传失败', icon: 'none' })
+    }
+  } catch {
+    /* 用户取消 */
+  }
+}
+
 async function submit() {
   if (!canSubmit.value) return
 
@@ -153,11 +189,26 @@ async function submit() {
       capacity: form.capacity,
       joinMode: form.joinMode,
       tags: form.tags,
+      avatarMediaId: avatarMediaId.value || undefined,
     }
 
-    await createTeam(data)
-    uni.showToast({ title: '创建成功', icon: 'success' })
-    setTimeout(() => uni.navigateBack(), 1000)
+    const team = await createTeam(data)
+    const created = team as { teamId: string; chatId?: string }
+    uni.showModal({
+      title: '创建成功',
+      content: '小队已创建，是否立即进入群聊？',
+      confirmText: '进入群聊',
+      cancelText: '查看详情',
+      success: (res) => {
+        if (res.confirm && created.chatId) {
+          uni.redirectTo({
+            url: `/pages/messages/chat?conversationId=${created.chatId}&kind=team&teamId=${created.teamId}`,
+          })
+        } else {
+          uni.redirectTo({ url: `/pages/teams/detail?teamId=${created.teamId}` })
+        }
+      },
+    })
   } catch (error) {
     console.error('Failed to create team:', error)
     uni.showToast({ title: '创建失败', icon: 'none' })
@@ -186,6 +237,31 @@ async function submit() {
 
 .form {
   padding: $spacing-lg;
+}
+
+.avatar-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: $spacing-xl;
+}
+
+.avatar-image,
+.avatar-placeholder {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: $radius-xl;
+}
+
+.avatar-placeholder {
+  background: $color-primary-light;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-placeholder-text {
+  font-size: $font-sm;
+  color: $color-primary-dark;
 }
 
 .form-group {

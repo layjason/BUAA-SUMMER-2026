@@ -103,6 +103,14 @@
       }
     },
     {
+      "path": "pages/social/scan-qr",
+      "style": {
+        "navigationBarTitleText": "扫码加好友",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
       "path": "pages/social/user-profile",
       "style": {
         "navigationBarTitleText": "用户主页",
@@ -143,6 +151,14 @@
       }
     },
     {
+      "path": "pages/messages/location-map",
+      "style": {
+        "navigationBarTitleText": "位置",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
       "path": "pages/teams/index",
       "style": {
         "navigationBarTitleText": "小队",
@@ -178,6 +194,62 @@
       "path": "pages/teams/members",
       "style": {
         "navigationBarTitleText": "小队成员",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/join-requests",
+      "style": {
+        "navigationBarTitleText": "入队申请",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/points",
+      "style": {
+        "navigationBarTitleText": "积分榜",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/announcements",
+      "style": {
+        "navigationBarTitleText": "群公告",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/polls",
+      "style": {
+        "navigationBarTitleText": "群投票",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/files",
+      "style": {
+        "navigationBarTitleText": "群文件",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/album",
+      "style": {
+        "navigationBarTitleText": "小队相册",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/activities",
+      "style": {
+        "navigationBarTitleText": "队内活动",
         "navigationStyle": "custom",
         "disableScroll": true
       }

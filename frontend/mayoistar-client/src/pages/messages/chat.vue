@@ -1,6 +1,12 @@
 <template>
   <view class="page">
-    <AppNavbar :title="chatTitle" />
+    <AppNavbar :title="chatTitle">
+      <template v-if="conversationKind === 'team'" #right>
+        <view class="nav-info-btn" @tap="openTeamPanel">
+          <text class="nav-info-icon">ℹ️</text>
+        </view>
+      </template>
+    </AppNavbar>
 
     <!-- Message List -->
     <scroll-view
@@ -41,8 +47,18 @@
               {{ getSenderName(msg.senderId) }}
             </text>
 
+            <!-- Location card (WeChat-style, white card without text bubble) -->
+            <view
+              v-if="!msg.recalled && msg.kind === 'location' && msg.location"
+              class="message-location"
+              @longpress="onMessageLongPress(msg)"
+            >
+              <LocationMessageCard :location="msg.location" />
+            </view>
+
             <!-- Message bubble -->
             <view
+              v-else
               class="message-bubble"
               :class="{
                 'message-bubble--mine': isMyMessage(msg) && !msg.recalled,
@@ -51,7 +67,13 @@
               @longpress="onMessageLongPress(msg)"
             >
               <text v-if="msg.recalled" class="recalled-text">消息已撤回</text>
-              <text v-else-if="msg.kind === 'text'" class="message-text">{{ msg.text }}</text>
+              <view v-else-if="msg.kind === 'text'" class="message-text-block">
+                <text v-if="msg.mentionAll" class="mention-tag">@所有人</text>
+                <text v-for="uid in msg.mentionedUserIds || []" :key="uid" class="mention-tag">
+                  @{{ getSenderName(uid) }}
+                </text>
+                <text class="message-text">{{ msg.text }}</text>
+              </view>
               <image
                 v-else-if="msg.kind === 'image' && getImageUrl(msg)"
                 :src="getImageUrl(msg)"
@@ -59,9 +81,7 @@
                 mode="widthFix"
               />
               <text v-else-if="msg.kind === 'image'" class="message-text">[图片]</text>
-              <text v-else-if="msg.kind === 'location'" class="message-text">
-                📍 {{ msg.location?.placeName || '位置分享' }}
-              </text>
+              <text v-else-if="msg.kind === 'location'" class="message-text">[位置]</text>
             </view>
 
             <!-- Time + read status (接收方视角，对齐 OpenAPI readStatus) -->
@@ -107,7 +127,7 @@
           </view>
           <text class="attachment-label">照片</text>
         </view>
-        <view class="attachment-item" @tap="onLocationPlaceholder">
+        <view class="attachment-item" @tap="sendLocationMessage">
           <view class="attachment-icon attachment-icon--location">
             <text class="attachment-emoji">📍</text>
           </view>
@@ -116,9 +136,31 @@
       </view>
     </view>
 
+    <view v-if="conversationKind === 'team' && !teamWritable" class="readonly-hint">
+      <text class="readonly-hint-text">小队已解散或停用，仅可查看历史消息</text>
+    </view>
+
     <!-- Input Bar -->
+    <view v-if="conversationKind === 'team' && pendingMentionLabels.length > 0" class="mention-bar">
+      <text
+        v-for="label in pendingMentionLabels"
+        :key="label"
+        class="mention-bar-chip"
+        @tap="clearPendingMentions"
+      >
+        {{ label }} ×
+      </text>
+    </view>
+
     <view class="input-bar">
       <view class="input-row">
+        <view
+          v-if="conversationKind === 'team' && teamWritable"
+          class="mention-toggle"
+          @tap="openMentionPicker"
+        >
+          <text class="mention-toggle-icon">@</text>
+        </view>
         <view
           class="attach-toggle"
           :class="{ 'attach-toggle--active': showAttachmentPanel }"
@@ -146,6 +188,46 @@
         </view>
       </view>
     </view>
+
+    <TeamChatPanel
+      v-if="conversationKind === 'team'"
+      ref="teamPanelRef"
+      :team-id="teamId"
+      :team="teamProfile"
+      :my-role="myTeamRole"
+      :pending-request-count="pendingJoinCount"
+    />
+
+    <ForwardTargetPicker
+      v-if="forwardPickerVisible"
+      :exclude-conversation-id="conversationId"
+      @close="closeForwardPicker"
+      @confirm="confirmForward"
+    />
+
+    <uni-popup ref="mentionPopup" type="bottom" :safe-area="true" @mask-click="closeMentionPicker">
+      <view class="mention-sheet">
+        <view class="mention-sheet__header">
+          <text class="mention-sheet__title">提醒成员</text>
+          <text class="mention-sheet__close" @tap="closeMentionPicker">×</text>
+        </view>
+        <scroll-view class="mention-sheet__list" scroll-y>
+          <view v-if="canMentionAll" class="mention-sheet__item" @tap="selectMentionAll">
+            <text class="mention-sheet__name">@所有人</text>
+            <text class="mention-sheet__role">队长/管理员</text>
+          </view>
+          <view
+            v-for="member in mentionableMembers"
+            :key="member.userId"
+            class="mention-sheet__item"
+            @tap="selectMentionMember(member)"
+          >
+            <text class="mention-sheet__name">{{ member.nickname }}</text>
+            <text class="mention-sheet__role">{{ member.roleLabel }}</text>
+          </view>
+        </scroll-view>
+      </view>
+    </uni-popup>
   </view>
 </template>
 
@@ -156,8 +238,20 @@
  * 支持单聊和群聊消息收发
  */
 import { ref, computed, onMounted, nextTick } from 'vue'
+import { pickChatLocation } from '@/services/chat-send'
 import { onShow } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
+import ForwardTargetPicker from '@/components/social/ForwardTargetPicker.vue'
+import LocationMessageCard from '@/components/social/LocationMessageCard.vue'
+import TeamChatPanel from '@/components/social/TeamChatPanel.vue'
+import {
+  getTeamDetail,
+  getTeamMembers,
+  getTeamJoinRequests,
+  listMyTeams,
+  searchTeams,
+} from '@/api/modules/teams'
+import { extractPageItems } from '@/utils/page-result'
 import {
   getMessages,
   sendMessage,
@@ -179,10 +273,27 @@ type MessageCreatedPayload = components['schemas']['Chat.MessageCreatedPayload']
 type MessageRecalledPayload = components['schemas']['Chat.MessageRecalledPayload']
 type MessageForwardedPayload = components['schemas']['Chat.MessageForwardedPayload']
 type MessagePeerReadPayload = components['schemas']['Chat.MessagePeerReadPayload']
+type TeamProfile = components['schemas']['Social.TeamProfile']
+type TeamMemberRole = components['schemas']['Social.TeamMemberRole']
+type TeamJoinRequest = components['schemas']['Social.TeamJoinRequest']
+type TeamMember = components['schemas']['Social.TeamMember']
+type SendMessageRequest = components['schemas']['Chat.SendMessageRequest']
+
+interface MentionableMember {
+  userId: string
+  nickname: string
+  roleLabel: string
+}
 
 const chatTitle = ref('聊天')
 const conversationId = ref('')
+const teamId = ref('')
 const conversationKind = ref<'friend' | 'team'>('friend')
+const teamProfile = ref<TeamProfile | null>(null)
+const myTeamRole = ref<TeamMemberRole | null>(null)
+const pendingJoinCount = ref(0)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const teamPanelRef = ref<any>(null)
 const currentUserId = ref('')
 const loading = ref(false)
 const sending = ref(false)
@@ -191,8 +302,37 @@ const inputText = ref('')
 const scrollTarget = ref('')
 const memberNames = ref<Map<string, string>>(new Map())
 const showAttachmentPanel = ref(false)
+const forwardPickerVisible = ref(false)
+const forwardingMessage = ref<ChatMessage | null>(null)
+const teamMembers = ref<MentionableMember[]>([])
+const pendingMentionUserIds = ref<string[]>([])
+const pendingMentionAll = ref(false)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mentionPopup = ref<any>(null)
 
-const canSend = computed(() => inputText.value.trim().length > 0 && !sending.value)
+const canMentionAll = computed(() => myTeamRole.value === 'leader' || myTeamRole.value === 'admin')
+
+const mentionableMembers = computed(() =>
+  teamMembers.value.filter((m) => m.userId !== currentUserId.value),
+)
+
+const pendingMentionLabels = computed(() => {
+  const labels: string[] = []
+  if (pendingMentionAll.value) labels.push('@所有人')
+  for (const uid of pendingMentionUserIds.value) {
+    const member = teamMembers.value.find((m) => m.userId === uid)
+    labels.push(`@${member?.nickname ?? '成员'}`)
+  }
+  return labels
+})
+
+const teamWritable = computed(
+  () => teamProfile.value?.status === 'active' || conversationKind.value !== 'team',
+)
+
+const canSend = computed(
+  () => inputText.value.trim().length > 0 && !sending.value && teamWritable.value,
+)
 
 /** 判断是否为自己的消息 */
 function isMyMessage(msg: ChatMessage): boolean {
@@ -270,6 +410,43 @@ async function loadMessages() {
   }
 }
 
+/** 加载小队上下文（资料、角色、待审申请数） */
+async function loadTeamContext() {
+  if (!teamId.value) return
+  try {
+    const [teamResult, membersResult, requestsResult] = await Promise.all([
+      getTeamDetail(teamId.value),
+      getTeamMembers(teamId.value, 1, 100),
+      getTeamJoinRequests(teamId.value).catch(() => null),
+    ])
+    teamProfile.value = teamResult as TeamProfile
+    if (teamProfile.value.name) {
+      chatTitle.value = teamProfile.value.name
+    }
+    const memberItems = extractPageItems<TeamMember>(membersResult)
+    myTeamRole.value = memberItems.find((m) => m.userId === currentUserId.value)?.role ?? null
+    teamMembers.value = memberItems.map((m) => ({
+      userId: m.userId,
+      nickname: m.nickname,
+      roleLabel: teamRoleLabel(m.role),
+    }))
+    for (const member of memberItems) {
+      memberNames.value.set(member.userId, member.nickname)
+    }
+    if (requestsResult) {
+      const requests = extractPageItems<TeamJoinRequest>(requestsResult)
+      pendingJoinCount.value = requests.filter((r) => r.status === 'pending').length
+    }
+  } catch (error) {
+    console.error('Failed to load team context:', error)
+  }
+}
+
+/** 打开小队信息弹窗 */
+function openTeamPanel() {
+  teamPanelRef.value?.open()
+}
+
 /** 加载成员名称 */
 async function loadMemberNames() {
   const senderIds = new Set(messages.value.map((m) => m.senderId))
@@ -285,21 +462,63 @@ async function loadMemberNames() {
   }
 }
 
-/** 发送文本消息 */
+/** 小队角色展示文案 */
+function teamRoleLabel(role: TeamMemberRole): string {
+  const map: Record<TeamMemberRole, string> = {
+    leader: '队长',
+    admin: '管理员',
+    member: '成员',
+  }
+  return map[role] ?? role
+}
+
+function openMentionPicker() {
+  mentionPopup.value?.open()
+}
+
+function closeMentionPicker() {
+  mentionPopup.value?.close()
+}
+
+function selectMentionAll() {
+  pendingMentionAll.value = true
+  closeMentionPicker()
+}
+
+function selectMentionMember(member: MentionableMember) {
+  if (!pendingMentionUserIds.value.includes(member.userId)) {
+    pendingMentionUserIds.value = [...pendingMentionUserIds.value, member.userId]
+  }
+  closeMentionPicker()
+}
+
+function clearPendingMentions() {
+  pendingMentionAll.value = false
+  pendingMentionUserIds.value = []
+}
+
+/** 发送文本消息（支持小队 @ 提醒） */
 async function sendTextMessage() {
   const text = inputText.value.trim()
   if (!text || !canSend.value) return
 
   sending.value = true
   try {
-    const result = await sendMessage(conversationId.value, text)
+    const payload: SendMessageRequest = { kind: 'text', text }
+    if (conversationKind.value === 'team') {
+      if (pendingMentionAll.value) payload.mentionAll = true
+      if (pendingMentionUserIds.value.length > 0) {
+        payload.mentionedUserIds = [...pendingMentionUserIds.value]
+      }
+    }
+
+    const result = await sendMessage(conversationId.value, payload)
     const newMsg = result as ChatMessage
 
-    // 添加到消息列表
     messages.value.push(newMsg)
     inputText.value = ''
+    clearPendingMentions()
 
-    // 滚动到底部
     await scrollToBottom()
   } catch (error) {
     console.error('Failed to send message:', error)
@@ -346,11 +565,10 @@ function onMessageLongPress(msg: ChatMessage) {
 /** 撤回消息 */
 async function handleRecall(msg: ChatMessage) {
   try {
-    await recallMessage(msg.messageId)
-    // 更新本地状态
+    const recalled = (await recallMessage(msg.messageId)) as ChatMessage
     const idx = messages.value.findIndex((m) => m.messageId === msg.messageId)
     if (idx >= 0) {
-      messages.value[idx] = { ...messages.value[idx], recalled: true }
+      messages.value[idx] = { ...messages.value[idx], ...recalled, recalled: true }
     }
     uni.showToast({ title: '消息已撤回', icon: 'success' })
   } catch {
@@ -358,38 +576,29 @@ async function handleRecall(msg: ChatMessage) {
   }
 }
 
-/** 转发消息 */
-async function handleForward(msg: ChatMessage) {
+/** 打开多选转发弹层 */
+function handleForward(msg: ChatMessage) {
+  forwardingMessage.value = msg
+  forwardPickerVisible.value = true
+}
+
+function closeForwardPicker() {
+  forwardPickerVisible.value = false
+  forwardingMessage.value = null
+}
+
+/** 确认转发到多个目标会话 */
+async function confirmForward(targetIds: string[]) {
+  if (!forwardingMessage.value || targetIds.length === 0) return
   try {
-    const result = await getConversations()
-    type ConversationSummary = components['schemas']['Chat.ConversationSummary']
-    const conversations: ConversationSummary[] = Array.isArray(result)
-      ? result
-      : (((result as Record<string, unknown>).items as ConversationSummary[]) ?? [])
-
-    // 过滤掉当前会话
-    const others = conversations.filter((c) => c.conversationId !== conversationId.value)
-    if (others.length === 0) {
-      uni.showToast({ title: '没有其他会话可转发', icon: 'none' })
-      return
-    }
-
-    // 用 ActionSheet 选择目标会话
-    const names = others.map((c) => c.title || '未命名会话')
-    uni.showActionSheet({
-      itemList: names,
-      success: async (res) => {
-        const target = others[res.tapIndex]
-        try {
-          await forwardMessage(msg.messageId, target.conversationId)
-          uni.showToast({ title: '转发成功', icon: 'success' })
-        } catch {
-          uni.showToast({ title: '转发失败', icon: 'none' })
-        }
-      },
+    await forwardMessage(forwardingMessage.value.messageId, targetIds)
+    uni.showToast({
+      title: targetIds.length > 1 ? `已转发到 ${targetIds.length} 个会话` : '转发成功',
+      icon: 'success',
     })
+    closeForwardPicker()
   } catch {
-    uni.showToast({ title: '加载会话失败', icon: 'none' })
+    uni.showToast({ title: '转发失败', icon: 'none' })
   }
 }
 
@@ -445,8 +654,25 @@ function onInputFocus() {
   showAttachmentPanel.value = false
 }
 
-function onLocationPlaceholder() {
-  uni.showToast({ title: '位置分享功能开发中', icon: 'none' })
+/** 选取并发送位置消息 */
+async function sendLocationMessage() {
+  if (!conversationId.value || sending.value || !teamWritable.value) return
+
+  uni.showLoading({ title: '获取位置...' })
+  const location = await pickChatLocation()
+  uni.hideLoading()
+
+  sending.value = true
+  try {
+    const result = await sendMessage(conversationId.value, { kind: 'location', location })
+    messages.value.push(result as ChatMessage)
+    showAttachmentPanel.value = false
+    await scrollToBottom()
+  } catch {
+    uni.showToast({ title: '位置发送失败', icon: 'none' })
+  } finally {
+    sending.value = false
+  }
 }
 
 async function pickAndSendImage() {
@@ -490,6 +716,7 @@ onMounted(async () => {
   currentUserId.value = authStore.userId || '10001'
 
   conversationKind.value = options.kind === 'team' ? 'team' : 'friend'
+  teamId.value = options.teamId || ''
 
   if (options.conversationId) {
     // 直接通过 conversationId 进入
@@ -528,6 +755,23 @@ onMounted(async () => {
     chatTitle.value = conversationKind.value === 'team' ? '小队群聊' : '好友聊天'
   }
 
+  if (conversationKind.value === 'team') {
+    if (!teamId.value && conversationId.value) {
+      const mine = extractPageItems<TeamProfile>(await listMyTeams(1, 100))
+      const matched = mine.find((t) => t.chatId === conversationId.value)
+      if (matched) {
+        teamId.value = matched.teamId
+      } else {
+        const discovered = extractPageItems<TeamProfile>(
+          await searchTeams({ page: 1, pageSize: 100 }),
+        )
+        const found = discovered.find((t) => t.chatId === conversationId.value)
+        if (found) teamId.value = found.teamId
+      }
+    }
+    await loadTeamContext()
+  }
+
   // 加载消息
   await loadMessages()
 
@@ -539,12 +783,29 @@ onShow(() => {
   if (conversationId.value) {
     loadMessages()
     connectChatRealtime()
+    if (conversationKind.value === 'team' && teamId.value) {
+      loadTeamContext()
+    }
   }
 })
 </script>
 
 <style lang="scss" scoped>
 @import '@/styles/theme.scss';
+
+.nav-info-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-full;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.nav-info-icon {
+  font-size: 18px;
+}
 
 .page {
   background-color: $color-bg;
@@ -670,11 +931,30 @@ onShow(() => {
   }
 }
 
+.message-text-block {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: baseline;
+}
+
 .message-text {
   font-size: $font-base;
   line-height: 1.5;
   word-break: break-word;
   overflow-wrap: anywhere;
+}
+
+.mention-tag {
+  font-size: $font-xs;
+  color: $color-primary;
+  font-weight: $weight-semibold;
+  margin-right: 2px;
+}
+
+.message-bubble--mine .mention-tag {
+  color: #ffffff;
+  opacity: 0.95;
 }
 
 .recalled-text {
@@ -686,6 +966,10 @@ onShow(() => {
 .message-image {
   max-width: 200px;
   border-radius: $radius-md;
+}
+
+.message-location {
+  max-width: 100%;
 }
 
 .message-meta {
@@ -768,6 +1052,90 @@ onShow(() => {
   color: $color-text-sub;
 }
 
+.mention-bar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-md 0;
+  background: #ffffff;
+}
+
+.mention-bar-chip {
+  font-size: $font-xs;
+  color: $color-primary;
+  background: $color-primary-light;
+  padding: 2px $spacing-sm;
+  border-radius: $radius-full;
+}
+
+.mention-toggle {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: $radius-full;
+  background: #f0f2f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mention-toggle-icon {
+  font-size: $font-base;
+  font-weight: $weight-bold;
+  color: $color-primary;
+}
+
+.mention-sheet {
+  background: #ffffff;
+  border-radius: $radius-xl $radius-xl 0 0;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-lg $spacing-xl;
+    border-bottom: 1px solid $color-border-light;
+  }
+
+  &__title {
+    font-size: $font-lg;
+    font-weight: $weight-semibold;
+    color: $color-text;
+  }
+
+  &__close {
+    font-size: 24px;
+    color: $color-text-muted;
+  }
+
+  &__list {
+    max-height: 50vh;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-md $spacing-xl;
+    border-bottom: 1px solid $color-border-light;
+  }
+
+  &__name {
+    font-size: $font-base;
+    color: $color-text;
+    font-weight: $weight-medium;
+  }
+
+  &__role {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+}
+
 .input-row {
   display: flex;
   align-items: center;
@@ -797,6 +1165,18 @@ onShow(() => {
 
 .scroll-bottom {
   height: 1px;
+}
+
+.readonly-hint {
+  flex-shrink: 0;
+  background: rgba(242, 156, 163, 0.12);
+  padding: $spacing-sm $spacing-md;
+  text-align: center;
+}
+
+.readonly-hint-text {
+  font-size: $font-sm;
+  color: $color-danger;
 }
 
 .input-bar {

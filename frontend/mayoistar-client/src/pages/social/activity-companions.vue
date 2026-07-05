@@ -36,8 +36,12 @@
             >
           </view>
 
-          <view class="item-action" @tap.stop="sendFriendRequest_(item)">
-            <text class="action-text">加好友</text>
+          <view
+            class="item-action"
+            :class="{ 'item-action--muted': !canTapAction(item.userId) }"
+            @tap.stop="onAddFriendTap(item)"
+          >
+            <text class="action-text">{{ actionLabel(item.userId) }}</text>
           </view>
         </view>
       </view>
@@ -57,18 +61,37 @@ import { ref, onMounted } from 'vue'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import { sendFriendRequest } from '@/api/modules/social'
+import { resolveApiError } from '@/utils/error'
 import { useAuthStore } from '@/stores/auth'
 import { fetchActivityCompanions, type ActivityCompanionItem } from '@/utils/activity-companions'
+import {
+  fetchBulkSocialRelationContext,
+  resolveFriendListActionState,
+  friendListActionLabel,
+  canTapFriendListAction,
+  type BulkSocialRelationContext,
+} from '@/utils/social-relation'
 
 const loading = ref(false)
 const companions = ref<ActivityCompanionItem[]>([])
+const relationCtx = ref<BulkSocialRelationContext | null>(null)
+
+const authStore = useAuthStore()
+const currentUserId = authStore.userId ?? ''
 
 async function loadData() {
+  if (!currentUserId) {
+    uni.navigateTo({ url: '/pages/login/index' })
+    return
+  }
   loading.value = true
-  const authStore = useAuthStore()
-  const currentUserId = authStore.userId || '10001'
   try {
-    companions.value = await fetchActivityCompanions(currentUserId)
+    const [list, ctx] = await Promise.all([
+      fetchActivityCompanions(currentUserId),
+      fetchBulkSocialRelationContext(),
+    ])
+    companions.value = list
+    relationCtx.value = ctx
   } catch {
     uni.showToast({ title: '加载失败', icon: 'none' })
   } finally {
@@ -77,7 +100,35 @@ async function loadData() {
 }
 
 function goToProfile(userId: string) {
-  uni.navigateTo({ url: `/pages/social/user-profile?id=${userId}` })
+  uni.navigateTo({
+    url: `/pages/social/user-profile?id=${userId}&source=activityParticipants`,
+  })
+}
+
+function actionLabel(userId: string): string {
+  if (!relationCtx.value) return '加好友'
+  const state = resolveFriendListActionState(relationCtx.value, userId, currentUserId)
+  return friendListActionLabel(state)
+}
+
+function canTapAction(userId: string): boolean {
+  if (!relationCtx.value) return true
+  const state = resolveFriendListActionState(relationCtx.value, userId, currentUserId)
+  return canTapFriendListAction(state)
+}
+
+function onAddFriendTap(item: ActivityCompanionItem) {
+  if (!canTapAction(item.userId)) return
+  if (!relationCtx.value) {
+    sendFriendRequest_(item)
+    return
+  }
+  const state = resolveFriendListActionState(relationCtx.value, item.userId, currentUserId)
+  if (state === 'pending_received') {
+    uni.navigateTo({ url: '/pages/social/friend-requests' })
+    return
+  }
+  sendFriendRequest_(item)
 }
 
 async function sendFriendRequest_(item: ActivityCompanionItem) {
@@ -87,9 +138,10 @@ async function sendFriendRequest_(item: ActivityCompanionItem) {
       '你好，我们一起参加过活动，加个好友吧！',
       'activityParticipants',
     )
+    relationCtx.value?.sentPendingIds.add(item.userId)
     uni.showToast({ title: '申请已发送', icon: 'success' })
-  } catch {
-    uni.showToast({ title: '发送失败', icon: 'none' })
+  } catch (error) {
+    uni.showToast({ title: resolveApiError(error, '发送失败'), icon: 'none' })
   }
 }
 
@@ -192,6 +244,14 @@ onMounted(() => {
   background: $color-primary;
   border-radius: $radius-full;
   flex-shrink: 0;
+
+  &--muted {
+    background: rgba(0, 0, 0, 0.08);
+
+    .action-text {
+      color: $color-text-sub;
+    }
+  }
 }
 
 .action-text {

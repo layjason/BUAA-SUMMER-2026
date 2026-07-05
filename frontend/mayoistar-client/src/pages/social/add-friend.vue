@@ -79,6 +79,24 @@
 
       <view class="bottom-safe"></view>
     </scroll-view>
+
+    <!-- 我的二维码 -->
+    <uni-popup ref="qrPopup" type="center" :mask-click="true" @mask-click="closeQrPopup">
+      <view class="qr-modal">
+        <text class="qr-modal__title">我的二维码</text>
+        <text class="qr-modal__hint">让好友扫一扫添加你</text>
+        <view v-if="qrLoading" class="qr-modal__loading">
+          <text>加载中...</text>
+        </view>
+        <image v-else-if="qrImageUrl" class="qr-modal__image" :src="qrImageUrl" mode="aspectFit" />
+        <view v-else class="qr-modal__loading">
+          <text>二维码加载失败</text>
+        </view>
+        <view class="qr-modal__close" @tap="closeQrPopup">
+          <text>关闭</text>
+        </view>
+      </view>
+    </uni-popup>
   </view>
 </template>
 
@@ -88,18 +106,23 @@
  *
  * 提供扫码、二维码、活动同伴、小队成员等添加入口
  * 展示已发送的好友申请列表
- *
- * 注意：OpenAPI 暂无用户搜索接口，搜索添加功能待后端支持
  */
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
+import { onLoad, onReady } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import { getSentFriendRequests } from '@/api/modules/social'
+import { fetchPersonalQrCodeDataUrl, openPersonalQrScanner } from '@/utils/personal-qr'
 import type { components } from '@/api/types/schema'
 
 type FriendRequest = components['schemas']['Social.FriendRequest']
 
 const sentRequests = ref<FriendRequest[]>([])
 const loading = ref(false)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const qrPopup = ref<any>(null)
+const qrImageUrl = ref('')
+const qrLoading = ref(false)
+const pendingShowQr = ref(false)
 
 function getStatusLabel(status: string): string {
   const map: Record<string, string> = {
@@ -112,11 +135,25 @@ function getStatusLabel(status: string): string {
 }
 
 function onScanQR() {
-  uni.showToast({ title: '扫码功能暂未开放', icon: 'none' })
+  openPersonalQrScanner()
 }
 
-function onMyQRCode() {
-  uni.showToast({ title: '二维码功能暂未开放', icon: 'none' })
+async function onMyQRCode() {
+  qrPopup.value?.open()
+  if (qrImageUrl.value) return
+  qrLoading.value = true
+  try {
+    qrImageUrl.value = await fetchPersonalQrCodeDataUrl()
+  } catch {
+    qrImageUrl.value = ''
+    uni.showToast({ title: '二维码加载失败', icon: 'none' })
+  } finally {
+    qrLoading.value = false
+  }
+}
+
+function closeQrPopup() {
+  qrPopup.value?.close()
 }
 
 function onCompanions() {
@@ -141,6 +178,18 @@ async function loadData() {
     loading.value = false
   }
 }
+
+onLoad((query) => {
+  if (query?.showQr === '1') {
+    pendingShowQr.value = true
+  }
+})
+
+onReady(() => {
+  if (!pendingShowQr.value) return
+  pendingShowQr.value = false
+  void nextTick(() => onMyQRCode())
+})
 
 onMounted(() => {
   loadData()
@@ -369,5 +418,54 @@ onMounted(() => {
 
 .bottom-safe {
   height: calc($tabbar-height + $safe-bottom);
+}
+
+.qr-modal {
+  width: 280px;
+  background: #ffffff;
+  border-radius: $radius-xl;
+  padding: $spacing-xl;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.qr-modal__title {
+  font-size: $font-lg;
+  font-weight: $weight-semibold;
+  color: $color-text;
+}
+
+.qr-modal__hint {
+  font-size: $font-sm;
+  color: $color-text-sub;
+}
+
+.qr-modal__image {
+  width: 220px;
+  height: 220px;
+}
+
+.qr-modal__loading {
+  width: 220px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-sm;
+  color: $color-text-muted;
+}
+
+.qr-modal__close {
+  margin-top: $spacing-sm;
+  padding: $spacing-sm $spacing-xl;
+  background: $color-primary-light;
+  border-radius: $radius-full;
+
+  text {
+    font-size: $font-sm;
+    color: $color-primary-dark;
+  }
 }
 </style>

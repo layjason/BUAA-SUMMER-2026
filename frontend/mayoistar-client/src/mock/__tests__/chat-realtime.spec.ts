@@ -64,8 +64,8 @@ describe('mock chat WebSocket bus', () => {
 
   it('pushes friend request to target user on social-events bus', () => {
     const socialEvents: Array<{ requestId: string; targetUserId: string }> = []
-    connectMockChatRealtime(10008)
-    subscribeMockSocialRealtime(10008, (request) => {
+    connectMockChatRealtime(10012)
+    subscribeMockSocialRealtime(10012, (request) => {
       socialEvents.push({
         requestId: request.requestId,
         targetUserId: request.targetUserId,
@@ -73,13 +73,13 @@ describe('mock chat WebSocket bus', () => {
     })
 
     sendFriendRequest(10001, {
-      targetUserId: '10008',
+      targetUserId: '10012',
       message: '你好',
       source: 'profile',
     })
 
     expect(socialEvents).toHaveLength(1)
-    expect(socialEvents[0]?.targetUserId).toBe('10008')
+    expect(socialEvents[0]?.targetUserId).toBe('10012')
     expect(socialEvents[0]?.requestId).toBeTruthy()
   })
 })

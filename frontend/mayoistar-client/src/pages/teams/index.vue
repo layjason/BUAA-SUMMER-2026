@@ -21,6 +21,43 @@
         </view>
       </view>
 
+      <!-- 发现小队搜索 -->
+      <view v-if="activeTab === 'discover'" class="discover-toolbar">
+        <view class="search-bar">
+          <input
+            v-model="searchKeyword"
+            class="search-input"
+            type="text"
+            placeholder="按名称搜索小队"
+            confirm-type="search"
+            @confirm="loadTeams"
+          />
+          <view class="search-btn" @tap="loadTeams">
+            <text class="search-btn-text">搜索</text>
+          </view>
+        </view>
+        <scroll-view class="tag-scroll" scroll-x>
+          <view class="tag-row">
+            <view
+              class="tag-chip"
+              :class="{ 'tag-chip--active': selectedTags.size === 0 }"
+              @tap="clearTags"
+            >
+              <text class="tag-chip-text">全部</text>
+            </view>
+            <view
+              v-for="tag in availableTags"
+              :key="tag.name"
+              class="tag-chip"
+              :class="{ 'tag-chip--active': selectedTags.has(tag.name) }"
+              @tap="toggleTag(tag.name)"
+            >
+              <text class="tag-chip-text">{{ tag.name }}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
       <!-- Loading -->
       <view v-if="loading && teams.length === 0" class="loading-state">
         <text class="loading-text">加载中...</text>
@@ -110,31 +147,59 @@
  * 展示我的小队和发现小队，支持创建小队
  */
 import { ref, watch, onMounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
-import { getTeams, searchTeams } from '@/api/modules/teams'
+import { listMyTeams, searchTeams } from '@/api/modules/teams'
+import { getInterestTags } from '@/api/modules/profile'
+import { extractPageItems } from '@/utils/page-result'
 import type { components } from '@/api/types/schema'
 
 type TeamProfile = components['schemas']['Social.TeamProfile']
 
 const activeTab = ref<'my' | 'discover'>('my')
+const searchKeyword = ref('')
+const selectedTags = ref(new Set<string>())
+const availableTags = ref<{ name: string }[]>([])
 const loading = ref(false)
 const teams = ref<TeamProfile[]>([])
+
+function clearTags() {
+  selectedTags.value = new Set()
+  loadTeams()
+}
+
+function toggleTag(name: string) {
+  const next = new Set(selectedTags.value)
+  if (next.has(name)) next.delete(name)
+  else next.add(name)
+  selectedTags.value = next
+  loadTeams()
+}
+
+async function loadInterestTags() {
+  try {
+    const tags = await getInterestTags()
+    availableTags.value = tags as { name: string }[]
+  } catch {
+    availableTags.value = []
+  }
+}
 
 /** 加载小队列表 */
 async function loadTeams() {
   loading.value = true
   try {
-    let result: unknown
-    if (activeTab.value === 'my') {
-      result = await getTeams()
-    } else {
-      result = await searchTeams()
-    }
-    const items = Array.isArray(result)
-      ? result
-      : (((result as Record<string, unknown>).items as TeamProfile[]) ?? [])
-    teams.value = items
+    const result =
+      activeTab.value === 'my'
+        ? await listMyTeams(1, 50)
+        : await searchTeams({
+            keyword: searchKeyword.value.trim() || undefined,
+            tags: selectedTags.value.size ? [...selectedTags.value] : undefined,
+            page: 1,
+            pageSize: 50,
+          })
+    teams.value = extractPageItems<TeamProfile>(result)
   } catch (error) {
     console.error('Failed to load teams:', error)
     uni.showToast({ title: '加载失败', icon: 'none' })
@@ -144,7 +209,7 @@ async function loadTeams() {
 }
 
 function goToTeamDetail(team: TeamProfile) {
-  if (team.status !== 'active') {
+  if (activeTab.value === 'discover' && team.status !== 'active') {
     uni.showToast({ title: '该小队已不可用', icon: 'none' })
     return
   }
@@ -155,11 +220,18 @@ function goToCreateTeam() {
   uni.navigateTo({ url: '/pages/teams/create' })
 }
 
+onLoad((options) => {
+  if (options?.tab === 'discover') activeTab.value = 'discover'
+})
+
 onMounted(() => {
+  loadInterestTags()
   loadTeams()
 })
 
 watch(activeTab, () => {
+  searchKeyword.value = ''
+  selectedTags.value = new Set()
   loadTeams()
 })
 </script>
@@ -179,6 +251,69 @@ watch(activeTab, () => {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+.discover-toolbar {
+  background: #ffffff;
+  border-bottom: 1px solid $color-border-light;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+}
+
+.tag-scroll {
+  white-space: nowrap;
+  padding: 0 $spacing-md $spacing-sm;
+}
+
+.tag-row {
+  display: inline-flex;
+  gap: $spacing-sm;
+}
+
+.tag-chip {
+  display: inline-flex;
+  padding: 6px 14px;
+  border-radius: $radius-full;
+  background: $color-bg;
+  border: 1px solid $color-border;
+}
+
+.tag-chip--active {
+  background: $color-primary-light;
+  border-color: transparent;
+}
+
+.tag-chip-text {
+  font-size: $font-xs;
+  color: $color-text-sub;
+}
+
+.tag-chip--active .tag-chip-text {
+  color: $color-primary-dark;
+}
+
+.search-input {
+  flex: 1;
+  background: #f0f2f5;
+  border-radius: $radius-full;
+  padding: $spacing-xs $spacing-md;
+  font-size: $font-base;
+}
+
+.search-btn {
+  background: $color-primary;
+  padding: $spacing-xs $spacing-md;
+  border-radius: $radius-full;
+}
+
+.search-btn-text {
+  color: #ffffff;
+  font-size: $font-sm;
 }
 
 .tab-bar {

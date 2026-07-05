@@ -29,6 +29,7 @@ import type {
   ActivitySummary,
   ActivitySummaryPost,
   ActivitySummaryPostRequest,
+  ActivityUpsertRequest,
   ActivityTemplate,
   ChatMessage,
   CheckInQrCode,
@@ -42,6 +43,9 @@ import type {
   FollowItem,
   FollowRelation,
   BlacklistItem,
+  Report,
+  ReportCreateRequest,
+  ReportStatus,
   InterestTagItem,
   JoinTeamRequestBody,
   LocationInfo,
@@ -1081,28 +1085,35 @@ export function sendFriendRequest(fromUserId: number, request: FriendRequestCrea
   const source = request.source
   const message = request.message
 
-  // 检查黑名单关系（任一方拉黑均不可申请）
-  const isBlocked = db.blacklist.some(
-    (b) =>
-      (b.blockedBy === toUserId && b.userId === fromUserId) ||
-      (b.blockedBy === fromUserId && b.userId === toUserId),
-  )
-  if (isBlocked) {
+  if (!Number.isFinite(toUserId) || toUserId <= 0) {
+    throw new MockBusinessError(40000, '用户不存在或不可见')
+  }
+  if (!db.friendRequests) db.friendRequests = []
+  if (!db.friends) db.friends = []
+  if (!db.blacklist) db.blacklist = []
+
+  if (hasBlacklistRelation(db, fromUserId, toUserId)) {
     throw new MockBusinessError(40001, '因黑名单关系无法进行此操作')
   }
 
   // 检查是否已经是好友
   const alreadyFriends = db.friends.some((f) => f.userId === fromUserId && f.friendId === toUserId)
   if (alreadyFriends) {
-    throw new MockBusinessError(30001, '你们已经是好友')
+    throw new MockBusinessError(40004, '好友关系状态不允许此操作')
   }
 
-  // 检查是否有待处理的申请
+  // 检查是否有待处理的申请（双向）
   const pendingReq = db.friendRequests.find(
-    (r) => r.fromUserId === fromUserId && r.toUserId === toUserId && r.status === 'pending',
+    (r) =>
+      r.status === 'pending' &&
+      ((r.fromUserId === fromUserId && r.toUserId === toUserId) ||
+        (r.fromUserId === toUserId && r.toUserId === fromUserId)),
   )
   if (pendingReq) {
-    throw new MockBusinessError(30002, '已发送过好友申请，请等待对方处理')
+    if (pendingReq.fromUserId === toUserId && pendingReq.toUserId === fromUserId) {
+      throw new MockBusinessError(40006, '对方已向你发送好友申请，请到好友申请中处理')
+    }
+    throw new MockBusinessError(40006, '好友申请已存在')
   }
 
   const reqId = nextId('friendRequests')
@@ -1146,10 +1157,10 @@ export function handleFriendRequest(requestId: number, accept: boolean): FriendR
   const db = getMockDb()
   const req = db.friendRequests.find((r) => r.id === requestId)
   if (!req) {
-    throw new MockBusinessError(30003, '好友申请不存在')
+    throw new MockBusinessError(40005, '好友申请状态不允许此操作')
   }
   if (req.status !== 'pending') {
-    throw new MockBusinessError(30004, '该申请已处理')
+    throw new MockBusinessError(40005, '好友申请状态不允许此操作')
   }
 
   if (accept) {
@@ -1418,13 +1429,31 @@ function buildChatMessageDto(
       }
     }
     if (msg.kind === 'location') {
-      const place = msg.content.replace(/^\[location:/, '').replace(/\]$/, '')
-      dto.location = {
-        point: { longitude: 0, latitude: 0 },
-        city: '',
-        address: place,
-        placeName: place,
+      if (msg.locationSnapshot) {
+        dto.location = {
+          point: {
+            longitude: msg.locationSnapshot.longitude,
+            latitude: msg.locationSnapshot.latitude,
+          },
+          city: msg.locationSnapshot.city,
+          address: msg.locationSnapshot.address,
+          placeName: msg.locationSnapshot.placeName,
+        }
+      } else {
+        const place = msg.content.replace(/^\[location:/, '').replace(/\]$/, '')
+        dto.location = {
+          point: { longitude: 0, latitude: 0 },
+          city: '',
+          address: place,
+          placeName: place,
+        }
       }
+    }
+    if (msg.mentionedUserIds?.length) {
+      dto.mentionedUserIds = msg.mentionedUserIds.map(String)
+    }
+    if (msg.mentionAll) {
+      dto.mentionAll = true
     }
   }
 
@@ -1482,6 +1511,35 @@ export function sendMessage(
   if (!conv.participantIds.includes(senderId)) {
     throw new MockBusinessError(50005, '你不是该会话的成员')
   }
+  if (conv.kind === 'team') {
+    const team = db.teams.find((t) => t.conversationId === conversationId)
+    if (team && team.status !== 'active') {
+      throw new MockBusinessError(40011, 'Team is unavailable')
+    }
+  }
+
+  if (conv.kind === 'team') {
+    const team = db.teams.find((t) => t.conversationId === conversationId)
+    if (team) {
+      if (request.mentionAll) {
+        const operator = db.teamMembers.find((m) => m.teamId === team.id && m.userId === senderId)
+        if (!operator || (operator.role !== 'leader' && operator.role !== 'admin')) {
+          throw new MockBusinessError(50002, 'Team membership is required')
+        }
+      }
+      if (request.mentionedUserIds?.length) {
+        for (const mentionedId of request.mentionedUserIds) {
+          const memberId = Number(mentionedId)
+          const isMember = db.teamMembers.some((m) => m.teamId === team.id && m.userId === memberId)
+          if (!isMember) {
+            throw new MockBusinessError(50002, 'Team membership is required')
+          }
+        }
+      }
+    }
+  } else if (request.mentionAll || request.mentionedUserIds?.length) {
+    throw new MockBusinessError(50006, 'Message content does not match message kind')
+  }
 
   const content =
     kind === 'text'
@@ -1492,6 +1550,9 @@ export function sendMessage(
 
   const msgId = nextId('messages')
   const now = new Date().toISOString()
+  const mentionedUserIds = request.mentionedUserIds
+    ?.map((id) => Number(id))
+    .filter((id) => !Number.isNaN(id))
   db.messages.push({
     id: msgId,
     conversationId,
@@ -1500,6 +1561,18 @@ export function sendMessage(
     content,
     status: 'sent',
     createdAt: now,
+    locationSnapshot:
+      kind === 'location' && request.location
+        ? {
+            longitude: request.location.point.longitude,
+            latitude: request.location.point.latitude,
+            city: request.location.city,
+            address: request.location.address,
+            placeName: request.location.placeName,
+          }
+        : undefined,
+    mentionedUserIds: mentionedUserIds?.length ? mentionedUserIds : undefined,
+    mentionAll: request.mentionAll || undefined,
   })
 
   conv.lastMessage = kind === 'text' ? content : `[${kind === 'image' ? '图片' : '位置'}]`
@@ -1527,7 +1600,7 @@ export function sendMessage(
  * 前置条件：用户是发送者且发送不超过 2 分钟
  * 后置条件：消息状态变为 recalled
  */
-export function recallMessage(messageId: number, userId: number): EmptyData {
+export function recallMessage(messageId: number, userId: number): ChatMessage {
   const db = getMockDb()
   const msg = db.messages.find((m) => m.id === messageId)
   if (!msg) {
@@ -1549,8 +1622,19 @@ export function recallMessage(messageId: number, userId: number): EmptyData {
   const conv = db.conversations.find((c) => c.id === msg.conversationId)
   if (conv) {
     emitMessageRecalled(conv, msg, userId, db)
+    const convMessages = db.messages.filter((m) => m.conversationId === msg.conversationId)
+    return buildChatMessageDto(conv, msg, userId, convMessages)
   }
-  return {}
+
+  return {
+    messageId: String(msg.id),
+    conversationId: String(msg.conversationId),
+    senderId: String(msg.senderId),
+    kind: msg.kind,
+    sentAt: msg.createdAt,
+    recalled: true,
+    readStatus: 'read',
+  }
 }
 
 /* ================================================================
@@ -1602,6 +1686,7 @@ export function createTeam(leaderId: number, data: TeamCreateRequest): TeamProfi
     teamId,
     userId: leaderId,
     role: 'leader',
+    points: 0,
     joinedAt: now,
   })
   persistMockDb()
@@ -1628,18 +1713,22 @@ export function joinTeam(
   const db = getMockDb()
   const team = db.teams.find((t) => t.id === teamId)
   if (!team) {
-    throw new MockBusinessError(40001, '小队不存在')
+    throw new MockBusinessError(40009, 'Team is not visible')
   }
   if (team.status !== 'active') {
-    throw new MockBusinessError(40002, '小队已解散或停用')
+    throw new MockBusinessError(40011, 'Team is unavailable')
   }
   if (team.memberCount >= team.maxMembers) {
-    throw new MockBusinessError(40003, '小队已满')
+    throw new MockBusinessError(40010, 'Team is full')
+  }
+
+  if (hasBlacklistRelation(db, userId, team.leaderId)) {
+    throw new MockBusinessError(40001, 'Blacklist relation blocks this operation')
   }
 
   const alreadyMember = db.teamMembers.some((m) => m.teamId === teamId && m.userId === userId)
   if (alreadyMember) {
-    throw new MockBusinessError(40004, '你已是该小队成员')
+    throw new MockBusinessError(40012, 'Team member already exists')
   }
 
   const now = new Date().toISOString()
@@ -1650,6 +1739,7 @@ export function joinTeam(
       teamId,
       userId,
       role: 'member',
+      points: 0,
       joinedAt: now,
     })
     team.memberCount += 1
@@ -1699,7 +1789,7 @@ export function leaveTeam(teamId: number, userId: number): void {
   const team = db.teams.find((t) => t.id === teamId)
   if (!team) throw new MockBusinessError(40001, '小队不存在')
   if (team.leaderId === userId) {
-    throw new MockBusinessError(40010, '队长不能离开小队，请先解散或转让队长')
+    throw new MockBusinessError(40016, 'Team leader cannot leave the team')
   }
 
   db.teamMembers = db.teamMembers.filter((m) => !(m.teamId === teamId && m.userId === userId))
@@ -1721,7 +1811,7 @@ export function dissolveTeam(teamId: number, userId: number): void {
   const team = db.teams.find((t) => t.id === teamId)
   if (!team) throw new MockBusinessError(40001, '小队不存在')
   if (team.leaderId !== userId) {
-    throw new MockBusinessError(40011, '只有队长才能解散小队')
+    throw new MockBusinessError(40020, 'Team operation is not allowed')
   }
   team.status = 'dissolved'
   persistMockDb()
@@ -1744,7 +1834,7 @@ export function getTeamMembers(
         ? avatarMediaFile(m.userId, user.avatarUrl, user.createdAt)
         : undefined,
       role: m.role as TeamMemberRole,
-      points: 0,
+      points: m.points,
       joinedAt: m.joinedAt,
     }
   })
@@ -1782,11 +1872,15 @@ export function handleJoinRequest(requestId: number, accepted: boolean): TeamJoi
   if (accepted) {
     const team = db.teams.find((t) => t.id === req.teamId)
     if (team) {
+      if (team.memberCount >= team.maxMembers) {
+        throw new MockBusinessError(40010, 'Team is full')
+      }
       db.teamMembers.push({
         id: nextId('teamMembers'),
         teamId: req.teamId,
         userId: req.userId,
         role: 'member',
+        points: 0,
         joinedAt: now,
       })
       team.memberCount += 1
@@ -1815,12 +1909,20 @@ export function handleJoinRequest(requestId: number, accepted: boolean): TeamJoi
 /** 更新成员角色 */
 export function updateMemberRole(
   teamId: number,
+  operatorId: number,
   memberId: number,
   role: TeamMemberRole,
 ): TeamMember {
   const db = getMockDb()
+  const operator = db.teamMembers.find((m) => m.teamId === teamId && m.userId === operatorId)
+  if (!operator || operator.role !== 'leader') {
+    throw new MockBusinessError(40020, 'Team operation is not allowed')
+  }
   const member = db.teamMembers.find((m) => m.teamId === teamId && m.userId === memberId)
-  if (!member) throw new MockBusinessError(40015, '成员不存在')
+  if (!member) throw new MockBusinessError(40015, 'Team member does not exist')
+  if (member.role === 'leader') {
+    throw new MockBusinessError(40017, 'Team role change is invalid')
+  }
   member.role = role
   persistMockDb()
 
@@ -1887,12 +1989,13 @@ export function forwardMessage(
   messageId: number,
   senderId: number,
   targetConversationIds: number[],
-): void {
+): ChatMessage[] {
   const db = getMockDb()
   const original = db.messages.find((m) => m.id === messageId)
   if (!original) throw new MockBusinessError(50006, '消息不存在')
 
   const now = new Date().toISOString()
+  const forwardedMessages: ChatMessage[] = []
   for (const convId of targetConversationIds) {
     const conv = db.conversations.find((c) => c.id === convId)
     if (!conv) {
@@ -1911,12 +2014,16 @@ export function forwardMessage(
       content: original.content,
       status: 'sent',
       createdAt: now,
+      locationSnapshot: original.locationSnapshot,
     }
     db.messages.push(forwarded)
     refreshConversationPreview(convId)
     emitMessageForwarded(conv, forwarded, senderId, db)
+    const convMessages = db.messages.filter((m) => m.conversationId === convId)
+    forwardedMessages.push(buildChatMessageDto(conv, forwarded, senderId, convMessages))
   }
   persistMockDb()
+  return forwardedMessages
 }
 
 /* ================================================================
@@ -2606,21 +2713,79 @@ export function checkNicknameAvailability(nickname: string): NicknameAvailabilit
 }
 
 /** 获取好友列表 */
-export function getFriends(userId: number): FriendItem[] {
+export function getFriends(userId: number, keyword?: string): FriendItem[] {
   const db = getMockDb()
   const friendEntries = db.friends.filter((f) => f.userId === userId)
-  return friendEntries.map((f) => {
-    const friend = db.users.find((u) => u.id === f.friendId)
-    return {
-      userId: String(f.friendId),
-      nickname: friend?.nickname ?? '未知',
-      remark: f.remark || undefined,
-      source: toFriendshipSource(f.source),
-      groupTags: f.groupTags || [],
-      avatar: friend?.avatarUrl
-        ? avatarMediaFile(f.friendId, friend.avatarUrl, friend.createdAt)
-        : undefined,
-    }
+  const normalizedKeyword = keyword?.trim().toLowerCase()
+  return friendEntries
+    .map((f) => {
+      const friend = db.users.find((u) => u.id === f.friendId)
+      return {
+        userId: String(f.friendId),
+        nickname: friend?.nickname ?? '未知',
+        remark: f.remark || undefined,
+        source: toFriendshipSource(f.source),
+        groupTags: f.groupTags || [],
+        avatar: friend?.avatarUrl
+          ? avatarMediaFile(f.friendId, friend.avatarUrl, friend.createdAt)
+          : undefined,
+      }
+    })
+    .filter((item) => {
+      if (!normalizedKeyword) return true
+      const nickname = item.nickname.toLowerCase()
+      const remark = (item.remark ?? '').toLowerCase()
+      return nickname.includes(normalizedKeyword) || remark.includes(normalizedKeyword)
+    })
+}
+
+/** 1×1 透明 PNG，用于 mock 个人二维码图片响应 */
+const MOCK_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes.buffer
+}
+
+/** mock：为当前用户生成可解析的二维码 token */
+export function createMockPersonalQrToken(userId: number): string {
+  return `mock-personal-qr:${userId}:${Date.now()}`
+}
+
+function parseMockPersonalQrToken(token: string): number {
+  const trimmed = token.trim()
+  if (trimmed.startsWith('mock-personal-qr:')) {
+    const target = trimmed.split(':')[1]
+    const userId = Number(target)
+    if (!Number.isNaN(userId) && userId > 0) return userId
+  }
+  if (/^\d+$/.test(trimmed)) {
+    return Number(trimmed)
+  }
+  throw new MockBusinessError(40021, '二维码无效或已过期')
+}
+
+/** mock：返回个人二维码 PNG 二进制 */
+export function getPersonalQrCodePng(_userId: number): ArrayBuffer {
+  return base64ToArrayBuffer(MOCK_PNG_BASE64)
+}
+
+/** 扫描个人二维码并发好友申请（mock / 真实契约一致） */
+export function scanPersonalQrCode(
+  scannerId: number,
+  token: string,
+  message?: string,
+): FriendRequest {
+  const targetUserId = parseMockPersonalQrToken(token)
+  return sendFriendRequest(scannerId, {
+    targetUserId: String(targetUserId),
+    source: 'qrCode',
+    message,
   })
 }
 
@@ -2684,7 +2849,7 @@ export function updateFriendRemark(
   targetUserId: number,
   remark?: string,
   groupTags?: string[],
-): void {
+): FriendItem {
   const db = getMockDb()
   const entry = db.friends.find((f) => f.userId === userId && f.friendId === targetUserId)
   if (!entry) {
@@ -2693,6 +2858,24 @@ export function updateFriendRemark(
   if (remark !== undefined) entry.remark = remark
   if (groupTags !== undefined) entry.groupTags = groupTags
   persistMockDb()
+  const updated = getFriends(userId).find((f) => f.userId === String(targetUserId))
+  if (!updated) {
+    throw new MockBusinessError(30010, '好友不存在')
+  }
+  return updated
+}
+
+function hasBlacklistRelation(
+  db: ReturnType<typeof getMockDb>,
+  userA: number,
+  userB: number,
+): boolean {
+  if (!db.blacklist) return false
+  return db.blacklist.some(
+    (b) =>
+      (b.blockedBy === userA && b.userId === userB) ||
+      (b.blockedBy === userB && b.userId === userA),
+  )
 }
 
 /** 关注用户 */
@@ -2700,6 +2883,9 @@ export function followUser(followerId: number, followingId: number): FollowRelat
   const db = getMockDb()
   if (followerId === followingId) {
     throw new MockBusinessError(30020, '不能关注自己')
+  }
+  if (hasBlacklistRelation(db, followerId, followingId)) {
+    throw new MockBusinessError(40001, '因黑名单关系无法进行此操作')
   }
 
   const alreadyFollowing = db.follows.some(
@@ -2853,11 +3039,16 @@ export function blockUser(userId: number, targetUserId: number): void {
     blockedBy: userId,
     blockedAt: new Date().toISOString(),
   })
-  // 同时移除好友关系
+  // 同时移除好友关系与关注关系
   db.friends = db.friends.filter(
     (f) =>
       !(f.userId === userId && f.friendId === targetUserId) &&
       !(f.userId === targetUserId && f.friendId === userId),
+  )
+  db.follows = db.follows.filter(
+    (f) =>
+      !(f.followerId === userId && f.followingId === targetUserId) &&
+      !(f.followerId === targetUserId && f.followingId === userId),
   )
   persistMockDb()
 }
@@ -2885,6 +3076,95 @@ export function getBlacklist(userId: number): BlacklistItem[] {
         blockedAt: b.blockedAt,
       }
     })
+}
+
+function toReportItem(entry: {
+  id: number
+  reporterUserId: number
+  targetType: Report['targetType']
+  targetId: string
+  reason: string
+  status: ReportStatus
+  handlingNote?: string
+  createdAt: string
+  handledAt?: string
+}): Report {
+  return {
+    reportId: String(entry.id),
+    reporterUserId: String(entry.reporterUserId),
+    targetType: entry.targetType,
+    targetId: entry.targetId,
+    reason: entry.reason,
+    status: entry.status,
+    handlingNote: entry.handlingNote,
+    createdAt: entry.createdAt,
+    handledAt: entry.handledAt,
+  }
+}
+
+/** 提交举报 */
+export function createReport(reporterId: number, body: ReportCreateRequest): Report {
+  const db = getMockDb()
+  const reason = body.reason?.trim()
+  if (!reason) {
+    throw new MockBusinessError(40007, 'Report is invalid')
+  }
+  if (body.targetType === 'user' && String(reporterId) === body.targetId) {
+    throw new MockBusinessError(40007, 'Report is invalid')
+  }
+
+  if (body.targetType === 'user') {
+    const targetId = Number(body.targetId)
+    const user = db.users.find((u) => u.id === targetId)
+    if (!user) {
+      throw new MockBusinessError(40000, `User ${body.targetId} is not visible`)
+    }
+  }
+
+  const now = new Date().toISOString()
+  const id = nextId('reports')
+  const entry = {
+    id,
+    reporterUserId: reporterId,
+    targetType: body.targetType,
+    targetId: body.targetId,
+    reason,
+    status: 'pending' as const,
+    createdAt: now,
+  }
+  db.reports.push(entry)
+  persistMockDb()
+  return toReportItem(entry)
+}
+
+/** 查看我提交的举报 */
+export function listMyReports(
+  reporterId: number,
+  status?: ReportStatus,
+  page = 1,
+  pageSize = 20,
+): { items: Report[]; total: number; page: number; pageSize: number; totalPages: number } {
+  const db = getMockDb()
+  const filtered = db.reports
+    .filter((r) => r.reporterUserId === reporterId)
+    .filter((r) => (status ? r.status === status : true))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+
+  const total = filtered.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const start = (page - 1) * pageSize
+  const items = filtered.slice(start, start + pageSize).map(toReportItem)
+
+  return { items, total, page, pageSize, totalPages }
+}
+
+/** 分页获取会话列表 */
+export function listConversations(
+  userId: number,
+  page = 1,
+  pageSize = 20,
+): MockPageResult<ConversationSummary> {
+  return paginate(getConversations(userId), page, pageSize)
 }
 
 /** 获取会话列表（自动为缺少会话的好友关系创建会话） */
@@ -2916,10 +3196,30 @@ export function getConversations(userId: number): ConversationSummary[] {
         const remark = db.friends.find((f) => f.userId === userId && f.friendId === other)?.remark
         title = remark?.trim() || otherUser?.nickname || '未知'
       }
+      let avatar: MediaFile | undefined
+      if (c.kind === 'friend') {
+        const otherId = c.participantIds.find((id) => id !== userId)
+        const otherUser = db.users.find((u) => u.id === otherId)
+        if (otherUser?.avatarUrl) {
+          avatar = avatarMediaFile(otherUser.id, otherUser.avatarUrl, otherUser.createdAt)
+        }
+      } else {
+        const team = db.teams.find((t) => t.conversationId === c.id)
+        if (team?.coverUrl) {
+          avatar = mediaFileFromId(
+            `media_team_${team.id}`,
+            team.createdAt,
+            `team_${team.id}`,
+            'teamAlbum',
+          )
+        }
+      }
+
       return {
         conversationId: String(c.id),
         kind: c.kind,
         title,
+        avatar,
         lastMessagePreview: c.lastMessage || undefined,
         updatedAt: c.lastMessageAt,
         unreadCount: countUnreadMessages(db.messages, userId, c.id),
@@ -2980,14 +3280,42 @@ export function searchTeams(
   )
 }
 
-/** 获取用户加入的小队列表 */
-export function getTeams(userId: number): TeamProfile[] {
+/** 获取当前用户加入的小队列表（含已解散/已停用，按加入时间倒序） */
+export function listMyTeams(
+  userId: number,
+  page: number,
+  pageSize: number,
+): MockPageResult<TeamProfile> {
   const db = getMockDb()
-  const myTeamIds = db.teamMembers.filter((m) => m.userId === userId).map((m) => m.teamId)
+  const memberships = db.teamMembers
+    .filter((m) => m.userId === userId)
+    .sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime())
 
-  return db.teams
-    .filter((t) => t.status === 'active' && myTeamIds.includes(t.id))
-    .map((t) => teamToProfile(t))
+  const profiles = memberships
+    .map((membership) => {
+      const team = db.teams.find((t) => t.id === membership.teamId)
+      return team ? teamToProfile(team) : null
+    })
+    .filter((team): team is TeamProfile => team !== null)
+
+  return paginate(profiles, page, pageSize)
+}
+
+/** 获取用户加入的小队列表（测试兼容） */
+export function getTeams(userId: number): TeamProfile[] {
+  return listMyTeams(userId, 1, 200).items
+}
+
+/** 统计当前用户可审核的待处理入队申请数 */
+export function countPendingJoinRequestsForManager(userId: number): number {
+  const db = getMockDb()
+  const managedTeamIds = db.teamMembers
+    .filter((m) => m.userId === userId && (m.role === 'leader' || m.role === 'admin'))
+    .map((m) => m.teamId)
+
+  return db.teamJoinRequests.filter(
+    (r) => managedTeamIds.includes(r.teamId) && r.status === 'pending',
+  ).length
 }
 
 /** 获取小队详情 */
@@ -2999,6 +3327,90 @@ export function getTeamDetail(teamId: number): TeamProfile {
   }
 
   return teamToProfile(team)
+}
+
+/** 队内活动列表 */
+export function listTeamActivities(
+  teamId: number,
+  userId: number,
+  page: number,
+  pageSize: number,
+): MockPageResult<ActivitySummary> {
+  const db = getMockDb()
+  const member = db.teamMembers.find((m) => m.teamId === teamId && m.userId === userId)
+  if (!member) throw new MockBusinessError(40015, 'Team member does not exist')
+  const items = db.activities
+    .filter((a) => a.teamId === teamId)
+    .map((a) => activityToFeedItem(db, a))
+  return paginate(items, page, pageSize)
+}
+
+/** 发布队内活动 */
+export function createTeamActivity(
+  teamId: number,
+  userId: number,
+  data: ActivityUpsertRequest,
+): ActivityDetail {
+  const db = getMockDb()
+  const team = db.teams.find((t) => t.id === teamId)
+  const operator = db.teamMembers.find((m) => m.teamId === teamId && m.userId === userId)
+  if (!operator || (operator.role !== 'leader' && operator.role !== 'admin')) {
+    throw new MockBusinessError(40020, 'Team operation is not allowed')
+  }
+  if (!team || team.status !== 'active') {
+    throw new MockBusinessError(40011, 'Team is unavailable')
+  }
+
+  const now = new Date().toISOString()
+  const activityId = nextId('activities')
+  const loc = data.location.point
+
+  db.activities.push({
+    id: activityId,
+    creatorId: userId,
+    teamId,
+    title: data.title,
+    introduction: data.introduction,
+    safetyNotice: data.safetyNotice ?? '请注意活动安全，遵守场地规则。',
+    coverUrl: `https://picsum.photos/seed/teamact${activityId}/400/225`,
+    images: [],
+    startTime: data.startAt,
+    endTime: data.endAt,
+    registrationDeadline: data.registrationDeadline,
+    location: {
+      longitude: loc.longitude,
+      latitude: loc.latitude,
+      city: data.location.city,
+      address: data.location.address,
+      placeName: data.location.placeName ?? data.location.address,
+    },
+    fee: data.feeAmount ?? 0,
+    capacity: data.capacity,
+    registeredCount: 0,
+    minAge: data.minAge ?? 0,
+    tags: data.tags ?? ['队内活动'],
+    runtimeStatus: 'registering',
+    reviewStatus: 'approved',
+    isTakenDown: false,
+    requireLocationCheck: data.requireLocationCheck,
+    createdAt: now,
+  })
+  persistMockDb()
+  return getActivityDetail(activityId)
+}
+
+/** 获取队内活动详情 */
+export function getTeamActivity(
+  teamId: number,
+  activityId: number,
+  userId: number,
+): ActivityDetail {
+  const db = getMockDb()
+  const member = db.teamMembers.find((m) => m.teamId === teamId && m.userId === userId)
+  if (!member) throw new MockBusinessError(40015, 'Team member does not exist')
+  const activity = db.activities.find((a) => a.id === activityId && a.teamId === teamId)
+  if (!activity) throw new MockBusinessError(40018, 'Team activity is not visible')
+  return getActivityDetail(activityId)
 }
 
 /** 获取兴趣标签列表 */

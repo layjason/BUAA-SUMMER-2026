@@ -39,9 +39,9 @@ export function recallMessage(messageId: string) {
   })
 }
 
-/** 转发消息到另一个会话 */
-export function forwardMessage(messageId: string, targetConversationId: string) {
-  const body: ForwardMessageRequest = { targetConversationIds: [targetConversationId] }
+/** 转发消息到一个或多个会话 */
+export function forwardMessage(messageId: string, targetConversationIds: string[]) {
+  const body: ForwardMessageRequest = { targetConversationIds }
   return post('/chat/messages/{messageId}/forward', {
     path: { messageId },
     body,

@@ -67,16 +67,6 @@
               <text class="btn-text btn-text--reject">拒绝</text>
             </view>
           </view>
-
-          <!-- Cancel for sent pending requests -->
-          <view
-            v-else-if="activeTab === 'sent' && req.status === 'pending'"
-            class="request-actions"
-          >
-            <view class="btn-cancel" @tap="onCancelSent(req)">
-              <text class="btn-text btn-text--cancel">撤回</text>
-            </view>
-          </view>
         </view>
 
         <view class="bottom-safe"></view>
@@ -89,7 +79,7 @@
 /**
  * 好友申请页面
  *
- * 展示收到的好友申请（接受/拒绝）和发出的申请（撤回）
+ * 展示收到的好友申请（接受/拒绝）和发出的申请
  */
 import { ref, computed, onMounted } from 'vue'
 import AppNavbar from '@/components/base/AppNavbar.vue'
@@ -100,6 +90,7 @@ import {
   handleFriendRequest,
   getUserProfile,
 } from '@/api/modules/social'
+import { resolveFriendConversationId } from '@/utils/friend-chat'
 import type { components } from '@/api/types/schema'
 
 type FriendRequest = components['schemas']['Social.FriendRequest']
@@ -171,11 +162,40 @@ function goToProfile(userId: string) {
   uni.navigateTo({ url: `/pages/social/user-profile?id=${userId}` })
 }
 
+/** 接受申请后引导用户进入单聊 */
+async function navigateToFriendChat(userId: string) {
+  try {
+    const conversationId = await resolveFriendConversationId(userId)
+    if (conversationId) {
+      uni.navigateTo({
+        url: `/pages/messages/chat?conversationId=${conversationId}&kind=friend`,
+      })
+      return
+    }
+  } catch {
+    // fallback below
+  }
+  uni.navigateTo({
+    url: `/pages/messages/chat?targetUserId=${userId}&kind=friend`,
+  })
+}
+
 async function onAccept(req: FriendRequest) {
   try {
     await handleFriendRequest(req.requestId, true)
     req.status = 'accepted'
-    uni.showToast({ title: '已添加好友', icon: 'success' })
+    const counterpartId = req.requesterId
+    uni.showModal({
+      title: '已添加好友',
+      content: '是否立即发送消息？',
+      confirmText: '发消息',
+      cancelText: '稍后',
+      success: (res) => {
+        if (res.confirm) {
+          navigateToFriendChat(counterpartId)
+        }
+      },
+    })
   } catch {
     uni.showToast({ title: '操作失败', icon: 'none' })
   }
@@ -191,26 +211,6 @@ async function onReject(req: FriendRequest) {
           await handleFriendRequest(req.requestId, false)
           req.status = 'rejected'
           uni.showToast({ title: '已拒绝', icon: 'success' })
-        } catch {
-          uni.showToast({ title: '操作失败', icon: 'none' })
-        }
-      }
-    },
-  })
-}
-
-async function onCancelSent(req: FriendRequest) {
-  uni.showModal({
-    title: '撤回申请',
-    content: '确定撤回该好友申请吗？',
-    success: async (res) => {
-      if (res.confirm) {
-        try {
-          // Canceling is like rejecting from sender side - we use decision endpoint
-          // Actually OpenAPI doesn't have a cancel endpoint for sent requests
-          // Mark as canceled locally for now
-          req.status = 'canceled'
-          uni.showToast({ title: '已撤回', icon: 'success' })
         } catch {
           uni.showToast({ title: '操作失败', icon: 'none' })
         }

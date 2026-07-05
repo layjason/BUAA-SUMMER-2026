@@ -30,6 +30,9 @@
               </text>
               <view class="profile-badges">
                 <text class="profile-badge profile-badge--kind">{{ kindLabel }}</text>
+                <text v-if="isMutual && !isFriend" class="profile-badge profile-badge--mutual">
+                  互相关注
+                </text>
                 <text
                   v-if="profile.gender && profile.gender !== 'unspecified'"
                   class="profile-badge"
@@ -61,29 +64,48 @@
           </view>
         </view>
 
-        <!-- Action Buttons -->
-        <view class="actions-section">
+        <!-- Action Buttons（非本人时展示） -->
+        <view v-if="!isSelf" class="actions-section">
+          <view v-if="blockedByMe" class="relation-hint">
+            <text class="relation-hint__text">你已屏蔽该用户</text>
+          </view>
+
           <view class="actions-row">
-            <view class="action-btn action-btn--primary" @tap="onAddFriend">
+            <view v-if="showAddFriend" class="action-btn action-btn--primary" @tap="onAddFriend">
               <text class="action-btn-icon">👋</text>
               <text class="action-btn-label">加好友</text>
             </view>
+            <view v-else-if="showPendingSent" class="action-btn action-btn--pending">
+              <text class="action-btn-icon">⏳</text>
+              <text class="action-btn-label">等待确认</text>
+            </view>
             <view
+              v-else-if="showPendingReceived"
+              class="action-btn action-btn--pending action-btn--tap"
+              @tap="goFriendRequests"
+            >
+              <text class="action-btn-icon">📨</text>
+              <text class="action-btn-label">待你确认</text>
+            </view>
+
+            <view
+              v-if="!blockedByMe"
               class="action-btn"
               :class="isFollowing ? 'action-btn--active' : 'action-btn--default'"
               @tap="onToggleFollow"
             >
               <text class="action-btn-icon">{{ isFollowing ? '💖' : '🤍' }}</text>
-              <text class="action-btn-label">{{ isFollowing ? '已关注' : '关注' }}</text>
+              <text class="action-btn-label">{{ followLabel }}</text>
             </view>
-            <view class="action-btn action-btn--default" @tap="onChat">
+
+            <view v-if="isFriend" class="action-btn action-btn--default" @tap="onChat">
               <text class="action-btn-icon">💬</text>
               <text class="action-btn-label">发消息</text>
             </view>
           </view>
 
           <!-- More actions -->
-          <view class="actions-row actions-row--secondary">
+          <view v-if="!blockedByMe" class="actions-row actions-row--secondary">
             <view class="action-btn-sm action-btn-sm--default" @tap="onReport">
               <text class="action-btn-sm-icon">⚠️</text>
               <text class="action-btn-sm-label">举报</text>
@@ -112,7 +134,8 @@
  *
  * 查看其他用户公开信息，支持加好友、关注、发消息、举报、屏蔽
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import {
@@ -121,19 +144,51 @@ import {
   followUser,
   unfollowUser,
   blockUser,
-  getFollows,
+  createReport,
 } from '@/api/modules/social'
-import { getErrorMessage } from '@/utils/error'
+import { resolveApiError } from '@/utils/error'
 import { resolveFriendConversationId } from '@/utils/friend-chat'
+import { fetchSocialRelationState, type FriendRequestPending } from '@/utils/social-relation'
+import { useAuthStore } from '@/stores/auth'
 import type { components } from '@/api/types/schema'
 
 type PublicUserProfile = components['schemas']['Identity.PublicUserProfile']
+type FriendRequestSource = components['schemas']['Social.FriendRequestSource']
 
+const authStore = useAuthStore()
 const profile = ref<PublicUserProfile | null>(null)
 const loading = ref(false)
 const isFollowing = ref(false)
+const isFollowedBy = ref(false)
+const isMutual = ref(false)
+const isFriend = ref(false)
+const blockedByMe = ref(false)
+const friendRequestPending = ref<FriendRequestPending>('none')
 
 const userId = ref('')
+const friendRequestSource = ref<FriendRequestSource>('profile')
+
+const isSelf = computed(() => {
+  const currentId = authStore.userId || '10001'
+  return userId.value === currentId
+})
+
+const followLabel = computed(() => {
+  if (isMutual.value) return '互相关注'
+  if (isFollowing.value) return '已关注'
+  if (isFollowedBy.value) return '回关'
+  return '关注'
+})
+
+const showAddFriend = computed(
+  () => !isFriend.value && !blockedByMe.value && friendRequestPending.value === 'none',
+)
+const showPendingSent = computed(
+  () => !isFriend.value && !blockedByMe.value && friendRequestPending.value === 'sent',
+)
+const showPendingReceived = computed(
+  () => !isFriend.value && !blockedByMe.value && friendRequestPending.value === 'received',
+)
 
 const kindLabel = computed(() => {
   if (!profile.value) return ''
@@ -147,6 +202,24 @@ const genderLabel = computed(() => {
   return map[profile.value.gender] || ''
 })
 
+async function loadRelationState() {
+  try {
+    const relation = await fetchSocialRelationState(userId.value)
+    isFriend.value = relation.isFriend
+    isFollowing.value = relation.isFollowing
+    isFollowedBy.value = relation.isFollowedBy
+    isMutual.value = relation.isMutual
+    blockedByMe.value = relation.blockedByMe
+    friendRequestPending.value = relation.friendRequestPending
+  } catch {
+    // 静默失败，保留默认态
+  }
+}
+
+function goFriendRequests() {
+  uni.navigateTo({ url: '/pages/social/friend-requests' })
+}
+
 async function loadProfile() {
   if (!userId.value) return
   loading.value = true
@@ -154,17 +227,7 @@ async function loadProfile() {
     const result = await getUserProfile(userId.value)
     profile.value = result as unknown as PublicUserProfile
 
-    // 加载关注状态
-    try {
-      const followsResult = await getFollows()
-      type FollowItem = components['schemas']['Social.FollowItem']
-      const follows: FollowItem[] = Array.isArray(followsResult)
-        ? followsResult
-        : (((followsResult as Record<string, unknown>).items as FollowItem[]) ?? [])
-      isFollowing.value = follows.some((f) => f.userId === userId.value)
-    } catch {
-      // 静默失败
-    }
+    await loadRelationState()
   } catch {
     profile.value = null
   } finally {
@@ -173,7 +236,7 @@ async function loadProfile() {
 }
 
 function onAddFriend() {
-  if (!profile.value) return
+  if (!profile.value || !showAddFriend.value) return
   uni.showModal({
     title: '添加好友',
     editable: true,
@@ -181,11 +244,15 @@ function onAddFriend() {
     success: async (res) => {
       if (res.confirm) {
         try {
-          await sendFriendRequest(profile.value!.userId, res.content || undefined)
+          await sendFriendRequest(
+            profile.value!.userId,
+            res.content || undefined,
+            friendRequestSource.value,
+          )
+          friendRequestPending.value = 'sent'
           uni.showToast({ title: '申请已发送', icon: 'success' })
         } catch (error) {
-          const code = (error as { code?: number }).code ?? 0
-          uni.showToast({ title: getErrorMessage(code, '发送失败'), icon: 'none' })
+          uni.showToast({ title: resolveApiError(error, '发送失败'), icon: 'none' })
         }
       }
     },
@@ -193,16 +260,20 @@ function onAddFriend() {
 }
 
 async function onToggleFollow() {
-  if (!profile.value) return
+  if (!profile.value || blockedByMe.value) return
   try {
     if (isFollowing.value) {
       const result = await unfollowUser(profile.value.userId)
       isFollowing.value = result.following
+      isMutual.value = result.mutual
       uni.showToast({ title: '已取消关注', icon: 'success' })
     } else {
       const result = await followUser(profile.value.userId)
       isFollowing.value = result.following
+      isMutual.value = result.mutual
       if (result.friendshipCreated) {
+        isFriend.value = true
+        friendRequestPending.value = 'none'
         uni.showToast({ title: '互相关注，已成为好友', icon: 'success' })
       } else if (result.mutual) {
         uni.showToast({ title: '已互相关注', icon: 'success' })
@@ -210,8 +281,8 @@ async function onToggleFollow() {
         uni.showToast({ title: '已关注', icon: 'success' })
       }
     }
-  } catch {
-    uni.showToast({ title: '操作失败', icon: 'none' })
+  } catch (error) {
+    uni.showToast({ title: resolveApiError(error, '操作失败'), icon: 'none' })
   }
 }
 
@@ -234,7 +305,26 @@ async function onChat() {
 }
 
 function onReport() {
-  uni.showToast({ title: '举报功能暂未开放', icon: 'none' })
+  if (!profile.value || isSelf.value) return
+  uni.showModal({
+    title: '举报用户',
+    editable: true,
+    placeholderText: '请描述举报原因',
+    success: async (res) => {
+      if (!res.confirm) return
+      const reason = res.content?.trim()
+      if (!reason) {
+        uni.showToast({ title: '请填写举报原因', icon: 'none' })
+        return
+      }
+      try {
+        await createReport('user', profile.value!.userId, reason)
+        uni.showToast({ title: '举报已提交', icon: 'success' })
+      } catch (error) {
+        uni.showToast({ title: resolveApiError(error, '提交失败'), icon: 'none' })
+      }
+    },
+  })
 }
 
 function onBlock() {
@@ -246,6 +336,9 @@ function onBlock() {
       if (res.confirm) {
         try {
           await blockUser(profile.value!.userId)
+          blockedByMe.value = true
+          isFollowing.value = false
+          isMutual.value = false
           uni.showToast({ title: '已屏蔽', icon: 'success' })
           setTimeout(() => uni.navigateBack(), 1000)
         } catch {
@@ -256,12 +349,17 @@ function onBlock() {
   })
 }
 
-onMounted(() => {
-  const pages = getCurrentPages()
-  const currentPage = pages[pages.length - 1]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const options = (currentPage as any).options || (currentPage as any).$page?.options || {}
-  userId.value = options.id || options.userId || ''
+onLoad((query) => {
+  userId.value = query?.id || query?.userId || ''
+  const source = query?.source as FriendRequestSource | undefined
+  if (
+    source === 'profile' ||
+    source === 'activityParticipants' ||
+    source === 'team' ||
+    source === 'qrCode'
+  ) {
+    friendRequestSource.value = source
+  }
   if (userId.value) {
     loadProfile()
   }
@@ -383,6 +481,11 @@ onMounted(() => {
     background: $color-primary-light;
     color: $color-primary-dark;
   }
+
+  &--mutual {
+    background: $color-secondary-light;
+    color: $color-secondary;
+  }
 }
 
 /* ===== Tags ===== */
@@ -493,6 +596,32 @@ onMounted(() => {
   &--default {
     background: #ffffff;
   }
+
+  &--pending {
+    background: rgba(0, 0, 0, 0.06);
+
+    .action-btn-label {
+      color: $color-text-sub;
+    }
+  }
+
+  &--tap:active {
+    transform: scale(0.96);
+    opacity: 0.9;
+  }
+}
+
+.relation-hint {
+  margin-bottom: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: $radius-lg;
+  text-align: center;
+}
+
+.relation-hint__text {
+  font-size: $font-sm;
+  color: $color-text-sub;
 }
 
 .action-btn-icon {

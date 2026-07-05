@@ -280,11 +280,15 @@ async function saveRemarkAndGroups() {
   const groupTags = [...new Set([...editGroupTags.value, ...customTags])]
 
   try {
-    await updateFriendRemark(friend.userId, remark || undefined, groupTags)
+    const updated = (await updateFriendRemark(
+      friend.userId,
+      remark || undefined,
+      groupTags,
+    )) as FriendItem
     const target = friends.value.find((f) => f.userId === friend.userId)
     if (target) {
-      target.remark = remark || undefined
-      target.groupTags = groupTags
+      target.remark = updated.remark
+      target.groupTags = updated.groupTags
     }
     closeEditPopup()
     await nextTick()

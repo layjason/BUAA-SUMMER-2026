@@ -76,7 +76,7 @@
         </view>
 
         <view class="action-sheet__items">
-          <view class="action-sheet__item" @tap="goToAddFriend('qrCode')">
+          <view class="action-sheet__item" @tap="onScanQrAddFriend">
             <text class="action-sheet__icon">📷</text>
             <view class="action-sheet__content">
               <text class="action-sheet__label">扫码加好友</text>
@@ -84,7 +84,7 @@
             </view>
           </view>
 
-          <view class="action-sheet__item" @tap="goToAddFriend('input')">
+          <view class="action-sheet__item" @tap="onSearchUserAddFriend">
             <text class="action-sheet__icon">🔍</text>
             <view class="action-sheet__content">
               <text class="action-sheet__label">搜索用户</text>
@@ -200,14 +200,18 @@ import ConversationCard from '@/components/social/ConversationCard.vue'
 import FloatingCreateButton from '@/components/social/FloatingCreateButton.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import { getReceivedFriendRequests } from '@/api/modules/social'
-import { getTeams } from '@/api/modules/teams'
+import { listMyTeams, getTeamMembers, getTeamJoinRequests } from '@/api/modules/teams'
+import { extractPageItems } from '@/utils/page-result'
 import { getConversations } from '@/api/modules/chat'
 import { useAuthStore } from '@/stores/auth'
 import { fetchActivityCompanions } from '@/utils/activity-companions'
+import { scanPersonalQrAndAddFriend } from '@/utils/personal-qr'
 import type { components } from '@/api/types/schema'
 
 type FriendRequest = components['schemas']['Social.FriendRequest']
 type TeamProfile = components['schemas']['Social.TeamProfile']
+type TeamMember = components['schemas']['Social.TeamMember']
+type TeamJoinRequest = components['schemas']['Social.TeamJoinRequest']
 type ConversationSummary = components['schemas']['Chat.ConversationSummary']
 type MessageCreatedPayload = components['schemas']['Chat.MessageCreatedPayload']
 type MessageForwardedPayload = components['schemas']['Chat.MessageForwardedPayload']
@@ -235,7 +239,7 @@ const createMenuPopup = ref<any>(null)
 
 // Event handlers
 function onAvatarTap() {
-  uni.navigateTo({ url: '/pages/profile/index' })
+  uni.navigateTo({ url: '/pages/social/add-friend?showQr=1' })
 }
 
 function onSearchTap() {
@@ -283,14 +287,19 @@ function closeAllPopups() {
 }
 
 // Navigation functions
-function goToAddFriend(source: string) {
+function onScanQrAddFriend() {
   closeAddFriendMenu()
-  uni.navigateTo({ url: `/pages/social/add-friend?source=${source}` })
+  scanPersonalQrAndAddFriend()
+}
+
+function onSearchUserAddFriend() {
+  closeAddFriendMenu()
+  uni.showToast({ title: '用户搜索待 API 支持', icon: 'none' })
 }
 
 function goToMyQRCode() {
   closeAddFriendMenu()
-  uni.showToast({ title: '二维码功能开发中', icon: 'none' })
+  uni.navigateTo({ url: '/pages/social/add-friend?showQr=1' })
 }
 
 function goToActivityCompanions() {
@@ -355,6 +364,31 @@ function formatTime(isoTime: string): string {
   return `${month}月${day}日`
 }
 
+/** 统计当前用户可审核的待处理入队申请数 */
+async function countPendingTeamJoinRequests(
+  myTeams: TeamProfile[],
+  currentUserId: string,
+): Promise<number> {
+  let total = 0
+  for (const team of myTeams) {
+    try {
+      const membersResult = await getTeamMembers(team.teamId, 1, 100)
+      const me = extractPageItems<TeamMember>(membersResult).find(
+        (member) => member.userId === currentUserId,
+      )
+      if (me?.role !== 'leader' && me?.role !== 'admin') continue
+
+      const requestsResult = await getTeamJoinRequests(team.teamId)
+      total += extractPageItems<TeamJoinRequest>(requestsResult).filter(
+        (req) => req.status === 'pending',
+      ).length
+    } catch {
+      /* 单个小队查询失败不影响整体统计 */
+    }
+  }
+  return total
+}
+
 /** 加载社交数据 */
 async function loadSocialData() {
   loading.value = true
@@ -365,7 +399,7 @@ async function loadSocialData() {
     // 并行加载请求、小队、会话、活动同伴
     const [requestsResult, teamsResult, conversationsResult, companionsResult] = await Promise.all([
       getReceivedFriendRequests().catch(() => []),
-      getTeams().catch(() => []),
+      listMyTeams(1, 100).catch(() => []),
       getConversations().catch(() => []),
       fetchActivityCompanions(currentUserId).catch(() => []),
     ])
@@ -392,8 +426,7 @@ async function loadSocialData() {
       : (((conversationsResult as Record<string, unknown>).items as ConversationSummary[]) ?? [])
     conversations.value = convItems
 
-    // TODO: 计算待处理的小队加入请求 (Phase 3)
-    pendingTeamRequests.value = 0
+    pendingTeamRequests.value = await countPendingTeamJoinRequests(teamItems, currentUserId)
   } catch (error) {
     console.error('Failed to load social data:', error)
     uni.showToast({ title: '加载失败', icon: 'none' })

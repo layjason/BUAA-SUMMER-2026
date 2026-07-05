@@ -14,8 +14,12 @@
       <!-- 居中标题 -->
       <text class="app-navbar__title">{{ title }}</text>
 
-      <!-- 右侧占位（保持标题居中） -->
-      <view class="app-navbar__placeholder" />
+      <!-- 右侧操作区 -->
+      <view class="app-navbar__right">
+        <slot name="right">
+          <view class="app-navbar__placeholder" />
+        </slot>
+      </view>
     </view>
   </view>
 </template>
@@ -37,11 +41,14 @@ interface Props {
   showBack?: boolean
   /** 背景色 */
   backgroundColor?: string
+  /** 页面栈为空时的回退地址（如 tab 页） */
+  fallbackUrl?: string
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   showBack: true,
   backgroundColor: 'transparent',
+  fallbackUrl: '/pages/messages/index',
 })
 
 const emit = defineEmits<{
@@ -55,7 +62,24 @@ const emit = defineEmits<{
  */
 function handleBack() {
   emit('back')
-  uni.navigateBack({ delta: 1 })
+  const pages = getCurrentPages()
+  if (pages.length > 1) {
+    uni.navigateBack({ delta: 1 })
+    return
+  }
+  const fallback = props.fallbackUrl
+  const tabRoots = [
+    '/pages/home/index',
+    '/pages/discover/index',
+    '/pages/publish/index',
+    '/pages/messages/index',
+    '/pages/profile/index',
+  ]
+  if (tabRoots.includes(fallback)) {
+    uni.switchTab({ url: fallback })
+  } else {
+    uni.reLaunch({ url: fallback })
+  }
 }
 </script>
 
@@ -115,6 +139,16 @@ function handleBack() {
     overflow: hidden;
     text-overflow: ellipsis;
     text-align: center;
+  }
+
+  /* ===== 右侧操作区 ===== */
+  &__right {
+    width: 36px;
+    min-width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    z-index: 1;
   }
 
   /* ===== 占位（保持标题居中） ===== */
