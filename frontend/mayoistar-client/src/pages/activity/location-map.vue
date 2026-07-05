@@ -189,7 +189,7 @@ function moveMapCenter(location: LocationInfo): void {
  * 不变量：定位失败不会清空活动地点 marker。
  */
 async function fetchCurrentLocation(): Promise<LocationInfo | null> {
-  if (locating.value) return
+  if (locating.value) return null
   locating.value = true
   try {
     const location = await uni.getLocation({
