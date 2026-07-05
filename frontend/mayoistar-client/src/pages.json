@@ -96,6 +96,14 @@
       "style": { "navigationBarTitleText": "发布活动总结", "disableScroll": true }
     },
     {
+      "path": "pages/activity/summary-detail",
+      "style": { "navigationBarTitleText": "活动总结详情", "disableScroll": true }
+    },
+    {
+      "path": "pages/activity/review-detail",
+      "style": { "navigationBarTitleText": "评价详情", "disableScroll": true }
+    },
+    {
       "path": "pages/activity/participants",
       "style": { "navigationBarTitleText": "参与者列表", "disableScroll": true }
     },

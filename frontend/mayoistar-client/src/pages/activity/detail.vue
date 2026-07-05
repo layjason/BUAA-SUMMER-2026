@@ -103,8 +103,17 @@
         <!-- 活动总结 -->
         <view v-if="publishedSummaries.length > 0" class="section card">
           <text class="section-title">{{ t('activityDetail.summarySection') }}</text>
-          <view v-for="item in publishedSummaries" :key="item.summaryId" class="published-block">
-            <text class="published-title">{{ item.title }}</text>
+          <view
+            v-for="item in publishedSummaries"
+            :key="item.summaryId"
+            class="published-block published-block--link"
+            hover-class="published-block--hover"
+            @click="goSummaryDetail(item.summaryId)"
+          >
+            <view class="published-title-row">
+              <text class="published-title">{{ item.title }}</text>
+              <text class="menu-arrow">&gt;</text>
+            </view>
             <text class="published-body">{{ item.content }}</text>
           </view>
         </view>
@@ -114,7 +123,13 @@
           <text class="section-title">{{
             t('activityDetail.reviewsSection', { count: publishedReviews.length })
           }}</text>
-          <view v-for="item in publishedReviews" :key="item.reviewId" class="published-block">
+          <view
+            v-for="item in publishedReviews"
+            :key="item.reviewId"
+            class="published-block published-block--link"
+            hover-class="published-block--hover"
+            @click="goReviewDetail(item.reviewId)"
+          >
             <view class="review-header">
               <text class="published-title">{{ item.nickname }}</text>
               <text class="review-rating">{{
@@ -339,6 +354,34 @@ function goReview(): void {
 /** 跳转到总结页 */
 function goSummary(): void {
   uni.navigateTo({ url: `/pages/activity/summary?activityId=${activityId.value}` })
+}
+
+/** 跳转到活动总结详情页
+ *
+ * 前置条件：summaryId 来自当前活动总结列表。
+ * 后置条件：打开对应活动总结详情页。
+ * 不变量：始终携带当前 activityId，详情页按列表接口回查该总结。
+ *
+ * @param summaryId 活动总结标识
+ */
+function goSummaryDetail(summaryId: string): void {
+  uni.navigateTo({
+    url: `/pages/activity/summary-detail?activityId=${activityId.value}&summaryId=${summaryId}`,
+  })
+}
+
+/** 跳转到活动评价详情页
+ *
+ * 前置条件：reviewId 来自当前活动评价列表。
+ * 后置条件：打开对应活动评价详情页。
+ * 不变量：始终携带当前 activityId，详情页按列表接口回查该评价。
+ *
+ * @param reviewId 活动评价标识
+ */
+function goReviewDetail(reviewId: string): void {
+  uni.navigateTo({
+    url: `/pages/activity/review-detail?activityId=${activityId.value}&reviewId=${reviewId}`,
+  })
 }
 
 /**
@@ -877,14 +920,30 @@ onShow(() => {
   margin-top: 16rpx;
 }
 
+.published-block--link {
+  padding: 16rpx 0;
+}
+
+.published-block--hover {
+  opacity: 0.72;
+}
+
 .published-block + .published-block {
   margin-top: 24rpx;
   padding-top: 24rpx;
   border-top: 1rpx solid #ebedf0;
 }
 
+.published-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
 .published-title {
   display: block;
+  flex: 1;
   font-size: 28rpx;
   color: #323233;
   font-weight: 600;

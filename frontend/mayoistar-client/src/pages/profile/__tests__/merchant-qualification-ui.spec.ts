@@ -67,4 +67,16 @@ describe('商家资料资质提交 UI', () => {
     expect(source).not.toContain("from '@/api'")
     expect(source).not.toContain('api.post')
   })
+
+  it('我的页退出登录和未登录展示应清空头像昵称缓存', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/index.vue'), 'utf8')
+
+    expect(source).toContain('function clearProfileDisplayState(): void')
+    expect(source).toContain("nickname.value = ''")
+    expect(source).toContain("avatarUrl.value = ''")
+    expect(source).toContain("merchantQualificationStatus.value = ''")
+    expect(source).toContain('if (!authStore.isLoggedIn) {')
+    expect(source).toContain('clearProfileDisplayState()')
+    expect(source).toContain('authStore.clearTokens()')
+  })
 })

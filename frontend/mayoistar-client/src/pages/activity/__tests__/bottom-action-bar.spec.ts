@@ -74,4 +74,31 @@ describe('活动页面底部操作栏', () => {
     expect(source).toContain('reviewWindowEndsAt')
     expect(source).toContain('reviewDeadlineText')
   })
+
+  it('详情页活动总结和评价条目应可进入详情页', () => {
+    const source = readActivityPage('detail.vue')
+
+    expect(source).toContain('@click="goSummaryDetail(item.summaryId)"')
+    expect(source).toContain('@click="goReviewDetail(item.reviewId)"')
+    expect(source).toContain('function goSummaryDetail(summaryId: string): void')
+    expect(source).toContain('function goReviewDetail(reviewId: string): void')
+    expect(source).toContain('/pages/activity/summary-detail?activityId=')
+    expect(source).toContain('/pages/activity/review-detail?activityId=')
+    expect(source).toContain('published-block--link')
+  })
+
+  it('活动总结和评价详情页应通过列表接口按 ID 回查详情', () => {
+    const summarySource = readActivityPage('summary-detail.vue')
+    const reviewSource = readActivityPage('review-detail.vue')
+    const pagesConfig = readFileSync(resolve(process.cwd(), 'src/pages.json'), 'utf8')
+
+    expect(pagesConfig).toContain('pages/activity/summary-detail')
+    expect(pagesConfig).toContain('pages/activity/review-detail')
+    expect(summarySource).toContain('getActivitySummaries')
+    expect(summarySource).toContain('item.summaryId === summaryId.value')
+    expect(summarySource).toContain('summary.imageTags')
+    expect(reviewSource).toContain('getActivityReviews')
+    expect(reviewSource).toContain('item.reviewId === reviewId.value')
+    expect(reviewSource).toContain('review.rating')
+  })
 })

@@ -178,6 +178,18 @@ async function loadNickname(): Promise<void> {
   }
 }
 
+/** 清空页面本地展示资料
+ *
+ * 前置条件：无。
+ * 后置条件：昵称、头像和商家资质状态恢复到未登录展示态。
+ * 不变量：仅清空本页展示缓存，不修改认证 Store。
+ */
+function clearProfileDisplayState(): void {
+  nickname.value = ''
+  avatarUrl.value = ''
+  merchantQualificationStatus.value = ''
+}
+
 const merchantQualificationText = computed(() => {
   if (!authStore.isLoggedIn || authStore.userKind !== 'merchant') return ''
   return qualificationStatusMap[merchantQualificationStatus.value] ?? ''
@@ -210,6 +222,9 @@ const displayName = computed(() => {
  * 标志在登录成功后重置。
  */
 onShow(() => {
+  if (!authStore.isLoggedIn) {
+    clearProfileDisplayState()
+  }
   if (!authStore.isLoggedIn && !autoRedirected) {
     autoRedirected = true
     uni.navigateTo({ url: '/pages/login/index' })
@@ -242,6 +257,7 @@ async function handleLogout(): Promise<void> {
     /* 即使服务端调用失败也清除本地状态 */
   }
   authStore.clearTokens()
+  clearProfileDisplayState()
   autoRedirected = false
 }
 </script>
