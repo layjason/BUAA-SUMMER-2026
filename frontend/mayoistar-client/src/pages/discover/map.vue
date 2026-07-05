@@ -11,6 +11,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { getMapActivities } from '@/api/modules/activities'
 import { formatDate } from '@/utils/date'
+import { getCurrentLocation } from '@/utils/location'
 
 /** 地图活动点位接口 */
 interface MapActivityItem {
@@ -24,6 +25,8 @@ interface MapActivityItem {
 const mapActivities = ref<MapActivityItem[]>([])
 const isLoading = ref(false)
 const selectedId = ref<string | null>(null)
+const fallbackLocation = { longitude: 116.4, latitude: 39.9 }
+const mapDistanceMeters = 10000
 
 /**
  * 为每个活动计算在 mock 地图上的相对位置（百分比坐标）
@@ -63,7 +66,18 @@ function getStatusText(status: string): string {
 onMounted(async () => {
   isLoading.value = true
   try {
-    const result = await getMapActivities(116.4, 39.9, 10000)
+    const location = await getCurrentLocation()
+    const center = location ?? fallbackLocation
+    if (!location) {
+      uni.showToast({ title: '无法获取当前位置，已使用默认位置展示附近活动', icon: 'none' })
+    }
+    const result = await getMapActivities({
+      page: 1,
+      pageSize: 100,
+      longitude: center.longitude,
+      latitude: center.latitude,
+      distanceMeters: mapDistanceMeters,
+    })
     mapActivities.value = (result ?? []) as MapActivityItem[]
   } catch {
     mapActivities.value = []

@@ -9,12 +9,12 @@
  */
 import { ref } from 'vue'
 import { searchActivities } from '@/api/modules/activities'
+import { getInterestTags } from '@/api/modules/profile'
 import { formatDate } from '@/utils/date'
 import { getCurrentLocation } from '@/utils/location'
 import {
   buildSearchActivitiesQuery,
   hasSearchFilters,
-  type ActivityTypeFilter,
   type CityFilter,
   type DistanceFilter,
   type FeeFilter,
@@ -42,7 +42,6 @@ interface SearchResultItem {
   runtimeStatus: string
 }
 
-const TYPE_OPTIONS: ActivityTypeFilter[] = ['运动', '户外', '桌游', '学习', '公益']
 const CITY_OPTIONS: CityFilter[] = ['北京', '上海', '广州']
 const FEE_OPTIONS: { value: FeeFilter; label: string }[] = [
   { value: 'free', label: '免费' },
@@ -61,12 +60,18 @@ const DISTANCE_OPTIONS: { value: DistanceFilter; label: string }[] = [
 ]
 
 const keyword = ref('')
+const typeOptions = ref<string[]>([])
 const searchResults = ref<SearchResultItem[]>([])
 const isSearching = ref(false)
+const isLoadingTypes = ref(false)
+const loadingMore = ref(false)
 const hasSearched = ref(false)
 const totalCount = ref(0)
+const currentPage = ref(1)
+const noMoreData = ref(false)
+const pageSize = 20
 
-const selectedTypes = ref<ActivityTypeFilter[]>([])
+const selectedTypes = ref<string[]>([])
 const selectedCity = ref<CityFilter | null>(null)
 const selectedFee = ref<FeeFilter | null>(null)
 const selectedTime = ref<TimeFilter | null>(null)
@@ -96,7 +101,7 @@ function refreshSearchIfNeeded(): void {
   }
 }
 
-function toggleTypeFilter(type: ActivityTypeFilter): void {
+function toggleTypeFilter(type: string): void {
   selectedTypes.value = selectedTypes.value.includes(type)
     ? selectedTypes.value.filter((item) => item !== type)
     : [...selectedTypes.value, type]
@@ -146,6 +151,23 @@ async function toggleDistanceFilter(distance: DistanceFilter): Promise<void> {
   refreshSearchIfNeeded()
 }
 
+/** 加载活动类型筛选项
+ *
+ * 前置条件：兴趣标签接口可用。
+ * 后置条件：typeOptions 使用系统预定义兴趣标签，加载失败时为空数组。
+ */
+async function loadTypeOptions(): Promise<void> {
+  isLoadingTypes.value = true
+  try {
+    const tags = await getInterestTags()
+    typeOptions.value = tags.map((tag) => tag.name)
+  } catch {
+    typeOptions.value = []
+  } finally {
+    isLoadingTypes.value = false
+  }
+}
+
 /**
  * 执行搜索
  *
@@ -156,17 +178,41 @@ async function doSearch(): Promise<void> {
   if (!keyword.value.trim() && !hasSearchFilters(getFilterSelection())) return
   isSearching.value = true
   hasSearched.value = true
+  currentPage.value = 1
+  noMoreData.value = false
   try {
     const result = await searchActivities(
-      buildSearchActivitiesQuery(keyword.value, getFilterSelection(), 1, 20),
+      buildSearchActivitiesQuery(keyword.value, getFilterSelection(), currentPage.value, pageSize),
     )
     searchResults.value = (result.items ?? []) as SearchResultItem[]
     totalCount.value = result.total ?? 0
+    noMoreData.value = result.page >= (result.totalPages ?? 1)
   } catch {
     searchResults.value = []
     totalCount.value = 0
+    noMoreData.value = true
   } finally {
     isSearching.value = false
+  }
+}
+
+/** 加载下一页搜索结果 */
+async function loadMoreSearchResults(): Promise<void> {
+  if (isSearching.value || loadingMore.value || noMoreData.value || !hasSearched.value) return
+  loadingMore.value = true
+  try {
+    const nextPage = currentPage.value + 1
+    const result = await searchActivities(
+      buildSearchActivitiesQuery(keyword.value, getFilterSelection(), nextPage, pageSize),
+    )
+    searchResults.value.push(...((result.items ?? []) as SearchResultItem[]))
+    totalCount.value = result.total ?? totalCount.value
+    currentPage.value = result.page ?? nextPage
+    noMoreData.value = currentPage.value >= (result.totalPages ?? currentPage.value)
+  } catch {
+    noMoreData.value = true
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -179,6 +225,8 @@ function goToMap(): void {
 function goDetail(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
 }
+
+loadTypeOptions()
 
 /** 获取状态文本 */
 function getStatusText(status: string): string {
@@ -221,8 +269,9 @@ function displayOccupiedCount(item: SearchResultItem): number {
       <view class="filter-group">
         <text class="filter-label">类型</text>
         <view class="filter-chips">
+          <text v-if="isLoadingTypes" class="filter-chip">加载中...</text>
           <text
-            v-for="type in TYPE_OPTIONS"
+            v-for="type in typeOptions"
             :key="type"
             class="filter-chip"
             :class="{ active: selectedTypes.includes(type) }"
@@ -314,7 +363,12 @@ function displayOccupiedCount(item: SearchResultItem): number {
     </view>
 
     <!-- 搜索结果列表 -->
-    <view v-if="!isSearching && searchResults.length > 0" class="results">
+    <scroll-view
+      v-if="!isSearching && searchResults.length > 0"
+      class="results"
+      scroll-y
+      @scrolltolower="loadMoreSearchResults"
+    >
       <text class="results-count">共 {{ totalCount }} 个结果</text>
 
       <view
@@ -362,7 +416,11 @@ function displayOccupiedCount(item: SearchResultItem): number {
           </view>
         </view>
       </view>
-    </view>
+      <view class="load-more-state">
+        <text v-if="loadingMore">加载更多...</text>
+        <text v-else-if="noMoreData">已加载全部</text>
+      </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -485,6 +543,7 @@ function displayOccupiedCount(item: SearchResultItem): number {
 
 .results {
   padding: 0 $spacing-lg;
+  height: 52vh;
 }
 
 .results-count {
@@ -647,6 +706,17 @@ function displayOccupiedCount(item: SearchResultItem): number {
 .registered {
   font-size: $font-xs;
   color: $color-text-muted;
+}
+
+.load-more-state {
+  display: flex;
+  justify-content: center;
+  padding: $spacing-md 0 $spacing-lg;
+
+  text {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
 }
 
 .loading-state {

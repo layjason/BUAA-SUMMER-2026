@@ -4,13 +4,17 @@
       <view class="profile-container">
         <!-- 用户卡片：未登录/已登录共用布局 -->
         <view class="user-card" @click="onCardClick">
-          <view class="avatar-placeholder">
+          <image v-if="avatarUrl" class="avatar-image" :src="avatarUrl" mode="aspectFill" />
+          <view v-else class="avatar-placeholder">
             <text class="avatar-text">{{ initialChar }}</text>
           </view>
           <view class="user-info">
             <text class="user-id">{{ displayName }}</text>
             <text v-if="authStore.isLoggedIn" class="user-kind">{{
               authStore.userKind === 'merchant' ? t('profile.merchant') : t('profile.personal')
+            }}</text>
+            <text v-if="merchantQualificationText" class="qualification-state">{{
+              merchantQualificationText
             }}</text>
           </view>
         </view>
@@ -54,7 +58,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onShow } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/auth'
-import { api } from '@/api'
+import { getMerchantProfile, getMyProfile } from '@/api/modules/profile'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -141,16 +145,36 @@ function goToPage(route: string): void {
 }
 
 const nickname = ref('')
+const avatarUrl = ref('')
+const merchantQualificationStatus = ref('')
+
+const qualificationStatusMap: Record<string, string> = {
+  not_submitted: '未提交资质',
+  pending: '资质审核中',
+  approved: '资质已通过',
+  rejected: '资质已驳回',
+}
 
 async function loadNickname(): Promise<void> {
   if (!authStore.isLoggedIn) return
   try {
-    const profile = await api.get('/identity/me/profile')
+    const profile =
+      authStore.userKind === 'merchant' ? await getMerchantProfile() : await getMyProfile()
     nickname.value = profile.nickname
+    avatarUrl.value = profile.avatar?.signedUrl ?? ''
+    merchantQualificationStatus.value =
+      authStore.userKind === 'merchant' ? profile.qualificationStatus : ''
   } catch {
     /* 加载失败使用 userId 兜底 */
+    avatarUrl.value = ''
+    merchantQualificationStatus.value = ''
   }
 }
+
+const merchantQualificationText = computed(() => {
+  if (!authStore.isLoggedIn || authStore.userKind !== 'merchant') return ''
+  return qualificationStatusMap[merchantQualificationStatus.value] ?? ''
+})
 
 /**
  * 头像首字符（优先昵称，其次 userId）
@@ -254,6 +278,14 @@ async function handleLogout(): Promise<void> {
   margin-right: 24rpx;
 }
 
+.avatar-image {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  margin-right: 24rpx;
+  flex-shrink: 0;
+}
+
 .avatar-text {
   font-size: 40rpx;
   color: #fff;
@@ -276,6 +308,13 @@ async function handleLogout(): Promise<void> {
   font-size: 24rpx;
   color: #1989fa;
   margin-top: 8rpx;
+}
+
+.qualification-state {
+  display: block;
+  font-size: 22rpx;
+  color: #5ec8a7;
+  margin-top: 6rpx;
 }
 
 .menu-section {

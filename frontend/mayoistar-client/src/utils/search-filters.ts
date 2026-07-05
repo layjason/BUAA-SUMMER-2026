@@ -4,14 +4,13 @@
  * 将搜索页轻量筛选 UI 的选中项转换为 OpenAPI query 参数。
  */
 
-export type ActivityTypeFilter = '运动' | '户外' | '桌游' | '学习' | '公益'
 export type CityFilter = '北京' | '上海' | '广州'
 export type FeeFilter = 'free' | 'paid'
 export type TimeFilter = 'today' | 'week' | 'month'
 export type DistanceFilter = 1000 | 3000 | 5000 | 10000
 
 export interface SearchFilterSelection {
-  activityTypes: ActivityTypeFilter[]
+  activityTypes: string[]
   city: CityFilter | null
   fee: FeeFilter | null
   time: TimeFilter | null

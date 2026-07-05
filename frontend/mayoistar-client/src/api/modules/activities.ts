@@ -69,9 +69,9 @@ export function searchActivities(params: SearchActivitiesParams) {
 }
 
 /** 获取地图范围内的活动列表 */
-export function getMapActivities(longitude: number, latitude: number, distanceMeters: number) {
+export function getMapActivities(params: SearchActivitiesParams) {
   return get('/activities/map', {
-    query: { longitude, latitude, distanceMeters },
+    query: params,
   })
 }
 

@@ -52,4 +52,15 @@ describe('商家资料资质提交 UI', () => {
     expect(source).toContain('getEditableProfileSnapshot')
     expect(source).toContain('if (!hasProfileChanges.value) return')
   })
+
+  it('我的页应按用户类型读取 api-spec 对应资料接口', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/index.vue'), 'utf8')
+
+    expect(source).toContain('getMerchantProfile')
+    expect(source).toContain('getMyProfile')
+    expect(source).toContain("authStore.userKind === 'merchant'")
+    expect(source).toContain('profile.qualificationStatus')
+    expect(source).toContain('avatarUrl')
+    expect(source).not.toContain("api.get('/identity/me/profile')")
+  })
 })
