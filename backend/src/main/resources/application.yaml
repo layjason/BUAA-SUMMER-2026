@@ -94,8 +94,13 @@ mayoistar:
       image-scenes:
         - porn
         - logo
+    activity-planning:
+      endpoint: ${MAYOISTAR_AI_ACTIVITY_PLANNING_ENDPOINT:}
+      model: ${MAYOISTAR_AI_ACTIVITY_PLANNING_MODEL:}
+      api-key: ${MAYOISTAR_AI_ACTIVITY_PLANNING_API_KEY:}
+      timeout-seconds: 60
     rate-limit:
-      max-requests-per-minute: 20
+      max-requests-per-minute: ${MAYOISTAR_AI_MAX_REQUESTS_PER_MINUTE:20}
   check-in:
     signing-secret: ${MAYOISTAR_CHECKIN_SIGNING_SECRET:${MAYOISTAR_JWT_SECRET:dev-checkin-signing-secret-change-me}}
     token-expire-seconds: 900
