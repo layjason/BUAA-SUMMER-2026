@@ -162,7 +162,7 @@ onShow(loadTeams)
 }
 
 .team-name {
-  font-size: $font-md;
+  font-size: $font-base;
   font-weight: $weight-semibold;
   color: $color-text;
 }
