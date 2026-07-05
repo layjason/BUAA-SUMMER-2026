@@ -41,11 +41,12 @@ jobs:
       - name: Check formatting
         run: mvn -B -ntp spotless:check
 
-      - name: Test
-        run: mvn -B -ntp test
-
       - name: Check SpotBugs
         run: mvn -B -ntp spotbugs:check
+
+      - name: Test
+        run: mvn -B -ntp test
+      
   deploy:
     name: Full Stack Deployment
     runs-on: self-hosted
