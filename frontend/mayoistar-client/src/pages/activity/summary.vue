@@ -330,7 +330,7 @@ onLoad((query) => {
 
 <style scoped>
 .page {
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -351,7 +351,7 @@ onLoad((query) => {
   display: block;
   font-size: 32rpx;
   font-weight: 700;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 40rpx;
 }
 
@@ -362,7 +362,7 @@ onLoad((query) => {
 .label {
   display: block;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 12rpx;
 }
 
@@ -370,10 +370,10 @@ onLoad((query) => {
   width: 100%;
   height: 88rpx;
   padding: 0 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   box-sizing: border-box;
 }
 
@@ -381,10 +381,10 @@ onLoad((query) => {
   width: 100%;
   min-height: 300rpx;
   padding: 20rpx 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   box-sizing: border-box;
 }
 
@@ -416,7 +416,7 @@ onLoad((query) => {
   line-height: 32rpx;
   text-align: center;
   background-color: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  color: var(--q-color-bg-card);
   border-radius: 50%;
   font-size: 24rpx;
 }
@@ -424,17 +424,17 @@ onLoad((query) => {
 .image-add-btn {
   width: 180rpx;
   height: 180rpx;
-  border: 2rpx dashed #c8c9cc;
+  border: 2rpx dashed var(--q-color-text-muted);
   border-radius: 8rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
 }
 
 .add-icon {
   font-size: 48rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
   line-height: 1;
 }
 
@@ -442,7 +442,7 @@ onLoad((query) => {
 .classification-row {
   display: flex;
   align-items: center;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   padding: 16rpx 20rpx;
   margin-bottom: 12rpx;
@@ -450,7 +450,7 @@ onLoad((query) => {
 
 .classification-media {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   margin-right: 16rpx;
   flex-shrink: 0;
 }
@@ -463,8 +463,8 @@ onLoad((query) => {
 
 .tag-chip {
   font-size: 22rpx;
-  color: #5ec8a7;
-  background-color: #e8f7f0;
+  color: var(--q-color-primary);
+  background-color: var(--q-color-primary-light);
   padding: 4rpx 12rpx;
   border-radius: 4rpx;
 }

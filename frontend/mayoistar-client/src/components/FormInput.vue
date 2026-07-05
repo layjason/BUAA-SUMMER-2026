@@ -40,7 +40,9 @@ const emit = defineEmits<{
 }>()
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@import '@/styles/theme.scss';
+
 .form-input {
   margin-bottom: 32rpx;
 }
@@ -48,33 +50,34 @@ const emit = defineEmits<{
 .form-input__label {
   display: block;
   font-size: 28rpx;
-  color: #323233;
+  color: $color-text;
   margin-bottom: 12rpx;
 }
 
 .form-input__required {
-  color: #ee0a24;
+  color: $color-danger;
 }
 
 .form-input__input {
   width: 100%;
   height: 88rpx;
   padding: 0 24rpx;
-  background-color: #fff;
-  border-radius: 8rpx;
+  background-color: $color-bg-card;
+  border: 1rpx solid $color-border;
+  border-radius: 20rpx;
   font-size: 30rpx;
-  color: #323233;
+  color: $color-text;
   box-sizing: border-box;
 }
 
 .form-input__placeholder {
-  color: #c8c9cc;
+  color: $color-text-muted;
 }
 
 .form-input__error {
   display: block;
   font-size: 24rpx;
-  color: #ee0a24;
+  color: $color-danger;
   margin-top: 8rpx;
 }
 </style>

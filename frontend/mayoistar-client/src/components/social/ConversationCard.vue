@@ -100,14 +100,15 @@ function onTap() {
   display: flex;
   align-items: center;
   padding: $spacing-lg $spacing-xl;
-  background: #ffffff;
+  background: $gradient-card;
+  border: 1px solid $color-border-light;
   border-radius: $radius-lg;
   margin: $spacing-sm $spacing-lg;
-  box-shadow: $shadow-xs;
+  box-shadow: 0 4px 14px rgba(17, 24, 39, 0.05);
   transition: all 0.2s ease;
 
   &:active {
-    background: rgba(0, 0, 0, 0.02);
+    background: $color-bg-soft;
     transform: scale(0.98);
   }
 
@@ -124,7 +125,7 @@ function onTap() {
     width: 100%;
     height: 100%;
     border-radius: $radius-full;
-    border: 2px solid #ffffff;
+    border: 2px solid var(--q-color-bg-card);
     box-shadow: $shadow-sm;
   }
 
@@ -132,11 +133,11 @@ function onTap() {
     width: 100%;
     height: 100%;
     border-radius: $radius-full;
-    background: $color-primary-light;
+    background: $gradient-primary-soft;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #ffffff;
+    border: 2px solid var(--q-color-bg-card);
     box-shadow: $shadow-sm;
   }
 
@@ -152,7 +153,7 @@ function onTap() {
     height: 12px;
     background: $color-success;
     border-radius: $radius-full;
-    border: 2px solid #ffffff;
+    border: 2px solid var(--q-color-bg-card);
   }
 
   /* ===== 内容区域 ===== */
@@ -186,7 +187,7 @@ function onTap() {
     flex-shrink: 0;
 
     &--friend {
-      background: $color-primary-light;
+      background: $gradient-primary-soft;
       color: $color-primary-dark;
     }
 
@@ -228,7 +229,7 @@ function onTap() {
     min-width: 24px;
     height: 24px;
     background: $color-danger;
-    color: #ffffff;
+    color: var(--q-color-bg-card);
     font-size: $font-xs;
     font-weight: $weight-semibold;
     border-radius: $radius-full;

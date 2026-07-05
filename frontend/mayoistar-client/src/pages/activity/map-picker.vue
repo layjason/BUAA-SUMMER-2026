@@ -649,7 +649,7 @@ onUnload(() => {
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -657,6 +657,15 @@ onUnload(() => {
 .mp-map {
   width: 100%;
   height: 100%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(22, 160, 133, 0.14) 0 3rpx, transparent 4rpx),
+    linear-gradient(90deg, rgba(22, 160, 133, 0.08) 1rpx, transparent 1rpx),
+    linear-gradient(0deg, rgba(37, 99, 235, 0.06) 1rpx, transparent 1rpx), var(--q-color-bg-soft);
+  background-size:
+    96rpx 96rpx,
+    80rpx 80rpx,
+    80rpx 80rpx,
+    auto;
 }
 
 .mp-map-area {
@@ -664,6 +673,7 @@ onUnload(() => {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  background: var(--q-color-bg-soft);
 }
 
 /* ---- 回到定位按钮 ---- */
@@ -672,7 +682,7 @@ onUnload(() => {
   width: 56rpx;
   height: 56rpx;
   border-radius: 50%;
-  background-color: #5ec8a7;
+  background: var(--q-gradient-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -680,7 +690,7 @@ onUnload(() => {
 }
 
 .mp-locate-btn:active {
-  background-color: #45b994;
+  background: var(--q-gradient-primary);
 }
 
 .mp-locate-icon {
@@ -696,7 +706,7 @@ onUnload(() => {
   align-items: center;
   gap: 16rpx;
   padding: calc(var(--status-bar-height) + 12rpx) 32rpx 18rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   z-index: 2;
 }
 
@@ -704,7 +714,7 @@ onUnload(() => {
   flex: 1;
   display: flex;
   align-items: center;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 48rpx;
   padding: 16rpx 24rpx;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.12);
@@ -716,8 +726,8 @@ onUnload(() => {
   line-height: 72rpx;
   padding: 0 20rpx;
   font-size: 26rpx;
-  color: #5ec8a7;
-  background-color: #f2fbf7;
+  color: var(--q-color-primary);
+  background-color: var(--q-color-primary-light);
   border-radius: 36rpx;
 }
 
@@ -730,13 +740,13 @@ onUnload(() => {
 .mp-search-input {
   flex: 1;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   height: 48rpx;
 }
 
 .mp-search-clear {
   font-size: 28rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
   padding: 8rpx;
   flex-shrink: 0;
 }
@@ -759,7 +769,7 @@ onUnload(() => {
   display: flex;
   flex-direction: column;
   max-height: 72%;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 24rpx 24rpx 0 0;
   box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
   padding: 0 32rpx calc(30rpx + env(safe-area-inset-bottom));
@@ -772,7 +782,7 @@ onUnload(() => {
   display: flex;
   align-items: center;
   padding: 20rpx 0;
-  border-bottom: 2rpx solid #f5f5f5;
+  border-bottom: 2rpx solid var(--q-color-border);
   min-height: 80rpx;
 }
 
@@ -789,7 +799,7 @@ onUnload(() => {
 .mp-addr-text {
   flex: 1;
   font-size: 26rpx;
-  color: #323233;
+  color: var(--q-color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -797,21 +807,21 @@ onUnload(() => {
 
 .mp-addr-city {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   margin-left: 8rpx;
   flex-shrink: 0;
 }
 
 .mp-toggle-icon {
   font-size: 20rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   margin-left: 12rpx;
   flex-shrink: 0;
 }
 
 .mp-toggle-label {
   font-size: 22rpx;
-  color: #5ec8a7;
+  color: var(--q-color-primary);
   margin-left: 6rpx;
   flex-shrink: 0;
 }
@@ -822,14 +832,14 @@ onUnload(() => {
   max-height: 40vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  border-bottom: 2rpx solid #f5f5f5;
+  border-bottom: 2rpx solid var(--q-color-border);
 }
 
 .mp-list-item {
   display: flex;
   align-items: center;
   padding: 20rpx 0;
-  border-bottom: 2rpx solid #f5f5f5;
+  border-bottom: 2rpx solid var(--q-color-border);
 }
 
 .mp-list-item:last-child {
@@ -837,7 +847,7 @@ onUnload(() => {
 }
 
 .mp-list-item:active {
-  background-color: #f2f3f5;
+  background-color: var(--q-color-bg-soft);
 }
 
 .mp-item-icon {
@@ -853,13 +863,13 @@ onUnload(() => {
 
 .mp-item-name {
   font-size: 26rpx;
-  color: #323233;
+  color: var(--q-color-text);
   font-weight: 500;
 }
 
 .mp-item-addr {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   margin-top: 4rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -875,7 +885,7 @@ onUnload(() => {
 
 .mp-empty-text {
   font-size: 26rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 /* 确认按钮 */
@@ -883,8 +893,8 @@ onUnload(() => {
   height: 88rpx;
   line-height: 88rpx;
   text-align: center;
-  background-color: #5ec8a7;
-  color: #fff;
+  background: var(--q-gradient-primary);
+  color: var(--q-color-bg-card);
   font-size: 32rpx;
   font-weight: 600;
   border-radius: 44rpx;

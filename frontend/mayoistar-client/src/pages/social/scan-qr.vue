@@ -201,7 +201,7 @@ onUnmounted(() => {
 .scanner-fallback__title {
   font-size: $font-lg;
   font-weight: $weight-semibold;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 
 .scanner-fallback__desc {
@@ -219,7 +219,7 @@ onUnmounted(() => {
 
   text {
     font-size: $font-sm;
-    color: #ffffff;
+    color: var(--q-color-bg-card);
   }
 }
 
@@ -234,7 +234,7 @@ onUnmounted(() => {
 
 .scanner-overlay__text {
   font-size: $font-base;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 
 .hint-section {
@@ -260,7 +260,7 @@ onUnmounted(() => {
 
 .manual-btn__text {
   font-size: $font-sm;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 
 .native-placeholder {

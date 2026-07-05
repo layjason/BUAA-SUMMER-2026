@@ -274,9 +274,11 @@ async function handleLogout(): Promise<void> {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@import '@/styles/theme.scss';
+
 .page {
-  background-color: #f7f8fa;
+  background-color: $color-bg;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -296,8 +298,9 @@ async function handleLogout(): Promise<void> {
 .user-card {
   display: flex;
   align-items: center;
-  background-color: #fff;
-  border-radius: 12rpx;
+  background-color: $color-bg-card;
+  border: 1rpx solid $color-border-light;
+  border-radius: 24rpx;
   padding: 32rpx;
   margin-bottom: 24rpx;
   gap: 16rpx;
@@ -314,7 +317,7 @@ async function handleLogout(): Promise<void> {
   width: 96rpx;
   height: 96rpx;
   border-radius: 50%;
-  background-color: #1989fa;
+  background-color: $color-primary;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -332,7 +335,7 @@ async function handleLogout(): Promise<void> {
 
 .avatar-text {
   font-size: 40rpx;
-  color: #fff;
+  color: $color-text-inverse;
   font-weight: 600;
 }
 
@@ -351,7 +354,7 @@ async function handleLogout(): Promise<void> {
   flex: 1;
   min-width: 0;
   font-size: 32rpx;
-  color: #323233;
+  color: $color-text;
   font-weight: 600;
 }
 
@@ -359,7 +362,7 @@ async function handleLogout(): Promise<void> {
   width: 64rpx;
   height: 64rpx;
   border-radius: 12rpx;
-  background-color: #f2f3f5;
+  background-color: $color-bg-soft;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -374,14 +377,14 @@ async function handleLogout(): Promise<void> {
 .user-kind {
   display: block;
   font-size: 24rpx;
-  color: #1989fa;
+  color: $color-primary;
   margin-top: 8rpx;
 }
 
 .qualification-state {
   display: block;
   font-size: 22rpx;
-  color: #5ec8a7;
+  color: $color-primary;
   margin-top: 6rpx;
 }
 
@@ -392,13 +395,14 @@ async function handleLogout(): Promise<void> {
 .menu-section-title {
   display: block;
   font-size: 26rpx;
-  color: #969799;
+  color: $color-text-muted;
   padding: 0 4rpx 16rpx;
 }
 
 .menu-list {
-  background-color: #fff;
-  border-radius: 12rpx;
+  background-color: $color-bg-card;
+  border: 1rpx solid $color-border-light;
+  border-radius: 24rpx;
 }
 
 .menu-item {
@@ -406,7 +410,7 @@ async function handleLogout(): Promise<void> {
   justify-content: space-between;
   align-items: center;
   padding: 28rpx 32rpx;
-  border-bottom: 1rpx solid #ebedf0;
+  border-bottom: 1rpx solid $color-border-light;
 }
 
 .menu-item:last-child {
@@ -415,23 +419,23 @@ async function handleLogout(): Promise<void> {
 
 .menu-text {
   font-size: 28rpx;
-  color: #323233;
+  color: $color-text;
 }
 
 .menu-arrow {
   font-size: 28rpx;
-  color: #c8c9cc;
+  color: $color-text-muted;
 }
 
 .logout-btn {
   width: 100%;
   height: 88rpx;
   line-height: 88rpx;
-  background-color: #fff;
-  color: #ee0a24;
+  background-color: $color-bg-card;
+  color: $color-danger;
   font-size: 30rpx;
-  border-radius: 12rpx;
-  border: none;
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(220, 38, 38, 0.18);
   margin-top: 16rpx;
 }
 </style>

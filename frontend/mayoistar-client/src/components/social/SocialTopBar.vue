@@ -98,9 +98,7 @@ function onMoreTap() {
 .social-topbar {
   display: flex;
   flex-direction: column;
-  background: $color-bg-glass-heavy;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.96);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -132,7 +130,7 @@ function onMoreTap() {
     width: 100%;
     height: 100%;
     border-radius: $radius-full;
-    border: 2px solid #ffffff;
+    border: 2px solid var(--q-color-bg-card);
     box-shadow: $shadow-sm;
   }
 
@@ -140,11 +138,11 @@ function onMoreTap() {
     width: 100%;
     height: 100%;
     border-radius: $radius-full;
-    background: $color-primary-light;
+    background: $gradient-primary-soft;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #ffffff;
+    border: 2px solid var(--q-color-bg-card);
     box-shadow: $shadow-sm;
   }
 
@@ -160,13 +158,13 @@ function onMoreTap() {
     height: 12px;
     background: $color-danger;
     border-radius: $radius-full;
-    border: 2px solid #ffffff;
+    border: 2px solid var(--q-color-bg-card);
 
     &--red {
       width: 18px;
       height: 18px;
       font-size: 10px;
-      color: #ffffff;
+      color: var(--q-color-bg-card);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -179,7 +177,8 @@ function onMoreTap() {
     flex: 1;
     margin: 0 $spacing-md;
     height: 40px;
-    background: rgba(0, 0, 0, 0.05);
+    background: $color-bg-soft;
+    border: 1px solid $color-border-light;
     border-radius: $radius-full;
     display: flex;
     align-items: center;
@@ -187,7 +186,7 @@ function onMoreTap() {
     transition: all 0.2s ease;
 
     &:active {
-      background: rgba(0, 0, 0, 0.08);
+      background: $color-primary-light;
     }
   }
 
@@ -214,7 +213,7 @@ function onMoreTap() {
     width: 40px;
     height: 40px;
     border-radius: $radius-full;
-    background: $color-primary;
+    background: $gradient-primary;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -228,12 +227,13 @@ function onMoreTap() {
   }
 
   &__more {
-    background: rgba(0, 0, 0, 0.08);
+    background: $color-bg-soft;
+    border: 1px solid $color-border-light;
   }
 
   &__icon {
     font-size: 20px;
-    color: #ffffff;
+    color: var(--q-color-bg-card);
   }
 
   &__more &__icon {

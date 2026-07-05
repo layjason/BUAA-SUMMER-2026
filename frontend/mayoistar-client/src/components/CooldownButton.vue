@@ -39,17 +39,21 @@ defineEmits<{
 }>()
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@import '@/styles/theme.scss';
+
 .cooldown-btn {
   width: 100%;
   height: 88rpx;
   line-height: 88rpx;
-  background-color: #1989fa;
-  color: #fff;
+  background: $gradient-primary;
+  color: $color-text-inverse;
   font-size: 32rpx;
-  border-radius: 8rpx;
+  font-weight: $weight-semibold;
+  border-radius: 24rpx;
   border: none;
   margin-top: 16rpx;
+  box-shadow: 0 10rpx 24rpx rgba(22, 160, 133, 0.2);
 }
 
 .cooldown-btn[disabled] {
@@ -57,8 +61,9 @@ defineEmits<{
 }
 
 .cooldown-btn--secondary {
-  background-color: #fff;
-  color: #1989fa;
-  border: 1rpx solid #1989fa;
+  background: $color-bg-card;
+  color: $color-primary;
+  border: 1rpx solid rgba(22, 160, 133, 0.35);
+  box-shadow: none;
 }
 </style>

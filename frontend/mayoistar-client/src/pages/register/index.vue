@@ -361,7 +361,7 @@ function goLogin(): void {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
 }
 
 .register-container {
@@ -371,7 +371,7 @@ function goLogin(): void {
 .type-tabs {
   display: flex;
   margin-bottom: 40rpx;
-  background-color: #ebedf0;
+  background-color: var(--q-color-bg-soft);
   border-radius: 8rpx;
   padding: 4rpx;
 }
@@ -382,13 +382,13 @@ function goLogin(): void {
   padding: 16rpx 0;
   border-radius: 6rpx;
   font-size: 28rpx;
-  color: #646566;
+  color: var(--q-color-text-sub);
   transition: all 0.2s;
 }
 
 .type-tab.active {
-  background-color: #fff;
-  color: #1989fa;
+  background-color: var(--q-color-bg-card);
+  color: var(--q-color-primary);
   font-weight: 600;
 }
 
@@ -399,7 +399,7 @@ function goLogin(): void {
 .label {
   display: block;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 12rpx;
 }
 
@@ -407,15 +407,15 @@ function goLogin(): void {
   width: 100%;
   height: 88rpx;
   padding: 0 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   font-size: 30rpx;
-  color: #323233;
+  color: var(--q-color-text);
   box-sizing: border-box;
 }
 
 .input-placeholder {
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
 }
 
 .input-wrapper {
@@ -431,17 +431,17 @@ function goLogin(): void {
 }
 
 .nickname-checking {
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .nickname-ok {
-  color: #07c160;
+  color: var(--q-color-success);
 }
 
 .field-error {
   display: block;
   font-size: 24rpx;
-  color: #ee0a24;
+  color: var(--q-color-danger);
   margin-top: 8rpx;
 }
 
@@ -453,7 +453,7 @@ function goLogin(): void {
 
 .link {
   font-size: 28rpx;
-  color: #1989fa;
+  color: var(--q-color-primary);
 }
 </style>
 

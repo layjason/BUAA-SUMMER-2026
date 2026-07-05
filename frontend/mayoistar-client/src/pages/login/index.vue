@@ -190,7 +190,7 @@ function goForgotPassword(): void {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
 }
 
 .login-container {
@@ -206,7 +206,7 @@ function goForgotPassword(): void {
 
 .link {
   font-size: 28rpx;
-  color: #5ec8a7;
+  color: var(--q-color-primary);
 }
 </style>
 

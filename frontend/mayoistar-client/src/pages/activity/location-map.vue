@@ -297,17 +297,27 @@ onLoad((query) => {
   position: relative;
   flex: 1;
   min-height: 0;
+  background: $color-bg-soft;
 }
 
 .location-map {
   width: 100%;
   height: 100%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(22, 160, 133, 0.14) 0 3rpx, transparent 4rpx),
+    linear-gradient(90deg, rgba(22, 160, 133, 0.08) 1rpx, transparent 1rpx),
+    linear-gradient(0deg, rgba(37, 99, 235, 0.06) 1rpx, transparent 1rpx), $color-bg-soft;
+  background-size:
+    96rpx 96rpx,
+    80rpx 80rpx,
+    80rpx 80rpx,
+    auto;
 }
 
 .location-bottom {
   flex-shrink: 0;
   padding: 28rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: 24rpx 24rpx 0 0;
   box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
 }
@@ -353,19 +363,19 @@ onLoad((query) => {
   line-height: 60rpx;
   border-radius: 999rpx;
   border: none;
-  background: #f2f3f5;
+  background: var(--q-color-bg-soft);
   color: $color-text;
   font-size: $font-xs;
 }
 
 .map-action-button--primary {
-  background: $color-primary;
-  color: #ffffff;
+  background: $gradient-primary;
+  color: var(--q-color-bg-card);
 }
 
 .map-action-button[disabled] {
-  background: #c8c9cc;
-  color: #ffffff;
+  background: var(--q-color-text-muted);
+  color: var(--q-color-bg-card);
 }
 
 .location-current {

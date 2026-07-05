@@ -278,7 +278,7 @@ watch(activeTab, () => {
 }
 
 .discover-toolbar {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-bottom: 1px solid $color-border-light;
 }
 
@@ -320,7 +320,7 @@ watch(activeTab, () => {
   max-width: 140px;
   padding: 8px 16px;
   border-radius: $radius-full;
-  background: #f5f6f8;
+  background: var(--q-color-bg-soft);
   border: 1px solid transparent;
   box-shadow: 0 1px 4px rgba(47, 52, 65, 0.06);
 }
@@ -345,7 +345,7 @@ watch(activeTab, () => {
 
 .search-input {
   flex: 1;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   border-radius: $radius-full;
   padding: $spacing-xs $spacing-md;
   font-size: $font-base;
@@ -358,13 +358,13 @@ watch(activeTab, () => {
 }
 
 .search-btn-text {
-  color: #ffffff;
+  color: var(--q-color-bg-card);
   font-size: $font-sm;
 }
 
 .tab-bar {
   display: flex;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-bottom: 1px solid $color-border-light;
 }
 
@@ -428,7 +428,7 @@ watch(activeTab, () => {
 }
 
 .create-button-text {
-  color: #ffffff;
+  color: var(--q-color-bg-card);
   font-size: $font-base;
   font-weight: $weight-medium;
 }
@@ -441,7 +441,7 @@ watch(activeTab, () => {
 }
 
 .team-card {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-md;
   display: flex;
@@ -463,7 +463,7 @@ watch(activeTab, () => {
   width: 48px;
   height: 48px;
   border-radius: $radius-md;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -502,7 +502,7 @@ watch(activeTab, () => {
 }
 
 .team-status-badge {
-  background: rgba(242, 156, 163, 0.15);
+  background: rgba(220, 38, 38, 0.08);
   padding: 2px $spacing-xs;
   border-radius: $radius-sm;
 }
@@ -543,7 +543,7 @@ watch(activeTab, () => {
 }
 
 .tag--more {
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
 
   .tag-text {
     color: $color-text-sub;
@@ -581,7 +581,7 @@ watch(activeTab, () => {
 
 .fab-icon {
   font-size: 28px;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
   font-weight: 300;
 }
 </style>

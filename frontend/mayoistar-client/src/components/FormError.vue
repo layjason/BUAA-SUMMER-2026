@@ -17,14 +17,16 @@ defineProps<{
 }>()
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@import '@/styles/theme.scss';
+
 .form-error {
-  background-color: #fff2f0;
-  border: 1rpx solid #ffccc7;
-  border-radius: 8rpx;
+  background-color: rgba(220, 38, 38, 0.06);
+  border: 1rpx solid rgba(220, 38, 38, 0.18);
+  border-radius: 16rpx;
   padding: 16rpx 24rpx;
   margin-bottom: 24rpx;
   font-size: 26rpx;
-  color: #ee0a24;
+  color: $color-danger;
 }
 </style>

@@ -197,7 +197,7 @@ onShow(() => {
 
 .tab-bar {
   display: flex;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-bottom: 1px solid $color-border-light;
 }
 
@@ -264,7 +264,7 @@ onShow(() => {
 }
 
 .list-item {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-md;
   display: flex;
@@ -276,7 +276,7 @@ onShow(() => {
   width: 44px;
   height: 44px;
   border-radius: $radius-full;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -322,7 +322,7 @@ onShow(() => {
 }
 
 .friend-badge {
-  background: #e8f0fe;
+  background: var(--q-color-primary-light);
 }
 
 .mutual-text {
@@ -332,7 +332,7 @@ onShow(() => {
 
 .friend-text {
   font-size: 10px;
-  color: #3b82f6;
+  color: var(--q-color-info);
 }
 
 .item-time {

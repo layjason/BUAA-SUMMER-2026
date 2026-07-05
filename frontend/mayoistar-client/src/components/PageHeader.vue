@@ -19,22 +19,24 @@ defineProps<{
 }>()
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@import '@/styles/theme.scss';
+
 .page-header {
-  margin-bottom: 64rpx;
+  margin-bottom: 48rpx;
 }
 
 .page-header__title {
   display: block;
-  font-size: 48rpx;
+  font-size: 44rpx;
   font-weight: 700;
-  color: #323233;
-  margin-bottom: 16rpx;
+  color: $color-text;
+  margin-bottom: 12rpx;
 }
 
 .page-header__subtitle {
   display: block;
   font-size: 28rpx;
-  color: #969799;
+  color: $color-text-sub;
 }
 </style>

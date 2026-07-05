@@ -336,9 +336,9 @@
     }
   ],
   "tabBar": {
-    "color": "#A0A6B2",
-    "selectedColor": "#5EC8A7",
-    "backgroundColor": "rgba(255,255,255,0.92)",
+    "color": "#9CA3AF",
+    "selectedColor": "#16A085",
+    "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "list": [
       {
@@ -376,7 +376,7 @@
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "趣聚",
-    "navigationBarBackgroundColor": "#F8FAFC",
-    "backgroundColor": "#F8FAFC"
+    "navigationBarBackgroundColor": "#F5F7FA",
+    "backgroundColor": "#F5F7FA"
   }
 }

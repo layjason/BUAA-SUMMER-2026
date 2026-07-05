@@ -219,7 +219,7 @@ onLoad((query) => {
 }
 
 .member-item {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-md;
   display: flex;
@@ -227,7 +227,7 @@ onLoad((query) => {
   gap: $spacing-md;
 
   &:active {
-    background: #fafafa;
+    background: var(--q-color-bg-soft);
   }
 }
 
@@ -235,7 +235,7 @@ onLoad((query) => {
   width: 48px;
   height: 48px;
   border-radius: $radius-full;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -296,7 +296,7 @@ onLoad((query) => {
   width: 32px;
   height: 32px;
   border-radius: $radius-full;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -313,7 +313,7 @@ onLoad((query) => {
 }
 
 .action-sheet {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-xl $radius-xl 0 0;
   overflow: hidden;
 

@@ -257,7 +257,7 @@ onLoad((query) => {
 }
 
 .toolbar {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   padding: $spacing-md;
   display: flex;
   gap: $spacing-sm;
@@ -267,7 +267,7 @@ onLoad((query) => {
 .toolbar-input {
   flex: 1;
   height: 40px;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   border-radius: $radius-md;
   padding: 0 $spacing-md;
   font-size: $font-base;
@@ -289,7 +289,7 @@ onLoad((query) => {
 .toolbar-btn-text {
   font-size: $font-sm;
   font-weight: $weight-medium;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 
 .scroll-area {
@@ -318,12 +318,12 @@ onLoad((query) => {
 }
 
 .announcement-card {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-md $spacing-lg;
 
   &:active {
-    background: #fafafa;
+    background: var(--q-color-bg-soft);
   }
 }
 
@@ -347,7 +347,7 @@ onLoad((query) => {
 
 .unread-text {
   font-size: 10px;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 
 .announcement-content {
@@ -379,7 +379,7 @@ onLoad((query) => {
 }
 
 .action-sheet {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-xl $radius-xl 0 0;
   overflow: hidden;
 

@@ -247,7 +247,7 @@ onMounted(() => {
 
 .action-card {
   width: calc(50% - #{$spacing-sm});
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-xl;
   padding: $spacing-lg;
   box-shadow: $shadow-xs;
@@ -282,7 +282,7 @@ onMounted(() => {
 }
 
 .action-icon-wrapper--green {
-  background: rgba(52, 199, 89, 0.12);
+  background: $color-primary-light;
 }
 
 .action-icon {
@@ -316,7 +316,7 @@ onMounted(() => {
 }
 
 .empty-inline {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-xl;
   text-align: center;
@@ -337,7 +337,7 @@ onMounted(() => {
 .request-item {
   display: flex;
   align-items: center;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-md $spacing-lg;
   box-shadow: $shadow-xs;
@@ -422,7 +422,7 @@ onMounted(() => {
 
 .qr-modal {
   width: 280px;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-xl;
   padding: $spacing-xl;
   display: flex;

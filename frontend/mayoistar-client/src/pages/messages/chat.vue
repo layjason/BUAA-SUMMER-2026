@@ -880,7 +880,7 @@ onShow(() => {
 
 .announcement-panel {
   flex-shrink: 0;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-bottom: 1px solid $color-border-light;
   box-shadow: $shadow-xs;
 }
@@ -1013,7 +1013,7 @@ onShow(() => {
   width: 36px;
   height: 36px;
   border-radius: $radius-full;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1038,7 +1038,7 @@ onShow(() => {
 }
 
 .message-bubble {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-sm $spacing-md;
   box-shadow: $shadow-xs;
@@ -1047,11 +1047,11 @@ onShow(() => {
 
   &--mine {
     background: $color-primary;
-    color: #ffffff;
+    color: var(--q-color-bg-card);
   }
 
   &--recalled {
-    background: #f0f2f5;
+    background: var(--q-color-bg-soft);
     color: $color-text-sub;
     box-shadow: none;
   }
@@ -1079,7 +1079,7 @@ onShow(() => {
 }
 
 .message-bubble--mine .mention-tag {
-  color: #ffffff;
+  color: var(--q-color-bg-card);
   opacity: 0.95;
 }
 
@@ -1128,7 +1128,7 @@ onShow(() => {
 
 .attachment-panel {
   flex-shrink: 0;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   border-top: 1px solid $color-border-light;
   padding: $spacing-lg $spacing-md;
   padding-bottom: $spacing-md;
@@ -1154,18 +1154,18 @@ onShow(() => {
   width: 56px;
   height: 56px;
   border-radius: $radius-lg;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: $shadow-xs;
 
   &--photo {
-    background: #e8f4fd;
+    background: var(--q-color-primary-light);
   }
 
   &--location {
-    background: #e8f7f0;
+    background: var(--q-color-primary-light);
   }
 }
 
@@ -1184,7 +1184,7 @@ onShow(() => {
   flex-wrap: wrap;
   gap: $spacing-xs;
   padding: $spacing-xs $spacing-md 0;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
 }
 
 .mention-bar-chip {
@@ -1200,7 +1200,7 @@ onShow(() => {
   width: 36px;
   height: 36px;
   border-radius: $radius-full;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1213,7 +1213,7 @@ onShow(() => {
 }
 
 .mention-sheet {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-xl $radius-xl 0 0;
   max-height: 60vh;
   display: flex;
@@ -1273,7 +1273,7 @@ onShow(() => {
   width: 36px;
   height: 36px;
   border-radius: $radius-full;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1295,7 +1295,7 @@ onShow(() => {
 
 .readonly-hint {
   flex-shrink: 0;
-  background: rgba(242, 156, 163, 0.12);
+  background: rgba(220, 38, 38, 0.08);
   padding: $spacing-sm $spacing-md;
   text-align: center;
 }
@@ -1307,7 +1307,7 @@ onShow(() => {
 
 .input-bar {
   flex-shrink: 0;
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-top: 1px solid $color-border-light;
   padding: $spacing-sm $spacing-md;
   padding-bottom: calc($spacing-sm + $safe-bottom);
@@ -1318,7 +1318,7 @@ onShow(() => {
   display: flex;
   align-items: center;
   gap: $spacing-sm;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   border-radius: $radius-full;
   padding: $spacing-xs $spacing-sm;
   min-width: 0;
@@ -1354,7 +1354,7 @@ onShow(() => {
 
 .send-icon {
   font-size: 18px;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 </style>
 

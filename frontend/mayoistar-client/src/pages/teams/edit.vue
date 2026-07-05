@@ -186,7 +186,7 @@ onMounted(async () => {
   width: 80px;
   height: 80px;
   border-radius: $radius-lg;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -209,7 +209,7 @@ onMounted(async () => {
 }
 
 .form-item {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   padding: $spacing-md;
   margin-bottom: 1px;
 
@@ -262,10 +262,10 @@ onMounted(async () => {
   display: inline-flex;
   padding: 2px $spacing-sm;
   border-radius: $radius-sm;
-  background: rgba(76, 175, 80, 0.1);
+  background: $color-primary-light;
 
   &--dissolved {
-    background: rgba(242, 156, 163, 0.15);
+    background: rgba(220, 38, 38, 0.08);
 
     .status-text {
       color: $color-danger;
@@ -283,7 +283,7 @@ onMounted(async () => {
 
 .status-text {
   font-size: $font-sm;
-  color: #4caf50;
+  color: var(--q-color-success);
 }
 
 .notice {

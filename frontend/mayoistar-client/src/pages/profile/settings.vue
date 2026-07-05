@@ -73,7 +73,7 @@ function handleResetMock(): void {
 @import '@/styles/theme.scss';
 
 .page {
-  background: linear-gradient(160deg, $color-bg 0%, $color-bg-warm 100%);
+  background: $color-bg;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -100,9 +100,7 @@ function handleResetMock(): void {
 }
 
 .settings-card {
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $color-bg-card;
   border: 1px solid $color-border-light;
   border-radius: $radius-xl;
   overflow: hidden;

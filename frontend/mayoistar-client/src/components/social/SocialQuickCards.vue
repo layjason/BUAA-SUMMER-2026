@@ -151,10 +151,11 @@ function onFriendRequestsTap() {
 
 .social-quick-card {
   width: 240px;
-  background: #ffffff;
+  background: $gradient-card;
   border-radius: $radius-xl;
   padding: $spacing-lg;
-  box-shadow: $shadow-sm;
+  border: 1px solid $color-border-light;
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
   transition: all 0.2s ease;
   flex-shrink: 0;
   white-space: normal;
@@ -182,14 +183,15 @@ function onFriendRequestsTap() {
   &__badge {
     font-size: $font-xs;
     padding: 2px $spacing-sm;
-    background: $color-primary-light;
+    background: $gradient-primary-soft;
     color: $color-primary-dark;
     border-radius: $radius-full;
     font-weight: $weight-medium;
 
     &--red {
-      background: $color-danger;
-      color: #ffffff;
+      background: rgba(220, 38, 38, 0.08);
+      border: 1px solid rgba(220, 38, 38, 0.18);
+      color: $color-danger;
     }
   }
 
@@ -211,7 +213,7 @@ function onFriendRequestsTap() {
     gap: $spacing-xs;
     margin-top: $spacing-sm;
     padding: $spacing-sm;
-    background: rgba(242, 156, 163, 0.1);
+    background: rgba(220, 38, 38, 0.06);
     border-radius: $radius-sm;
   }
 
@@ -246,15 +248,17 @@ function onFriendRequestsTap() {
     }
 
     &--primary {
-      background: $color-primary;
+      background: $gradient-primary;
+      box-shadow: 0 6px 14px rgba(22, 160, 133, 0.18);
 
       & .social-quick-card__btn-text {
-        color: #ffffff;
+        color: var(--q-color-bg-card);
       }
     }
 
     &--secondary {
-      background: rgba(0, 0, 0, 0.05);
+      background: $color-bg-soft;
+      border: 1px solid $color-border-light;
 
       & .social-quick-card__btn-text {
         color: $color-text;

@@ -98,6 +98,11 @@ interface FeatureItem {
   badge?: string
 }
 
+interface PopupRef {
+  open: () => void
+  close: () => void
+}
+
 const props = defineProps<{
   teamId: string
   team: TeamProfile | null
@@ -109,8 +114,7 @@ const emit = defineEmits<{
   dissolved: []
 }>()
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const popupRef = ref<any>(null)
+const popupRef = ref<PopupRef | null>(null)
 
 const canManage = computed(() => props.myRole === 'leader' || props.myRole === 'admin')
 const isLeader = computed(() => props.myRole === 'leader')
@@ -179,7 +183,7 @@ function onDissolve() {
   uni.showModal({
     title: '解散小队',
     content: '解散后成员将无法继续使用群聊与小队功能，确定解散吗？',
-    confirmColor: '#e54d42',
+    confirmColor: '#dc2626',
     success: async (res) => {
       if (!res.confirm) return
       try {
@@ -205,7 +209,7 @@ defineExpose({ open, close })
 @import '@/styles/theme.scss';
 
 .panel {
-  background: #ffffff;
+  background: $gradient-card;
   border-radius: $radius-xl $radius-xl 0 0;
   max-height: 82vh;
   display: flex;
@@ -244,7 +248,8 @@ defineExpose({ open, close })
 }
 
 .info-card {
-  background: $color-bg;
+  background: $color-bg-soft;
+  border: 1px solid $color-border-light;
   border-radius: $radius-lg;
   padding: $spacing-md;
   display: flex;
@@ -256,7 +261,7 @@ defineExpose({ open, close })
   width: 56px;
   height: 56px;
   border-radius: $radius-md;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -293,7 +298,7 @@ defineExpose({ open, close })
 }
 
 .status-badge {
-  background: rgba(242, 156, 163, 0.15);
+  background: rgba(220, 38, 38, 0.08);
   padding: 2px $spacing-xs;
   border-radius: $radius-sm;
 }
@@ -326,7 +331,7 @@ defineExpose({ open, close })
 }
 
 .tag {
-  background: $color-primary-light;
+  background: $gradient-primary-soft;
   padding: 2px $spacing-sm;
   border-radius: $radius-sm;
 }
@@ -344,7 +349,7 @@ defineExpose({ open, close })
 }
 
 .feature-card {
-  background: #ffffff;
+  background: var(--q-gradient-card);
   border: 1px solid $color-border-light;
   border-radius: $radius-lg;
   padding: $spacing-md $spacing-sm;
@@ -358,7 +363,7 @@ defineExpose({ open, close })
   box-sizing: border-box;
 
   &:active {
-    background: #fafafa;
+    background: var(--q-color-bg-soft);
   }
 }
 
@@ -378,8 +383,9 @@ defineExpose({ open, close })
   position: absolute;
   top: 8px;
   right: 10px;
-  background: $color-danger;
-  color: #fff;
+  background: rgba(220, 38, 38, 0.08);
+  color: $color-danger;
+  border: 1px solid rgba(220, 38, 38, 0.18);
   font-size: 10px;
   min-width: 16px;
   height: 16px;
@@ -397,7 +403,7 @@ defineExpose({ open, close })
 
 .panel-action {
   flex: 1;
-  background: $color-primary-light;
+  background: $gradient-primary-soft;
   border-radius: $radius-full;
   padding: $spacing-sm $spacing-md;
   display: flex;
@@ -420,8 +426,8 @@ defineExpose({ open, close })
 }
 
 .dissolve-btn {
-  background: #fff;
-  border: 1px solid rgba(229, 77, 66, 0.35);
+  background: var(--q-color-bg-card);
+  border: 1px solid rgba(220, 38, 38, 0.28);
   border-radius: $radius-full;
   padding: $spacing-md;
   display: flex;
@@ -431,7 +437,7 @@ defineExpose({ open, close })
 
 .dissolve-btn-text {
   font-size: $font-sm;
-  color: #e54d42;
+  color: var(--q-color-danger);
   font-weight: $weight-medium;
 }
 </style>

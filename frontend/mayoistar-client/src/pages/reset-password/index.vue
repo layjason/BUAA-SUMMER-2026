@@ -45,7 +45,7 @@ function goLogin(): void {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
 }
 
 .container {
@@ -60,11 +60,11 @@ function goLogin(): void {
   display: block;
   font-size: 48rpx;
   font-weight: 700;
-  color: #323233;
+  color: var(--q-color-text);
 }
 
 .success-box {
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 12rpx;
   padding: 56rpx 32rpx;
   text-align: center;
@@ -80,14 +80,14 @@ function goLogin(): void {
 .success-text {
   display: block;
   font-size: 30rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 12rpx;
 }
 
 .success-hint {
   display: block;
   font-size: 26rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   line-height: 1.6;
   margin-bottom: 32rpx;
 }
@@ -96,8 +96,8 @@ function goLogin(): void {
   width: 100%;
   height: 88rpx;
   line-height: 88rpx;
-  background-color: #1989fa;
-  color: #fff;
+  background: var(--q-gradient-primary);
+  color: var(--q-color-bg-card);
   font-size: 32rpx;
   border-radius: 8rpx;
   border: none;

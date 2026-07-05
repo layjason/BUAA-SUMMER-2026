@@ -128,7 +128,7 @@ onShow(loadTeams)
 .team-card {
   display: flex;
   gap: $spacing-md;
-  background: #fff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-lg;
 }
@@ -194,7 +194,7 @@ onShow(loadTeams)
 }
 
 .discover-btn-text {
-  color: #fff;
+  color: var(--q-color-bg-card);
   font-size: $font-sm;
 }
 

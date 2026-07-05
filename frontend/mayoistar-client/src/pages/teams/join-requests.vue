@@ -227,7 +227,7 @@ onLoad((query) => {
 }
 
 .request-card {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-md;
   display: flex;
@@ -306,7 +306,7 @@ onLoad((query) => {
 .btn-text {
   font-size: $font-sm;
   font-weight: $weight-medium;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 
   &--reject {
     color: $color-text-sub;

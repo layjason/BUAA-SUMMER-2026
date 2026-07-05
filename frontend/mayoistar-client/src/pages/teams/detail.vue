@@ -394,7 +394,7 @@ onMounted(() => {
 }
 
 .team-header {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   padding: $spacing-xl;
   display: flex;
   gap: $spacing-md;
@@ -404,7 +404,7 @@ onMounted(() => {
   width: 64px;
   height: 64px;
   border-radius: $radius-lg;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -440,7 +440,7 @@ onMounted(() => {
 }
 
 .status-badge {
-  background: rgba(242, 156, 163, 0.15);
+  background: rgba(220, 38, 38, 0.08);
   padding: 2px $spacing-sm;
   border-radius: $radius-sm;
 }
@@ -468,7 +468,7 @@ onMounted(() => {
 }
 
 .team-tags {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   padding: $spacing-sm $spacing-xl;
   display: flex;
   flex-wrap: wrap;
@@ -487,7 +487,7 @@ onMounted(() => {
 }
 
 .action-bar {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   padding: $spacing-md $spacing-xl;
   border-top: 1px solid $color-border-light;
   border-bottom: 1px solid $color-border-light;
@@ -531,11 +531,11 @@ onMounted(() => {
   }
 
   &--secondary {
-    background: #f0f2f5;
+    background: var(--q-color-bg-soft);
   }
 
   &--danger {
-    background: #ffffff;
+    background: var(--q-color-bg-card);
     border: 1px solid $color-danger;
   }
 
@@ -568,7 +568,7 @@ onMounted(() => {
 }
 
 .action-btn-text {
-  color: #ffffff;
+  color: var(--q-color-bg-card);
   font-size: $font-base;
   font-weight: $weight-medium;
 }
@@ -586,7 +586,7 @@ onMounted(() => {
 }
 
 .section {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   margin-top: $spacing-md;
   padding: $spacing-lg $spacing-xl;
 }
@@ -625,7 +625,7 @@ onMounted(() => {
   width: 40px;
   height: 40px;
   border-radius: $radius-full;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -692,7 +692,7 @@ onMounted(() => {
 }
 
 .action-sheet {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-xl $radius-xl 0 0;
   overflow: hidden;
 

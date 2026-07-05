@@ -443,9 +443,7 @@ function displayOccupiedCount(item: SearchResultItem): number {
   flex: 1;
   display: flex;
   align-items: center;
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $color-bg-card;
   border: 1px solid $color-border;
   border-radius: $radius-full;
   padding: $spacing-sm $spacing-lg;
@@ -513,7 +511,7 @@ function displayOccupiedCount(item: SearchResultItem): number {
 .filter-chip.active {
   color: $color-primary;
   background: $color-primary-light;
-  border-color: rgba(94, 200, 167, 0.35);
+  border-color: rgba(22, 160, 133, 0.35);
 }
 
 .empty-hint {
@@ -553,9 +551,7 @@ function displayOccupiedCount(item: SearchResultItem): number {
 }
 
 .result-card {
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $color-bg-card;
   border: 1px solid $color-border-light;
   border-radius: $radius-xl;
   overflow: hidden;

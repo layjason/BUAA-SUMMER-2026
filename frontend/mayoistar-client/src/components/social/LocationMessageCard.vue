@@ -37,16 +37,17 @@ function handleOpenLocation() {
 .location-card {
   width: 520rpx;
   overflow: hidden;
-  border-radius: 12rpx;
-  background: #ffffff;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+  border-radius: var(--q-radius-card);
+  background: var(--q-color-bg-card);
+  border: 1rpx solid var(--q-color-border);
+  box-shadow: 0 2rpx 8rpx rgba(17, 24, 39, 0.04);
 }
 
 .location-title {
   padding: 22rpx 24rpx 18rpx;
   font-size: 32rpx;
   font-weight: 500;
-  color: #111111;
+  color: var(--q-color-text);
   line-height: 1.3;
   overflow: hidden;
   white-space: nowrap;
@@ -58,7 +59,7 @@ function handleOpenLocation() {
   width: 100%;
   height: 210rpx;
   overflow: hidden;
-  background: #f2f2f2;
+  background: var(--q-color-bg-soft);
 }
 
 .map-image {
@@ -81,8 +82,8 @@ function handleOpenLocation() {
   width: 56rpx;
   height: 56rpx;
   border-radius: 50%;
-  border: 16rpx solid #19c15f;
-  background: #ffffff;
+  border: 16rpx solid var(--q-color-primary);
+  background: var(--q-color-bg-card);
   box-sizing: border-box;
 }
 
@@ -91,6 +92,6 @@ function handleOpenLocation() {
   height: 44rpx;
   margin-top: -4rpx;
   border-radius: 8rpx;
-  background: #19c15f;
+  background: var(--q-color-primary);
 }
 </style>

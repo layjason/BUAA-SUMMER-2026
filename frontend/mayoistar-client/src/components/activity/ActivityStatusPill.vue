@@ -77,14 +77,14 @@ const statusConfig = computed<StatusConfig>(() => {
 
   /* 已满：暖黄 */
   &--warning {
-    background: rgba(246, 197, 111, 0.15);
-    color: #c49a2a;
+    background: $color-accent-light;
+    color: $color-warning;
   }
 
   /* 进行中：柔蓝 */
   &--secondary {
     background: $color-secondary-light;
-    color: #5a9ec9;
+    color: $color-info;
   }
 
   /* 已结束：灰色 */
@@ -96,13 +96,13 @@ const statusConfig = computed<StatusConfig>(() => {
   /* 未开始：信息蓝 */
   &--info {
     background: $color-secondary-light;
-    color: #5a9ec9;
+    color: $color-info;
   }
 
-  /* 已下架：柔粉 */
+  /* 已下架：危险色 */
   &--danger {
-    background: rgba(242, 156, 163, 0.12);
-    color: #d4707a;
+    background: rgba(220, 38, 38, 0.08);
+    color: $color-danger;
   }
 
   /* ===== 文本 ===== */

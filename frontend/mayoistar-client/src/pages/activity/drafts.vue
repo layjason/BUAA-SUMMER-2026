@@ -161,9 +161,7 @@ onMounted(() => {
 }
 
 .draft-card {
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $color-bg-card;
   border: 1px solid $color-border-light;
   border-left: 3px solid $color-primary;
   border-radius: $radius-xl;

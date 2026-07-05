@@ -204,7 +204,7 @@ onLoad((query) => {
 }
 
 .toolbar {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   padding: $spacing-md;
   display: flex;
   flex-direction: column;
@@ -214,7 +214,7 @@ onLoad((query) => {
 
 .toolbar-input {
   height: 40px;
-  background: #f0f2f5;
+  background: var(--q-color-bg-soft);
   border-radius: $radius-md;
   padding: 0 $spacing-md;
   font-size: $font-base;
@@ -236,7 +236,7 @@ onLoad((query) => {
 .toolbar-btn-text {
   font-size: $font-sm;
   font-weight: $weight-medium;
-  color: #ffffff;
+  color: var(--q-color-bg-card);
 }
 
 .scroll-area {
@@ -265,7 +265,7 @@ onLoad((query) => {
 }
 
 .poll-card {
-  background: #ffffff;
+  background: var(--q-color-bg-card);
   border-radius: $radius-lg;
   padding: $spacing-lg;
 }
@@ -295,12 +295,12 @@ onLoad((query) => {
 }
 
 .option-item {
-  background: #f8f9fa;
+  background: var(--q-color-bg-soft);
   border-radius: $radius-md;
   padding: $spacing-sm $spacing-md;
 
   &:active {
-    background: #f0f2f5;
+    background: var(--q-color-bg-soft);
   }
 }
 
@@ -323,7 +323,7 @@ onLoad((query) => {
 
 .option-bar {
   height: 4px;
-  background: #e8eaed;
+  background: var(--q-color-border);
   border-radius: $radius-full;
   overflow: hidden;
 }

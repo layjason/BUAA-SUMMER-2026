@@ -10,9 +10,9 @@
 
 <script setup lang="ts">
 /**
- * 玻璃拟态卡片组件
+ * 通用卡片组件
  *
- * 提供半透明白色背景、模糊滤镜和柔和阴影的卡片容器。
+ * 提供白色背景、细边框和低阴影的卡片容器。
  * 作为通用包裹组件，通过默认插槽承载任意内容。
  *
  * 前置条件：无
@@ -42,9 +42,7 @@ withDefaults(defineProps<Props>(), {
 @import '@/styles/theme.scss';
 
 .glass-card {
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $gradient-card;
   border: 1px solid $color-border-light;
   box-sizing: border-box;
   overflow: hidden;
@@ -52,7 +50,7 @@ withDefaults(defineProps<Props>(), {
   /* ===== 阴影级别 ===== */
 
   &--shadow-sm {
-    box-shadow: $shadow-sm;
+    box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
   }
 
   &--shadow-md {
