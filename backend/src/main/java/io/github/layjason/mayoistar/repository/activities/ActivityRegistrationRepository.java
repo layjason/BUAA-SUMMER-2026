@@ -3,6 +3,7 @@ package io.github.layjason.mayoistar.repository.activities;
 import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -86,4 +87,14 @@ public interface ActivityRegistrationRepository extends JpaRepository<ActivityRe
     @Query("select ar from ActivityRegistration ar where ar.activityId = :activityId and ar.userId = :userId")
     Optional<ActivityRegistration> findByActivityIdAndUserIdForUpdate(
             @Param("activityId") String activityId, @Param("userId") String userId);
+
+    /**
+     * 查询所有已过确认截止时间的候补待确认报名记录。
+     *
+     * @param status                候补待确认状态
+     * @param confirmationDeadline  当前时间，用于比较截止时间
+     * @return 过期候补待确认报名列表
+     */
+    List<ActivityRegistration> findByStatusAndConfirmationDeadlineBefore(
+            RegistrationStatus status, Instant confirmationDeadline);
 }

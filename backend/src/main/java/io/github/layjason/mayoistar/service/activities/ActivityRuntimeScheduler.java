@@ -4,6 +4,7 @@ import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
+import io.github.layjason.mayoistar.service.ActivityRegistrationService;
 import io.github.layjason.mayoistar.service.TeamPointService;
 import java.time.Instant;
 import java.util.List;
@@ -16,7 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 活动运行时状态自动流转调度器。
  *
- * <p>类职责：定时检查已审核通过的活动，根据当前时间自动更新运行时状态。
+ * <p>类职责：定时检查已审核通过的活动，根据当前时间自动更新运行时状态；
+ * 同时处理过期的候补确认记录，自动取消并顺延名额。
  *
  * <p>自动流转规则（按优先级）：
  * <ol>
@@ -34,26 +36,39 @@ public class ActivityRuntimeScheduler {
 
     private final ActivityRepository activityRepository;
     private final TeamPointService teamPointService;
+    private final ActivityRegistrationService activityRegistrationService;
 
-    public ActivityRuntimeScheduler(ActivityRepository activityRepository, TeamPointService teamPointService) {
+    public ActivityRuntimeScheduler(
+            ActivityRepository activityRepository,
+            TeamPointService teamPointService,
+            ActivityRegistrationService activityRegistrationService) {
         this.activityRepository = activityRepository;
         this.teamPointService = teamPointService;
+        this.activityRegistrationService = activityRegistrationService;
     }
 
     /**
-     * 每分钟执行一次运行时状态自动流转。
+     * 每分钟执行一次运行时状态自动流转与过期候补确认处理。
      *
      * <p>前置条件：数据库中存在已审核通过的活动。
      *
-     * <p>后置条件：符合条件的活动运行时状态根据时间更新。
+     * <p>后置条件：符合条件的活动运行时状态根据时间更新；过期的候补确认被取消并顺延。
      */
     @Scheduled(fixedRateString = "PT1M")
     @Transactional
     public void transitionRuntimeStatuses() {
+        Instant now = Instant.now();
+
+        // 处理过期的候补确认
+        try {
+            activityRegistrationService.processExpiredWaitingConfirmations(now);
+        } catch (Exception e) {
+            log.warn("处理过期候补确认失败", e);
+        }
+
         List<Activity> activities = activityRepository.findByReviewStatusAndRuntimeStatusNotIn(
                 ActivityReviewStatus.approved, Set.of(ActivityRuntimeStatus.takenDown, ActivityRuntimeStatus.ended));
 
-        Instant now = Instant.now();
         int updatedCount = 0;
 
         for (Activity activity : activities) {
