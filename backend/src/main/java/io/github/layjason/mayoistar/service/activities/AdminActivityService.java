@@ -346,7 +346,7 @@ public class AdminActivityService {
      *
      * @param activityId 活动 ID
      */
-    private void publishImages(String activityId) {
+    public void publishImages(String activityId) {
         for (MediaFile mediaFile : activityMediaQueryService.loadMediaFiles(activityId)) {
             if (mediaFile.getDeletedAt() == null) {
                 mediaAccessService.overrideAccessPolicy(
@@ -364,7 +364,7 @@ public class AdminActivityService {
      *
      * @param activityId 活动 ID
      */
-    private void restrictImages(String activityId) {
+    public void restrictImages(String activityId) {
         for (MediaFile mediaFile : activityMediaQueryService.loadMediaFiles(activityId)) {
             if (mediaFile.getDeletedAt() == null) {
                 mediaAccessService.overrideAccessPolicy(
