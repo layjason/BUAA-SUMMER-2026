@@ -245,7 +245,7 @@ import {
   uploadActivityImages,
 } from '@/api/modules/activities'
 import { getInterestTags } from '@/api/modules/profile'
-import { AMAP_WEB_API_KEY } from '@/utils/geo-service'
+import { AMAP_WEB_API_KEY } from '@/services/amap'
 import { getErrorMessage } from '@/utils/error'
 import { normalizeGeoPoint } from '@/utils/map-move'
 import { BottomActionBar, FormInput, FormError } from '@/components'

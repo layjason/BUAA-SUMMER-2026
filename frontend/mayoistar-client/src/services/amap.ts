@@ -1,7 +1,8 @@
 /**
- * 高德地图 Web API 服务
+ * 高德地图底层服务（amap）
  *
- * 封装 POI 搜索、地理编码、逆地理编码等 REST API 调用。
+ * 封装 POI 搜索、地理编码、逆地理编码、当前定位等 REST API 调用。
+ * 聊天位置卡片请使用 @/services/location-message，勿在此层混入消息组装逻辑。
  * 调用失败时自动降级为静态预设数据，确保 mock 模式下不依赖外网。
  *
  * 前置条件：AMAP_WEB_API_KEY 为有效的高德 Web API Key

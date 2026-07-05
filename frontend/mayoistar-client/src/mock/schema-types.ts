@@ -42,6 +42,7 @@ export type RegisterActivityRequest = Schema['Activities.RegisterActivityRequest
 export type CheckInRequest = Schema['Activities.CheckInRequest']
 export type ActivityReviewRequest = Schema['Activities.ActivityReviewRequest']
 export type ActivitySummaryPostRequest = Schema['Activities.ActivitySummaryPostRequest']
+export type ActivityUpsertRequest = Schema['Activities.ActivityUpsertRequest']
 
 /**
  * 活动搜索筛选（对齐 OpenAPI ActivityOperations_searchActivities query）。
@@ -93,16 +94,25 @@ export type UserKind = Schema['Identity.UserKind']
 
 export type FriendItem = Schema['Social.FriendItem']
 export type FriendRequest = Schema['Social.FriendRequest']
+export type FollowItem = Schema['Social.FollowItem']
+export type FollowRelation = Schema['Social.FollowRelation']
+export type BlacklistItem = Schema['Social.BlacklistItem']
 export type TeamProfile = Schema['Social.TeamProfile']
 export type TeamCreateRequest = Schema['Social.TeamCreateRequest']
 export type TeamJoinRequest = Schema['Social.TeamJoinRequest']
+export type TeamMember = Schema['Social.TeamMember']
+export type TeamMemberRole = Schema['Social.TeamMemberRole']
 export type JoinTeamRequestBody = Schema['Social.JoinTeamRequest']
 export type FriendRequestSource = Schema['Social.FriendRequestSource']
 export type FriendRequestCreate = Schema['Social.FriendRequestCreate']
+export type Report = Schema['Social.Report']
+export type ReportCreateRequest = Schema['Social.ReportCreateRequest']
+export type ReportStatus = Schema['Social.ReportStatus']
 
 /* ---- 聊天 ---- */
 
 export type ChatMessage = Schema['Chat.ChatMessage']
 export type ConversationSummary = Schema['Chat.ConversationSummary']
 export type SendMessageRequest = Schema['Chat.SendMessageRequest']
+export type ForwardMessageRequest = Schema['Chat.ForwardMessageRequest']
 export type MessageKind = Schema['Chat.MessageKind']

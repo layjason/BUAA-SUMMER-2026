@@ -25,6 +25,8 @@ export interface MockUser {
 export interface MockActivity {
   id: number
   creatorId: number
+  /** 队内活动所属小队；普通活动无此字段 */
+  teamId?: number
   title: string
   introduction: string
   safetyNotice: string
@@ -151,6 +153,7 @@ export interface MockFriend {
   userId: number
   friendId: number
   remark: string
+  groupTags: string[]
   source: string
   createdAt: string
 }
@@ -187,7 +190,17 @@ export interface MockMessage {
   kind: 'text' | 'image' | 'location'
   content: string
   status: 'sent' | 'recalled'
+  readBy?: number[]
   createdAt: string
+  locationSnapshot?: {
+    longitude: number
+    latitude: number
+    city: string
+    address: string
+    placeName?: string
+  }
+  mentionedUserIds?: number[]
+  mentionAll?: boolean
 }
 
 export interface MockTeam {
@@ -201,6 +214,7 @@ export interface MockTeam {
   maxMembers: number
   memberCount: number
   tags?: string[]
+  conversationId?: number
   createdAt: string
 }
 
@@ -209,7 +223,43 @@ export interface MockTeamMember {
   teamId: number
   userId: number
   role: 'leader' | 'admin' | 'member'
+  points: number
   joinedAt: string
+}
+
+export interface MockTeamAnnouncement {
+  id: number
+  teamId: number
+  content: string
+  publisherId: number
+  publishedAt: string
+  readByUserIds: number[]
+}
+
+export interface MockTeamPollOption {
+  id: number
+  content: string
+  voteCount: number
+}
+
+export interface MockTeamPoll {
+  id: number
+  teamId: number
+  title: string
+  options: MockTeamPollOption[]
+  deadline?: string
+  createdAt: string
+  votes: Array<{ userId: number; optionId: number }>
+}
+
+export interface MockTeamMedia {
+  id: number
+  teamId: number
+  mediaId: string
+  kind: 'file' | 'album'
+  fileName: string
+  uploadedBy: number
+  uploadedAt: string
 }
 
 export interface MockTeamJoinRequest {
@@ -240,6 +290,24 @@ export interface MockTemplate {
   defaultSafetyNotice: string
   /** 模板默认人数上限，对应 OpenAPI defaultCapacity */
   defaultCapacity: number
+}
+
+export interface MockBlacklist {
+  userId: number
+  blockedBy: number
+  blockedAt: string
+}
+
+export interface MockReport {
+  id: number
+  reporterUserId: number
+  targetType: 'user' | 'team' | 'activity' | 'message'
+  targetId: string
+  reason: string
+  status: 'pending' | 'processing' | 'resolved' | 'rejected'
+  handlingNote?: string
+  createdAt: string
+  handledAt?: string
 }
 
 /** Mock API 响应格式 */

@@ -56,6 +56,15 @@ importers:
       '@dcloudio/uni-quickapp-webview':
         specifier: 3.0.0-5000720260410001
         version: 3.0.0-5000720260410001(postcss@8.5.16)(rollup@4.62.2)(vue@3.5.39(typescript@4.9.5))
+      '@dcloudio/uni-ui':
+        specifier: ^1.5.12
+        version: 1.5.12
+      '@stomp/stompjs':
+        specifier: ^7.3.0
+        version: 7.3.0
+      html5-qrcode:
+        specifier: ^2.3.8
+        version: 2.3.8
       pinia:
         specifier: ^2.1.7
         version: 2.3.1(typescript@4.9.5)(vue@3.5.39(typescript@4.9.5))
@@ -916,6 +925,9 @@ packages:
   '@dcloudio/uni-stat@3.0.0-5000720260410001':
     resolution: {integrity: sha512-6jDWTufAjGsdOPcfnSsB2ylaBosFj5+UqZch56NgDrHejasdJ5Pb+peqOP7zn/mlRCiYk0dWTi6ZhcUFJ8ZKDA==}
 
+  '@dcloudio/uni-ui@1.5.12':
+    resolution: {integrity: sha512-mGDl2OZSz7D8xcUAzJegWDHOqB4MEFBSW9Esb/oJiu2/3Gk9+P/Z4bA4JZ9jv9VWBYbMrYwaTfK1Z728kABdYg==}
+
   '@dcloudio/vite-plugin-uni@3.0.0-5000720260410001':
     resolution: {integrity: sha512-wVNF7QRImQkAOwtRLrZ80z5KnF+F7P+cBV/BH16aA/Upj1xyFcihRF4QENt9PyhO0syg5n+Dl4Xhm7Oz+6mjPA==}
     engines: {node: ^14.18.0 || >=16.0.0}
@@ -1743,6 +1755,9 @@ packages:
 
   '@sinonjs/fake-timers@8.1.0':
     resolution: {integrity: sha512-OAPJUAtgeINhh/TAlUID4QTs53Njm7xzddaVlEs/SXwgtiD1tW22zAB/W1wdqfrpmikgaWQ9Fw6Ws+hsiRm5Vg==}
+
+  '@stomp/stompjs@7.3.0':
+    resolution: {integrity: sha512-nKMLoFfJhrQAqkvvKd1vLq/cVBGCMwPRCD0LqW7UT1fecRx9C3GoKEIR2CYwVuErGeZu8w0kFkl2rlhPlqHVgQ==}
 
   '@stoplight/http-spec@7.1.0':
     resolution: {integrity: sha512-Z2XqKX2SV8a1rrgSzFqccX2TolfcblT+l4pNvUU+THaLl50tKDoeidwWWZTzYUzqU0+UV97ponvqEbWWN3PaXg==}
@@ -3144,6 +3159,9 @@ packages:
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
+
+  html5-qrcode@2.3.8:
+    resolution: {integrity: sha512-jsr4vafJhwoLVEDW3n1KvPnCCXWaQfRng0/EEYk1vNcQGcG/htAdhJX0be8YyqMoSz7+hZvOZSTAepsabiuhiQ==}
 
   http-errors@2.0.0:
     resolution: {integrity: sha512-FtwrG/euBzaEjYeRqOgly7G0qviiXoJWnvEH2Z1plBdXgbyjv34pHTSb9zoeHMyDy33+DWy5Wt9Wo+TURtOYSQ==}
@@ -6668,7 +6686,47 @@ snapshots:
       - ts-node
       - vue
 
+  '@dcloudio/uni-ui@1.5.12': {}
+
   '@dcloudio/vite-plugin-uni@3.0.0-5000720260410001(postcss@8.5.16)(rollup@4.62.2)(vite@5.2.8(@types/node@20.11.30)(sass@1.101.0)(terser@5.48.0))(vue@3.5.39(typescript@4.9.5))':
+    dependencies:
+      '@babel/core': 7.25.2
+      '@babel/plugin-syntax-import-meta': 7.10.4(@babel/core@7.25.2)
+      '@babel/plugin-transform-typescript': 7.29.7(@babel/core@7.25.2)
+      '@dcloudio/uni-cli-shared': 3.0.0-5000720260410001(postcss@8.5.16)(rollup@4.62.2)(vue@3.5.39(typescript@4.9.5))
+      '@dcloudio/uni-nvue-styler': 3.0.0-5000720260410001
+      '@dcloudio/uni-shared': 3.0.0-5000720260410001
+      '@rollup/pluginutils': 5.1.0(rollup@4.62.2)
+      '@vitejs/plugin-legacy': 5.3.2(terser@5.48.0)(vite@5.2.8(@types/node@20.11.30)(sass@1.101.0)(terser@5.48.0))
+      '@vitejs/plugin-vue': 5.2.4(vite@5.2.8(@types/node@20.11.30)(sass@1.101.0)(terser@5.48.0))(vue@3.5.39(typescript@4.9.5))
+      '@vitejs/plugin-vue-jsx': 3.1.0(vite@5.2.8(@types/node@20.11.30)(sass@1.101.0)(terser@5.48.0))(vue@3.5.39(typescript@4.9.5))
+      '@vue/compiler-core': 3.4.21
+      '@vue/compiler-dom': 3.4.21
+      '@vue/compiler-sfc': 3.4.21
+      '@vue/shared': 3.4.21
+      cac: 6.7.9
+      debug: 4.3.7
+      estree-walker: 2.0.2
+      express: 4.20.0
+      fast-glob: 3.3.3
+      fs-extra: 10.1.0
+      hash-sum: 2.0.0
+      jsonc-parser: 3.3.1
+      magic-string: 0.30.11
+      picocolors: 1.1.0
+      terser: 5.48.0
+      unplugin-auto-import: 19.1.0
+      vite: 5.2.8(@types/node@20.11.30)(sass@1.101.0)(terser@5.48.0)
+    transitivePeerDependencies:
+      - '@nuxt/kit'
+      - '@vueuse/core'
+      - postcss
+      - rollup
+      - supports-color
+      - ts-node
+      - vue
+
+  '@dcloudio/vite-plugin-uni@3.0.0-5000720260410001(postcss@8.5.16)(rollup@4.62.2)(supports-color@10.2.2)(vite@5.2.8(@types/node@26.0.1)(sass@1.101.0)(terser@5.48.0))(vue@3.5.39(typescript@4.9.5))':
     dependencies:
       '@babel/core': 7.25.2
       '@babel/plugin-syntax-import-meta': 7.10.4(@babel/core@7.25.2)
@@ -7579,6 +7637,8 @@ snapshots:
   '@sinonjs/fake-timers@8.1.0':
     dependencies:
       '@sinonjs/commons': 1.8.6
+
+  '@stomp/stompjs@7.3.0': {}
 
   '@stoplight/http-spec@7.1.0':
     dependencies:
@@ -9241,6 +9301,8 @@ snapshots:
       whatwg-encoding: 3.1.1
 
   html-escaper@2.0.2: {}
+
+  html5-qrcode@2.3.8: {}
 
   http-errors@2.0.0:
     dependencies:

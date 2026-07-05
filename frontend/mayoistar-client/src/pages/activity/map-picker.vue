@@ -94,7 +94,7 @@ import {
   reverseGeocode,
   getCurrentLocation,
   type POIItem,
-} from '@/utils/geo-service'
+} from '@/services/amap'
 import { createMapMoveRequest, normalizeGeoPoint } from '@/utils/map-move'
 
 const { t } = useI18n()

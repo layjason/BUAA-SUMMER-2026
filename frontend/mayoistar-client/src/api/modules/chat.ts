@@ -9,7 +9,6 @@ import type { components } from '@/api/types/schema'
 type MediaFile = components['schemas']['MediaFile']
 type SendMessageRequest = components['schemas']['Chat.SendMessageRequest']
 type ForwardMessageRequest = components['schemas']['Chat.ForwardMessageRequest']
-
 /** 获取会话列表 */
 export function getConversations() {
   return get('/chat/conversations')
@@ -24,12 +23,9 @@ export function getMessages(conversationId: string, page: number, pageSize: numb
 }
 
 /** 发送消息到会话 */
-export function sendMessage(
-  conversationId: string,
-  text: string,
-  kind: SendMessageRequest['kind'] = 'text',
-) {
-  const body: SendMessageRequest = { text, kind }
+export function sendMessage(conversationId: string, payload: SendMessageRequest | string) {
+  const body: SendMessageRequest =
+    typeof payload === 'string' ? { kind: 'text', text: payload } : payload
   return post('/chat/conversations/{conversationId}/messages', {
     path: { conversationId },
     body,
@@ -43,9 +39,9 @@ export function recallMessage(messageId: string) {
   })
 }
 
-/** 转发消息到另一个会话 */
-export function forwardMessage(messageId: string, targetConversationId: string) {
-  const body: ForwardMessageRequest = { targetConversationIds: [targetConversationId] }
+/** 转发消息到一个或多个会话 */
+export function forwardMessage(messageId: string, targetConversationIds: string[]) {
+  const body: ForwardMessageRequest = { targetConversationIds }
   return post('/chat/messages/{messageId}/forward', {
     path: { messageId },
     body,

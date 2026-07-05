@@ -68,6 +68,7 @@ $font-2xl: 24px;
 $font-3xl: 30px;
 
 /* ===== 字重 ===== */
+$weight-light: 300;
 $weight-regular: 400;
 $weight-medium: 500;
 $weight-semibold: 600;
@@ -81,5 +82,6 @@ $shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
 $shadow-glass: 0 4px 20px rgba(94, 200, 167, 0.08);
 
 /* ===== 安全区域 ===== */
+$safe-top: env(safe-area-inset-top, 0);
 $safe-bottom: env(safe-area-inset-bottom, 0);
 $tabbar-height: 56px;

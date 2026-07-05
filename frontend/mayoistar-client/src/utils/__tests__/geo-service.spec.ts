@@ -15,7 +15,7 @@
  * 而 fallbackSearchPOI 本身由 MOCK_ACTIVITY_LOCATIONS 预设数据提供回退保障。
  */
 import { describe, expect, it } from 'vitest'
-import { mockLocationsToPOI } from '@/utils/geo-service'
+import { mockLocationsToPOI } from '@/services/amap'
 import { MOCK_ACTIVITY_LOCATIONS } from '@/config/mock-locations'
 
 describe('mockLocationsToPOI', () => {

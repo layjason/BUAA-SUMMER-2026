@@ -83,6 +83,7 @@ const errorMessages: Record<number, string> = {
   40018: '队内活动不存在',
   40019: '黑名单关系不存在',
   40020: '无权操作该小队',
+  40021: '个人二维码无效或已过期',
 
   /* ---- 即时通讯 50000+ ---- */
   50000: '媒体用途不符合聊天接口要求',
@@ -114,4 +115,21 @@ const errorMessages: Record<number, string> = {
  */
 export function getErrorMessage(code: number, fallback = '操作失败，请稍后重试'): string {
   return errorMessages[code] ?? fallback
+}
+
+/**
+ * 从 API 异常解析用户可读提示（优先服务端 message，避免内部错误码映射错位）
+ */
+export function resolveApiError(error: unknown, fallback = '操作失败，请稍后重试'): string {
+  const err = error as { code?: number; message?: string; name?: string }
+  const code = err.code ?? 0
+  const message = err.message?.trim()
+
+  if (message && (code === 0 || code >= 90000 || !errorMessages[code])) {
+    return message
+  }
+  if (code) {
+    return getErrorMessage(code, message || fallback)
+  }
+  return message || fallback
 }
