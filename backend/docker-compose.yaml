@@ -15,7 +15,7 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       MAYOISTAR_DB_HOST: postgres
       MAYOISTAR_DB_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB}
@@ -110,11 +110,19 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
-      KAFKA_CONTROLLER_LISTENER_NAMES: INTERNAL
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT'
-      KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:9093,EXTERNAL://0.0.0.0:9092'
-      KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka:9093,EXTERNAL://${KAFKA_EXTERNAL_HOST:-localhost}:9092'
+
+      # 1. 定义三种监听器的名称
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT'
+      # 2. 绑定 0.0.0.0 的三个端口
+      KAFKA_LISTENERS: 'CONTROLLER://0.0.0.0:9093,INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092'
+      # 3. 核心：告诉客户端如何连接自己
+      # - Docker 内部请求返回 kafka:29092
+      # - 外部请求返回 EXTERNAL 监听器地址
+      KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka:29092,EXTERNAL://${KAFKA_EXTERNAL_HOST:-localhost}:9092'
+
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
@@ -122,6 +130,7 @@ services:
       KAFKA_NUM_PARTITIONS: 15
       CLUSTER_ID: mayoistar-kafka-cluster
     ports:
+      # 只有 EXTERNAL 端口需要暴露给宿主机
       - "${KAFKA_EXTERNAL_PORT:-9092}:9092"
     volumes:
       - kafka-data:/var/lib/kafka/data
@@ -129,7 +138,8 @@ services:
       test:
         [
           "CMD-SHELL",
-          "kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1",
+          # 探针改用内部端口测试
+          "kafka-broker-api-versions --bootstrap-server kafka:29092 > /dev/null 2>&1",
         ]
       interval: 10s
       timeout: 10s
@@ -146,7 +156,8 @@ services:
         condition: service_healthy
     environment:
       KAFKA_CLUSTERS_0_NAME: mayoistar
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
+      # 核心：kafka-ui 属于 Docker 内部网络，必须使用 INTERNAL 监听器指定的地址和端口
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
     ports:
       - "${KAFKA_UI_PORT:-8081}:8080"
     restart: unless-stopped
