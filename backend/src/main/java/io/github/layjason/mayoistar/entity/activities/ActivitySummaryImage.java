@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -46,8 +47,8 @@ public class ActivitySummaryImage {
     @EqualsAndHashCode.Exclude
     private ActivitySummaryPost summary;
 
-    @Column(name = "media_id", length = 36, nullable = false)
-    private String mediaId;
+    @Column(name = "media_id", columnDefinition = "UUID", nullable = false)
+    private UUID mediaId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "media_id", insertable = false, updatable = false)

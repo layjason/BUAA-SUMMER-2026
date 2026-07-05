@@ -1,54 +1,59 @@
 /**
- * 全局 SCSS 变量
+ * 全局 SCSS 变量（兼容桥接层）
  *
- * 定义项目级设计 Token，覆盖 uni.scss 默认值
+ * 将旧版变量名映射到新版 theme.scss Token，
+ * 确保现有页面和组件无需立即迁移即可正常工作。
+ *
+ * 后续迁移时请直接使用 theme.scss 中的 $color-* / $spacing-* / $font-* 命名，
+ * 本文件将在迁移完成后移除。
  */
+@import './theme.scss';
 
-/* 品牌色 */
-$primary-color: #1989fa;
-$primary-light: #e8f4ff;
-$success-color: #07c160;
-$warning-color: #ff976a;
-$danger-color: #ee0a24;
-$info-color: #909399;
+/* 品牌色兼容映射 */
+$primary-color: $color-primary;
+$primary-light: $color-primary-light;
+$success-color: $color-success;
+$warning-color: $color-warning;
+$danger-color: $color-danger;
+$info-color: $color-info;
 
-/* 文字颜色 */
-$text-primary: #323233;
-$text-secondary: #646566;
-$text-placeholder: #c8c9cc;
+/* 文字颜色兼容映射 */
+$text-primary: $color-text;
+$text-secondary: $color-text-sub;
+$text-placeholder: $color-text-muted;
 
-/* 背景色 */
-$bg-color: #f7f8fa;
+/* 背景色兼容映射 */
+$bg-color: $color-bg;
 $bg-white: #ffffff;
-$bg-card: #ffffff;
-$bg-divider: #ebedf0;
+$bg-card: $color-bg-glass;
+$bg-divider: $color-border;
 
-/* 边框 */
-$border-color: #ebedf0;
-$border-radius-sm: 4rpx;
-$border-radius-md: 8rpx;
-$border-radius-lg: 16rpx;
-$border-radius-round: 9999rpx;
+/* 边框兼容映射 */
+$border-color: $color-border;
+$border-radius-sm: $radius-xs;
+$border-radius-md: $radius-md;
+$border-radius-lg: $radius-xl;
+$border-radius-round: $radius-full;
 
-/* 间距 */
-$spacing-xs: 8rpx;
-$spacing-sm: 16rpx;
-$spacing-md: 24rpx;
-$spacing-lg: 32rpx;
-$spacing-xl: 48rpx;
+/* 间距兼容映射（使用 px 而非 rpx，新版统一使用 px） */
+$spacing-xs: $spacing-xs;
+$spacing-sm: $spacing-sm;
+$spacing-md: $spacing-md;
+$spacing-lg: $spacing-lg;
+$spacing-xl: $spacing-xl;
 
-/* 字号 */
-$font-size-xs: 20rpx;
-$font-size-sm: 24rpx;
-$font-size-md: 28rpx;
-$font-size-lg: 32rpx;
-$font-size-xl: 36rpx;
-$font-size-xxl: 40rpx;
+/* 字号兼容映射 */
+$font-size-xs: $font-xs;
+$font-size-sm: $font-sm;
+$font-size-md: $font-base;
+$font-size-lg: $font-lg;
+$font-size-xl: $font-xl;
+$font-size-xxl: $font-2xl;
 
-/* 阴影 */
-$shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
-$shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
-$shadow-lg: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);
+/* 阴影兼容映射 */
+$shadow-sm: $shadow-sm;
+$shadow-md: $shadow-md;
+$shadow-lg: $shadow-lg;
 
 /* 安全区域 */
-$safe-area-inset-bottom: env(safe-area-inset-bottom, 0);
+$safe-area-inset-bottom: $safe-bottom;

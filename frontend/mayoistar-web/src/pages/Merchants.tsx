@@ -329,9 +329,9 @@ export const Merchants: React.FC = () => {
           <div className="space-y-6 text-xs text-slate-600 leading-relaxed font-semibold">
             {/* Header branding */}
             <div className="space-y-3 pb-5 border-b border-slate-100 text-left">
-              {profile.avatar?.url && (
+              {profile.avatar?.signedUrl && (
                 <img
-                  src={profile.avatar.url}
+                  src={profile.avatar.signedUrl}
                   referrerPolicy="no-referrer"
                   className="h-12 w-12 rounded-2xl object-cover border border-slate-200"
                   alt="商家头像"

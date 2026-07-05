@@ -48,7 +48,8 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import { getCheckIns } from '@/api/modules/checkin'
 import { getErrorMessage } from '@/utils/error'
 import { formatDateTime } from '@/utils/date'
 
@@ -72,7 +73,6 @@ const items = ref<CheckInItem[]>([])
 const currentPage = ref(1)
 const totalPages = ref(1)
 const noMore = ref(false)
-const PAGE_SIZE = 20
 
 const statusTextMap: Record<string, string> = {
   registered: t('myRegistrations.statusRegistered'),
@@ -89,29 +89,24 @@ function registrationStatusText(status: string): string {
 /**
  * 加载签到列表
  *
- * @param page 目标页码
- * @param reset 是否重置列表
+ * 调用 getCheckIns API 获取活动的所有签到记录。
+ * Mock 模式下一次性返回全部数据，不支持分页。
  */
-async function loadData(page: number, reset = false): Promise<void> {
-  if (reset) {
-    noMore.value = false
-    loading.value = true
-  }
+async function loadData(): Promise<void> {
+  noMore.value = false
+  loading.value = true
 
   try {
-    const result = (await api.get('/activities/{activityId}/check-ins', {
-      path: { activityId: activityId.value },
-      query: { page, pageSize: PAGE_SIZE },
-    })) as { items: CheckInItem[]; page: number; totalPages: number }
-
-    if (reset) {
-      items.value = result.items
-    } else {
-      items.value.push(...result.items)
+    const result = (await getCheckIns(activityId.value)) as {
+      items: CheckInItem[]
+      page: number
+      totalPages: number
     }
-    currentPage.value = result.page
-    totalPages.value = result.totalPages
-    noMore.value = result.page >= result.totalPages
+
+    items.value = result.items
+    currentPage.value = result.page ?? 1
+    totalPages.value = result.totalPages ?? 1
+    noMore.value = true
   } catch (error) {
     if (error instanceof BusinessError) {
       errorMsg.value = getErrorMessage(error.code)
@@ -129,18 +124,15 @@ async function loadData(page: number, reset = false): Promise<void> {
 async function onRefresh(): Promise<void> {
   refreshing.value = true
   errorMsg.value = ''
-  await loadData(1, true)
+  await loadData()
   refreshing.value = false
 }
 
 /**
- * 上拉加载更多
+ * 上拉加载更多（当前 mock 模式不支持分页）
  */
-async function onLoadMore(): Promise<void> {
-  if (loadingMore.value || noMore.value || loading.value) return
-  loadingMore.value = true
-  await loadData(currentPage.value + 1)
-  loadingMore.value = false
+function onLoadMore(): void {
+  // Mock 模式下一次性加载全部，无需分页
 }
 
 onLoad((query) => {
@@ -150,7 +142,7 @@ onLoad((query) => {
     loading.value = false
     return
   }
-  loadData(1, true)
+  loadData()
 })
 </script>
 
@@ -200,7 +192,7 @@ onLoad((query) => {
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
-  background-color: #1989fa;
+  background-color: #5ec8a7;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -237,8 +229,8 @@ onLoad((query) => {
 }
 
 .status-registered {
-  background-color: #e6f0fe;
-  color: #1989fa;
+  background-color: rgba(94, 200, 167, 0.1);
+  color: #5ec8a7;
 }
 
 .status-checkedIn {

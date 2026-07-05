@@ -2,9 +2,12 @@ package io.github.layjason.mayoistar.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
+import io.github.layjason.mayoistar.entity.common.MediaUsage;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.Gender;
 import io.github.layjason.mayoistar.entity.identity.InterestTag;
@@ -27,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 class UserProfileServiceTest {
@@ -46,6 +50,9 @@ class UserProfileServiceTest {
     @Mock
     private ReputationService reputationService;
 
+    @Mock
+    private MediaFileUploadService mediaFileUploadService;
+
     private UserProfileService userProfileService;
 
     private final String userId = UUID.randomUUID().toString();
@@ -57,7 +64,8 @@ class UserProfileServiceTest {
                 personalProfileRepository,
                 interestTagRepository,
                 mediaFileRepository,
-                reputationService);
+                reputationService,
+                mediaFileUploadService);
     }
 
     @Nested
@@ -183,6 +191,29 @@ class UserProfileServiceTest {
             assertThat(result).hasSize(2);
             assertThat(result.get(0).getName()).isEqualTo("篮球");
             assertThat(result.get(1).getName()).isEqualTo("摄影");
+        }
+    }
+
+    @Nested
+    @DisplayName("头像上传")
+    class UploadAvatar {
+
+        @Test
+        @DisplayName("委托 MediaFileUploadService 上传头像")
+        void shouldDelegateToMediaFileUploadService() {
+            MultipartFile file = org.mockito.Mockito.mock(MultipartFile.class);
+            CommonDtos.MediaFile expected = new CommonDtos.MediaFile();
+            expected.setMediaId(UUID.randomUUID());
+            expected.setFileName("avatar.png");
+            expected.setContentType("image/png");
+            expected.setUsage(MediaUsage.avatar);
+
+            when(mediaFileUploadService.upload(userId, file, MediaUsage.avatar)).thenReturn(expected);
+
+            CommonDtos.MediaFile result = userProfileService.uploadAvatar(userId, file);
+
+            assertThat(result.getFileName()).isEqualTo("avatar.png");
+            verify(mediaFileUploadService).upload(userId, file, MediaUsage.avatar);
         }
     }
 

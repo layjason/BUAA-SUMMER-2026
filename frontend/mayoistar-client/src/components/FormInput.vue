@@ -10,7 +10,7 @@
       :password="type === 'password'"
       class="form-input__input"
       placeholder-class="form-input__placeholder"
-      @input="onInput"
+      @input="emit('update:modelValue', ($event as any).detail.value)"
       @blur="$emit('blur')"
     />
     <text v-if="error" class="form-input__error">{{ error }}</text>
@@ -38,15 +38,6 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
   blur: []
 }>()
-
-/**
- * 处理输入事件，双向绑定
- *
- * @param e uni-app input 事件
- */
-function onInput(e: { detail: { value: string } }) {
-  emit('update:modelValue', e.detail.value)
-}
 </script>
 
 <style scoped>

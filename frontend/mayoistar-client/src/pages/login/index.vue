@@ -194,7 +194,7 @@ function goForgotPassword(): void {
 }
 
 .login-container {
-  padding: 120rpx 48rpx 48rpx;
+  padding: 120rpx 48rpx calc(80rpx + env(safe-area-inset-bottom));
 }
 
 .footer-links {
@@ -206,7 +206,7 @@ function goForgotPassword(): void {
 
 .link {
   font-size: 28rpx;
-  color: #1989fa;
+  color: #5ec8a7;
 }
 </style>
 

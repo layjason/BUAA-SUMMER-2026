@@ -13,6 +13,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -68,8 +69,8 @@ public class ChatMessage {
     @Column(columnDefinition = "text")
     private String text;
 
-    @Column(name = "image_media_id", length = 36)
-    private String imageMediaId;
+    @Column(name = "image_media_id", columnDefinition = "UUID")
+    private UUID imageMediaId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "image_media_id", insertable = false, updatable = false)

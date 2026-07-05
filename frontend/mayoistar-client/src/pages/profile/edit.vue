@@ -293,10 +293,10 @@ async function handleAvatarClick(): Promise<void> {
     try {
       const result = (await api.upload('/identity/media/avatar', tempPath)) as {
         mediaId: string
-        url: string
+        signedUrl: string
       }
       avatarMediaId.value = result.mediaId
-      avatarUrl.value = result.url
+      avatarUrl.value = result.signedUrl
     } catch {
       formError.value = t('editProfile.avatarUploadFailed')
     }
@@ -327,9 +327,9 @@ async function loadProfile(): Promise<void> {
   try {
     if (isMerchant.value) {
       const profile = await api.get('/identity/me/merchant-profile')
-      formNickname.value = profile.merchantNickname
+      formNickname.value = profile.nickname
       formMerchantName.value = profile.merchantName
-      if (profile.avatar?.url) avatarUrl.value = profile.avatar.url
+      if (profile.avatar?.signedUrl) avatarUrl.value = profile.avatar.signedUrl
       if (profile.interestedActivityFields?.length) {
         selectedTags.value = new Set(profile.interestedActivityFields)
       }
@@ -342,8 +342,8 @@ async function loadProfile(): Promise<void> {
     } else {
       const profile = await api.get('/identity/me/profile')
       formNickname.value = profile.nickname
-      if (profile.avatar?.url) avatarUrl.value = profile.avatar.url
-      if (profile.gender) formGender.value = profile.gender
+      if (profile.avatar?.signedUrl) avatarUrl.value = profile.avatar.signedUrl
+      if (profile.gender) formGender.value = profile.gender as typeof formGender.value
       if (profile.birthday) formBirthday.value = profile.birthday
       if (profile.signature) formSignature.value = profile.signature
       if (profile.interestTags?.length) {
@@ -406,7 +406,7 @@ async function handleSave(): Promise<void> {
     if (isMerchant.value) {
       await api.patch('/identity/me/merchant-profile', {
         body: {
-          merchantNickname: nickname,
+          nickname: nickname,
           merchantName: formMerchantName.value.trim(),
           avatarMediaId: avatarMediaId.value || undefined,
           interestedActivityFields: [...selectedTags.value],
@@ -454,7 +454,7 @@ async function handleSave(): Promise<void> {
 }
 
 .edit-container {
-  padding: 32rpx 32rpx 48rpx;
+  padding: 32rpx 32rpx calc(160rpx + env(safe-area-inset-bottom));
 }
 
 .action-bar {
@@ -625,18 +625,6 @@ async function handleSave(): Promise<void> {
   font-size: 26rpx;
   color: #ee0a24;
   margin-top: 8rpx;
-}
-
-<style > page {
-  height: 100%;
-  overflow: hidden;
-}
-</style>
-
-<style>
-page {
-  height: 100%;
-  overflow: hidden;
 }
 </style>
 

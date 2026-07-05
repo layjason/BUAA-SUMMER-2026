@@ -37,11 +37,15 @@ public class JwtService {
      */
     public JwtService(JwtProperties jwtProperties) {
         this.jwtProperties = jwtProperties;
-        byte[] keyBytes = jwtProperties.secret().getBytes(StandardCharsets.UTF_8);
+        this.secretKey = createSecretKey(jwtProperties.secret());
+    }
+
+    private static SecretKey createSecretKey(String secret) {
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 32) {
             throw new IllegalArgumentException("JWT secret must be at least 256 bits (32 bytes)");
         }
-        this.secretKey = Keys.hmacShaKeyFor(keyBytes);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     /**
@@ -102,6 +106,7 @@ public class JwtService {
      * @param token JWT 字符串
      * @return 解析后的 Claims，无效时返回 null
      */
+    @Nullable
     public Claims parseToken(String token) {
         try {
             return Jwts.parser()

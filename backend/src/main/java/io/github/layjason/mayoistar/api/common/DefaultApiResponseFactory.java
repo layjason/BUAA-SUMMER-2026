@@ -1,29 +1,10 @@
 package io.github.layjason.mayoistar.api.common;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
-import io.github.layjason.mayoistar.api.admin.AdminDtos;
 import io.github.layjason.mayoistar.api.ai.AiDtos;
-import io.github.layjason.mayoistar.api.chat.ChatDtos;
-import io.github.layjason.mayoistar.api.identity.IdentityDtos;
-import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
-import io.github.layjason.mayoistar.entity.admin.AdminModerationAction;
-import io.github.layjason.mayoistar.entity.chat.MessageKind;
-import io.github.layjason.mayoistar.entity.common.MediaUsage;
-import io.github.layjason.mayoistar.entity.identity.AccountStatus;
-import io.github.layjason.mayoistar.entity.identity.QualificationStatus;
-import io.github.layjason.mayoistar.entity.identity.UserKind;
-import io.github.layjason.mayoistar.entity.social.FriendRequestSource;
-import io.github.layjason.mayoistar.entity.social.FriendRequestStatus;
-import io.github.layjason.mayoistar.entity.social.FriendshipSource;
-import io.github.layjason.mayoistar.entity.social.ReportStatus;
-import io.github.layjason.mayoistar.entity.social.ReportTargetType;
-import io.github.layjason.mayoistar.entity.social.TeamJoinMode;
-import io.github.layjason.mayoistar.entity.social.TeamJoinRequestStatus;
-import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
-import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -58,46 +39,19 @@ public class DefaultApiResponseFactory {
         return ResponseEntity.ok(ApiResponse.success(PageResult.empty()));
     }
 
-    /**
-     * 创建空数据响应。
-     *
-     * <p>前置条件：调用方需要 EmptyData 占位响应。
-     *
-     * <p>后置条件：返回 data 为 JSON 空对象的成功响应。
-     *
-     * <p>不变量：该方法不访问数据库，不修改外部状态。
-     *
-     * @return 空数据响应
-     */
-    public ResponseEntity<ApiResponse<EmptyData>> emptyData() {
-        return ResponseEntity.ok(ApiResponse.success(new EmptyData()));
-    }
-
-    /**
-     * 创建媒体文件占位响应。
-     *
-     * <p>前置条件：usage 对应契约枚举值。
-     *
-     * <p>后置条件：返回媒体文件必填字段的占位对象。
-     *
-     * <p>不变量：不保存真实文件。
-     *
-     * @param usage 媒体用途
-     * @return 媒体文件响应
-     */
-    public ResponseEntity<ApiResponse<CommonDtos.MediaFile>> mediaFile(MediaUsage usage) {
-        CommonDtos.MediaFile file = new CommonDtos.MediaFile();
-        file.setMediaId("media-placeholder");
-        file.setFileName("placeholder.png");
-        file.setContentType("image/png");
-        file.setSizeBytes(0L);
-        file.setUsage(usage);
-        file.setUploadedAt(NOW);
-        return ResponseEntity.ok(ApiResponse.success(file));
-    }
-
     /* ========== 活动 ========== */
 
+    /**
+     * 创建活动草稿详情占位响应。
+     *
+     * <p>前置条件：调用方已在 Controller 层判断无用户登录。
+     *
+     * <p>后置条件：返回草稿状态的占位 ActivityDraftDetail。
+     *
+     * <p>不变量：不访问数据库。
+     *
+     * @return 活动草稿详情响应
+     */
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDraftDetail>> activityDraftDetail() {
         ActivityDtos.ActivityDraftDetail dto = new ActivityDtos.ActivityDraftDetail();
         dto.setActivityId("activity-placeholder");
@@ -109,6 +63,17 @@ public class DefaultApiResponseFactory {
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
+    /**
+     * 创建活动详情占位响应。
+     *
+     * <p>前置条件：调用方在未登录状态下需要 ActivityDetail 响应。
+     *
+     * <p>后置条件：返回完整字段占位的 ActivityDetail。
+     *
+     * <p>不变量：不访问数据库。
+     *
+     * @return 活动详情响应
+     */
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> activityDetail() {
         ActivityDtos.ActivityDetail dto = new ActivityDtos.ActivityDetail();
         dto.setActivityId("activity-placeholder");
@@ -133,29 +98,17 @@ public class DefaultApiResponseFactory {
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
-    public ResponseEntity<ApiResponse<ActivityDtos.ActivitySummary>> activitySummary() {
-        ActivityDtos.ActivitySummary dto = new ActivityDtos.ActivitySummary();
-        fillActivitySummary(dto);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<ActivityDtos.RegistrationResult>> registrationResult() {
-        ActivityDtos.RegistrationResult dto = new ActivityDtos.RegistrationResult();
-        dto.setRegistrationId("registration-placeholder");
-        dto.setActivityId("activity-placeholder");
-        dto.setStatus(RegistrationStatus.registered);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<ActivityDtos.ActivityParticipationState>> participationState() {
-        ActivityDtos.ActivityParticipationState dto = new ActivityDtos.ActivityParticipationState();
-        dto.setCanRegister(true);
-        dto.setCanCancelRegistration(false);
-        dto.setCanConfirmWaitingSeat(false);
-        dto.setCanCheckIn(false);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
+    /**
+     * 创建签到二维码占位响应。
+     *
+     * <p>前置条件：尚未接入真实签到服务。
+     *
+     * <p>后置条件：返回占位 token 和超时时间。
+     *
+     * <p>不变量：不调用外部服务。
+     *
+     * @return 签到二维码响应
+     */
     public ResponseEntity<ApiResponse<ActivityDtos.CheckInQrCode>> checkInQrCode() {
         ActivityDtos.CheckInQrCode dto = new ActivityDtos.CheckInQrCode();
         dto.setActivityId("activity-placeholder");
@@ -164,6 +117,17 @@ public class DefaultApiResponseFactory {
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
+    /**
+     * 创建签到记录占位响应。
+     *
+     * <p>前置条件：尚未接入真实签到服务。
+     *
+     * <p>后置条件：返回已签到状态的占位记录。
+     *
+     * <p>不变量：不访问数据库。
+     *
+     * @return 签到记录响应
+     */
     public ResponseEntity<ApiResponse<ActivityDtos.CheckInRecord>> checkInRecord() {
         ActivityDtos.CheckInRecord dto = new ActivityDtos.CheckInRecord();
         dto.setRegistrationId("registration-placeholder");
@@ -173,10 +137,17 @@ public class DefaultApiResponseFactory {
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
-    public ResponseEntity<ApiResponse<List<ActivityDtos.CheckInRecord>>> checkInRecords() {
-        return ResponseEntity.ok(ApiResponse.success(List.of()));
-    }
-
+    /**
+     * 创建活动总结帖占位响应。
+     *
+     * <p>前置条件：尚未接入活动总结服务。
+     *
+     * <p>后置条件：返回默认标题与内容的占位总结。
+     *
+     * <p>不变量：不访问数据库。
+     *
+     * @return 活动总结帖响应
+     */
     public ResponseEntity<ApiResponse<ActivityDtos.ActivitySummaryPost>> activitySummaryPost() {
         ActivityDtos.ActivitySummaryPost dto = new ActivityDtos.ActivitySummaryPost();
         dto.setSummaryId("summary-placeholder");
@@ -189,6 +160,17 @@ public class DefaultApiResponseFactory {
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
+    /**
+     * 创建活动评价占位响应。
+     *
+     * <p>前置条件：尚未接入活动评价服务。
+     *
+     * <p>后置条件：返回 5 星评分占位评价。
+     *
+     * <p>不变量：不访问数据库。
+     *
+     * @return 活动评价响应
+     */
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityReview>> activityReview() {
         ActivityDtos.ActivityReview dto = new ActivityDtos.ActivityReview();
         dto.setReviewId("review-placeholder");
@@ -200,270 +182,19 @@ public class DefaultApiResponseFactory {
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
-    public ResponseEntity<ApiResponse<List<ActivityDtos.ActivityMapPoint>>> activityMapPoints() {
-        return ResponseEntity.ok(ApiResponse.success(List.of()));
-    }
-
-    /* ========== 身份认证 ========== */
-
-    public ResponseEntity<ApiResponse<IdentityDtos.LoginResult>> loginResult() {
-        IdentityDtos.TokenPair tokens = new IdentityDtos.TokenPair();
-        tokens.setAccessToken("access-token-placeholder");
-        tokens.setRefreshToken("refresh-token-placeholder");
-        tokens.setExpiresAt(NOW);
-
-        IdentityDtos.LoginResult dto = new IdentityDtos.LoginResult();
-        dto.setUserId("user-placeholder");
-        dto.setKind(UserKind.personal);
-        dto.setAccountStatus(AccountStatus.active);
-        dto.setTokens(tokens);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<IdentityDtos.TokenPair>> tokenPair() {
-        IdentityDtos.TokenPair dto = new IdentityDtos.TokenPair();
-        dto.setAccessToken("access-token-placeholder");
-        dto.setRefreshToken("refresh-token-placeholder");
-        dto.setExpiresAt(NOW);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<AdminDtos.AdminLoginResponse>> adminLoginResult() {
-        IdentityDtos.TokenPair tokens = new IdentityDtos.TokenPair();
-        tokens.setAccessToken("access-token-placeholder");
-        tokens.setRefreshToken("refresh-token-placeholder");
-        tokens.setExpiresAt(NOW);
-
-        AdminDtos.AdminLoginResponse dto = new AdminDtos.AdminLoginResponse();
-        dto.setUserId("admin-placeholder");
-        dto.setTokens(tokens);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<IdentityDtos.PublicUserProfile>> publicUserProfile() {
-        IdentityDtos.PublicUserProfile dto = new IdentityDtos.PublicUserProfile();
-        dto.setUserId("user-placeholder");
-        dto.setNickname("MayoiStar");
-        dto.setInterestTags(List.of());
-        dto.setReputationScore(100);
-        dto.setKind(UserKind.personal);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<IdentityDtos.MerchantProfile>> merchantProfile() {
-        IdentityDtos.MerchantProfile dto = new IdentityDtos.MerchantProfile();
-        dto.setUserId("merchant-placeholder");
-        dto.setMerchantName("默认商家");
-        dto.setNickname("默认商家昵称");
-        dto.setInterestedActivityFields(List.of());
-        dto.setAccountStatus(AccountStatus.active);
-        dto.setQualificationStatus(QualificationStatus.not_submitted);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<IdentityDtos.NicknameAvailability>> nicknameAvailability() {
-        IdentityDtos.NicknameAvailability dto = new IdentityDtos.NicknameAvailability();
-        dto.setNickname("MayoiStar");
-        dto.setAvailable(true);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<List<IdentityDtos.InterestTagItem>>> interestTags() {
-        return ResponseEntity.ok(ApiResponse.success(List.of()));
-    }
-
-    /* ========== 聊天 ========== */
-
-    public ResponseEntity<ApiResponse<ChatDtos.ChatMessage>> chatMessage() {
-        ChatDtos.ChatMessage dto = new ChatDtos.ChatMessage();
-        dto.setMessageId("message-placeholder");
-        dto.setConversationId("conversation-placeholder");
-        dto.setSenderId("user-placeholder");
-        dto.setKind(MessageKind.text);
-        dto.setText("默认消息");
-        dto.setReadStatus("unread");
-        dto.setRecalled(false);
-        dto.setSentAt(NOW);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<List<ChatDtos.ChatMessage>>> chatMessages() {
-        return ResponseEntity.ok(ApiResponse.success(List.of()));
-    }
-
-    public ResponseEntity<ApiResponse<ChatDtos.ChatRealtimeEvent>> chatRealtimeEvent() {
-        ChatDtos.ChatMessage message = new ChatDtos.ChatMessage();
-        message.setMessageId("message-placeholder");
-        message.setConversationId("conversation-placeholder");
-        message.setSenderId("user-placeholder");
-        message.setKind(MessageKind.text);
-        message.setText("默认消息");
-        message.setReadStatus("unread");
-        message.setRecalled(false);
-        message.setSentAt(NOW);
-
-        ChatDtos.ChatRealtimeEvent dto = new ChatDtos.ChatRealtimeEvent();
-        dto.setKind("messageCreated");
-        dto.setConversationId("conversation-placeholder");
-        dto.setMessage(message);
-        dto.setConversationUnreadCount(0);
-        dto.setOccurredAt(NOW);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<ChatDtos.TeamAnnouncement>> teamAnnouncement() {
-        ChatDtos.TeamAnnouncement dto = new ChatDtos.TeamAnnouncement();
-        dto.setAnnouncementId("announcement-placeholder");
-        dto.setTeamId("team-placeholder");
-        dto.setContent("默认公告");
-        dto.setPublisherId("user-placeholder");
-        dto.setPublishedAt(NOW);
-        dto.setReadByCurrentUser(false);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<ChatDtos.TeamPoll>> teamPoll() {
-        ChatDtos.TeamPollOption option = new ChatDtos.TeamPollOption();
-        option.setOptionId("option-placeholder");
-        option.setContent("默认选项");
-        option.setVoteCount(0);
-
-        ChatDtos.TeamPoll dto = new ChatDtos.TeamPoll();
-        dto.setPollId("poll-placeholder");
-        dto.setTeamId("team-placeholder");
-        dto.setTitle("默认投票");
-        dto.setOptions(List.of(option));
-        dto.setCreatedAt(NOW);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    /* ========== 社交 ========== */
-
-    public ResponseEntity<ApiResponse<SocialDtos.FollowRelation>> followRelation() {
-        SocialDtos.FollowRelation dto = new SocialDtos.FollowRelation();
-        dto.setTargetUserId("user-placeholder");
-        dto.setFollowing(true);
-        dto.setMutual(false);
-        dto.setFriendshipCreated(false);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<SocialDtos.FriendRequest>> friendRequest() {
-        SocialDtos.FriendRequest dto = new SocialDtos.FriendRequest();
-        dto.setRequestId("request-placeholder");
-        dto.setRequesterId("user-placeholder");
-        dto.setTargetUserId("target-placeholder");
-        dto.setSource(FriendRequestSource.profile);
-        dto.setStatus(FriendRequestStatus.pending);
-        dto.setCreatedAt(NOW);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<SocialDtos.FriendItem>> friendItem() {
-        SocialDtos.FriendItem dto = new SocialDtos.FriendItem();
-        dto.setUserId("user-placeholder");
-        dto.setNickname("MayoiStar");
-        dto.setGroupTags(List.of());
-        dto.setSource(FriendshipSource.manualRequest);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<SocialDtos.Report>> report() {
-        SocialDtos.Report dto = new SocialDtos.Report();
-        dto.setReportId("report-placeholder");
-        dto.setReporterUserId("user-placeholder");
-        dto.setTargetType(ReportTargetType.user);
-        dto.setTargetId("target-placeholder");
-        dto.setReason("契约占位举报理由");
-        dto.setStatus(ReportStatus.pending);
-        dto.setCreatedAt(NOW);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<AdminDtos.AdminUserSummary>> adminUserSummary() {
-        AdminDtos.AdminUserSummary dto = new AdminDtos.AdminUserSummary();
-        dto.setUserId("user-placeholder");
-        dto.setEmail("user@example.com");
-        dto.setKind(UserKind.personal);
-        dto.setStatus(AccountStatus.active);
-        dto.setActivityCount(0);
-        dto.setTeamCount(0);
-        dto.setCreatedAt(NOW);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<AdminDtos.AdminUserDetail>> adminUserDetail() {
-        AdminDtos.AdminUserDetail dto = new AdminDtos.AdminUserDetail();
-        dto.setUserId("user-placeholder");
-        dto.setEmail("user@example.com");
-        dto.setKind(UserKind.personal);
-        dto.setStatus(AccountStatus.active);
-        dto.setActivityCount(0);
-        dto.setTeamCount(0);
-        dto.setCreatedAt(NOW);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<SocialDtos.TeamProfile>> teamProfile() {
-        SocialDtos.TeamProfile dto = new SocialDtos.TeamProfile();
-        dto.setTeamId("team-placeholder");
-        dto.setName("默认小队");
-        dto.setTags(List.of());
-        dto.setJoinMode(TeamJoinMode.publicJoin);
-        dto.setCapacity(20);
-        dto.setMemberCount(1);
-        dto.setStatus(TeamStatus.active);
-        dto.setCreatorId("user-placeholder");
-        dto.setLeaderId("user-placeholder");
-        dto.setChatId("conversation-placeholder");
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<AdminDtos.AdminTeamDetail>> adminTeamDetail() {
-        AdminDtos.AdminTeamDetail dto = new AdminDtos.AdminTeamDetail();
-        dto.setTeamId("team-placeholder");
-        dto.setName("默认小队");
-        dto.setTags(List.of());
-        dto.setJoinMode(TeamJoinMode.publicJoin);
-        dto.setCapacity(20);
-        dto.setMemberCount(1);
-        dto.setStatus(TeamStatus.active);
-        dto.setCreatorId("user-placeholder");
-        dto.setLeaderId("user-placeholder");
-        dto.setChatId("conversation-placeholder");
-
-        AdminDtos.AdminModerationRecord record = new AdminDtos.AdminModerationRecord();
-        record.setRecordId("moderation-record-placeholder");
-        record.setAction(AdminModerationAction.disableTeam);
-        record.setReason("契约占位治理原因");
-        record.setOperatorId("admin-placeholder");
-        record.setCreatedAt(NOW);
-        dto.setModerationRecords(List.of(record));
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<SocialDtos.TeamJoinRequest>> teamJoinRequest() {
-        SocialDtos.TeamJoinRequest dto = new SocialDtos.TeamJoinRequest();
-        dto.setRequestId("request-placeholder");
-        dto.setTeamId("team-placeholder");
-        dto.setUserId("user-placeholder");
-        dto.setStatus(TeamJoinRequestStatus.pending);
-        dto.setCreatedAt(NOW);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    public ResponseEntity<ApiResponse<SocialDtos.TeamMember>> teamMember() {
-        SocialDtos.TeamMember dto = new SocialDtos.TeamMember();
-        dto.setUserId("user-placeholder");
-        dto.setNickname("MayoiStar");
-        dto.setRole(TeamMemberRole.member);
-        dto.setPoints(0);
-        dto.setJoinedAt(NOW);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
     /* ========== AI ========== */
 
+    /**
+     * 创建活动策划结果占位响应。
+     *
+     * <p>前置条件：尚未接入真实 AI 活动策划服务。
+     *
+     * <p>后置条件：返回成功状态的占位策划结果。
+     *
+     * <p>不变量：不调用 LLM API。
+     *
+     * @return 活动策划结果响应
+     */
     public ResponseEntity<ApiResponse<AiDtos.ActivityPlanningResult>> activityPlanningResult() {
         AiDtos.ActivityPlanningResult dto = new AiDtos.ActivityPlanningResult();
         dto.setStatus("succeeded");
@@ -476,6 +207,17 @@ public class DefaultApiResponseFactory {
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
+    /**
+     * 创建图片分类结果占位响应。
+     *
+     * <p>前置条件：尚未接入真实 AI 图片分类服务。
+     *
+     * <p>后置条件：返回成功状态、无分类项的占位结果。
+     *
+     * <p>不变量：不调用 LLM API。
+     *
+     * @return 图片分类结果响应
+     */
     public ResponseEntity<ApiResponse<AiDtos.ImageClassificationResult>> imageClassificationResult() {
         AiDtos.ImageClassificationResult dto = new AiDtos.ImageClassificationResult();
         dto.setStatus("succeeded");
@@ -484,28 +226,6 @@ public class DefaultApiResponseFactory {
     }
 
     /* ========== 内部辅助方法 ========== */
-
-    /**
-     * 填充活动摘要公共字段。
-     *
-     * <p>前置条件：dto 为 ActivitySummary 或其子类型实例。
-     *
-     * <p>后置条件：dto 的摘要字段均已设置占位值。
-     *
-     * <p>不变量：不读取或修改外部状态。
-     */
-    private void fillActivitySummary(ActivityDtos.ActivitySummary dto) {
-        dto.setActivityId("activity-placeholder");
-        dto.setTitle("默认活动");
-        dto.setTags(List.of());
-        dto.setStartAt(NOW);
-        dto.setEndAt(NOW);
-        dto.setLocation(location());
-        dto.setReviewStatus(ActivityReviewStatus.approved);
-        dto.setRuntimeStatus(ActivityRuntimeStatus.notStarted);
-        dto.setRegisteredCount(0);
-        dto.setCapacity(20);
-    }
 
     /**
      * 创建地点信息占位数据。

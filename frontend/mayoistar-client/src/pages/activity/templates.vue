@@ -20,9 +20,9 @@
               @click="selectTemplate(tpl)"
             >
               <image
-                v-if="tpl.defaultCoverImage?.url"
+                v-if="tpl.defaultCoverImage?.signedUrl"
                 class="card-cover"
-                :src="tpl.defaultCoverImage.url"
+                :src="tpl.defaultCoverImage.signedUrl"
                 mode="aspectFill"
               />
               <view v-else class="card-cover card-cover-placeholder">
@@ -66,9 +66,11 @@
       </view>
     </scroll-view>
 
-    <view class="action-bar">
-      <button class="skip-btn" @click="skipTemplate">{{ t('activityTemplates.skip') }}</button>
-    </view>
+    <BottomActionBar>
+      <button class="bar-btn bar-btn-secondary" @click="skipTemplate">
+        {{ t('activityTemplates.skip') }}
+      </button>
+    </BottomActionBar>
   </view>
 </template>
 
@@ -83,7 +85,16 @@
 import { ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import {
+  cloneActivity,
+  createDraftFromTemplate,
+  getMyActivities,
+  getTemplates as fetchTemplates,
+  type ActivitySummary,
+  type ActivityTemplate,
+} from '@/api/modules/activities'
+import { BottomActionBar } from '@/components'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
 import { runtimeStatusText as getRuntimeStatusText } from '@/utils/status'
@@ -95,28 +106,9 @@ const loadingActivities = ref(true)
 const actioning = ref(false)
 let redirectTimer: ReturnType<typeof setTimeout> | null = null
 
-interface ActivityTemplate {
-  templateId: string
-  name: string
-  activityType: string
-  defaultTags: string[]
-  defaultIntroduction: string
-  defaultSafetyNotice: string
-  defaultCapacity: number
-  defaultCoverImage: { url: string; mediaId: string } | null
-}
-
 const templates = ref<ActivityTemplate[]>([])
 
-interface MyActivity {
-  activityId: string
-  title: string
-  startAt: string
-  location: { city: string }
-  runtimeStatus: string
-}
-
-const myActivities = ref<MyActivity[]>([])
+const myActivities = ref<ActivitySummary[]>([])
 
 function getStatusText(status: string): string {
   return getRuntimeStatusText(status, t)
@@ -124,8 +116,8 @@ function getStatusText(status: string): string {
 
 async function loadTemplates(): Promise<void> {
   try {
-    const result = await api.get('/activities/templates')
-    templates.value = (result.items ?? []) as ActivityTemplate[]
+    const result = await fetchTemplates()
+    templates.value = result.items ?? []
   } catch {
     /* 加载失败不影响 */
   } finally {
@@ -135,8 +127,8 @@ async function loadTemplates(): Promise<void> {
 
 async function loadMyActivities(): Promise<void> {
   try {
-    const result = await api.get('/activities/mine')
-    myActivities.value = (result.items ?? []) as MyActivity[]
+    const result = await getMyActivities()
+    myActivities.value = result.items ?? []
   } catch {
     /* 加载失败不影响 */
   } finally {
@@ -149,11 +141,11 @@ async function selectTemplate(tpl: ActivityTemplate): Promise<void> {
   actioning.value = true
   try {
     uni.showLoading({ title: t('activityTemplates.creating') })
-    const draft = (await api.post('/activities/templates/{templateId}/drafts', {
-      path: { templateId: tpl.templateId },
-    })) as { activityId: string }
+    const draft = await createDraftFromTemplate(tpl.templateId)
     uni.hideLoading()
-    uni.redirectTo({ url: '/pages/activity/edit?activityId=' + draft.activityId })
+    uni.redirectTo({
+      url: '/pages/activity/edit?activityId=' + draft.activityId,
+    })
   } catch (error) {
     uni.hideLoading()
     if (error instanceof BusinessError) {
@@ -166,18 +158,18 @@ async function selectTemplate(tpl: ActivityTemplate): Promise<void> {
   }
 }
 
-async function selectClone(item: MyActivity): Promise<void> {
+async function selectClone(item: ActivitySummary): Promise<void> {
   if (actioning.value) return
   actioning.value = true
   try {
     uni.showLoading({ title: t('activityClone.cloning') })
-    const result = (await api.post('/activities/{activityId}/clone', {
-      path: { activityId: item.activityId },
-    })) as { activityId: string }
+    const result = await cloneActivity(item.activityId)
     uni.hideLoading()
     uni.showToast({ title: t('activityClone.success'), icon: 'success' })
     redirectTimer = setTimeout(() => {
-      uni.redirectTo({ url: '/pages/activity/edit?activityId=' + result.activityId })
+      uni.redirectTo({
+        url: '/pages/activity/edit?activityId=' + result.activityId,
+      })
     }, 800)
   } catch (error) {
     uni.hideLoading()
@@ -223,7 +215,7 @@ onUnload(() => {
 }
 
 .container {
-  padding: 32rpx;
+  padding: 32rpx 32rpx calc(240rpx + env(safe-area-inset-bottom));
 }
 
 .header {
@@ -291,7 +283,7 @@ onUnload(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #e6f0fe;
+  background-color: #e8f7f0;
 }
 
 .placeholder-icon {
@@ -373,8 +365,8 @@ onUnload(() => {
 }
 
 .status-registering {
-  background-color: #e6f0fe;
-  color: #1989fa;
+  background-color: #e8f7f0;
+  color: #5ec8a7;
 }
 
 .status-registrationClosed {
@@ -383,8 +375,8 @@ onUnload(() => {
 }
 
 .status-ongoing {
-  background-color: #ebf9e9;
-  color: #07c160;
+  background-color: #e8f7f0;
+  color: #5ec8a7;
 }
 
 .status-ended {
@@ -402,27 +394,7 @@ onUnload(() => {
   color: #ee0a24;
 }
 
-/* ---- 底部 ---- */
-.action-bar {
-  padding: 16rpx 32rpx;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  background-color: #fff;
-  border-top: 2rpx solid #ebedf0;
-  flex-shrink: 0;
-}
-
-.skip-btn {
-  width: 100%;
-  height: 88rpx;
-  line-height: 88rpx;
-  text-align: center;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #1989fa;
-  background-color: #fff;
-  border: 2rpx solid #1989fa;
-  border-radius: 12rpx;
-}
+/* 底部操作按钮已由 BottomActionBar 组件承载 */
 </style>
 
 <style>
