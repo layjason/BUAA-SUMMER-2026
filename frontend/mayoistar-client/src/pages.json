@@ -263,6 +263,14 @@
       "style": { "navigationBarTitleText": "活动详情", "disableScroll": true }
     },
     {
+      "path": "pages/activity/location-map",
+      "style": {
+        "navigationBarTitleText": "活动地点",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
       "path": "pages/activity/edit",
       "style": { "navigationBarTitleText": "编辑活动", "disableScroll": true }
     },

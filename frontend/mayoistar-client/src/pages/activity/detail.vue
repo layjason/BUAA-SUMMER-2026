@@ -34,6 +34,7 @@ import { formatDateTime, formatTimeRange } from '@/utils/date'
 import { getErrorMessage } from '@/utils/error'
 import { useAuthStore } from '@/stores/auth'
 import { QR_CODE_API_BASE_URL } from '@/config/env'
+import { buildActivityLocationDisplay, openActivityLocationMap } from '@/services/activity-location'
 
 const authStore = useAuthStore()
 
@@ -231,9 +232,7 @@ const showCheckInCard = computed(() => {
 const checkInQrImageUrl = computed(() => {
   const token = checkInQrCode.value?.qrCodeToken
   if (!token) return ''
-  return (
-    QR_CODE_API_BASE_URL + '?size=400x400&data=' + encodeURIComponent(token)
-  )
+  return QR_CODE_API_BASE_URL + '?size=400x400&data=' + encodeURIComponent(token)
 })
 
 /** 签到二维码有效期展示文本。 */
@@ -661,6 +660,19 @@ function goCheckIns(): void {
 }
 
 /**
+ * 跳转活动地点地图页。
+ *
+ * 前置条件：活动详情已加载且包含 OpenAPI LocationInfo。
+ * 后置条件：打开只读地图页，展示活动地点与当前位置。
+ * 不变量：只传递地点展示参数，不修改活动数据。
+ */
+function goActivityLocation(): void {
+  const location = activity.value?.location
+  if (!location) return
+  openActivityLocationMap(buildActivityLocationDisplay(location))
+}
+
+/**
  * 导出签到数据。
  *
  * 前置条件：当前用户为活动发起人且活动已发布。
@@ -866,9 +878,17 @@ onShow(() => {
             <text class="info-label">时间</text>
             <text class="info-value">{{ formatTimeRange(activity.startAt, activity.endAt) }}</text>
           </view>
-          <view v-if="activity.location?.address" class="info-row">
+          <view
+            v-if="activity.location?.address"
+            class="info-row info-row--clickable"
+            hover-class="info-row--hover"
+            @tap="goActivityLocation"
+          >
             <text class="info-label">地点</text>
-            <text class="info-value">{{ activity.location.address }}</text>
+            <view class="info-value-row">
+              <text class="info-value">{{ activity.location.address }}</text>
+              <text class="info-arrow">&gt;</text>
+            </view>
           </view>
           <view v-if="activity.organizerName" class="info-row">
             <text class="info-label">发起人</text>
@@ -1225,6 +1245,14 @@ onShow(() => {
   border-bottom: none;
 }
 
+.info-row--clickable {
+  cursor: pointer;
+}
+
+.info-row--hover {
+  opacity: 0.78;
+}
+
 .info-label {
   font-size: 26rpx;
   color: #969799;
@@ -1232,11 +1260,25 @@ onShow(() => {
   flex-shrink: 0;
 }
 
+.info-value-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+}
+
 .info-value {
   font-size: 26rpx;
   color: #323233;
   flex: 1;
   line-height: 1.4;
+}
+
+.info-arrow {
+  flex-shrink: 0;
+  color: #c8c9cc;
+  font-size: 28rpx;
 }
 
 .tag-row {
