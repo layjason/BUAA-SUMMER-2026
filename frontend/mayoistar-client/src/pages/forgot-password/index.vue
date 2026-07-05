@@ -11,7 +11,7 @@
           <text class="success-hint">{{ t('forgotPassword.emailSentHint') }}</text>
           <CooldownButton
             :text="t('forgotPassword.resendButton')"
-            :cooldown-text="t('forgotPassword.resendCooldown', { seconds: cooldown })"
+            :cooldown-text="cooldownText"
             :cooldown="cooldown"
             :loading="loading"
             @click="handleResend"
@@ -52,10 +52,11 @@
  * 前置条件：用户未登录
  * 后置条件：发送成功后提示用户前往邮件链接，密码重置由网页端处理
  */
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
+import { formatI18nTemplate } from '@/utils/i18n-template'
 import {
   PageHeader,
   FormInput,
@@ -65,7 +66,7 @@ import {
   useCooldown,
 } from '@/components'
 
-const { t } = useI18n()
+const { t, tm } = useI18n()
 
 const email = ref('')
 const loading = ref(false)
@@ -76,6 +77,18 @@ const emailError = ref('')
 const formError = ref('')
 
 const { cooldown, startCooldown } = useCooldown(60)
+
+/** 用 watch 显式监听 cooldown 变化后格式化原始模板，避免 uni-app 原生端显示 `{seconds}` 占位符 */
+const cooldownText = ref('')
+watch(
+  cooldown,
+  (val) => {
+    cooldownText.value = formatI18nTemplate(String(tm('forgotPassword.resendCooldown')), {
+      seconds: val,
+    })
+  },
+  { immediate: true },
+)
 
 function validateEmail(): boolean {
   emailError.value = ''

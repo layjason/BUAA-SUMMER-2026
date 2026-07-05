@@ -12,12 +12,12 @@ describe('激活页重发邮件倒计时', () => {
     const forgotPasswordSource = readSource('src/pages/forgot-password/index.vue')
     const cooldownButtonSource = readSource('src/components/CooldownButton.vue')
 
-    expect(activateSource).toContain("t('activate.resendCooldown', { seconds: cooldown })")
+    expect(activateSource).toContain("formatI18nTemplate(String(tm('activate.resendCooldown')),")
     expect(forgotPasswordSource).toContain(
-      "t('forgotPassword.resendCooldown', { seconds: cooldown })",
+      "formatI18nTemplate(String(tm('forgotPassword.resendCooldown')),",
     )
     expect(cooldownButtonSource).toContain('{{ cooldownText }}')
-    expect(cooldownButtonSource).not.toContain("replace('{seconds}'")
+    expect(cooldownButtonSource).not.toContain("t('activate.resendCooldown'")
   })
 
   it('普通注册进入激活页后应立即启动重发冷却', () => {

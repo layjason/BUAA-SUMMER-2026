@@ -39,7 +39,7 @@
         <view v-if="pendingEmail && (state === 'sent' || state === 'error')" class="action-section">
           <CooldownButton
             :text="t('activate.resendButton')"
-            :cooldown-text="t('activate.resendCooldown', { seconds: cooldown })"
+            :cooldown-text="cooldownText"
             :cooldown="cooldown"
             :loading="sending"
             @click="handleResend"
@@ -65,14 +65,15 @@
  * 前置条件：注册时存储 pendingActivationEmail
  * 后置条件：激活成功清除 pending 邮箱，跳转登录页
  */
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
+import { formatI18nTemplate } from '@/utils/i18n-template'
 import { PageHeader, SubmitButton, CooldownButton, useCooldown } from '@/components'
 
-const { t } = useI18n()
+const { t, tm } = useI18n()
 const authStore = useAuthStore()
 
 const state = ref<'activating' | 'success' | 'error' | 'sent' | 'idle'>('activating')
@@ -82,6 +83,18 @@ const sending = ref(false)
 const resendSent = ref(false)
 
 const { cooldown, startCooldown } = useCooldown(60)
+
+/** 用 watch 显式监听 cooldown 变化后格式化原始模板，避免 uni-app 原生端显示 `{seconds}` 占位符 */
+const cooldownText = ref('')
+watch(
+  cooldown,
+  (val) => {
+    cooldownText.value = formatI18nTemplate(String(tm('activate.resendCooldown')), {
+      seconds: val,
+    })
+  },
+  { immediate: true },
+)
 
 /**
  * 从页面参数中提取 token
