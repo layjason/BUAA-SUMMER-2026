@@ -358,5 +358,4 @@ public class ActivityFeedService {
                 cb.between(root.get("pointLat"), bbox[0], bbox[1]), cb.between(root.get("pointLon"), bbox[2], bbox[3]));
         return activityRepository.findAll(baseSpec.and(bboxSpec));
     }
-
 }
