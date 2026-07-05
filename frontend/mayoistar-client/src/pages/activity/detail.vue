@@ -27,7 +27,7 @@ import {
   confirmWaitlist,
   registerForActivity,
 } from '@/api/modules/registrations'
-import { checkIn, exportCheckIns, generateCheckInQrCode } from '@/api/modules/checkin'
+import { checkIn, generateCheckInQrCode } from '@/api/modules/checkin'
 import { BottomActionBar } from '@/components'
 import { isActivityAtCapacity } from '@/utils/activity-capacity'
 import { formatDateTime, formatTimeRange } from '@/utils/date'
@@ -673,41 +673,6 @@ function goActivityLocation(): void {
 }
 
 /**
- * 导出签到数据。
- *
- * 前置条件：当前用户为活动发起人且活动已发布。
- * 后置条件：mock 环境打开下载文件，真实二进制响应由请求层处理。
- * 不变量：仅调用 OpenAPI 定义的签到导出接口。
- */
-async function handleExportCheckIns(): Promise<void> {
-  if (!canViewCheckIns.value) return
-  try {
-    uni.showLoading({ title: '导出中...' })
-    const result: unknown = await exportCheckIns(activityId.value)
-    if (
-      typeof result === 'object' &&
-      result !== null &&
-      'url' in result &&
-      typeof result.url === 'string'
-    ) {
-      const downloadResult = await uni.downloadFile({ url: result.url })
-      uni.hideLoading()
-      await uni.openDocument({ filePath: downloadResult.tempFilePath })
-    } else {
-      uni.hideLoading()
-    }
-    uni.showToast({ title: '导出成功', icon: 'success' })
-  } catch (error) {
-    uni.hideLoading()
-    if (error instanceof BusinessError) {
-      uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
-    } else {
-      uni.showToast({ title: '导出失败，请稍后重试', icon: 'none' })
-    }
-  }
-}
-
-/**
  * 提交报名或加入候补。
  *
  * 前置条件：参与状态允许报名。
@@ -1082,13 +1047,6 @@ onShow(() => {
               @click="goCheckIns"
             >
               查看签到情况
-            </button>
-            <button
-              class="checkin-action checkin-action-ghost"
-              :disabled="!canViewCheckIns"
-              @click="handleExportCheckIns"
-            >
-              导出签到
             </button>
           </view>
         </view>
