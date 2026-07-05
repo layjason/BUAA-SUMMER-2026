@@ -11,7 +11,7 @@
           <text class="success-hint">{{ t('forgotPassword.emailSentHint') }}</text>
           <CooldownButton
             :text="t('forgotPassword.resendButton')"
-            :cooldown-text="t('forgotPassword.resendCooldown')"
+            :cooldown-text="t('forgotPassword.resendCooldown', { seconds: cooldown })"
             :cooldown="cooldown"
             :loading="loading"
             @click="handleResend"
