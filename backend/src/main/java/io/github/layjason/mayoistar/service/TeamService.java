@@ -1115,7 +1115,7 @@ public class TeamService {
         dto.setEndAt(entity.getEndAt() != null ? entity.getEndAt().toString() : null);
         dto.setSafetyNotice(entity.getSafetyNotice());
         dto.setCapacity(entity.getCapacity());
-        dto.setFeeAmount(entity.getFeeAmount());
+        dto.setFeeAmount(entity.getFeeAmount() != null ? entity.getFeeAmount() : java.math.BigDecimal.ZERO);
         dto.setReviewStatus(entity.getReviewStatus());
         dto.setRuntimeStatus(entity.getRuntimeStatus());
         dto.setOrganizerId(entity.getOrganizerId());
@@ -1166,7 +1166,7 @@ public class TeamService {
         dto.setTags(entity.getTags());
         dto.setStartAt(entity.getStartAt() != null ? entity.getStartAt().toString() : null);
         dto.setEndAt(entity.getEndAt() != null ? entity.getEndAt().toString() : null);
-        dto.setFeeAmount(entity.getFeeAmount());
+        dto.setFeeAmount(entity.getFeeAmount() != null ? entity.getFeeAmount() : java.math.BigDecimal.ZERO);
         dto.setReviewStatus(entity.getReviewStatus());
         dto.setRuntimeStatus(entity.getRuntimeStatus());
         dto.setCapacity(entity.getCapacity());
