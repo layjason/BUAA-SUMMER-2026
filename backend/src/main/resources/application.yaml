@@ -39,6 +39,23 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      retries: 3
+      acks: all
+      properties:
+        enable.idempotence: true
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      group-id: mayoistar-backend
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: io.github.layjason.mayoistar.service.ai
 
 mayoistar:
   jwt:
@@ -63,6 +80,11 @@ mayoistar:
     clip:
       endpoint: ${MAYOISTAR_CLIP_ENDPOINT:http://localhost:8000}
       timeout-seconds: 60
+      request-topic: clip-classify-request
+      response-topic: clip-classify-response
+      request-dlq-topic: clip-classify-request-dlq
+      request-timeout-seconds: 30
+      request-retry-max: 3
     content-review:
       endpoint: ${MAYOISTAR_ALIYUN_IMAGEAUDIT_ENDPOINT:}
       access-key-id: ${ALIBABA_CLOUD_ACCESS_KEY_ID:}

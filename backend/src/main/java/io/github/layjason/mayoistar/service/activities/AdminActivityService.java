@@ -150,6 +150,28 @@ public class AdminActivityService {
      */
     @Transactional
     public ActivityDtos.ActivityDetail reviewActivity(String activityId, ReviewStatus result, String reason) {
+        return reviewActivity(activityId, null, result, reason);
+    }
+
+    /**
+     * 管理员审核活动，并记录审核人。
+     *
+     * <p>前置条件：activityId 对应活动存在且 reviewStatus 为 pending；reviewerId 可为空（系统审核或历史调用）。
+     *
+     * <p>后置条件：活动审核状态变更为 result；若通过则 runtimeStatus 设为 notStarted，且活动图片升级为公开访问；
+     * 创建一条包含 reviewerId 的审核记录。
+     *
+     * <p>不变量：不修改除 reviewStatus/runtimeStatus/updatedAt 与图片访问策略外的活动字段。
+     *
+     * @param activityId  活动 ID
+     * @param reviewerId  审核人 ID，可为空
+     * @param result      审核结果
+     * @param reason      审核原因（驳回/要求修改时必填）
+     * @return 更新后的活动详情
+     */
+    @Transactional
+    public ActivityDtos.ActivityDetail reviewActivity(
+            String activityId, String reviewerId, ReviewStatus result, String reason) {
         Activity activity = findActivity(activityId);
 
         // 前置条件：只有 pending 状态的活动可以审核
@@ -178,7 +200,7 @@ public class AdminActivityService {
         activity.setUpdatedAt(Instant.now());
         activityRepository.save(activity);
 
-        createReviewRecord(activityId, result, reason);
+        createReviewRecord(activityId, result, reason, reviewerId);
 
         log.info(
                 "管理员已审核活动，activityId={}, result={}",
@@ -205,6 +227,25 @@ public class AdminActivityService {
      */
     @Transactional
     public ActivityDtos.ActivityDetail takeDownActivity(String activityId, String reason) {
+        return takeDownActivity(activityId, null, reason);
+    }
+
+    /**
+     * 管理员下架活动，并记录操作人。
+     *
+     * <p>前置条件：activityId 对应活动存在；reviewStatus 不为 draft；runtimeStatus 不为 takenDown；reason 非空。
+     *
+     * <p>后置条件：活动 runtimeStatus 设为 takenDown，活动图片回退为仅组织者可见，创建一条下架审核记录。
+     *
+     * <p>不变量：不修改活动审核状态和业务内容字段。
+     *
+     * @param activityId 活动 ID
+     * @param reviewerId 操作管理员 ID，可为空
+     * @param reason     下架原因
+     * @return 更新后的活动详情
+     */
+    @Transactional
+    public ActivityDtos.ActivityDetail takeDownActivity(String activityId, String reviewerId, String reason) {
         Activity activity = findActivity(activityId);
 
         // 前置条件：不能重复下架
@@ -229,7 +270,7 @@ public class AdminActivityService {
         // 下架后活动不再对外可见，图片回退为 activityOwner（私有），立即失效公开 URL
         restrictImages(activityId);
 
-        createReviewRecord(activityId, ReviewStatus.rejected, reason);
+        createReviewRecord(activityId, ReviewStatus.rejected, reason, reviewerId);
 
         log.info("管理员已下架活动，activityId={}", activityId.replace("\n", "\\n").replace("\r", "\\r"));
         return loadActivityDetail(activity);
@@ -249,6 +290,24 @@ public class AdminActivityService {
      */
     @Transactional
     public ActivityDtos.ActivityDetail restoreActivity(String activityId) {
+        return restoreActivity(activityId, null);
+    }
+
+    /**
+     * 管理员恢复活动，并记录操作人。
+     *
+     * <p>前置条件：activityId 对应活动存在且 runtimeStatus 为 takenDown。
+     *
+     * <p>后置条件：活动 runtimeStatus 恢复为 notStarted，活动图片升级为公开访问，创建一条恢复审计记录。
+     *
+     * <p>不变量：不修改活动审核状态和业务内容字段。
+     *
+     * @param activityId 活动 ID
+     * @param reviewerId 操作管理员 ID，可为空
+     * @return 更新后的活动详情
+     */
+    @Transactional
+    public ActivityDtos.ActivityDetail restoreActivity(String activityId, String reviewerId) {
         Activity activity = findActivity(activityId);
 
         // 前置条件：已下架的活动才能恢复
@@ -263,7 +322,7 @@ public class AdminActivityService {
         // 恢复后活动重新对外可见，图片恢复为公开访问
         publishImages(activityId);
 
-        createReviewRecord(activityId, ReviewStatus.approved, "管理员恢复活动");
+        createReviewRecord(activityId, ReviewStatus.approved, "管理员恢复活动", reviewerId);
 
         log.info("管理员已恢复活动，activityId={}", activityId.replace("\n", "\\n").replace("\r", "\\r"));
         return loadActivityDetail(activity);
@@ -320,14 +379,15 @@ public class AdminActivityService {
     /**
      * 创建审核记录。
      *
-     * <p>reviewerId 暂不记录，待管理员认证体系完成后补充。
+     * <p>reviewerId 为空表示系统审核或历史调用；非空表示人工管理员操作。
      */
-    private void createReviewRecord(String activityId, ReviewStatus result, String reason) {
+    private void createReviewRecord(String activityId, ReviewStatus result, String reason, String reviewerId) {
         ActivityReviewRecord record = ActivityReviewRecord.builder()
                 .recordId(UUID.randomUUID().toString())
                 .activityId(activityId)
                 .result(result)
                 .reason(reason)
+                .reviewerId(reviewerId)
                 .reviewedAt(Instant.now())
                 .build();
         activityReviewRecordRepository.save(record);

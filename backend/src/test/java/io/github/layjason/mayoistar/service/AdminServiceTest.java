@@ -6,12 +6,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.admin.AdminDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
-import io.github.layjason.mayoistar.entity.activities.Activity;
-import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
-import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.admin.Admin;
 import io.github.layjason.mayoistar.entity.admin.BanRecord;
 import io.github.layjason.mayoistar.entity.admin.TeamModerationRecord;
@@ -30,7 +28,6 @@ import io.github.layjason.mayoistar.entity.social.Team;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
-import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.AdminRepository;
 import io.github.layjason.mayoistar.repository.BanRecordRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
@@ -42,7 +39,6 @@ import io.github.layjason.mayoistar.repository.TeamModerationRecordRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCountService;
-import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCounts;
 import io.github.layjason.mayoistar.service.activities.AdminActivityService;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
@@ -80,9 +76,6 @@ class AdminServiceTest {
 
     @Mock
     private ActivityRepository activityRepository;
-
-    @Mock
-    private ActivityReviewRecordRepository activityReviewRecordRepository;
 
     @Mock
     private TeamRepository teamRepository;
@@ -127,7 +120,6 @@ class AdminServiceTest {
                 mediaFileRepository,
                 banRecordRepository,
                 activityRepository,
-                activityReviewRecordRepository,
                 teamRepository,
                 teamMemberRepository,
                 teamModerationRecordRepository,
@@ -466,23 +458,20 @@ class AdminServiceTest {
         @Test
         @DisplayName("成功获取活动详情")
         void shouldGetActivity() {
-            Activity activity = buildActivity();
-            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
-            when(activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activityId))
-                    .thenReturn(List.of());
-            when(activityRegistrationCountService.countByActivityId(activityId))
-                    .thenReturn(ActivityRegistrationCounts.zero());
+            ActivityDtos.ActivityDetail expected = buildActivityDetail();
+            when(adminActivityService.getActivityDetail(activityId)).thenReturn(expected);
 
             var result = adminService.getActivity(activityId);
 
-            assertThat(result.getActivityId()).isEqualTo(activityId);
-            assertThat(result.getTitle()).isEqualTo("测试活动");
+            assertThat(result).isSameAs(expected);
+            verify(adminActivityService).getActivityDetail(activityId);
         }
 
         @Test
         @DisplayName("活动不存在抛出 60008")
         void shouldThrowWhenActivityNotFound() {
-            when(activityRepository.findById(activityId)).thenReturn(Optional.empty());
+            when(adminActivityService.getActivityDetail(activityId))
+                    .thenThrow(new BusinessException(60008, "Activity does not exist"));
 
             assertThatThrownBy(() -> adminService.getActivity(activityId))
                     .isInstanceOf(BusinessException.class)
@@ -498,34 +487,29 @@ class AdminServiceTest {
         @Test
         @DisplayName("成功下架活动")
         void shouldTakeDownActivity() {
-            Activity activity = buildActivity();
-            activity.setRuntimeStatus(ActivityRuntimeStatus.registering);
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
-            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
-            when(activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activityId))
-                    .thenReturn(List.of());
-            when(activityRegistrationCountService.countByActivityId(activityId))
-                    .thenReturn(ActivityRegistrationCounts.zero());
+            ActivityDtos.ActivityDetail expected = buildActivityDetail();
 
             AdminDtos.ActivityModerationRequest request = new AdminDtos.ActivityModerationRequest();
             request.setReason("违规内容");
+            when(adminActivityService.takeDownActivity(activityId, adminId, "违规内容"))
+                    .thenReturn(expected);
 
             var result = adminService.takeDownActivity(activityId, adminId, request);
 
-            assertThat(activity.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.takenDown);
-            verify(adminActivityService).restrictImages(activityId);
+            assertThat(result).isSameAs(expected);
+            verify(adminActivityService).takeDownActivity(activityId, adminId, "违规内容");
         }
 
         @Test
         @DisplayName("已下架活动再次下架抛出 60009")
         void shouldThrowWhenAlreadyTakenDown() {
-            Activity activity = buildActivity();
-            activity.setRuntimeStatus(ActivityRuntimeStatus.takenDown);
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
-            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
 
             AdminDtos.ActivityModerationRequest request = new AdminDtos.ActivityModerationRequest();
             request.setReason("再次违规");
+            when(adminActivityService.takeDownActivity(activityId, adminId, "再次违规"))
+                    .thenThrow(new BusinessException(60009, "Activity moderation state does not allow this operation"));
 
             assertThatThrownBy(() -> adminService.takeDownActivity(activityId, adminId, request))
                     .isInstanceOf(BusinessException.class)
@@ -541,28 +525,22 @@ class AdminServiceTest {
         @Test
         @DisplayName("成功恢复活动")
         void shouldRestoreActivity() {
-            Activity activity = buildActivity();
-            activity.setRuntimeStatus(ActivityRuntimeStatus.takenDown);
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
-            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
-            when(activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activityId))
-                    .thenReturn(List.of());
-            when(activityRegistrationCountService.countByActivityId(activityId))
-                    .thenReturn(ActivityRegistrationCounts.zero());
+            ActivityDtos.ActivityDetail expected = buildActivityDetail();
+            when(adminActivityService.restoreActivity(activityId, adminId)).thenReturn(expected);
 
             var result = adminService.restoreActivity(activityId, adminId);
 
-            assertThat(activity.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.registering);
-            verify(adminActivityService).publishImages(activityId);
+            assertThat(result).isSameAs(expected);
+            verify(adminActivityService).restoreActivity(activityId, adminId);
         }
 
         @Test
         @DisplayName("未下架活动恢复抛出 60009")
         void shouldThrowWhenNotTakenDown() {
-            Activity activity = buildActivity();
-            activity.setRuntimeStatus(ActivityRuntimeStatus.registering);
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
-            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
+            when(adminActivityService.restoreActivity(activityId, adminId))
+                    .thenThrow(new BusinessException(60009, "Activity moderation state does not allow this operation"));
 
             assertThatThrownBy(() -> adminService.restoreActivity(activityId, adminId))
                     .isInstanceOf(BusinessException.class)
@@ -683,33 +661,29 @@ class AdminServiceTest {
         @Test
         @DisplayName("审核通过活动")
         void shouldApproveActivity() {
-            Activity activity = buildActivity();
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
-            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
-            when(activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activityId))
-                    .thenReturn(List.of());
-            when(activityRegistrationCountService.countByActivityId(activityId))
-                    .thenReturn(ActivityRegistrationCounts.zero());
+            ActivityDtos.ActivityDetail expected = buildActivityDetail();
 
             AdminDtos.ReviewDecisionRequest request = new AdminDtos.ReviewDecisionRequest();
             request.setResult(ReviewStatus.approved);
+            when(adminActivityService.reviewActivity(activityId, adminId, ReviewStatus.approved, null))
+                    .thenReturn(expected);
 
             var result = adminService.reviewActivity(activityId, adminId, request);
 
-            assertThat(activity.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
-            verify(activityReviewRecordRepository).save(any());
-            verify(adminActivityService).publishImages(activityId);
+            assertThat(result).isSameAs(expected);
+            verify(adminActivityService).reviewActivity(activityId, adminId, ReviewStatus.approved, null);
         }
 
         @Test
         @DisplayName("驳回活动但不给原因抛出 60006")
         void shouldThrowWhenRejectWithoutReason() {
-            Activity activity = buildActivity();
             when(adminRepository.findById(adminId)).thenReturn(Optional.of(buildAdmin()));
-            when(activityRepository.findById(activityId)).thenReturn(Optional.of(activity));
 
             AdminDtos.ReviewDecisionRequest request = new AdminDtos.ReviewDecisionRequest();
             request.setResult(ReviewStatus.rejected);
+            when(adminActivityService.reviewActivity(activityId, adminId, ReviewStatus.rejected, null))
+                    .thenThrow(new BusinessException(60006, "Review reason is required"));
 
             assertThatThrownBy(() -> adminService.reviewActivity(activityId, adminId, request))
                     .isInstanceOf(BusinessException.class)
@@ -811,20 +785,11 @@ class AdminServiceTest {
                 .build();
     }
 
-    private Activity buildActivity() {
-        return Activity.builder()
-                .activityId(activityId)
-                .organizerId(userId)
-                .title("测试活动")
-                .tags(List.of("运动"))
-                .startAt(Instant.now())
-                .endAt(Instant.now().plusSeconds(7200))
-                .capacity(10)
-                .reviewStatus(ActivityReviewStatus.pending)
-                .runtimeStatus(ActivityRuntimeStatus.registering)
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
-                .build();
+    private ActivityDtos.ActivityDetail buildActivityDetail() {
+        ActivityDtos.ActivityDetail detail = new ActivityDtos.ActivityDetail();
+        detail.setActivityId(activityId);
+        detail.setTitle("测试活动");
+        return detail;
     }
 
     private Team buildTeam() {

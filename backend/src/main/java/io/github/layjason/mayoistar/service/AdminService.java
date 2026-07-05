@@ -7,13 +7,11 @@ import io.github.layjason.mayoistar.api.common.PageResult;
 import io.github.layjason.mayoistar.api.identity.IdentityDtos;
 import io.github.layjason.mayoistar.api.social.SocialDtos;
 import io.github.layjason.mayoistar.entity.activities.Activity;
-import io.github.layjason.mayoistar.entity.activities.ActivityReviewRecord;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.admin.AdminModerationAction;
 import io.github.layjason.mayoistar.entity.admin.BanRecord;
 import io.github.layjason.mayoistar.entity.admin.TeamModerationRecord;
-import io.github.layjason.mayoistar.entity.common.ReviewStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
 import io.github.layjason.mayoistar.entity.identity.MerchantProfile;
 import io.github.layjason.mayoistar.entity.identity.Qualification;
@@ -28,7 +26,6 @@ import io.github.layjason.mayoistar.entity.social.TeamMember;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
-import io.github.layjason.mayoistar.repository.ActivityReviewRecordRepository;
 import io.github.layjason.mayoistar.repository.AdminRepository;
 import io.github.layjason.mayoistar.repository.BanRecordRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
@@ -80,7 +77,6 @@ public class AdminService {
     private final MediaFileRepository mediaFileRepository;
     private final BanRecordRepository banRecordRepository;
     private final ActivityRepository activityRepository;
-    private final ActivityReviewRecordRepository activityReviewRecordRepository;
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final TeamModerationRecordRepository teamModerationRecordRepository;
@@ -98,7 +94,6 @@ public class AdminService {
      * @param mediaFileRepository              媒体文件数据访问
      * @param banRecordRepository             封禁记录数据访问
      * @param activityRepository               活动数据访问
-     * @param activityReviewRecordRepository   活动审核记录数据访问
      * @param teamRepository                   小队数据访问
      * @param teamMemberRepository             小队成员数据访问
      * @param teamModerationRecordRepository   小队治理记录数据访问
@@ -106,7 +101,7 @@ public class AdminService {
      * @param reportService                    举报服务
      * @param activityRegistrationCountService 活动报名计数服务
      * @param mediaAccessService               媒体访问签名服务
-     * @param adminActivityService              管理员活动操作服务
+     * @param adminActivityService             活动后台管理服务
      */
     public AdminService(
             UserRepository userRepository,
@@ -116,7 +111,6 @@ public class AdminService {
             MediaFileRepository mediaFileRepository,
             BanRecordRepository banRecordRepository,
             ActivityRepository activityRepository,
-            ActivityReviewRecordRepository activityReviewRecordRepository,
             TeamRepository teamRepository,
             TeamMemberRepository teamMemberRepository,
             TeamModerationRecordRepository teamModerationRecordRepository,
@@ -132,7 +126,6 @@ public class AdminService {
         this.mediaFileRepository = mediaFileRepository;
         this.banRecordRepository = banRecordRepository;
         this.activityRepository = activityRepository;
-        this.activityReviewRecordRepository = activityReviewRecordRepository;
         this.teamRepository = teamRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.teamModerationRecordRepository = teamModerationRecordRepository;
@@ -598,7 +591,6 @@ public class AdminService {
             String organizerId,
             Integer page,
             Integer pageSize) {
-
         Pageable pageable = buildPageable(page, pageSize);
 
         Specification<Activity> spec = (root, query, cb) -> {
@@ -645,10 +637,7 @@ public class AdminService {
      * @return 活动详情
      */
     public ActivityDtos.ActivityDetail getActivity(String activityId) {
-        Activity activity = activityRepository
-                .findById(activityId)
-                .orElseThrow(() -> new BusinessException(60008, "Activity " + activityId + " does not exist"));
-        return buildActivityDetail(activity);
+        return adminActivityService.getActivityDetail(activityId);
     }
 
     /**
@@ -672,44 +661,16 @@ public class AdminService {
                 .findById(adminId)
                 .orElseThrow(() -> new BusinessException(60000, "Admin username or password is invalid"));
 
-        Activity activity = activityRepository
-                .findById(activityId)
-                .orElseThrow(() -> new BusinessException(60008, "Activity " + activityId + " does not exist"));
-
-        ReviewStatus result = request.getResult();
-        if (result != ReviewStatus.approved
-                && (request.getReason() == null || request.getReason().isBlank())) {
-            throw new BusinessException(60006, "Review reason is required");
-        }
-
-        activity.setReviewStatus(convertReviewStatus(result));
-        if (result == ReviewStatus.approved) {
-            activity.setRuntimeStatus(ActivityRuntimeStatus.notStarted);
-        }
-        activity.setUpdatedAt(Instant.now());
-        activityRepository.save(activity);
-
-        ActivityReviewRecord record = ActivityReviewRecord.builder()
-                .recordId(UUID.randomUUID().toString())
-                .activityId(activityId)
-                .result(result)
-                .reason(request.getReason())
-                .reviewerId(adminId)
-                .reviewedAt(Instant.now())
-                .build();
-        activityReviewRecordRepository.save(record);
-
-        if (result == ReviewStatus.approved) {
-            adminActivityService.publishImages(activityId);
-        }
+        ActivityDtos.ActivityDetail detail =
+                adminActivityService.reviewActivity(activityId, adminId, request.getResult(), request.getReason());
 
         log.info(
                 "活动审核完成: activityId={}, adminId={}, result={}",
                 sanitizeForLog(activityId),
                 sanitizeForLog(adminId),
-                result);
+                request.getResult());
 
-        return buildActivityDetail(activity);
+        return detail;
     }
 
     /**
@@ -732,21 +693,8 @@ public class AdminService {
                 .findById(adminId)
                 .orElseThrow(() -> new BusinessException(60000, "Admin username or password is invalid"));
 
-        Activity activity = activityRepository
-                .findById(activityId)
-                .orElseThrow(() -> new BusinessException(60008, "Activity " + activityId + " does not exist"));
-
-        if (activity.getRuntimeStatus() == ActivityRuntimeStatus.takenDown) {
-            throw new BusinessException(60009, "Activity moderation state does not allow this operation");
-        }
-
-        if (request.getReason() == null || request.getReason().isBlank()) {
-            throw new BusinessException(60006, "Review reason is required");
-        }
-
-        activity.setRuntimeStatus(ActivityRuntimeStatus.takenDown);
-        activity.setUpdatedAt(Instant.now());
-        activityRepository.save(activity);
+        ActivityDtos.ActivityDetail detail =
+                adminActivityService.takeDownActivity(activityId, adminId, request.getReason());
 
         adminActivityService.restrictImages(activityId);
 
@@ -756,7 +704,7 @@ public class AdminService {
                 adminId,
                 sanitizeForLog(request.getReason()));
 
-        return buildActivityDetail(activity);
+        return detail;
     }
 
     /**
@@ -764,7 +712,7 @@ public class AdminService {
      *
      * <p>前置条件：activityId 对应有效活动，活动处于下架状态。
      *
-     * <p>后置条件：Activity.runtimeStatus 恢复到下架前状态（简化为 registering），活动图片恢复为公开可见。
+     * <p>后置条件：Activity.runtimeStatus 恢复到 notStarted，并同步恢复活动图片公开访问策略。
      *
      * @param activityId 活动 ID
      * @param adminId    操作管理员 ID
@@ -777,23 +725,13 @@ public class AdminService {
                 .findById(adminId)
                 .orElseThrow(() -> new BusinessException(60000, "Admin username or password is invalid"));
 
-        Activity activity = activityRepository
-                .findById(activityId)
-                .orElseThrow(() -> new BusinessException(60008, "Activity " + activityId + " does not exist"));
-
-        if (activity.getRuntimeStatus() != ActivityRuntimeStatus.takenDown) {
-            throw new BusinessException(60009, "Activity moderation state does not allow this operation");
-        }
-
-        activity.setRuntimeStatus(ActivityRuntimeStatus.registering);
-        activity.setUpdatedAt(Instant.now());
-        activityRepository.save(activity);
+        ActivityDtos.ActivityDetail detail = adminActivityService.restoreActivity(activityId, adminId);
 
         adminActivityService.publishImages(activityId);
 
         log.info("活动已恢复: activityId={}, adminId={}", sanitizeForLog(activityId), sanitizeForLog(adminId));
 
-        return buildActivityDetail(activity);
+        return detail;
     }
 
     // ======================== 小队管理 ========================
@@ -1101,18 +1039,6 @@ public class AdminService {
         return PageRequest.of(p - 1, ps, Sort.by(Sort.Direction.DESC, "joinedAt"));
     }
 
-    /**
-     * 将 ReviewStatus 转换为 ActivityReviewStatus。
-     */
-    private ActivityReviewStatus convertReviewStatus(ReviewStatus reviewStatus) {
-        return switch (reviewStatus) {
-            case approved -> ActivityReviewStatus.approved;
-            case rejected -> ActivityReviewStatus.rejected;
-            case changeRequired -> ActivityReviewStatus.changeRequired;
-            case pending -> ActivityReviewStatus.pending;
-        };
-    }
-
     private AdminDtos.AdminUserSummary buildAdminUserSummary(User user) {
         AdminDtos.AdminUserSummary summary = new AdminDtos.AdminUserSummary();
         summary.setUserId(user.getUserId());
@@ -1203,46 +1129,6 @@ public class AdminService {
         return summary;
     }
 
-    private ActivityDtos.ActivityDetail buildActivityDetail(Activity activity) {
-        ActivityDtos.ActivityDetail detail = new ActivityDtos.ActivityDetail();
-        detail.setActivityId(activity.getActivityId());
-        detail.setTitle(activity.getTitle());
-        detail.setTags(activity.getTags());
-        detail.setStartAt(activity.getStartAt().toString());
-        detail.setEndAt(activity.getEndAt().toString());
-        detail.setFeeAmount(activity.getFeeAmount());
-        detail.setReviewStatus(activity.getReviewStatus());
-        detail.setRuntimeStatus(activity.getRuntimeStatus());
-        ActivityRegistrationCounts counts =
-                activityRegistrationCountService.countByActivityId(activity.getActivityId());
-        detail.setRegisteredCount(counts.registeredCount());
-        detail.setOccupiedCount(counts.occupiedCount());
-        detail.setCapacity(activity.getCapacity());
-        detail.setIntroduction(activity.getIntroduction());
-        detail.setSafetyNotice(activity.getSafetyNotice());
-        detail.setRegistrationDeadline(
-                activity.getRegistrationDeadline() != null
-                        ? activity.getRegistrationDeadline().toString()
-                        : null);
-        detail.setOrganizerId(activity.getOrganizerId());
-        detail.setManualReviewRequired(activity.getManualReviewRequired());
-        detail.setImages(List.of());
-        detail.setWaitingCount(counts.waitingCount());
-        detail.setLocation(buildLocationInfo(activity));
-
-        if (activity.getOrganizer() != null) {
-            detail.setOrganizerName(activity.getOrganizer().getNickname());
-        }
-
-        List<ActivityDtos.ReviewRecord> reviewRecords =
-                activityReviewRecordRepository.findByActivityIdOrderByReviewedAtAsc(activity.getActivityId()).stream()
-                        .map(this::buildReviewRecordDto)
-                        .collect(Collectors.toList());
-        detail.setReviewRecords(reviewRecords);
-
-        return detail;
-    }
-
     private Map<String, ActivityRegistrationCounts> loadCounts(List<Activity> activities) {
         return activityRegistrationCountService.countByActivityIds(
                 activities.stream().map(Activity::getActivityId).toList());
@@ -1263,16 +1149,6 @@ public class AdminService {
         location.setAddress(activity.getAddress() != null ? activity.getAddress() : "");
         location.setPlaceName(activity.getPlaceName());
         return location;
-    }
-
-    private ActivityDtos.ReviewRecord buildReviewRecordDto(ActivityReviewRecord record) {
-        ActivityDtos.ReviewRecord dto = new ActivityDtos.ReviewRecord();
-        dto.setReviewId(record.getRecordId());
-        dto.setReviewerId(record.getReviewerId());
-        dto.setResult(record.getResult());
-        dto.setReason(record.getReason());
-        dto.setReviewedAt(record.getReviewedAt().toString());
-        return dto;
     }
 
     private SocialDtos.Report buildReportDto(Report report) {

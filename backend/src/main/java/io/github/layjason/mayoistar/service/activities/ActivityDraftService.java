@@ -459,6 +459,7 @@ public class ActivityDraftService {
         activity.setReviewStatus(manualReviewRequired ? ActivityReviewStatus.pending : ActivityReviewStatus.approved);
         if (!manualReviewRequired) {
             activity.setRuntimeStatus(ActivityRuntimeStatus.notStarted);
+            publishImages(mediaFiles);
         }
         activity.setManualReviewRequired(manualReviewRequired);
         activity.setAiContentReviewJson(aiContentReviewSnapshotMapper.toJson(aiReview));
@@ -514,6 +515,26 @@ public class ActivityDraftService {
                 || !"succeeded".equals(aiReview.getStatus())
                 || aiReview.getSuggestedReviewStatus() != ReviewStatus.approved
                 || !"low".equals(aiReview.getRiskLevel());
+    }
+
+    /**
+     * 发布自动审核通过的活动图片。
+     *
+     * <p>前置条件：调用方已确认活动无需人工审核且将进入 approved 状态；mediaFiles 为该活动当前图片集合。
+     *
+     * <p>后置条件：未软删除图片的访问策略均升级为 publicAccess/publicVisible，旧私有签名因版本递增失效。
+     *
+     * <p>不变量：不修改活动图片关联顺序，不处理已软删除图片。
+     *
+     * @param mediaFiles 活动当前图片媒体列表
+     */
+    private void publishImages(List<MediaFile> mediaFiles) {
+        for (MediaFile mediaFile : mediaFiles) {
+            if (mediaFile.getDeletedAt() == null) {
+                mediaAccessService.overrideAccessPolicy(
+                        mediaFile.getMediaId(), MediaAccessPolicy.publicAccess, "", MediaVisibility.publicVisible);
+            }
+        }
     }
 
     /**
