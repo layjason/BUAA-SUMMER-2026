@@ -296,6 +296,8 @@ public final class ActivityDtos {
         private Boolean canCancelRegistration;
         private Boolean canConfirmWaitingSeat;
         private Boolean canCheckIn;
+        private Boolean canReview;
+        private String reviewWindowEndsAt;
     }
 
     @Data

@@ -7,25 +7,33 @@ import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ActivityRegistrationService {
 
     private static final int ACTIVITY_NOT_VISIBLE = 20002;
     private static final int REGISTRATION_CLOSED = 20006;
     private static final int DUPLICATE_REGISTRATION = 20007;
     private static final int REPUTATION_INSUFFICIENT = 20008;
+    private static final int AGE_REQUIREMENT_NOT_MET = ErrorCodes.AGE_REQUIREMENT_NOT_MET;
     private static final int SAFETY_NOTICE_NOT_ACCEPTED = 20010;
     private static final int REGISTRATION_NOT_FOUND = 20011;
     private static final int WAITING_CONFIRMATION_UNAVAILABLE = 20012;
@@ -36,6 +44,7 @@ public class ActivityRegistrationService {
     private final ActivityRepository activityRepository;
     private final ActivityRegistrationRepository activityRegistrationRepository;
     private final ReputationService reputationService;
+    private final PersonalProfileRepository personalProfileRepository;
 
     @Transactional
     public ActivityDtos.RegistrationResult registerActivity(
@@ -51,6 +60,9 @@ public class ActivityRegistrationService {
         Activity activity = findVisibleActivityForUpdate(activityId);
         if (!isRegistrationOpen(activity, now)) {
             throw new BusinessException(REGISTRATION_CLOSED, "Activity registration is closed");
+        }
+        if (activity.getMinAge() != null) {
+            checkAgeRequirement(userId, activity.getMinAge(), now);
         }
 
         ActivityRegistration registration = activityRegistrationRepository
@@ -116,6 +128,63 @@ public class ActivityRegistrationService {
         return toResult(activityRegistrationRepository.save(registration));
     }
 
+    /**
+     * 处理所有已过确认截止时间的候补待确认记录。
+     *
+     * <p>前置条件：无。
+     *
+     * <p>后置条件：所有过期的候补待确认记录被取消，对应的名额顺延给下一位候补者。
+     *
+     * <p>不变量：每个活动最多处理一次；已取消的候补记录不会重复处理。
+     *
+     * @param now 当前时间
+     */
+    @Transactional
+    public void processExpiredWaitingConfirmations(Instant now) {
+        List<ActivityRegistration> expiredRegistrations =
+                activityRegistrationRepository.findByStatusAndConfirmationDeadlineBefore(
+                        RegistrationStatus.waitingConfirmation, now);
+        if (expiredRegistrations.isEmpty()) {
+            return;
+        }
+        // 按活动分组，每个活动加锁处理
+        expiredRegistrations.stream()
+                .collect(Collectors.groupingBy(ActivityRegistration::getActivityId))
+                .forEach((activityId, registrations) -> {
+                    try {
+                        Activity activity = findVisibleActivityForUpdate(activityId);
+                        if (!isRegistrationOpen(activity, now)) {
+                            log.debug("活动报名已关闭，跳过过期候补确认处理: activityId={}", activityId);
+                            return;
+                        }
+                        for (ActivityRegistration registration : registrations) {
+                            // 重新加载以确保状态一致性
+                            activityRegistrationRepository
+                                    .findByActivityIdAndUserId(activityId, registration.getUserId())
+                                    .filter(r -> r.getStatus() == RegistrationStatus.waitingConfirmation
+                                            && r.getConfirmationDeadline() != null
+                                            && !r.getConfirmationDeadline().isAfter(now))
+                                    .ifPresent(r -> {
+                                        markCanceled(r);
+                                        activityRegistrationRepository.save(r);
+                                        log.info(
+                                                "候补确认超时自动取消: activityId={}, userId={}, registrationId={}",
+                                                activityId,
+                                                r.getUserId(),
+                                                r.getRegistrationId());
+                                    });
+                        }
+                        // 每个被取消的名额需要顺延给下一位候补
+                        int canceledCount = registrations.size();
+                        for (int i = 0; i < canceledCount; i++) {
+                            promoteNextWaiting(activityId, now);
+                        }
+                    } catch (BusinessException e) {
+                        log.warn("处理过期候补确认失败: activityId={}", activityId, e);
+                    }
+                });
+    }
+
     private Activity findVisibleActivityForUpdate(String activityId) {
         return activityRepository
                 .findByIdForUpdate(activityId)
@@ -132,6 +201,41 @@ public class ActivityRegistrationService {
         return activity.getRuntimeStatus() == ActivityRuntimeStatus.registering
                 && (activity.getRegistrationDeadline() == null
                         || !activity.getRegistrationDeadline().isBefore(now));
+    }
+
+    /**
+     * 校验用户年龄是否满足活动最低年龄要求。
+     *
+     * <p>前置条件：minAge 不为 null；userId 对应的用户已存在。
+     *
+     * <p>后置条件：若用户未设置生日或年龄不足，抛出 AGE_REQUIREMENT_NOT_MET 异常。
+     *
+     * <p>不变量：用户资料和活动信息不被修改。
+     *
+     * @param userId 用户 ID
+     * @param minAge 活动最低年龄要求
+     * @param now    当前时间，用于计算年龄
+     */
+    private void checkAgeRequirement(String userId, int minAge, Instant now) {
+        String birthday = personalProfileRepository
+                .findById(userId)
+                .map(profile -> profile.getBirthday())
+                .orElse(null);
+        if (birthday == null || birthday.isBlank()) {
+            throw new BusinessException(AGE_REQUIREMENT_NOT_MET, "Age requirement not met: birthday is not set");
+        }
+        LocalDate birthDate;
+        try {
+            birthDate = LocalDate.parse(birthday);
+        } catch (Exception e) {
+            log.warn("用户生日格式无效: userId={}, birthday={}", userId, birthday);
+            throw new BusinessException(AGE_REQUIREMENT_NOT_MET, "Age requirement not met: invalid birthday format");
+        }
+        int age = Period.between(birthDate, LocalDate.ofInstant(now, java.time.ZoneOffset.UTC))
+                .getYears();
+        if (age < minAge) {
+            throw new BusinessException(AGE_REQUIREMENT_NOT_MET, "Age requirement not met: minimum age is " + minAge);
+        }
     }
 
     private boolean hasAvailableSeat(Activity activity) {
