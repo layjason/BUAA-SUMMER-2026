@@ -72,6 +72,7 @@ public class ActivityDraftService {
     private final FileStorageService fileStorageService;
     private final ActivityContentReviewService activityContentReviewService;
     private final AiContentReviewSnapshotMapper aiContentReviewSnapshotMapper;
+    private final AdminActivityService adminActivityService;
 
     /**
      * 保存新的活动草稿。
@@ -436,7 +437,7 @@ public class ActivityDraftService {
      * 活动所有必填字段完整且合法。
      *
      * <p>后置条件：活动 reviewStatus 更新为 pending；创建一条审核记录（初始结果为 pending）；
-     * AI 低风险且无需人工审核时直接通过；否则标记 manualReviewRequired 并进入 pending。
+     * AI 低风险且无需人工审核时直接通过，并将活动图片设置为公开可见；否则标记 manualReviewRequired 并进入 pending。
      *
      * <p>不变量：organizerId 不变；runtimeStatus 不变。
      *
@@ -467,6 +468,10 @@ public class ActivityDraftService {
         ActivityReviewRecord reviewRecord = createInitialReviewRecord(
                 savedActivity.getActivityId(), initialReviewResult, buildAiReviewReason(aiReview));
         activityReviewRecordRepository.save(reviewRecord);
+
+        if (!manualReviewRequired) {
+            adminActivityService.publishImages(savedActivity.getActivityId());
+        }
 
         log.info(
                 "已提交活动审核，activityId={}, organizerId={}, manualReviewRequired={}",

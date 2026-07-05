@@ -41,6 +41,7 @@ import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCountService;
 import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCounts;
+import io.github.layjason.mayoistar.service.activities.AdminActivityService;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
@@ -87,6 +88,7 @@ public class AdminService {
     private final ReportService reportService;
     private final ActivityRegistrationCountService activityRegistrationCountService;
     private final MediaAccessService mediaAccessService;
+    private final AdminActivityService adminActivityService;
 
     /**
      * @param userRepository                   用户数据访问
@@ -104,6 +106,7 @@ public class AdminService {
      * @param reportService                    举报服务
      * @param activityRegistrationCountService 活动报名计数服务
      * @param mediaAccessService               媒体访问签名服务
+     * @param adminActivityService              管理员活动操作服务
      */
     public AdminService(
             UserRepository userRepository,
@@ -120,7 +123,8 @@ public class AdminService {
             ReportRepository reportRepository,
             ReportService reportService,
             ActivityRegistrationCountService activityRegistrationCountService,
-            MediaAccessService mediaAccessService) {
+            MediaAccessService mediaAccessService,
+            AdminActivityService adminActivityService) {
         this.userRepository = userRepository;
         this.merchantProfileRepository = merchantProfileRepository;
         this.qualificationRepository = qualificationRepository;
@@ -136,6 +140,7 @@ public class AdminService {
         this.reportService = reportService;
         this.activityRegistrationCountService = activityRegistrationCountService;
         this.mediaAccessService = mediaAccessService;
+        this.adminActivityService = adminActivityService;
     }
 
     // ======================== 商家管理 ========================
@@ -652,6 +657,7 @@ public class AdminService {
      * <p>前置条件：activityId 对应有效活动，活动处于可审核状态。驳回或要求修改时必须提供原因。
      *
      * <p>后置条件：Activity.reviewStatus 更新，创建 ActivityReviewRecord。
+     * 若审核通过则将活动图片设置为公开可见。
      *
      * @param activityId 活动 ID
      * @param adminId    操作管理员 ID
@@ -677,6 +683,9 @@ public class AdminService {
         }
 
         activity.setReviewStatus(convertReviewStatus(result));
+        if (result == ReviewStatus.approved) {
+            activity.setRuntimeStatus(ActivityRuntimeStatus.notStarted);
+        }
         activity.setUpdatedAt(Instant.now());
         activityRepository.save(activity);
 
@@ -689,6 +698,10 @@ public class AdminService {
                 .reviewedAt(Instant.now())
                 .build();
         activityReviewRecordRepository.save(record);
+
+        if (result == ReviewStatus.approved) {
+            adminActivityService.publishImages(activityId);
+        }
 
         log.info(
                 "活动审核完成: activityId={}, adminId={}, result={}",
@@ -704,7 +717,7 @@ public class AdminService {
      *
      * <p>前置条件：activityId 对应有效活动，活动未被下架。必须提供下架原因。
      *
-     * <p>后置条件：Activity.runtimeStatus 变为 takenDown。
+     * <p>后置条件：Activity.runtimeStatus 变为 takenDown，活动图片恢复为私有可见。
      *
      * @param activityId 活动 ID
      * @param adminId    操作管理员 ID
@@ -735,6 +748,8 @@ public class AdminService {
         activity.setUpdatedAt(Instant.now());
         activityRepository.save(activity);
 
+        adminActivityService.restrictImages(activityId);
+
         log.info(
                 "活动已下架: activityId={}, adminId={}, reason={}",
                 activityId,
@@ -749,7 +764,7 @@ public class AdminService {
      *
      * <p>前置条件：activityId 对应有效活动，活动处于下架状态。
      *
-     * <p>后置条件：Activity.runtimeStatus 恢复到下架前状态（简化为 registering）。
+     * <p>后置条件：Activity.runtimeStatus 恢复到下架前状态（简化为 registering），活动图片恢复为公开可见。
      *
      * @param activityId 活动 ID
      * @param adminId    操作管理员 ID
@@ -773,6 +788,8 @@ public class AdminService {
         activity.setRuntimeStatus(ActivityRuntimeStatus.registering);
         activity.setUpdatedAt(Instant.now());
         activityRepository.save(activity);
+
+        adminActivityService.publishImages(activityId);
 
         log.info("活动已恢复: activityId={}, adminId={}", sanitizeForLog(activityId), sanitizeForLog(adminId));
 

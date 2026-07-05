@@ -43,6 +43,7 @@ import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCountService;
 import io.github.layjason.mayoistar.service.activities.ActivityRegistrationCounts;
+import io.github.layjason.mayoistar.service.activities.AdminActivityService;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
 import java.util.List;
@@ -104,6 +105,9 @@ class AdminServiceTest {
     @Mock
     private MediaAccessService mediaAccessService;
 
+    @Mock
+    private AdminActivityService adminActivityService;
+
     private AdminService adminService;
 
     private final String adminId = UUID.randomUUID().toString();
@@ -130,7 +134,8 @@ class AdminServiceTest {
                 reportRepository,
                 reportService,
                 activityRegistrationCountService,
-                mediaAccessService);
+                mediaAccessService,
+                adminActivityService);
     }
 
     @Nested
@@ -508,6 +513,7 @@ class AdminServiceTest {
             var result = adminService.takeDownActivity(activityId, adminId, request);
 
             assertThat(activity.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.takenDown);
+            verify(adminActivityService).restrictImages(activityId);
         }
 
         @Test
@@ -547,6 +553,7 @@ class AdminServiceTest {
             var result = adminService.restoreActivity(activityId, adminId);
 
             assertThat(activity.getRuntimeStatus()).isEqualTo(ActivityRuntimeStatus.registering);
+            verify(adminActivityService).publishImages(activityId);
         }
 
         @Test
@@ -691,6 +698,7 @@ class AdminServiceTest {
 
             assertThat(activity.getReviewStatus()).isEqualTo(ActivityReviewStatus.approved);
             verify(activityReviewRecordRepository).save(any());
+            verify(adminActivityService).publishImages(activityId);
         }
 
         @Test
