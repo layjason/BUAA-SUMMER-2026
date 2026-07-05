@@ -77,9 +77,9 @@ jobs:
         run: |
           echo "Starting Full Stack Deployment..."
 
-          docker-compose -f ./docker-compose-ci.yaml down --remove-orphans
+          docker compose -f ./docker-compose-ci.yaml down --remove-orphans
 
-          docker-compose -f ./docker-compose-ci.yaml up -d --build
+          docker compose -f ./docker-compose-ci.yaml up -d --build
 
           docker image prune -f
 
