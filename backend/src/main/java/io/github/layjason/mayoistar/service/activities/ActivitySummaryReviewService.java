@@ -3,6 +3,7 @@ package io.github.layjason.mayoistar.service.activities;
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
 import io.github.layjason.mayoistar.api.common.CommonDtos;
 import io.github.layjason.mayoistar.api.common.PageResult;
+import io.github.layjason.mayoistar.config.ActivityProperties;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
 import io.github.layjason.mayoistar.entity.activities.ActivityReview;
@@ -23,6 +24,7 @@ import io.github.layjason.mayoistar.repository.activities.ActivityReviewReposito
 import io.github.layjason.mayoistar.repository.activities.ActivitySummaryImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivitySummaryPostRepository;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -65,6 +67,7 @@ public class ActivitySummaryReviewService {
     private final MediaFileRepository mediaFileRepository;
     private final UserRepository userRepository;
     private final MediaAccessService mediaAccessService;
+    private final ActivityProperties activityProperties;
 
     /**
      * 发布活动图文总结。
@@ -146,6 +149,7 @@ public class ActivitySummaryReviewService {
             String userId, String activityId, ActivityDtos.ActivityReviewRequest request) {
         Activity activity = loadVisibleActivity(activityId);
         assertActivityEnded(activity);
+        assertReviewWindowOpen(activity);
         ActivityRegistration registration = activityRegistrationRepository
                 .findByActivityIdAndUserId(activityId, userId)
                 .orElseThrow(
@@ -302,6 +306,29 @@ public class ActivitySummaryReviewService {
                 activity.getEndAt() != null && !activity.getEndAt().isAfter(Instant.now());
         if (!endedByRuntime && !endedByTime) {
             throw new BusinessException(ErrorCodes.ACTIVITY_NOT_ENDED, "Activity has not ended");
+        }
+    }
+
+    /**
+     * 校验活动评价窗口是否仍然开放。
+     *
+     * <p>前置条件：activity 审核通过且未下架。
+     *
+     * <p>后置条件：若评价窗口已过期，抛出 REGISTRATION_NOT_FOUND 异常。
+     *
+     * <p>不变量：活动状态不被修改。
+     *
+     * @param activity 活动实体
+     */
+    private void assertReviewWindowOpen(Activity activity) {
+        if (activity.getEndAt() == null) {
+            return;
+        }
+        Instant reviewWindowEnds = activity.getEndAt().plus(Duration.ofDays(activityProperties.getReviewWindowDays()));
+        if (!Instant.now().isBefore(reviewWindowEnds)) {
+            throw new BusinessException(
+                    ErrorCodes.REGISTRATION_NOT_FOUND,
+                    "Review window has expired for activity " + activity.getActivityId());
         }
     }
 
