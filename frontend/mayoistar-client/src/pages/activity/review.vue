@@ -117,6 +117,7 @@ const content = ref('')
 const submitting = ref(false)
 const formError = ref('')
 const imageUrls = ref<string[]>([])
+const reviewMarkdownImageUrls = ref<string[]>([])
 const uploadingImage = ref(false)
 const participation = ref<ActivityParticipationState | null>(null)
 
@@ -162,12 +163,18 @@ async function handleAddReviewImage(): Promise<void> {
     })
     uploadingImage.value = true
     try {
-      const results = await uploadReviewImages(res.tempFilePaths as string[])
-      for (const r of results) {
-        const imageUrl = r.signedUrl || ''
-        imageUrls.value.push(imageUrl)
-        if (content.value) content.value += '\n'
-        content.value += `![评价图片](${imageUrl})`
+      const selectedPaths = res.tempFilePaths as string[]
+      const results = await uploadReviewImages(selectedPaths)
+      for (const [index, r] of results.entries()) {
+        const previewUrl = selectedPaths[index]
+        const markdownUrl = r.signedUrl || ''
+        if (!previewUrl) continue
+        imageUrls.value.push(previewUrl)
+        reviewMarkdownImageUrls.value.push(markdownUrl)
+        if (markdownUrl) {
+          if (content.value) content.value += '\n'
+          content.value += `![评价图片](${markdownUrl})`
+        }
       }
     } catch {
       formError.value = '图片上传失败'
@@ -185,9 +192,20 @@ async function handleAddReviewImage(): Promise<void> {
  * 同时从正文中移除对应的 Markdown 图片链接。
  */
 function removeReviewImage(index: number): void {
-  const removedUrl = imageUrls.value[index]
+  const removedUrl = reviewMarkdownImageUrls.value[index]
   imageUrls.value.splice(index, 1)
-  content.value = content.value.replace(`![评价图片](${removedUrl})`, '').trim()
+  reviewMarkdownImageUrls.value.splice(index, 1)
+  if (removedUrl) content.value = content.value.replace(`![评价图片](${removedUrl})`, '').trim()
+}
+
+/** 返回活动详情页
+ *
+ * 前置条件：activityId 已由页面 query 初始化。
+ * 后置条件：当前评价页被活动详情页替换，避免直接进入评价页时 navigateBack 无可返回页面。
+ * 不变量：跳转目标始终为当前活动详情页。
+ */
+function returnToActivityDetail(): void {
+  uni.redirectTo({ url: `/pages/activity/detail?activityId=${activityId.value}` })
 }
 
 async function handleSubmit(): Promise<void> {
@@ -206,7 +224,7 @@ async function handleSubmit(): Promise<void> {
       tags: selectedTags.value,
     })
     uni.showToast({ title: t('activityReview.success'), icon: 'success' })
-    setTimeout(() => uni.navigateBack(), 1500)
+    setTimeout(returnToActivityDetail, 1500)
   } catch (error) {
     if (error instanceof BusinessError) {
       formError.value = getErrorMessage(error.code)
@@ -235,12 +253,12 @@ onLoad((query) => {
       participation.value = state
       if (result.review) {
         uni.showToast({ title: t('activityDetail.alreadyReviewed'), icon: 'none' })
-        setTimeout(() => uni.navigateBack(), 1000)
+        setTimeout(returnToActivityDetail, 1000)
         return
       }
       if (!state.canReview) {
         uni.showToast({ title: t('activityReview.windowClosed'), icon: 'none' })
-        setTimeout(() => uni.navigateBack(), 1000)
+        setTimeout(returnToActivityDetail, 1000)
       }
     } catch {
       /* 查询失败不阻塞填写 */

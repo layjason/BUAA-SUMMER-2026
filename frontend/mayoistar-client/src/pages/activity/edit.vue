@@ -377,7 +377,7 @@ async function handleAddImage(): Promise<void> {
         const results = await uploadActivityImages([tempPath])
         const result = results[0] as { mediaId: string; signedUrl?: string }
         imageIds.value.push(result.mediaId)
-        imagePreviews.value.push(result.signedUrl || tempPath)
+        imagePreviews.value.push(tempPath)
       } catch {
         formError.value = '图片上传失败'
       }

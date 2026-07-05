@@ -574,6 +574,35 @@ export function createSeedData(): MockDatabase {
       isTakenDown: false,
       createdAt: iso(-1),
     },
+    // 13: 已结束且未总结 - 用于总结与评价演示
+    {
+      id: 13,
+      creatorId: 10002,
+      title: '社区花园共创日回顾测试活动',
+      introduction: '一起整理社区花园、布置花箱，并记录共创过程中的精彩瞬间。',
+      safetyNotice: '请佩戴手套，使用园艺工具时注意安全。',
+      coverUrl: cover(13),
+      images: [cover(13)],
+      startTime: iso(-1, 9, 0),
+      endTime: iso(-1, 12, 0),
+      registrationDeadline: iso(-3, 23, 59),
+      location: {
+        longitude: 116.43,
+        latitude: 39.92,
+        city: '北京',
+        address: '东城区社区花园',
+        placeName: '东城社区花园',
+      },
+      fee: 0,
+      capacity: 20,
+      registeredCount: 0,
+      minAge: 8,
+      tags: ['公益', '园艺', '社区'],
+      runtimeStatus: 'ended',
+      reviewStatus: 'approved',
+      isTakenDown: false,
+      createdAt: iso(-10),
+    },
   ]
 
   /* ---- 报名记录 ---- */
@@ -784,6 +813,14 @@ export function createSeedData(): MockDatabase {
       status: 'registered',
       registeredAt: iso(-5),
     },
+    // 活动 13 (已结束未总结) - 普通用户已签到，可评价
+    {
+      id: 32,
+      activityId: 13,
+      userId: 10001,
+      status: 'checkedIn',
+      registeredAt: iso(-5),
+    },
   ]
 
   // 计算 registeredCount（排除 canceled 状态）
@@ -815,6 +852,7 @@ export function createSeedData(): MockDatabase {
     { id: 2, activityId: 6, userId: 10009, checkedInAt: iso(0, 19, 40) },
     { id: 3, activityId: 7, userId: 10001, checkedInAt: iso(-3, 16, 5) },
     { id: 4, activityId: 7, userId: 10006, checkedInAt: iso(-3, 16, 10) },
+    { id: 5, activityId: 13, userId: 10001, checkedInAt: iso(-1, 9, 5) },
   ]
 
   /* ---- 评价 ---- */
@@ -1272,11 +1310,11 @@ export function createSeedData(): MockDatabase {
     templates,
     nextId: {
       users: 10011,
-      activities: 13,
+      activities: 14,
       drafts: 4,
-      registrations: 32,
+      registrations: 33,
       waitlist: 3,
-      checkins: 5,
+      checkins: 6,
       reviews: 3,
       summaries: 2,
       friendRequests: 3,

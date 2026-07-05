@@ -149,14 +149,15 @@ async function handleAddImage(): Promise<void> {
       sizeType: ['compressed'],
     })
     try {
-      const results = await uploadActivityImages(res.tempFilePaths as string[])
+      const selectedPaths = res.tempFilePaths as string[]
+      const results = await uploadActivityImages(selectedPaths)
       const newMediaIds: string[] = []
-      for (const r of results) {
+      for (const [index, r] of results.entries()) {
         const mediaId = r.mediaId
-        const url = r.signedUrl
+        const previewUrl = selectedPaths[index]
         if (!mediaId) continue
         imageIds.value.push(mediaId)
-        imagePreviews.value.push(url || '')
+        if (previewUrl) imagePreviews.value.push(previewUrl)
         newMediaIds.push(mediaId)
       }
       // 调用 AI 图片分类

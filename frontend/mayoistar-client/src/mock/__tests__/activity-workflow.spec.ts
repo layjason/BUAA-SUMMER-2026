@@ -177,6 +177,35 @@ describe('活动 mock workflow 契约对齐', () => {
     })
   })
 
+  it('已结束未总结的演示活动应允许发起人发布总结且参与者评价', () => {
+    const participantState = getParticipationState(13, 10001)
+
+    expect(participantState).toMatchObject({
+      status: 'checkedIn',
+      canReview: true,
+      reviewWindowEndsAt: expect.any(String),
+    })
+
+    expect(listActivitySummaries(13, 1, 10).items).toHaveLength(0)
+
+    const summary = createSummary(13, 10002, {
+      title: '社区花园共创日精彩回顾',
+      content: '大家一起整理花箱、清理步道，留下了很棒的过程记录。',
+      imageIds: ['media_summary_demo_1'],
+      confirmedImageTags: [{ mediaId: 'media_summary_demo_1', tags: ['过程记录', '成果展示'] }],
+    })
+
+    expect(summary).toMatchObject({
+      activityId: '13',
+      title: '社区花园共创日精彩回顾',
+      imageTags: [{ mediaId: 'media_summary_demo_1', tags: ['过程记录', '成果展示'] }],
+    })
+    expect(summary.images[0]).toMatchObject({
+      mediaId: 'media_summary_demo_1',
+      signedUrl: expect.stringContaining('media_summary_demo_1'),
+    })
+  })
+
   it('取消报名应返回 RegistrationResult 并触发候补待确认', () => {
     const result = cancelRegistration(5, 10001)
 
