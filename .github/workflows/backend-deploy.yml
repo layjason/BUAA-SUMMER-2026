@@ -5,14 +5,17 @@ on:
     branches:
       - main
     paths:
-      - "backend/**"
       - ".github/workflows/backend-deploy.yml"
+  workflow_run:
+    workflows: ["Backend CI"]
+    types:
+      - completed
 
 jobs:
   deploy:
     name: Full Stack Deployment
-    runs-on: [self-hosted, internal]
-
+    runs-on: self-hosted
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     defaults:
       run:
         working-directory: backend
@@ -71,6 +74,8 @@ jobs:
           echo "ALIBABA_CLOUD_ACCESS_KEY_ID=${{ secrets.ALIBABA_AK }}" >> .env
           echo "ALIBABA_CLOUD_ACCESS_KEY_SECRET=${{ secrets.ALIBABA_SK }}" >> .env
 
+          echo "MAYOISTAR_SERVER_PORT=10086" >> .env
+
           echo ".env file generated successfully."
 
       - name: Docker Compose Deploy
@@ -80,7 +85,5 @@ jobs:
           docker compose -f ./docker-compose-ci.yaml down --remove-orphans
 
           docker compose -f ./docker-compose-ci.yaml up -d --build
-
-          docker image prune -f
 
           echo "Deployment Successful!"
