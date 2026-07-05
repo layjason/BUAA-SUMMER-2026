@@ -6,7 +6,11 @@
  *
  * 不变量：USE_MOCK 仅在开发阶段使用，生产构建应设为 false
  */
-import { API_BASE_URL as ENV_API_BASE_URL, USE_MOCK as ENV_USE_MOCK, REQUEST_TIMEOUT as ENV_REQUEST_TIMEOUT } from '@/config/env'
+import {
+  API_BASE_URL as ENV_API_BASE_URL,
+  USE_MOCK as ENV_USE_MOCK,
+  REQUEST_TIMEOUT as ENV_REQUEST_TIMEOUT,
+} from '@/config/env'
 
 /**
  * 是否使用内存态 Mock Server

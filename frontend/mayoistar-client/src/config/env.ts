@@ -10,8 +10,7 @@
  */
 
 /** 后端 API 基础地址 */
-export const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 
 /** 是否启用 Mock Server */
 export const USE_MOCK: boolean = import.meta.env.VITE_USE_MOCK !== 'false'
