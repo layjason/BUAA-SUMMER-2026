@@ -1,19 +1,20 @@
 <template>
   <view class="page">
-    <view class="tab-bar">
-      <view
-        v-for="tab in tabs"
-        :key="tab.key"
-        class="tab"
-        :class="{ active: activeTab === tab.key }"
-        @click="switchTab(tab.key)"
-      >
-        <text>{{ tab.label }}</text>
+    <view class="top-bar">
+      <view class="tab-bar">
+        <view
+          v-for="tab in tabs"
+          :key="tab.key"
+          class="tab"
+          :class="{ active: activeTab === tab.key }"
+          @click="switchTab(tab.key)"
+        >
+          <text>{{ tab.label }}</text>
+        </view>
       </view>
-    </view>
-    <view v-if="activeTab === 'nearby'" class="map-entry" @click="goMap">
-      <text class="map-entry-text">地图模式查看附近活动</text>
-      <text class="map-entry-arrow">&gt;</text>
+      <view class="filter-entry" @click="goSearch">
+        <text>高级筛选</text>
+      </view>
     </view>
 
     <scroll-view
@@ -24,6 +25,25 @@
       @refresherrefresh="onRefresh"
       @scrolltolower="loadMore"
     >
+      <view class="discover-entry-panel">
+        <view class="home-search-entry" @click="goSearch">
+          <text class="home-search-icon">🔍</text>
+          <text class="home-search-placeholder">搜索活动名称、标签...</text>
+          <text class="home-search-action">搜索</text>
+        </view>
+
+        <view class="advanced-actions">
+          <view class="advanced-action" @click="goSearch">
+            <text class="advanced-action-title">高级筛选</text>
+            <text class="advanced-action-desc">类型、时间、城市、费用、距离</text>
+          </view>
+          <view v-if="activeTab === 'nearby'" class="advanced-action map-action" @click="goMap">
+            <text class="advanced-action-title">地图模式</text>
+            <text class="advanced-action-desc">查看当前位置周边活动</text>
+          </view>
+        </view>
+      </view>
+
       <view v-if="loading && items.length === 0" class="loading-text">{{ t('home.loading') }}</view>
 
       <view v-else-if="errorMsg && items.length === 0" class="error-box">
@@ -74,7 +94,11 @@
                 <text class="fee" :class="{ free: !item.feeAmount }">{{
                   item.feeAmount ? '¥' + item.feeAmount : t('home.free')
                 }}</text>
-                <text class="registered">{{ formatRegisteredText(item) }}</text>
+                <text class="registered">{{
+                  item.registeredCount >= item.capacity
+                    ? t('home.full')
+                    : t('home.registered', { count: item.registeredCount, total: item.capacity })
+                }}</text>
               </view>
             </view>
           </view>
@@ -89,6 +113,10 @@
         </view>
       </view>
     </scroll-view>
+
+    <view class="fab" @click="goCreate">
+      <text class="fab-icon">+</text>
+    </view>
   </view>
 </template>
 
@@ -104,9 +132,10 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
-import { getFeed } from '@/api/modules/activities'
+import { getFeed, type FeedActivitiesParams } from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
+import { getCurrentLocation } from '@/utils/location'
 import { runtimeStatusText } from '@/utils/status'
 
 const { t } = useI18n()
@@ -129,6 +158,8 @@ const loadError = ref(false)
 const noMoreData = ref(false)
 const currentPage = ref(1)
 const pageSize = 10
+const nearbyFallbackLocation = { longitude: 116.46, latitude: 39.908, distanceMeters: 10000 }
+const nearbyLocation = ref<typeof nearbyFallbackLocation | null>(null)
 
 interface ActivityItem {
   activityId: string
@@ -154,18 +185,36 @@ function getStatusText(status: string): string {
   return runtimeStatusText(status, t)
 }
 
-/**
- * 格式化首页活动卡片报名人数。
+/** 确保附近 Tab 使用真实定位参数
  *
- * 前置条件：activity.registeredCount 与 activity.capacity 来自活动流接口或 mockServer，均为非负数字。
- * 后置条件：满员活动显示本地化“已满”，未满活动显示“已报名/总人数人”的确定文本。
- * 不变量：该函数只负责展示文案，不修改活动列表状态。
- *
- * @param activity 首页活动卡片数据
+ * 前置条件：用户正在请求附近信息流。
+ * 后置条件：nearbyLocation 保存真实定位；定位失败时保存演示 fallback 坐标。
+ * 副作用：可能触发定位授权弹窗，失败时展示轻提示。
  */
-function formatRegisteredText(activity: ActivityItem): string {
-  if (activity.registeredCount >= activity.capacity) return t('home.full')
-  return `${activity.registeredCount}/${activity.capacity}人`
+async function ensureNearbyLocation(): Promise<void> {
+  if (nearbyLocation.value) return
+  const location = await getCurrentLocation()
+  if (location) {
+    nearbyLocation.value = { ...location, distanceMeters: 10000 }
+    return
+  }
+  nearbyLocation.value = nearbyFallbackLocation
+  uni.showToast({ title: '无法获取当前位置，已使用默认位置展示附近活动', icon: 'none' })
+}
+
+/** 构建信息流查询参数
+ *
+ * 前置条件：activeTab 已表示当前首页 Tab。
+ * 后置条件：返回 OpenAPI 允许的 Feed 查询字段；附近 Tab 附带默认位置与距离。
+ * 不变量：不向 query 添加 OpenAPI 未定义字段。
+ *
+ * @param page 要加载的页码
+ * @returns 首页 Feed 查询参数
+ */
+function buildFeedParams(page: number): FeedActivitiesParams {
+  const base = { page, pageSize }
+  if (activeTab.value !== 'nearby') return base
+  return { ...base, ...(nearbyLocation.value ?? nearbyFallbackLocation) }
 }
 
 async function loadFeed(): Promise<void> {
@@ -174,7 +223,8 @@ async function loadFeed(): Promise<void> {
   noMoreData.value = false
   currentPage.value = 1
   try {
-    const result = await getFeed(activeTab.value, 1, pageSize)
+    if (activeTab.value === 'nearby') await ensureNearbyLocation()
+    const result = await getFeed(activeTab.value, buildFeedParams(1))
     items.value = (result.items ?? []) as ActivityItem[]
     noMoreData.value = (result.totalPages ?? 1) <= 1
   } catch (error) {
@@ -194,7 +244,8 @@ async function onRefresh(): Promise<void> {
   noMoreData.value = false
   currentPage.value = 1
   try {
-    const result = await getFeed(activeTab.value, 1, pageSize)
+    if (activeTab.value === 'nearby') await ensureNearbyLocation()
+    const result = await getFeed(activeTab.value, buildFeedParams(1))
     items.value = (result.items ?? []) as ActivityItem[]
     noMoreData.value = (result.totalPages ?? 1) <= 1
   } catch {
@@ -210,7 +261,8 @@ async function loadMore(): Promise<void> {
   loadError.value = false
   const nextPage = currentPage.value + 1
   try {
-    const result = await getFeed(activeTab.value, nextPage, pageSize)
+    if (activeTab.value === 'nearby') await ensureNearbyLocation()
+    const result = await getFeed(activeTab.value, buildFeedParams(nextPage))
     const newItems = (result.items ?? []) as ActivityItem[]
     if (newItems.length === 0) {
       noMoreData.value = true
@@ -241,13 +293,14 @@ function goDetail(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
 }
 
-/**
- * 跳转附近地图模式
- *
- * 前置条件：首页附近 Tab 已展示或用户希望查看附近活动分布。
- * 后置条件：进入地图发现页，由地图页通过 uni.getLocation 加载附近活动。
- * 不变量：不改变当前信息流列表。
- */
+function goCreate(): void {
+  uni.navigateTo({ url: '/pages/activity/templates' })
+}
+
+function goSearch(): void {
+  uni.navigateTo({ url: '/pages/discover/search' })
+}
+
 function goMap(): void {
   uni.navigateTo({ url: '/pages/discover/map' })
 }
@@ -262,12 +315,18 @@ function goMap(): void {
   overflow: hidden;
 }
 
-.tab-bar {
+.top-bar {
   display: flex;
   background-color: #fff;
-  padding: 0 32rpx;
   border-bottom: 1rpx solid #ebedf0;
   flex-shrink: 0;
+  align-items: center;
+}
+
+.tab-bar {
+  flex: 1;
+  display: flex;
+  padding-left: 32rpx;
 }
 
 .tab {
@@ -285,31 +344,86 @@ function goMap(): void {
   font-weight: 600;
 }
 
-.map-entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 16rpx 32rpx 0;
-  padding: 20rpx 24rpx;
-  background-color: #e8f7f0;
-  border-radius: 12rpx;
-}
-
-.map-entry-text {
+.filter-entry {
+  padding: 0 32rpx;
   font-size: 26rpx;
   color: #5ec8a7;
-  font-weight: 600;
-}
-
-.map-entry-arrow {
-  font-size: 28rpx;
-  color: #5ec8a7;
+  white-space: nowrap;
 }
 
 .scroll-area {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+.discover-entry-panel {
+  padding: 24rpx 32rpx 16rpx;
+}
+
+.home-search-entry {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border: 1rpx solid #ebedf0;
+  border-radius: 999rpx;
+  padding: 20rpx 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(50, 50, 51, 0.06);
+}
+
+.home-search-icon {
+  font-size: 28rpx;
+  margin-right: 12rpx;
+}
+
+.home-search-placeholder {
+  flex: 1;
+  font-size: 28rpx;
+  color: #969799;
+}
+
+.home-search-action {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  padding-left: 16rpx;
+  border-left: 1rpx solid #ebedf0;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #5ec8a7;
+}
+
+.advanced-actions {
+  display: flex;
+  flex-direction: row;
+  margin: 16rpx -8rpx 0;
+}
+
+.advanced-action {
+  flex: 1;
+  margin: 0 8rpx;
+  padding: 18rpx 20rpx;
+  background-color: #fff;
+  border-radius: 16rpx;
+  border-left: 6rpx solid #5ec8a7;
+  box-shadow: 0 8rpx 24rpx rgba(50, 50, 51, 0.05);
+}
+
+.map-action {
+  border-left-color: #6f8cff;
+}
+
+.advanced-action-title {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #323233;
+}
+
+.advanced-action-desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #969799;
 }
 
 .loading-text,
@@ -500,6 +614,27 @@ function goMap(): void {
 
 .load-error {
   color: #ee0a24;
+}
+
+.fab {
+  position: fixed;
+  right: 32rpx;
+  bottom: calc(32rpx + env(safe-area-inset-bottom) + 120rpx);
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  background-color: #5ec8a7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(94, 200, 167, 0.4);
+}
+
+.fab-icon {
+  font-size: 56rpx;
+  color: #fff;
+  line-height: 1;
+  margin-top: -4rpx;
 }
 </style>
 

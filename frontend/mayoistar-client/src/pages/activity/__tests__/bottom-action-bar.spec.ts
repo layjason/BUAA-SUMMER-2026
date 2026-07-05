@@ -22,6 +22,17 @@ describe('活动页面底部操作栏', () => {
     expect(source).not.toContain('class="action-bar"')
   })
 
+  it('模板选择页模板卡片应使用稳定两列布局', () => {
+    const source = readActivityPage('templates.vue')
+
+    expect(source).toContain('templateRows')
+    expect(source).toContain('class="template-row"')
+    expect(source).toContain('class="card-inner"')
+    expect(source).toMatch(/\.template-row\s*\{[\s\S]*display:\s*flex;/)
+    expect(source).toMatch(/\.card\s*\{[\s\S]*width:\s*50%;[\s\S]*padding:\s*0 8rpx;/)
+    expect(source).not.toMatch(/\.template-grid\s*\{[\s\S]*gap:/)
+  })
+
   it('详情页主操作按钮应复用固定底部操作栏样式', () => {
     const source = readActivityPage('detail.vue')
 
@@ -49,5 +60,50 @@ describe('活动页面底部操作栏', () => {
     expect(handleActionBody.indexOf("p.status === 'registered'")).toBeLessThan(
       handleActionBody.indexOf('p.canCheckIn'),
     )
+  })
+
+  it('详情页评价入口应使用后端参与状态控制并展示截止时间', () => {
+    const source = readActivityPage('detail.vue')
+
+    expect(source).toContain(
+      'const canReview = computed(() => participation.value?.canReview === true)',
+    )
+    expect(source).not.toContain(
+      'const canReview = computed(() => meetsReviewCondition.value && !hasReviewed.value)',
+    )
+    expect(source).toContain('reviewWindowEndsAt')
+    expect(source).toContain('reviewDeadlineText')
+  })
+
+  it('详情页活动总结和评价条目应可进入详情页', () => {
+    const source = readActivityPage('detail.vue')
+
+    expect(source).toContain('@click="goSummaryDetail(item.summaryId)"')
+    expect(source).toContain('@click="goReviewDetail(item.reviewId)"')
+    expect(source).toContain('function goSummaryDetail(summaryId: string): void')
+    expect(source).toContain('function goReviewDetail(reviewId: string): void')
+    expect(source).toContain('/pages/activity/summary-detail?activityId=')
+    expect(source).toContain('/pages/activity/review-detail?activityId=')
+    expect(source).toContain('published-block--link')
+  })
+
+  it('活动总结和评价详情页应通过列表接口按 ID 回查详情', () => {
+    const summarySource = readActivityPage('summary-detail.vue')
+    const reviewSource = readActivityPage('review-detail.vue')
+    const pagesConfig = readFileSync(resolve(process.cwd(), 'src/pages.json'), 'utf8')
+
+    expect(pagesConfig).toContain('pages/activity/summary-detail')
+    expect(pagesConfig).toContain('pages/activity/review-detail')
+    expect(summarySource).toContain('getActivitySummaries')
+    expect(summarySource).toContain('item.summaryId === summaryId.value')
+    expect(summarySource).toContain('summary.imageTags')
+    expect(reviewSource).toContain('getActivityReviews')
+    expect(reviewSource).toContain('item.reviewId === reviewId.value')
+    expect(reviewSource).toContain('review.rating')
+    expect(reviewSource).toContain('markdownImagePattern')
+    expect(reviewSource).toContain('reviewImageUrls')
+    expect(reviewSource).toContain('reviewTextContent')
+    expect(reviewSource).toContain('content.replace(markdownImagePattern')
+    expect(reviewSource).toContain('class="review-image"')
   })
 })

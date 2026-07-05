@@ -7,7 +7,7 @@
     @click="$emit('click')"
   >
     <template v-if="cooldown > 0">
-      {{ cooldownText.replace('{seconds}', String(cooldown)) }}
+      {{ cooldownText }}
     </template>
     <template v-else-if="!loading">
       {{ text }}
@@ -19,10 +19,10 @@
 /**
  * 冷却倒计时按钮组件
  *
- * 展示冷却倒计时文本，冷却期间自动禁用。
+ * 展示由父组件完成国际化插值的冷却倒计时文本，冷却期间自动禁用。
  * 与 useCooldown composable 配合使用，cooldown 由父组件通过 composable 管理。
  *
- * 前置条件：cooldown 为当前剩余秒数，由 useCooldown 提供
+ * 前置条件：cooldown 为当前剩余秒数，由 useCooldown 提供；cooldownText 已完成秒数插值
  * 后置条件：冷却期间显示倒计时文本并禁用点击
  */
 defineProps<{

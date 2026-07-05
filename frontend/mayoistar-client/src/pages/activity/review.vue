@@ -4,6 +4,10 @@
       <view class="form-container">
         <text class="title">{{ t('activityReview.title') }}</text>
 
+        <view v-if="reviewDeadlineText" class="deadline-card">
+          <text class="deadline-text">{{ reviewDeadlineText }}</text>
+        </view>
+
         <view class="star-section">
           <text class="label">{{ t('activityReview.rating') }}</text>
           <view class="star-row">
@@ -88,18 +92,21 @@
  * 前置条件：用户已登录，activityId 通过 query 传入，活动已结束且用户已签到
  * 后置条件：提交成功后返回上一页
  */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
 
 import {
   createActivityReview,
+  getParticipationState,
   getMyActivityReview,
   uploadReviewImages,
+  type ActivityParticipationState,
   type MyActivityReviewResult,
 } from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
+import { formatDateTime } from '@/utils/date'
 import { FormError, BottomActionBar } from '@/components'
 
 const { t } = useI18n()
@@ -110,11 +117,26 @@ const content = ref('')
 const submitting = ref(false)
 const formError = ref('')
 const imageUrls = ref<string[]>([])
+const reviewMarkdownImageUrls = ref<string[]>([])
 const uploadingImage = ref(false)
+const participation = ref<ActivityParticipationState | null>(null)
 
 // 预设评价标签
 const availableTags = ['组织有序', '氛围很好', '收获满满', '场地不错', '时间合理', '物超所值']
 const selectedTags = ref<string[]>([])
+
+/** 评价入口截止时间文案，空字符串表示后端未返回截止时间 */
+const reviewDeadlineText = computed(() => {
+  const endsAt = participation.value?.reviewWindowEndsAt
+  if (!endsAt) return ''
+  return t('activityReview.deadline', { time: formatDateTime(endsAt) })
+})
+
+/** 当前评价窗口是否已经在本地时间中过期，最终结果仍以后端提交接口校验为准 */
+const isReviewWindowExpired = computed(() => {
+  const endsAt = participation.value?.reviewWindowEndsAt
+  return endsAt ? new Date(endsAt).getTime() <= Date.now() : false
+})
 
 /** 切换标签选中状态 */
 function toggleTag(tag: string): void {
@@ -141,12 +163,18 @@ async function handleAddReviewImage(): Promise<void> {
     })
     uploadingImage.value = true
     try {
-      const results = await uploadReviewImages(res.tempFilePaths as string[])
-      for (const r of results) {
-        const imageUrl = r.signedUrl || ''
-        imageUrls.value.push(imageUrl)
-        if (content.value) content.value += '\n'
-        content.value += `![评价图片](${imageUrl})`
+      const selectedPaths = res.tempFilePaths as string[]
+      const results = await uploadReviewImages(selectedPaths)
+      for (const [index, r] of results.entries()) {
+        const previewUrl = selectedPaths[index]
+        const markdownUrl = r.signedUrl || ''
+        if (!previewUrl) continue
+        imageUrls.value.push(previewUrl)
+        reviewMarkdownImageUrls.value.push(markdownUrl)
+        if (markdownUrl) {
+          if (content.value) content.value += '\n'
+          content.value += `![评价图片](${markdownUrl})`
+        }
       }
     } catch {
       formError.value = '图片上传失败'
@@ -164,14 +192,44 @@ async function handleAddReviewImage(): Promise<void> {
  * 同时从正文中移除对应的 Markdown 图片链接。
  */
 function removeReviewImage(index: number): void {
-  const removedUrl = imageUrls.value[index]
+  const removedUrl = reviewMarkdownImageUrls.value[index]
   imageUrls.value.splice(index, 1)
-  content.value = content.value.replace(`![评价图片](${removedUrl})`, '').trim()
+  reviewMarkdownImageUrls.value.splice(index, 1)
+  if (removedUrl) content.value = content.value.replace(`![评价图片](${removedUrl})`, '').trim()
+}
+
+interface PageRouteSnapshot {
+  route?: string
+  options?: Record<string, string | undefined>
+}
+
+/** 返回活动详情页
+ *
+ * 前置条件：activityId 已由页面 query 初始化。
+ * 后置条件：若上一页是同一活动详情页则后退，否则当前评价页被活动详情页替换。
+ * 不变量：最终目标始终为当前活动详情页，且不重复堆叠同一详情页。
+ */
+function returnToActivityDetail(): void {
+  const pages = getCurrentPages() as PageRouteSnapshot[]
+  const previousPage = pages[pages.length - 2]
+  if (
+    previousPage?.route === 'pages/activity/detail' &&
+    previousPage.options?.activityId === activityId.value
+  ) {
+    uni.navigateBack()
+    return
+  }
+
+  uni.redirectTo({ url: `/pages/activity/detail?activityId=${activityId.value}` })
 }
 
 async function handleSubmit(): Promise<void> {
   if (submitting.value || rating.value === 0) return
   formError.value = ''
+  if (isReviewWindowExpired.value) {
+    formError.value = t('activityReview.windowExpired')
+    return
+  }
   submitting.value = true
 
   try {
@@ -181,7 +239,7 @@ async function handleSubmit(): Promise<void> {
       tags: selectedTags.value,
     })
     uni.showToast({ title: t('activityReview.success'), icon: 'success' })
-    setTimeout(() => uni.navigateBack(), 1500)
+    setTimeout(returnToActivityDetail, 1500)
   } catch (error) {
     if (error instanceof BusinessError) {
       formError.value = getErrorMessage(error.code)
@@ -202,10 +260,20 @@ onLoad((query) => {
   }
   void (async () => {
     try {
-      const result: MyActivityReviewResult = await getMyActivityReview(activityId.value)
+      const [state, result]: [ActivityParticipationState, MyActivityReviewResult] =
+        await Promise.all([
+          getParticipationState(activityId.value),
+          getMyActivityReview(activityId.value),
+        ])
+      participation.value = state
       if (result.review) {
         uni.showToast({ title: t('activityDetail.alreadyReviewed'), icon: 'none' })
-        setTimeout(() => uni.navigateBack(), 1000)
+        setTimeout(returnToActivityDetail, 1000)
+        return
+      }
+      if (!state.canReview) {
+        uni.showToast({ title: t('activityReview.windowClosed'), icon: 'none' })
+        setTimeout(returnToActivityDetail, 1000)
       }
     } catch {
       /* 查询失败不阻塞填写 */
@@ -239,6 +307,19 @@ onLoad((query) => {
   font-weight: 700;
   color: #323233;
   margin-bottom: 40rpx;
+}
+
+.deadline-card {
+  margin-bottom: 32rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 12rpx;
+  background-color: #fff7e8;
+}
+
+.deadline-text {
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #ed6a0c;
 }
 
 .star-section {

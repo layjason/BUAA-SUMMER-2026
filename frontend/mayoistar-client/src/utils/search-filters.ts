@@ -4,16 +4,18 @@
  * 将搜索页轻量筛选 UI 的选中项转换为 OpenAPI query 参数。
  */
 
-export type ActivityTypeFilter = '运动' | '户外' | '桌游' | '学习' | '公益'
 export type CityFilter = '北京' | '上海' | '广州'
 export type FeeFilter = 'free' | 'paid'
 export type TimeFilter = 'today' | 'week' | 'month'
+export type DistanceFilter = 1000 | 3000 | 5000 | 10000
 
 export interface SearchFilterSelection {
-  activityType: ActivityTypeFilter | null
+  activityTypes: string[]
   city: CityFilter | null
   fee: FeeFilter | null
   time: TimeFilter | null
+  distanceMeters: DistanceFilter | null
+  location: { longitude: number; latitude: number } | null
 }
 
 export interface SearchActivitiesQuery {
@@ -26,6 +28,9 @@ export interface SearchActivitiesQuery {
   startAtTo?: string
   minFee?: number
   maxFee?: number
+  longitude?: number
+  latitude?: number
+  distanceMeters?: number
 }
 
 /**
@@ -35,7 +40,13 @@ export interface SearchActivitiesQuery {
  * 后置条件：任一筛选项非空时返回 true
  */
 export function hasSearchFilters(selection: SearchFilterSelection): boolean {
-  return !!(selection.activityType || selection.city || selection.fee || selection.time)
+  return !!(
+    selection.activityTypes.length ||
+    selection.city ||
+    selection.fee ||
+    selection.time ||
+    selection.distanceMeters
+  )
 }
 
 /**
@@ -103,7 +114,7 @@ export function buildSearchActivitiesQuery(
   const query: SearchActivitiesQuery = { page, pageSize }
   const trimmedKeyword = keyword.trim()
   if (trimmedKeyword) query.keyword = trimmedKeyword
-  if (selection.activityType) query.activityTypes = [selection.activityType]
+  if (selection.activityTypes.length) query.activityTypes = [...selection.activityTypes]
   if (selection.city) query.city = selection.city
   if (selection.fee === 'free') {
     query.minFee = 0
@@ -115,6 +126,11 @@ export function buildSearchActivitiesQuery(
     const range = getTimeRange(selection.time)
     query.startAtFrom = range.startAtFrom
     query.startAtTo = range.startAtTo
+  }
+  if (selection.distanceMeters && selection.location) {
+    query.longitude = selection.location.longitude
+    query.latitude = selection.location.latitude
+    query.distanceMeters = selection.distanceMeters
   }
   return query
 }

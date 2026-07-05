@@ -19,9 +19,11 @@ import type {
   FriendRequestCreate,
   JoinTeamRequestBody,
   MockDraftUpsertInput,
+  QualificationSubmitRequest,
   RegisterActivityRequest,
   SendMessageRequest,
   TeamCreateRequest,
+  UpdateMerchantProfileRequest,
 } from './schema-types'
 import { persistMockDb, resetMockDb } from './database'
 import { MockBusinessError } from './workflow'
@@ -75,6 +77,8 @@ import {
   getInterestTags,
   getTemplates,
   getMerchantProfile,
+  updateMerchantProfile,
+  submitMerchantQualification,
   getCurrentUserId,
 } from './workflow'
 
@@ -242,6 +246,18 @@ const routes: Route[] = [
     handler: () => ok(getMerchantProfile(getCurrentUserId())),
   },
   {
+    method: 'PATCH',
+    pattern: '/identity/me/merchant-profile',
+    handler: (_p, _q, body) =>
+      ok(updateMerchantProfile(getCurrentUserId(), body as UpdateMerchantProfileRequest)),
+  },
+  {
+    method: 'POST',
+    pattern: '/identity/me/merchant-qualification',
+    handler: (_p, _q, body) =>
+      ok(submitMerchantQualification(getCurrentUserId(), body as QualificationSubmitRequest)),
+  },
+  {
     method: 'GET',
     pattern: '/identity/interest-tags',
     handler: () => ok(getInterestTags()),
@@ -260,7 +276,25 @@ const routes: Route[] = [
       const tab = (query.tab ?? 'recommended') as ActivityFeedTab
       const page = parseInt(query.page ?? '1', 10)
       const pageSize = parseInt(query.pageSize ?? '10', 10)
-      return ok(getFeed(tab, page, pageSize))
+      const filters: ActivitySearchQuery = {}
+      if (query.keyword) filters.keyword = query.keyword
+      if (query.city) filters.city = query.city
+      if (query.startAtFrom) filters.startAtFrom = query.startAtFrom
+      if (query.startAtTo) filters.startAtTo = query.startAtTo
+      if (query.minFee !== undefined) filters.minFee = parseFloat(query.minFee)
+      if (query.maxFee !== undefined) filters.maxFee = parseFloat(query.maxFee)
+      if (query.longitude !== undefined) filters.longitude = parseFloat(query.longitude)
+      if (query.latitude !== undefined) filters.latitude = parseFloat(query.latitude)
+      if (query.distanceMeters !== undefined) {
+        filters.distanceMeters = parseFloat(query.distanceMeters)
+      }
+      if (query.activityTypes) {
+        filters.activityTypes = query.activityTypes
+          .split(',')
+          .map((type) => type.trim())
+          .filter(Boolean)
+      }
+      return ok(getFeed(tab, page, pageSize, filters))
     },
   },
   {
@@ -359,7 +393,7 @@ const routes: Route[] = [
     pattern: '/activities/templates',
     handler: (_p, query) => {
       const page = parseInt(query.page ?? '1', 10)
-      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      const pageSize = parseInt(query.pageSize ?? '100', 10)
       return ok(getTemplates(page, pageSize))
     },
   },
@@ -392,6 +426,11 @@ const routes: Route[] = [
     method: 'POST',
     pattern: '/identity/media/avatar',
     handler: () => ok(mockUploadResponse('avatar')),
+  },
+  {
+    method: 'POST',
+    pattern: '/identity/media/license',
+    handler: () => ok(mockUploadResponse('merchantLicense')),
   },
 
   /* ===== 活动详情 / 提交 / 参与状态 ===== */

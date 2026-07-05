@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetMockDb } from '@/mock/database'
+import { handleMockRequest } from '@/mock/mockServer'
 import {
   cancelRegistration,
   checkIn,
@@ -10,6 +11,7 @@ import {
   getActivityDetail,
   getDraft,
   getMapActivities,
+  getMerchantProfile,
   getMyActivities,
   getMyActivityReview,
   getMyRegistrations,
@@ -18,6 +20,7 @@ import {
   listActivitySummaries,
   registerForActivity,
   submitActivity,
+  submitMerchantQualification,
   updateDraft,
 } from '@/mock/workflow'
 
@@ -393,6 +396,37 @@ describe('活动 mock workflow 契约对齐', () => {
       title: '演示：已补充安全说明后重新提交',
       reviewStatus: 'approved',
       runtimeStatus: 'registering',
+    })
+  })
+
+  it('商家资质提交后应进入审核中状态', () => {
+    const before = getMerchantProfile(10002)
+    expect(before.qualificationStatus).toBe('not_submitted')
+
+    const result = submitMerchantQualification(10002, {
+      licenseMediaIds: ['media_license_1'],
+    })
+    expect(result).toEqual({})
+
+    const after = getMerchantProfile(10002)
+    expect(after.qualificationStatus).toBe('pending')
+    expect(after.qualification).toMatchObject({
+      status: 'pending',
+      licenseImageUrls: expect.arrayContaining([expect.stringContaining('media_license_1')]),
+    })
+  })
+
+  it('商家营业凭证上传应使用专用媒体用途', async () => {
+    const response = await handleMockRequest('POST', '/identity/media/license', {
+      filePath: '/tmp/license.jpg',
+    })
+
+    expect(response).toMatchObject({
+      code: 200,
+      data: {
+        usage: 'merchantLicense',
+        signedUrl: expect.stringContaining('https://picsum.photos/seed/'),
+      },
     })
   })
 })

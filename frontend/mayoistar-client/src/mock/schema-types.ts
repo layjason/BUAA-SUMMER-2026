@@ -85,6 +85,8 @@ export type NicknameAvailability = Schema['Identity.NicknameAvailability']
 export type MerchantProfile = Schema['Identity.MerchantProfile']
 export type InterestTagItem = Schema['Identity.InterestTagItem']
 export type UpdatePersonalProfileRequest = Schema['Identity.UpdatePersonalProfileRequest']
+export type UpdateMerchantProfileRequest = Schema['Identity.UpdateMerchantProfileRequest']
+export type QualificationSubmitRequest = Schema['Identity.QualificationSubmitRequest']
 export type UserKind = Schema['Identity.UserKind']
 
 /* ---- 社交 ---- */

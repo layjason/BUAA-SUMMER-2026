@@ -39,7 +39,7 @@
         <view v-if="pendingEmail && (state === 'sent' || state === 'error')" class="action-section">
           <CooldownButton
             :text="t('activate.resendButton')"
-            :cooldown-text="t('activate.resendCooldown')"
+            :cooldown-text="t('activate.resendCooldown', { seconds: cooldown })"
             :cooldown="cooldown"
             :loading="sending"
             @click="handleResend"
@@ -120,6 +120,8 @@ onMounted(async () => {
     if (authStore.autoResendActivation) {
       authStore.autoResendActivation = false
       await handleResend()
+    } else {
+      startCooldown()
     }
   } else {
     state.value = 'idle'

@@ -9,12 +9,14 @@
  */
 import { ref } from 'vue'
 import { searchActivities } from '@/api/modules/activities'
+import { getInterestTags } from '@/api/modules/profile'
 import { formatDate } from '@/utils/date'
+import { getCurrentLocation } from '@/utils/location'
 import {
   buildSearchActivitiesQuery,
   hasSearchFilters,
-  type ActivityTypeFilter,
   type CityFilter,
+  type DistanceFilter,
   type FeeFilter,
   type SearchFilterSelection,
   type TimeFilter,
@@ -40,7 +42,6 @@ interface SearchResultItem {
   runtimeStatus: string
 }
 
-const TYPE_OPTIONS: ActivityTypeFilter[] = ['运动', '户外', '桌游', '学习', '公益']
 const CITY_OPTIONS: CityFilter[] = ['北京', '上海', '广州']
 const FEE_OPTIONS: { value: FeeFilter; label: string }[] = [
   { value: 'free', label: '免费' },
@@ -51,27 +52,43 @@ const TIME_OPTIONS: { value: TimeFilter; label: string }[] = [
   { value: 'week', label: '本周' },
   { value: 'month', label: '本月' },
 ]
+const DISTANCE_OPTIONS: { value: DistanceFilter; label: string }[] = [
+  { value: 1000, label: '1km' },
+  { value: 3000, label: '3km' },
+  { value: 5000, label: '5km' },
+  { value: 10000, label: '10km' },
+]
 
 const keyword = ref('')
+const typeOptions = ref<string[]>([])
 const searchResults = ref<SearchResultItem[]>([])
 const isSearching = ref(false)
+const isLoadingTypes = ref(false)
+const loadingMore = ref(false)
 const hasSearched = ref(false)
 const totalCount = ref(0)
+const currentPage = ref(1)
+const noMoreData = ref(false)
+const pageSize = 20
 
-const selectedType = ref<ActivityTypeFilter | null>(null)
+const selectedTypes = ref<string[]>([])
 const selectedCity = ref<CityFilter | null>(null)
 const selectedFee = ref<FeeFilter | null>(null)
 const selectedTime = ref<TimeFilter | null>(null)
+const selectedDistance = ref<DistanceFilter | null>(null)
+const currentLocation = ref<{ longitude: number; latitude: number } | null>(null)
 
 /**
  * 获取当前筛选选择
  */
 function getFilterSelection(): SearchFilterSelection {
   return {
-    activityType: selectedType.value,
+    activityTypes: selectedTypes.value,
     city: selectedCity.value,
     fee: selectedFee.value,
     time: selectedTime.value,
+    distanceMeters: selectedDistance.value,
+    location: currentLocation.value,
   }
 }
 
@@ -84,52 +101,71 @@ function refreshSearchIfNeeded(): void {
   }
 }
 
-/**
- * 切换活动类型筛选
- *
- * 前置条件：type 来自预设类型列表。
- * 后置条件：选中同一类型时取消筛选，否则切换为该类型。
- * 不变量：筛选值只使用 OpenAPI activityTypes 支持的字符串数组。
- */
-function toggleTypeFilter(type: ActivityTypeFilter): void {
-  selectedType.value = selectedType.value === type ? null : type
+function toggleTypeFilter(type: string): void {
+  selectedTypes.value = selectedTypes.value.includes(type)
+    ? selectedTypes.value.filter((item) => item !== type)
+    : [...selectedTypes.value, type]
   refreshSearchIfNeeded()
 }
 
-/**
- * 切换城市筛选
- *
- * 前置条件：city 来自预设城市列表。
- * 后置条件：选中同一城市时取消筛选，否则切换为该城市。
- * 不变量：不直接触发地图查询。
- */
 function toggleCityFilter(city: CityFilter): void {
   selectedCity.value = selectedCity.value === city ? null : city
   refreshSearchIfNeeded()
 }
 
-/**
- * 切换费用筛选
- *
- * 前置条件：fee 为 free 或 paid。
- * 后置条件：更新费用筛选并按需刷新搜索结果。
- * 不变量：费用筛选最终由 buildSearchActivitiesQuery 转为 OpenAPI minFee/maxFee。
- */
 function toggleFeeFilter(fee: FeeFilter): void {
   selectedFee.value = selectedFee.value === fee ? null : fee
   refreshSearchIfNeeded()
 }
 
-/**
- * 切换时间筛选
- *
- * 前置条件：time 为 today/week/month。
- * 后置条件：更新时间筛选并按需刷新搜索结果。
- * 不变量：时间筛选最终由 buildSearchActivitiesQuery 转为 OpenAPI startAtFrom/startAtTo。
- */
 function toggleTimeFilter(time: TimeFilter): void {
   selectedTime.value = selectedTime.value === time ? null : time
   refreshSearchIfNeeded()
+}
+
+/** 切换距离范围筛选
+ *
+ * 前置条件：distance 为页面预设的距离半径。
+ * 后置条件：选中距离时优先获取当前位置，定位失败则取消距离筛选。
+ * 副作用：可能触发系统定位授权弹窗，并在失败时展示 toast。
+ *
+ * @param distance 距离筛选半径，单位米
+ */
+async function toggleDistanceFilter(distance: DistanceFilter): Promise<void> {
+  if (selectedDistance.value === distance) {
+    selectedDistance.value = null
+    refreshSearchIfNeeded()
+    return
+  }
+
+  const location = await getCurrentLocation()
+  if (!location) {
+    selectedDistance.value = null
+    currentLocation.value = null
+    uni.showToast({ title: '无法获取当前位置，已取消距离筛选', icon: 'none' })
+    return
+  }
+
+  currentLocation.value = location
+  selectedDistance.value = distance
+  refreshSearchIfNeeded()
+}
+
+/** 加载活动类型筛选项
+ *
+ * 前置条件：兴趣标签接口可用。
+ * 后置条件：typeOptions 使用系统预定义兴趣标签，加载失败时为空数组。
+ */
+async function loadTypeOptions(): Promise<void> {
+  isLoadingTypes.value = true
+  try {
+    const tags = await getInterestTags()
+    typeOptions.value = tags.map((tag) => tag.name)
+  } catch {
+    typeOptions.value = []
+  } finally {
+    isLoadingTypes.value = false
+  }
 }
 
 /**
@@ -142,40 +178,55 @@ async function doSearch(): Promise<void> {
   if (!keyword.value.trim() && !hasSearchFilters(getFilterSelection())) return
   isSearching.value = true
   hasSearched.value = true
+  currentPage.value = 1
+  noMoreData.value = false
   try {
     const result = await searchActivities(
-      buildSearchActivitiesQuery(keyword.value, getFilterSelection(), 1, 20),
+      buildSearchActivitiesQuery(keyword.value, getFilterSelection(), currentPage.value, pageSize),
     )
     searchResults.value = (result.items ?? []) as SearchResultItem[]
     totalCount.value = result.total ?? 0
+    noMoreData.value = result.page >= (result.totalPages ?? 1)
   } catch {
     searchResults.value = []
     totalCount.value = 0
+    noMoreData.value = true
   } finally {
     isSearching.value = false
   }
 }
 
+/** 加载下一页搜索结果 */
+async function loadMoreSearchResults(): Promise<void> {
+  if (isSearching.value || loadingMore.value || noMoreData.value || !hasSearched.value) return
+  loadingMore.value = true
+  try {
+    const nextPage = currentPage.value + 1
+    const result = await searchActivities(
+      buildSearchActivitiesQuery(keyword.value, getFilterSelection(), nextPage, pageSize),
+    )
+    searchResults.value.push(...((result.items ?? []) as SearchResultItem[]))
+    totalCount.value = result.total ?? totalCount.value
+    currentPage.value = result.page ?? nextPage
+    noMoreData.value = currentPage.value >= (result.totalPages ?? currentPage.value)
+  } catch {
+    noMoreData.value = true
+  } finally {
+    loadingMore.value = false
+  }
+}
+
 /** 跳转到地图模式 */
 function goToMap(): void {
-  const query = buildSearchActivitiesQuery(keyword.value, getFilterSelection(), 1, 20)
-  const params: string[] = []
-  if (query.keyword) params.push(`keyword=${encodeURIComponent(query.keyword)}`)
-  if (query.city) params.push(`city=${encodeURIComponent(query.city)}`)
-  if (query.activityTypes?.length) {
-    params.push(`activityTypes=${encodeURIComponent(query.activityTypes.join(','))}`)
-  }
-  if (query.startAtFrom) params.push(`startAtFrom=${encodeURIComponent(query.startAtFrom)}`)
-  if (query.startAtTo) params.push(`startAtTo=${encodeURIComponent(query.startAtTo)}`)
-  if (query.minFee !== undefined) params.push(`minFee=${query.minFee}`)
-  if (query.maxFee !== undefined) params.push(`maxFee=${query.maxFee}`)
-  uni.navigateTo({ url: `/pages/discover/map${params.length ? `?${params.join('&')}` : ''}` })
+  uni.navigateTo({ url: '/pages/discover/map' })
 }
 
 /** 跳转到活动详情 */
 function goDetail(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
 }
+
+loadTypeOptions()
 
 /** 获取状态文本 */
 function getStatusText(status: string): string {
@@ -208,6 +259,7 @@ function displayOccupiedCount(item: SearchResultItem): number {
           confirm-type="search"
           @confirm="doSearch"
         />
+        <text class="search-submit" @tap="doSearch">搜索</text>
       </view>
       <text class="map-link" @tap="goToMap">地图模式</text>
     </view>
@@ -217,11 +269,12 @@ function displayOccupiedCount(item: SearchResultItem): number {
       <view class="filter-group">
         <text class="filter-label">类型</text>
         <view class="filter-chips">
+          <text v-if="isLoadingTypes" class="filter-chip">加载中...</text>
           <text
-            v-for="type in TYPE_OPTIONS"
+            v-for="type in typeOptions"
             :key="type"
             class="filter-chip"
-            :class="{ active: selectedType === type }"
+            :class="{ active: selectedTypes.includes(type) }"
             @tap="toggleTypeFilter(type)"
           >
             {{ type }}
@@ -273,6 +326,21 @@ function displayOccupiedCount(item: SearchResultItem): number {
           </text>
         </view>
       </view>
+
+      <view class="filter-group">
+        <text class="filter-label">距离</text>
+        <view class="filter-chips">
+          <text
+            v-for="distance in DISTANCE_OPTIONS"
+            :key="distance.value"
+            class="filter-chip"
+            :class="{ active: selectedDistance === distance.value }"
+            @tap="toggleDistanceFilter(distance.value)"
+          >
+            {{ distance.label }}
+          </text>
+        </view>
+      </view>
     </view>
 
     <!-- 搜索提示（未搜索时） -->
@@ -295,7 +363,12 @@ function displayOccupiedCount(item: SearchResultItem): number {
     </view>
 
     <!-- 搜索结果列表 -->
-    <view v-if="!isSearching && searchResults.length > 0" class="results">
+    <scroll-view
+      v-if="!isSearching && searchResults.length > 0"
+      class="results"
+      scroll-y
+      @scrolltolower="loadMoreSearchResults"
+    >
       <text class="results-count">共 {{ totalCount }} 个结果</text>
 
       <view
@@ -343,7 +416,11 @@ function displayOccupiedCount(item: SearchResultItem): number {
           </view>
         </view>
       </view>
-    </view>
+      <view class="load-more-state">
+        <text v-if="loadingMore">加载更多...</text>
+        <text v-else-if="noMoreData">已加载全部</text>
+      </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -383,6 +460,17 @@ function displayOccupiedCount(item: SearchResultItem): number {
   flex: 1;
   font-size: $font-base;
   color: $color-text;
+}
+
+.search-submit {
+  flex-shrink: 0;
+  margin-left: $spacing-md;
+  padding-left: $spacing-md;
+  border-left: 1px solid $color-border;
+  font-size: $font-sm;
+  font-weight: $weight-semibold;
+  color: $color-primary;
+  white-space: nowrap;
 }
 
 .map-link {
@@ -455,6 +543,7 @@ function displayOccupiedCount(item: SearchResultItem): number {
 
 .results {
   padding: 0 $spacing-lg;
+  height: 52vh;
 }
 
 .results-count {
@@ -617,6 +706,17 @@ function displayOccupiedCount(item: SearchResultItem): number {
 .registered {
   font-size: $font-xs;
   color: $color-text-muted;
+}
+
+.load-more-state {
+  display: flex;
+  justify-content: center;
+  padding: $spacing-md 0 $spacing-lg;
+
+  text {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
 }
 
 .loading-state {

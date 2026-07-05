@@ -36,7 +36,7 @@ onMounted(async () => {
 async function loadRecommends(): Promise<void> {
   isLoading.value = true
   try {
-    const result = await getFeed('recommended', 1, 6)
+    const result = await getFeed('recommended', { page: 1, pageSize: 6 })
     recommends.value = (result.items ?? []) as RecommendItem[]
   } catch {
     recommends.value = []

@@ -1,0 +1,82 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+
+describe('商家资料资质提交 UI', () => {
+  it('应通过 API modules 提交营业凭证并展示审核状态', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
+
+    expect(source).toContain('submitMerchantQualification')
+    expect(source).toContain('uploadMerchantLicense')
+    expect(source).toContain('chooseLicenseImages')
+    expect(source).toContain('canSubmitQualification')
+    expect(source).toContain('licenseMediaIds')
+    expect(source).toContain('qualificationStatusText')
+    expect(source).toContain('profile.qualification?.status ?? profile.qualificationStatus')
+    expect(source).toContain('licensePreviewUrls.value.push(filePath)')
+    expect(source).not.toContain('licensePreviewUrls.value.push(result.signedUrl || filePath)')
+    expect(source).toContain('qualificationSubmittedAt')
+    expect(source).toContain('qualificationReviewedAt')
+    expect(source).toContain('submittedLicenseUrls')
+    expect(source).not.toContain('v-if="isMerchant && qualification"')
+  })
+
+  it('编辑资料页应复用固定底部操作栏并避免页面外层滚动', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
+
+    expect(source).toContain('<BottomActionBar>')
+    expect(source).toContain('class="bar-btn bar-btn-primary"')
+    expect(source).toContain('min-height: 0;')
+    expect(source).toContain('height: 0;')
+    expect(source).not.toContain('class="action-bar"')
+    expect(source).not.toContain('overflow-y: auto;')
+  })
+
+  it('编辑资料页应覆盖 OpenAPI 个人和商家资料字段', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
+
+    expect(source).toContain('merchantNickname')
+    expect(source).toContain('reputationScore')
+    expect(source).toContain('merchantAccountStatus')
+    expect(source).toContain('accountStatusText')
+    expect(source).toContain("value: 'unspecified'")
+    expect(source).toContain('ensureNicknameAvailable')
+    expect(source).toContain('merchantNameRequired')
+  })
+
+  it('编辑资料页无修改时应禁用保存按钮', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
+
+    expect(source).toContain(':disabled="saving || !hasProfileChanges"')
+    expect(source).toContain('initialProfileSnapshot')
+    expect(source).toContain('getEditableProfileSnapshot')
+    expect(source).toContain('if (!hasProfileChanges.value) return')
+  })
+
+  it('我的页应按用户类型读取 api-spec 对应资料接口', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/index.vue'), 'utf8')
+
+    expect(source).toContain('getMerchantProfile')
+    expect(source).toContain('getMyProfile')
+    expect(source).toContain("authStore.userKind === 'merchant'")
+    expect(source).toContain('profile.qualificationStatus')
+    expect(source).toContain('avatarUrl')
+    expect(source).toContain("from '@/api/modules/auth'")
+    expect(source).toContain('logout')
+    expect(source).not.toContain("api.get('/identity/me/profile')")
+    expect(source).not.toContain("from '@/api'")
+    expect(source).not.toContain('api.post')
+  })
+
+  it('我的页退出登录和未登录展示应清空头像昵称缓存', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/index.vue'), 'utf8')
+
+    expect(source).toContain('function clearProfileDisplayState(): void')
+    expect(source).toContain("nickname.value = ''")
+    expect(source).toContain("avatarUrl.value = ''")
+    expect(source).toContain("merchantQualificationStatus.value = ''")
+    expect(source).toContain('if (!authStore.isLoggedIn) {')
+    expect(source).toContain('clearProfileDisplayState()')
+    expect(source).toContain('authStore.clearTokens()')
+  })
+})

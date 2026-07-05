@@ -58,7 +58,9 @@ const centerLatitude = ref(DEFAULT_CENTER.latitude)
 const currentLongitude = ref<number | null>(null)
 const currentLatitude = ref<number | null>(null)
 const distanceMeters = ref(DEFAULT_DISTANCE_METERS)
-const routeFilters = ref<Omit<MapActivitiesParams, 'longitude' | 'latitude' | 'distanceMeters'>>({})
+const routeFilters = ref<
+  Omit<MapActivitiesParams, 'page' | 'pageSize' | 'longitude' | 'latitude' | 'distanceMeters'>
+>({})
 
 /** 地图 marker 列表 */
 const markers = computed<ActivityMarker[]>(() => {
@@ -115,7 +117,10 @@ const selectedScrollId = computed(() => {
  * 不变量：不会把页面私有字段透传给业务接口。
  */
 function readRouteFilters(query: Record<string, string | undefined>): void {
-  const nextFilters: Omit<MapActivitiesParams, 'longitude' | 'latitude' | 'distanceMeters'> = {}
+  const nextFilters: Omit<
+    MapActivitiesParams,
+    'page' | 'pageSize' | 'longitude' | 'latitude' | 'distanceMeters'
+  > = {}
   if (query.keyword) nextFilters.keyword = decodeURIComponent(query.keyword)
   if (query.city) nextFilters.city = decodeURIComponent(query.city)
   if (query.activityTypes) {
@@ -184,12 +189,14 @@ async function loadMapActivities(): Promise<void> {
   isLoading.value = true
   errorMsg.value = ''
   try {
-    const result = await getMapActivities(
-      centerLongitude.value,
-      centerLatitude.value,
-      distanceMeters.value,
-      routeFilters.value,
-    )
+    const result = await getMapActivities({
+      page: 1,
+      pageSize: 100,
+      ...routeFilters.value,
+      longitude: centerLongitude.value,
+      latitude: centerLatitude.value,
+      distanceMeters: distanceMeters.value,
+    })
     mapActivities.value = (result ?? []) as MapActivityItem[]
     selectedId.value = mapActivities.value[0]?.activityId ?? null
   } catch {

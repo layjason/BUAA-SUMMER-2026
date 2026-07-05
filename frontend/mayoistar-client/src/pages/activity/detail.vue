@@ -27,7 +27,7 @@ import {
   confirmWaitlist,
   registerForActivity,
 } from '@/api/modules/registrations'
-import { checkIn, generateCheckInQrCode } from '@/api/modules/checkin'
+import { checkIn, exportCheckIns, generateCheckInQrCode } from '@/api/modules/checkin'
 import { BottomActionBar } from '@/components'
 import { isActivityAtCapacity } from '@/utils/activity-capacity'
 import { formatDateTime, formatTimeRange } from '@/utils/date'
@@ -156,16 +156,18 @@ const step3LabelClass = computed(() => {
   return 'step-label'
 })
 
-/** 当前用户是否满足评价条件。 */
-const meetsReviewCondition = computed(() => {
-  return participation.value?.status === 'checkedIn' && activity.value?.runtimeStatus === 'ended'
-})
-
-/** 当前用户是否可以评价。 */
-const canReview = computed(() => meetsReviewCondition.value && !hasReviewed.value)
+/** 当前用户是否可以评价，由后端根据活动状态、签到、评价窗口等规则统一计算。 */
+const canReview = computed(() => participation.value?.canReview === true)
 
 /** 是否展示已评价主按钮状态。 */
-const showReviewedStatus = computed(() => meetsReviewCondition.value && hasReviewed.value)
+const showReviewedStatus = computed(() => hasReviewed.value)
+
+/** 评价入口截止时间文案，空字符串表示后端未返回截止时间。 */
+const reviewDeadlineText = computed(() => {
+  const endsAt = participation.value?.reviewWindowEndsAt
+  if (!endsAt) return ''
+  return `评价入口开放至 ${formatDateTime(endsAt)}`
+})
 
 /** 发起人是否可以写总结。 */
 const canPostSummary = computed(() => {
@@ -616,6 +618,36 @@ function goSummary(): void {
   uni.navigateTo({ url: `/pages/activity/summary?activityId=${activityId.value}` })
 }
 
+/**
+ * 跳转到活动总结详情页。
+ *
+ * 前置条件：summaryId 来自当前活动总结列表。
+ * 后置条件：打开对应活动总结详情页。
+ * 不变量：始终携带当前 activityId，详情页按列表接口回查该总结。
+ *
+ * @param summaryId 活动总结标识
+ */
+function goSummaryDetail(summaryId: string): void {
+  uni.navigateTo({
+    url: `/pages/activity/summary-detail?activityId=${activityId.value}&summaryId=${summaryId}`,
+  })
+}
+
+/**
+ * 跳转到活动评价详情页。
+ *
+ * 前置条件：reviewId 来自当前活动评价列表。
+ * 后置条件：打开对应活动评价详情页。
+ * 不变量：始终携带当前 activityId，详情页按列表接口回查该评价。
+ *
+ * @param reviewId 活动评价标识
+ */
+function goReviewDetail(reviewId: string): void {
+  uni.navigateTo({
+    url: `/pages/activity/review-detail?activityId=${activityId.value}&reviewId=${reviewId}`,
+  })
+}
+
 /** 跳转参与者列表页。 */
 function goParticipants(): void {
   uni.navigateTo({ url: `/pages/activity/participants?activityId=${activityId.value}` })
@@ -625,6 +657,41 @@ function goParticipants(): void {
 function goCheckIns(): void {
   if (!canViewCheckIns.value) return
   uni.navigateTo({ url: `/pages/activity/check-ins?activityId=${activityId.value}` })
+}
+
+/**
+ * 导出签到数据。
+ *
+ * 前置条件：当前用户为活动发起人且活动已发布。
+ * 后置条件：mock 环境打开下载文件，真实二进制响应由请求层处理。
+ * 不变量：仅调用 OpenAPI 定义的签到导出接口。
+ */
+async function handleExportCheckIns(): Promise<void> {
+  if (!canViewCheckIns.value) return
+  try {
+    uni.showLoading({ title: '导出中...' })
+    const result: unknown = await exportCheckIns(activityId.value)
+    if (
+      typeof result === 'object' &&
+      result !== null &&
+      'url' in result &&
+      typeof result.url === 'string'
+    ) {
+      const downloadResult = await uni.downloadFile({ url: result.url })
+      uni.hideLoading()
+      await uni.openDocument({ filePath: downloadResult.tempFilePath })
+    } else {
+      uni.hideLoading()
+    }
+    uni.showToast({ title: '导出成功', icon: 'success' })
+  } catch (error) {
+    uni.hideLoading()
+    if (error instanceof BusinessError) {
+      uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
+    } else {
+      uni.showToast({ title: '导出失败，请稍后重试', icon: 'none' })
+    }
+  }
 }
 
 /**
@@ -903,15 +970,30 @@ onShow(() => {
 
         <view v-if="publishedSummaries.length > 0" class="section card">
           <text class="section-title">活动总结</text>
-          <view v-for="item in publishedSummaries" :key="item.summaryId" class="published-block">
-            <text class="published-title">{{ item.title }}</text>
+          <view
+            v-for="item in publishedSummaries"
+            :key="item.summaryId"
+            class="published-block published-block--link"
+            hover-class="published-block--hover"
+            @click="goSummaryDetail(item.summaryId)"
+          >
+            <view class="published-title-row">
+              <text class="published-title">{{ item.title }}</text>
+              <text class="menu-arrow">&gt;</text>
+            </view>
             <text class="published-body">{{ item.content }}</text>
           </view>
         </view>
 
         <view v-if="publishedReviews.length > 0" class="section card">
           <text class="section-title">{{ reviewsSectionText }}</text>
-          <view v-for="item in publishedReviews" :key="item.reviewId" class="published-block">
+          <view
+            v-for="item in publishedReviews"
+            :key="item.reviewId"
+            class="published-block published-block--link"
+            hover-class="published-block--hover"
+            @click="goReviewDetail(item.reviewId)"
+          >
             <view class="review-header">
               <text class="published-title">{{ item.nickname }}</text>
               <text class="review-rating">{{ formatReviewRating(item.rating) }}</text>
@@ -980,6 +1062,13 @@ onShow(() => {
             >
               查看签到情况
             </button>
+            <button
+              class="checkin-action checkin-action-ghost"
+              :disabled="!canViewCheckIns"
+              @click="handleExportCheckIns"
+            >
+              导出签到
+            </button>
           </view>
         </view>
       </scroll-view>
@@ -996,6 +1085,9 @@ onShow(() => {
           >
             {{ buttonText }}
           </button>
+          <text v-if="canReview && reviewDeadlineText" class="review-deadline-text">
+            {{ reviewDeadlineText }}
+          </text>
           <view v-if="hasSecondaryActions" class="action-row">
             <button v-if="canPostSummary" class="action-btn-sm" @click="goSummary">写总结</button>
             <text v-else-if="showSummaryPostedStatus" class="action-status-chip">已发布总结</text>
@@ -1181,14 +1273,30 @@ onShow(() => {
   margin-top: 16rpx;
 }
 
+.published-block--link {
+  padding: 16rpx 0;
+}
+
+.published-block--hover {
+  opacity: 0.72;
+}
+
 .published-block + .published-block {
   margin-top: 24rpx;
   padding-top: 24rpx;
   border-top: 1rpx solid #ebedf0;
 }
 
+.published-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
 .published-title {
   display: block;
+  flex: 1;
   font-size: 28rpx;
   color: #323233;
   font-weight: 600;
@@ -1260,6 +1368,15 @@ onShow(() => {
 .action-btn-warning {
   color: #ed6a0c;
   background-color: #fff7e6;
+}
+
+.review-deadline-text {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: #ed6a0c;
+  text-align: center;
 }
 
 .action-status-chip {

@@ -43,6 +43,7 @@ import type {
   MockDraftUpsertInput,
   NicknameAvailability,
   PublicUserProfile,
+  QualificationSubmitRequest,
   RegisterActivityRequest,
   RegisteredActivitySummary,
   RegistrationResult,
@@ -50,6 +51,7 @@ import type {
   TeamCreateRequest,
   TeamJoinRequest,
   TeamProfile,
+  UpdateMerchantProfileRequest,
   UpdatePersonalProfileRequest,
   UserKind,
 } from './schema-types'
@@ -172,7 +174,7 @@ function mediaFilesFromActivity(a: MockActivity): MediaFile[] {
   }
   return a.images.map((url, index) => ({
     mediaId: `media_img_${a.id}_${index}`,
-    url,
+    signedUrl: url,
     contentType: 'image/jpeg',
     fileName: `image_${index}.jpg`,
     sizeBytes: 50000,
@@ -189,7 +191,7 @@ function mediaFilesFromDraft(d: MockDraft): MediaFile[] {
   }
   return d.images.map((url, index) => ({
     mediaId: `media_draft_${d.id}_${index}`,
-    url,
+    signedUrl: url,
     contentType: 'image/jpeg',
     fileName: `draft_image_${index}.jpg`,
     sizeBytes: 50000,
@@ -314,6 +316,7 @@ export function getFeed(
   tab: ActivityFeedTab,
   page: number,
   pageSize: number,
+  filters: ActivitySearchQuery = {},
 ): MockPageResult<ActivitySummary> {
   const db = getMockDb()
 
@@ -321,26 +324,26 @@ export function getFeed(
   const visible = db.activities.filter(
     (a) => a.reviewStatus === 'approved' && !a.isTakenDown && a.runtimeStatus !== 'takenDown',
   )
+  const filtered = applyActivitySearchFilters(visible, filters)
 
   // 排序
   if (tab === 'latest') {
-    visible.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   } else if (tab === 'nearby') {
-    // 以北京国贸为模拟用户位置
-    const mockLat = 39.908
-    const mockLon = 116.46
-    visible.sort((a, b) => {
+    const mockLat = filters.latitude ?? 39.908
+    const mockLon = filters.longitude ?? 116.46
+    filtered.sort((a, b) => {
       const distA = haversineDistance(mockLat, mockLon, a.location.latitude, a.location.longitude)
       const distB = haversineDistance(mockLat, mockLon, b.location.latitude, b.location.longitude)
       return distA - distB
     })
   } else {
     // recommended: 随机加权（模拟推荐算法）
-    visible.sort(() => Math.random() - 0.5)
+    filtered.sort(() => Math.random() - 0.5)
   }
 
   return paginate(
-    visible.map((a) => activityToFeedItem(db, a)),
+    filtered.map((a) => activityToFeedItem(db, a)),
     page,
     pageSize,
   )
@@ -571,17 +574,21 @@ export function getParticipationState(
     !isDeadlinePassed
   const canCheckIn = reg?.status === 'registered' && activity?.runtimeStatus === 'ongoing'
   const canConfirmWaiting = waitEntry?.status === 'waitingConfirmation'
+  const reviewWindowEndsAt = activity
+    ? new Date(new Date(activity.endTime).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    : undefined
+  const hasReviewed = db.reviews.some((r) => r.activityId === activityId && r.userId === userId)
+  const canReview =
+    reg?.status === 'checkedIn' &&
+    activity?.runtimeStatus === 'ended' &&
+    !hasReviewed &&
+    Boolean(reviewWindowEndsAt && new Date(reviewWindowEndsAt).getTime() > Date.now())
 
   const status: ActivityParticipationState['status'] = reg
     ? reg.status
     : waitEntry?.status === 'waiting' || waitEntry?.status === 'waitingConfirmation'
       ? waitEntry.status
       : undefined
-
-  const canReview =
-    reg?.status === 'checkedIn' &&
-    activity?.runtimeStatus === 'ended' &&
-    !db.reviews.some((r) => r.activityId === activityId && r.userId === userId)
 
   return {
     status,
@@ -590,12 +597,10 @@ export function getParticipationState(
     canCheckIn,
     canConfirmWaitingSeat: canConfirmWaiting,
     canReview,
+    reviewWindowEndsAt: canReview ? reviewWindowEndsAt : undefined,
     waitingRank: waitEntry?.position,
     confirmationDeadline: canConfirmWaiting
       ? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
-      : undefined,
-    reviewWindowEndsAt: canReview
-      ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       : undefined,
   }
 }
@@ -1600,10 +1605,29 @@ export function searchActivities(
 ): MockPageResult<ActivitySummary> {
   const db = getMockDb()
 
-  let results = db.activities.filter(
+  const visible = db.activities.filter(
     (a) => a.reviewStatus === 'approved' && !a.isTakenDown && a.runtimeStatus !== 'takenDown',
   )
+  const results = applyActivitySearchFilters(visible, filters)
 
+  return paginate(
+    results.map((a) => activityToFeedItem(db, a)),
+    page,
+    pageSize,
+  )
+}
+
+/** 按 OpenAPI 搜索查询字段筛选活动
+ *
+ * 前置条件：activities 已经完成可见性筛选；filters 来自 URL query。
+ * 后置条件：返回满足关键词、类型、城市、时间、费用和距离条件的活动集合。
+ * 不变量：仅使用 OpenAPI 已声明的查询字段，runtimeStatus 仅供 mock 内部测试使用。
+ */
+function applyActivitySearchFilters(
+  activities: MockActivity[],
+  filters: ActivitySearchQuery,
+): MockActivity[] {
+  let results = [...activities]
   if (filters.keyword) {
     const kw = filters.keyword.toLowerCase()
     results = results.filter(
@@ -1617,18 +1641,11 @@ export function searchActivities(
     const types = filters.activityTypes.map((type) => type.toLowerCase())
     results = results.filter((a) => a.tags.some((tag) => types.includes(tag.toLowerCase())))
   }
-  if (filters.city) {
-    results = results.filter((a) => a.location.city === filters.city)
-  }
-  if (filters.minFee !== undefined) {
-    results = results.filter((a) => a.fee >= filters.minFee!)
-  }
-  if (filters.maxFee !== undefined) {
-    results = results.filter((a) => a.fee <= filters.maxFee!)
-  }
-  if (filters.runtimeStatus) {
+  if (filters.city) results = results.filter((a) => a.location.city === filters.city)
+  if (filters.minFee !== undefined) results = results.filter((a) => a.fee >= filters.minFee!)
+  if (filters.maxFee !== undefined) results = results.filter((a) => a.fee <= filters.maxFee!)
+  if (filters.runtimeStatus)
     results = results.filter((a) => a.runtimeStatus === filters.runtimeStatus)
-  }
   if (filters.startAtFrom) {
     const from = new Date(filters.startAtFrom).getTime()
     results = results.filter((a) => new Date(a.startTime).getTime() >= from)
@@ -1652,12 +1669,7 @@ export function searchActivities(
       return dist <= filters.distanceMeters!
     })
   }
-
-  return paginate(
-    results.map((a) => activityToFeedItem(db, a)),
-    page,
-    pageSize,
-  )
+  return results
 }
 
 /* ================================================================
@@ -2195,6 +2207,12 @@ export function createReview(
   if (!reg || reg.status !== 'checkedIn') {
     throw new MockBusinessError(20011, '未找到可评价的报名记录')
   }
+  const reviewWindowEndsAt = new Date(
+    new Date(activity.endTime).getTime() + 7 * 24 * 60 * 60 * 1000,
+  ).toISOString()
+  if (new Date(reviewWindowEndsAt).getTime() <= Date.now()) {
+    throw new MockBusinessError(20015, '评价入口已关闭')
+  }
 
   const existing = db.reviews.find((r) => r.activityId === activityId && r.userId === userId)
   if (existing) {
@@ -2311,7 +2329,7 @@ export function createDraftFromTemplate(templateId: number, userId: number): Act
     introduction: template.defaultIntroduction,
     safetyNotice: template.defaultSafetyNotice,
     coverUrl: template.coverUrl,
-    images: [],
+    images: [template.coverUrl],
     startTime: '',
     endTime: '',
     registrationDeadline: '',
@@ -2398,6 +2416,70 @@ export function updateUserProfile(
 
   persistMockDb()
   return getUserProfile(userId)
+}
+
+/** 更新商家资料
+ *
+ * 前置条件：userId 对应商家用户；data 字段来自 OpenAPI UpdateMerchantProfileRequest。
+ * 后置条件：更新 mock 用户的商家资料字段并返回最新 MerchantProfile。
+ * 不变量：资质审核状态不通过资料更新接口改变。
+ */
+export function updateMerchantProfile(
+  userId: number,
+  data: UpdateMerchantProfileRequest,
+): MerchantProfile {
+  const db = getMockDb()
+  const user = db.users.find((u) => u.id === userId && u.kind === 'merchant')
+  if (!user) {
+    throw new MockBusinessError(10003, '商家用户不存在')
+  }
+  if (data.nickname !== undefined && data.nickname !== user.nickname) {
+    if (db.users.some((u) => u.nickname === data.nickname && u.id !== userId)) {
+      throw new MockBusinessError(10002, '该昵称已被使用')
+    }
+    user.nickname = data.nickname
+  }
+  if (data.merchantName !== undefined) user.merchantName = data.merchantName
+  if (data.interestedActivityFields !== undefined) {
+    user.interestedActivityFields = data.interestedActivityFields
+  }
+  if (data.avatarMediaId !== undefined) {
+    user.avatarUrl = `https://picsum.photos/seed/${encodeURIComponent(data.avatarMediaId)}/200/200`
+  }
+
+  persistMockDb()
+  return getMerchantProfile(userId)
+}
+
+/** 提交商家资质
+ *
+ * 前置条件：userId 对应商家用户，licenseMediaIds 非空且引用已上传媒体文件标识。
+ * 后置条件：资质状态进入 pending，等待后台审核。
+ * 不变量：approved 或 pending 状态下拒绝重复提交，rejected 可重新提交。
+ */
+export function submitMerchantQualification(
+  userId: number,
+  data: QualificationSubmitRequest,
+): Record<string, never> {
+  const db = getMockDb()
+  const user = db.users.find((u) => u.id === userId && u.kind === 'merchant')
+  if (!user) {
+    throw new MockBusinessError(10003, '商家用户不存在')
+  }
+  if (!data.licenseMediaIds.length) {
+    throw new MockBusinessError(10000, '请上传营业执照或营业凭证')
+  }
+  if (user.qualificationStatus === 'pending' || user.qualificationStatus === 'approved') {
+    throw new MockBusinessError(10000, '商家资质已提交')
+  }
+
+  user.qualificationStatus = 'pending'
+  user.qualificationLicenseMediaIds = [...data.licenseMediaIds]
+  user.qualificationSubmittedAt = new Date().toISOString()
+  user.qualificationReviewedAt = undefined
+  user.qualificationRejectReason = undefined
+  persistMockDb()
+  return {}
 }
 
 /** 检查昵称是否可用 */
@@ -2534,10 +2616,15 @@ export function getInterestTags(): InterestTagItem[] {
   return db.interestTags.map((t) => ({ name: t.name }))
 }
 
-/** 获取模板列表 */
-export function getTemplates(page = 1, pageSize = 20): MockPageResult<ActivityTemplate> {
+/** 获取模板列表
+ *
+ * 前置条件：page 与 pageSize 为正整数。
+ * 后置条件：返回符合 OpenAPI PageResult<ActivityTemplate> 的分页模板列表。
+ * 不变量：模板字段与 TypeSpec ActivityTemplate 保持一致。
+ */
+export function getTemplates(page: number, pageSize: number): MockPageResult<ActivityTemplate> {
   const db = getMockDb()
-  const all = db.templates.map((t) => ({
+  const templates: ActivityTemplate[] = db.templates.map((t) => ({
     templateId: String(t.id),
     name: t.name,
     activityType: t.activityType,
@@ -2551,7 +2638,7 @@ export function getTemplates(page = 1, pageSize = 20): MockPageResult<ActivityTe
       `tpl_${t.id}`,
     ),
   }))
-  return paginate(all, page, pageSize)
+  return paginate(templates, page, pageSize)
 }
 
 /** 获取商家资料 */
@@ -2561,18 +2648,23 @@ export function getMerchantProfile(userId: number): MerchantProfile {
   if (!user) {
     throw new MockBusinessError(10003, '商家用户不存在')
   }
+  const qualificationStatus = user.qualificationStatus ?? 'not_submitted'
   return {
     userId: String(user.id),
     nickname: user.nickname,
-    merchantName: user.nickname,
+    merchantName: user.merchantName ?? user.nickname,
     accountStatus: user.accountStatus,
-    qualificationStatus: 'approved',
-    interestedActivityFields: ['运动', '户外', '社交'],
+    qualificationStatus,
+    interestedActivityFields: user.interestedActivityFields ?? ['运动', '户外', '社交'],
     avatar: user.avatarUrl ? avatarMediaFile(user.id, user.avatarUrl, user.createdAt) : undefined,
     qualification: {
-      status: 'approved',
-      submittedAt: user.createdAt,
-      reviewedAt: user.createdAt,
+      status: qualificationStatus,
+      submittedAt: user.qualificationSubmittedAt,
+      reviewedAt: user.qualificationReviewedAt,
+      rejectReason: user.qualificationRejectReason,
+      licenseImageUrls: user.qualificationLicenseMediaIds?.map(
+        (mediaId) => `https://picsum.photos/seed/${encodeURIComponent(mediaId)}/640/480`,
+      ),
     },
   }
 }

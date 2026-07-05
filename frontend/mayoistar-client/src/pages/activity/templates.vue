@@ -1,129 +1,69 @@
-<script setup lang="ts">
-/**
- * 活动模板创建页。
- *
- * 前置条件：用户已登录，可访问活动模板接口。
- * 后置条件：选择模板后创建草稿并进入编辑页；跳过模板时进入空白创建页。
- * 不变量：本页只处理模板创建，不承载克隆已有活动流程。
- */
-import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { BusinessError } from '@/api'
-import {
-  createDraftFromTemplate,
-  getTemplates as fetchTemplates,
-  type ActivityTemplate,
-} from '@/api/modules/activities'
-import { BottomActionBar } from '@/components'
-import { getErrorMessage } from '@/utils/error'
-
-const loadingTemplates = ref(true)
-const actioning = ref(false)
-const templates = ref<ActivityTemplate[]>([])
-
-/**
- * 加载可用活动模板。
- *
- * 前置条件：模板接口可按 OpenAPI 返回 items。
- * 后置条件：成功时刷新模板列表，失败时展示空态。
- * 不变量：不会修改草稿或活动数据。
- */
-async function loadTemplates(): Promise<void> {
-  try {
-    const result = await fetchTemplates()
-    templates.value = result.items ?? []
-  } catch {
-    templates.value = []
-  } finally {
-    loadingTemplates.value = false
-  }
-}
-
-/**
- * 使用指定模板创建草稿。
- *
- * 前置条件：模板标识来自模板列表。
- * 后置条件：创建成功后进入活动编辑页。
- * 不变量：重复点击期间只会发起一次创建请求。
- *
- * @param template 活动模板
- */
-async function selectTemplate(template: ActivityTemplate): Promise<void> {
-  if (actioning.value) return
-  actioning.value = true
-  try {
-    uni.showLoading({ title: '创建草稿中' })
-    const draft = await createDraftFromTemplate(template.templateId)
-    uni.hideLoading()
-    uni.redirectTo({
-      url: `/pages/activity/edit?activityId=${draft.activityId}`,
-    })
-  } catch (error) {
-    uni.hideLoading()
-    const title = error instanceof BusinessError ? getErrorMessage(error.code) : '创建草稿失败'
-    uni.showToast({ title, icon: 'none' })
-  } finally {
-    actioning.value = false
-  }
-}
-
-/**
- * 跳过模板，进入空白活动创建页。
- *
- * 前置条件：当前处于模板创建页。
- * 后置条件：跳转到活动编辑页。
- * 不变量：不创建草稿。
- */
-function skipTemplate(): void {
-  uni.redirectTo({ url: '/pages/activity/edit' })
-}
-
-onLoad(() => {
-  void loadTemplates()
-})
-</script>
-
 <template>
   <view class="page">
     <scroll-view class="scroll-area" scroll-y>
       <view class="container">
         <view class="header">
-          <text class="title">选择活动模板</text>
-          <text class="subtitle">挑一个接近的活动骨架，再进入编辑页逐项调整</text>
+          <text class="title">{{ t('activityTemplates.title') }}</text>
+          <text class="subtitle">{{ t('activityTemplates.subtitle') }}</text>
         </view>
 
-        <view v-if="loadingTemplates" class="state-text">加载中...</view>
-
-        <view v-else-if="templates.length === 0" class="empty-state">
-          <text class="empty-title">暂无可用模板</text>
-          <text class="empty-desc">可以先从空白活动开始创建</text>
-        </view>
-
-        <view v-else class="template-grid">
-          <view
-            v-for="template in templates"
-            :key="template.templateId"
-            class="template-card"
-            hover-class="card-hover"
-            @click="selectTemplate(template)"
-          >
-            <image
-              v-if="template.defaultCoverImage?.signedUrl"
-              class="card-cover"
-              :src="template.defaultCoverImage.signedUrl"
-              mode="aspectFill"
-            />
-            <view v-else class="card-cover cover-placeholder">
-              <text class="placeholder-text">{{ template.activityType.slice(0, 1) }}</text>
-            </view>
-            <view class="card-body">
-              <view class="card-title-row">
-                <text class="card-name">{{ template.name }}</text>
-                <text class="capacity">{{ template.defaultCapacity }}人</text>
+        <!-- 从模板创建 -->
+        <view class="section">
+          <text class="section-title">{{ t('activityTemplates.fromTemplate') }}</text>
+          <view v-if="loadingTemplates" class="loading-text">{{ t('加载中') }}</view>
+          <view v-else class="template-grid">
+            <view v-for="(row, rowIndex) in templateRows" :key="rowIndex" class="template-row">
+              <view
+                v-for="tpl in row"
+                :key="tpl.templateId"
+                class="card"
+                hover-class="card-hover"
+                @click="selectTemplate(tpl)"
+              >
+                <view class="card-inner">
+                  <image
+                    v-if="tpl.defaultCoverImage?.signedUrl"
+                    class="card-cover"
+                    :src="tpl.defaultCoverImage.signedUrl"
+                    mode="aspectFill"
+                  />
+                  <view v-else class="card-cover card-cover-placeholder">
+                    <text class="placeholder-icon">📋</text>
+                  </view>
+                  <view class="card-body">
+                    <text class="card-name">{{ tpl.name }}</text>
+                    <text class="card-tags">{{ tpl.defaultTags.join(' · ') }}</text>
+                  </view>
+                </view>
               </view>
-              <text class="card-desc">{{ template.defaultIntroduction }}</text>
-              <view class="tag-row">
-                <text v-for="tag in template.defaultTags" :key="tag" class="tag">{{ tag }}</text>
+              <view v-if="row.length === 1" class="card card-spacer" />
+            </view>
+          </view>
+        </view>
+
+        <!-- 从已有活动克隆 -->
+        <view class="section">
+          <text class="section-title">{{ t('activityTemplates.fromClone') }}</text>
+          <view v-if="loadingActivities" class="loading-text">{{ t('加载中') }}</view>
+          <view v-else-if="myActivities.length === 0" class="empty-text">{{ t('暂无数据') }}</view>
+          <view v-else class="clone-list">
+            <view
+              v-for="item in myActivities"
+              :key="item.activityId"
+              class="clone-item"
+              hover-class="clone-hover"
+              @click="selectClone(item)"
+            >
+              <view class="clone-info">
+                <text class="clone-title">{{ item.title }}</text>
+                <text class="clone-meta"
+                  >{{ formatDate(item.startAt) }} · {{ item.location.city }}</text
+                >
+              </view>
+              <view class="clone-status">
+                <text class="status-tag" :class="'status-' + item.runtimeStatus">{{
+                  getStatusText(item.runtimeStatus)
+                }}</text>
               </view>
             </view>
           </view>
@@ -132,18 +72,154 @@ onLoad(() => {
     </scroll-view>
 
     <BottomActionBar>
-      <button class="bar-btn bar-btn-secondary" @click="skipTemplate">空白创建</button>
+      <button class="bar-btn bar-btn-secondary" @click="skipTemplate">
+        {{ t('activityTemplates.skip') }}
+      </button>
     </BottomActionBar>
   </view>
 </template>
 
+<script setup lang="ts">
+/**
+ * 活动创建入口页
+ *
+ * 提供两种创建方式：从模板创建、从已有活动克隆。
+ * 前置条件：用户已登录
+ * 后置条件：选择后跳转编辑页
+ */
+import { computed, ref } from 'vue'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
+import { useI18n } from 'vue-i18n'
+import { BusinessError } from '@/api'
+import {
+  cloneActivity,
+  createDraftFromTemplate,
+  getMyActivities,
+  getTemplates as fetchTemplates,
+  type ActivitySummary,
+  type ActivityTemplate,
+} from '@/api/modules/activities'
+import { BottomActionBar } from '@/components'
+import { getErrorMessage } from '@/utils/error'
+import { formatDate } from '@/utils/date'
+import { runtimeStatusText as getRuntimeStatusText } from '@/utils/status'
+
+const { t } = useI18n()
+
+const loadingTemplates = ref(true)
+const loadingActivities = ref(true)
+const actioning = ref(false)
+let redirectTimer: ReturnType<typeof setTimeout> | null = null
+
+const templates = ref<ActivityTemplate[]>([])
+
+/** 模板卡片按每行两个分组，避免依赖小程序端 flex-wrap 自动换行 */
+const templateRows = computed(() => {
+  const rows: ActivityTemplate[][] = []
+  for (let index = 0; index < templates.value.length; index += 2) {
+    rows.push(templates.value.slice(index, index + 2))
+  }
+  return rows
+})
+
+const myActivities = ref<ActivitySummary[]>([])
+
+function getStatusText(status: string): string {
+  return getRuntimeStatusText(status, t)
+}
+
+async function loadTemplates(): Promise<void> {
+  try {
+    const result = await fetchTemplates()
+    templates.value = result.items ?? []
+  } catch {
+    /* 加载失败不影响 */
+  } finally {
+    loadingTemplates.value = false
+  }
+}
+
+async function loadMyActivities(): Promise<void> {
+  try {
+    const result = await getMyActivities()
+    myActivities.value = result.items ?? []
+  } catch {
+    /* 加载失败不影响 */
+  } finally {
+    loadingActivities.value = false
+  }
+}
+
+async function selectTemplate(tpl: ActivityTemplate): Promise<void> {
+  if (actioning.value) return
+  actioning.value = true
+  try {
+    uni.showLoading({ title: t('activityTemplates.creating') })
+    const draft = await createDraftFromTemplate(tpl.templateId)
+    uni.hideLoading()
+    uni.redirectTo({
+      url: '/pages/activity/edit?activityId=' + draft.activityId,
+    })
+  } catch (error) {
+    uni.hideLoading()
+    if (error instanceof BusinessError) {
+      uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
+    } else {
+      uni.showToast({ title: '创建草稿失败', icon: 'none' })
+    }
+  } finally {
+    actioning.value = false
+  }
+}
+
+async function selectClone(item: ActivitySummary): Promise<void> {
+  if (actioning.value) return
+  actioning.value = true
+  try {
+    uni.showLoading({ title: t('activityClone.cloning') })
+    const result = await cloneActivity(item.activityId)
+    uni.hideLoading()
+    uni.showToast({ title: t('activityClone.success'), icon: 'success' })
+    redirectTimer = setTimeout(() => {
+      uni.redirectTo({
+        url: '/pages/activity/edit?activityId=' + result.activityId,
+      })
+    }, 800)
+  } catch (error) {
+    uni.hideLoading()
+    if (error instanceof BusinessError) {
+      uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
+    } else {
+      uni.showToast({ title: '克隆失败', icon: 'none' })
+    }
+    actioning.value = false
+  }
+}
+
+function skipTemplate(): void {
+  uni.redirectTo({ url: '/pages/activity/edit' })
+}
+
+onLoad(() => {
+  loadTemplates()
+  loadMyActivities()
+})
+
+onUnload(() => {
+  if (redirectTimer !== null) {
+    clearTimeout(redirectTimer)
+    redirectTimer = null
+  }
+})
+</script>
+
 <style scoped>
 .page {
+  background-color: #f7f8fa;
   height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #f7f8fa;
 }
 
 .scroll-area {
@@ -153,148 +229,206 @@ onLoad(() => {
 }
 
 .container {
-  padding: 32rpx;
+  padding: 32rpx 32rpx calc(240rpx + env(safe-area-inset-bottom));
 }
 
 .header {
-  margin-bottom: 28rpx;
+  margin-bottom: 24rpx;
 }
 
 .title {
   display: block;
-  font-size: 40rpx;
+  font-size: 36rpx;
   font-weight: 700;
   color: #323233;
 }
 
 .subtitle {
   display: block;
-  margin-top: 10rpx;
   font-size: 26rpx;
-  line-height: 1.5;
   color: #969799;
+  margin-top: 8rpx;
 }
 
-.state-text,
-.empty-state {
-  text-align: center;
-  padding-top: 120rpx;
-  color: #969799;
+.section {
+  margin-bottom: 40rpx;
 }
 
-.empty-title {
+.section-title {
   display: block;
   font-size: 30rpx;
   font-weight: 600;
   color: #323233;
+  margin-bottom: 16rpx;
 }
 
-.empty-desc {
-  display: block;
-  margin-top: 12rpx;
+.loading-text,
+.empty-text {
+  text-align: center;
   font-size: 26rpx;
   color: #969799;
+  padding-top: 40rpx;
 }
 
+/* ---- 模板卡片 ---- */
 .template-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
+  margin-top: -8rpx;
 }
 
-.template-card {
-  overflow: hidden;
-  border-radius: 16rpx;
+.template-row {
+  display: flex;
+  flex-direction: row;
+  margin: 0 -8rpx 16rpx;
+}
+
+.card {
+  box-sizing: border-box;
+  width: 50%;
+  padding: 0 8rpx;
+}
+
+.card-spacer {
+  visibility: hidden;
+}
+
+.card-inner {
   background-color: #fff;
-  box-shadow: 0 12rpx 32rpx rgba(50, 50, 51, 0.06);
+  border-radius: 12rpx;
+  overflow: hidden;
+  height: 100%;
 }
 
 .card-hover {
-  opacity: 0.86;
+  opacity: 0.85;
 }
 
 .card-cover {
   width: 100%;
-  height: 240rpx;
-  background-color: #e8f7f0;
+  height: 180rpx;
 }
 
-.cover-placeholder {
+.card-cover-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: #e8f7f0;
 }
 
-.placeholder-text {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 44rpx;
-  background-color: #5ec8a7;
-  color: #fff;
-  font-size: 42rpx;
-  font-weight: 700;
-  line-height: 88rpx;
-  text-align: center;
+.placeholder-icon {
+  font-size: 48rpx;
 }
 
 .card-body {
-  padding: 24rpx;
-}
-
-.card-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
+  padding: 14rpx 16rpx 18rpx;
 }
 
 .card-name {
-  flex: 1;
-  min-width: 0;
-  font-size: 32rpx;
-  font-weight: 700;
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
   color: #323233;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.capacity {
-  flex-shrink: 0;
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
-  background-color: #e8f7f0;
-  color: #5ec8a7;
+.card-tags {
+  display: block;
   font-size: 22rpx;
-  font-weight: 600;
-}
-
-.card-desc {
-  display: -webkit-box;
-  margin-top: 12rpx;
-  color: #646566;
-  font-size: 26rpx;
-  line-height: 1.5;
+  color: #969799;
+  margin-top: 6rpx;
   overflow: hidden;
   text-overflow: ellipsis;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
 }
 
-.tag-row {
+/* ---- 克隆已有活动列表 ---- */
+.clone-list {
+  background-color: #fff;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.clone-item {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10rpx;
-  margin-top: 18rpx;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 28rpx;
+  border-bottom: 2rpx solid #f5f5f5;
 }
 
-.tag {
-  padding: 4rpx 12rpx;
-  border-radius: 999rpx;
-  background-color: #f2f3f5;
-  color: #646566;
-  font-size: 22rpx;
+.clone-item:last-child {
+  border-bottom: none;
 }
+
+.clone-hover {
+  opacity: 0.85;
+}
+
+.clone-info {
+  flex: 1;
+  min-width: 0;
+  margin-right: 16rpx;
+}
+
+.clone-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #323233;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clone-meta {
+  display: block;
+  font-size: 22rpx;
+  color: #969799;
+  margin-top: 4rpx;
+}
+
+.clone-status {
+  flex-shrink: 0;
+}
+
+.status-tag {
+  font-size: 20rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 4rpx;
+}
+
+.status-registering {
+  background-color: #e8f7f0;
+  color: #5ec8a7;
+}
+
+.status-registrationClosed {
+  background-color: #fff7e6;
+  color: #ed6a0c;
+}
+
+.status-ongoing {
+  background-color: #e8f7f0;
+  color: #5ec8a7;
+}
+
+.status-ended {
+  background-color: #f2f3f5;
+  color: #c8c9cc;
+}
+
+.status-notStarted {
+  background-color: #ebedf0;
+  color: #969799;
+}
+
+.status-takenDown {
+  background-color: #fff2f0;
+  color: #ee0a24;
+}
+
+/* 底部操作按钮已由 BottomActionBar 组件承载 */
 </style>
 
 <style>
