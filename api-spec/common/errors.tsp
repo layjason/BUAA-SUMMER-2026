@@ -310,6 +310,10 @@ namespace QujuApi.Errors.Social {
   @doc("40020：调用方缺少小队管理权限。")
   model TeamPermissionDenied
     extends APIErrorResponse<40020, "Team operation is not allowed"> {}
+
+  @doc("40021：二维码 token 无效或已过期。")
+  model QrCodeTokenInvalid
+    extends APIErrorResponse<40021, "QR code token is invalid"> {}
 }
 
 namespace QujuApi.Errors.Chat {

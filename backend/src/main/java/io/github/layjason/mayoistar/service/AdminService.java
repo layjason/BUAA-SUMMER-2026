@@ -646,6 +646,7 @@ public class AdminService {
      * <p>前置条件：activityId 对应有效活动，活动处于可审核状态。驳回或要求修改时必须提供原因。
      *
      * <p>后置条件：Activity.reviewStatus 更新，创建 ActivityReviewRecord。
+     * 若审核通过则将活动图片设置为公开可见。
      *
      * @param activityId 活动 ID
      * @param adminId    操作管理员 ID
@@ -677,7 +678,7 @@ public class AdminService {
      *
      * <p>前置条件：activityId 对应有效活动，活动未被下架。必须提供下架原因。
      *
-     * <p>后置条件：Activity.runtimeStatus 变为 takenDown。
+     * <p>后置条件：Activity.runtimeStatus 变为 takenDown，活动图片恢复为私有可见。
      *
      * @param activityId 活动 ID
      * @param adminId    操作管理员 ID
@@ -694,6 +695,8 @@ public class AdminService {
 
         ActivityDtos.ActivityDetail detail =
                 adminActivityService.takeDownActivity(activityId, adminId, request.getReason());
+
+        adminActivityService.restrictImages(activityId);
 
         log.info(
                 "活动已下架: activityId={}, adminId={}, reason={}",
@@ -723,6 +726,8 @@ public class AdminService {
                 .orElseThrow(() -> new BusinessException(60000, "Admin username or password is invalid"));
 
         ActivityDtos.ActivityDetail detail = adminActivityService.restoreActivity(activityId, adminId);
+
+        adminActivityService.publishImages(activityId);
 
         log.info("活动已恢复: activityId={}, adminId={}", sanitizeForLog(activityId), sanitizeForLog(adminId));
 
@@ -1114,7 +1119,7 @@ public class AdminService {
         summary.setTags(activity.getTags());
         summary.setStartAt(activity.getStartAt().toString());
         summary.setEndAt(activity.getEndAt().toString());
-        summary.setFeeAmount(activity.getFeeAmount());
+        summary.setFeeAmount(activity.getFeeAmount() != null ? activity.getFeeAmount() : java.math.BigDecimal.ZERO);
         summary.setReviewStatus(activity.getReviewStatus());
         summary.setRuntimeStatus(activity.getRuntimeStatus());
         summary.setRegisteredCount(counts.registeredCount());

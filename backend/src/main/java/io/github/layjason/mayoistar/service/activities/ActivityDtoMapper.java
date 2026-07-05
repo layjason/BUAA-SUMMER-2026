@@ -122,7 +122,7 @@ public class ActivityDtoMapper {
         dto.setEndAt(formatInstant(activity.getEndAt()));
         dto.setLocation(toLocationInfo(activity));
         dto.setCoverImage(coverImageProvider.apply(activity.getActivityId()));
-        dto.setFeeAmount(activity.getFeeAmount());
+        dto.setFeeAmount(activity.getFeeAmount() != null ? activity.getFeeAmount() : java.math.BigDecimal.ZERO);
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setRuntimeStatus(activity.getRuntimeStatus());
         dto.setRegisteredCount(counts.registeredCount());
@@ -168,7 +168,7 @@ public class ActivityDtoMapper {
                 .map(this::toMediaFile)
                 .findFirst()
                 .orElse(null));
-        dto.setFeeAmount(activity.getFeeAmount());
+        dto.setFeeAmount(activity.getFeeAmount() != null ? activity.getFeeAmount() : java.math.BigDecimal.ZERO);
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setRuntimeStatus(activity.getRuntimeStatus());
         dto.setRegisteredCount(counts.registeredCount());

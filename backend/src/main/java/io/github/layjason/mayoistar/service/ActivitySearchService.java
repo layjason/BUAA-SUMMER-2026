@@ -162,7 +162,7 @@ public class ActivitySearchService {
         dto.setStartAt(formatInstant(activity.getStartAt()));
         dto.setEndAt(formatInstant(activity.getEndAt()));
         dto.setLocation(toLocation(activity));
-        dto.setFeeAmount(activity.getFeeAmount());
+        dto.setFeeAmount(activity.getFeeAmount() != null ? activity.getFeeAmount() : java.math.BigDecimal.ZERO);
         dto.setReviewStatus(activity.getReviewStatus());
         dto.setRuntimeStatus(activity.getRuntimeStatus());
         dto.setRegisteredCount(counts.registeredCount());
