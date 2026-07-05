@@ -5,8 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.layjason.mayoistar.api.ai.AiDtos;
+import io.github.layjason.mayoistar.entity.common.MediaFile;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.exception.ErrorCodes;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,16 +23,19 @@ import org.junit.jupiter.api.Test;
 class ActivityPlanningServiceImplTest {
 
     private FakeActivityPlanningClient client;
+    private FakeContentReviewClient contentReviewClient;
     private ActivityPlanningServiceImpl service;
 
     @BeforeEach
     void setUp() {
         client = new FakeActivityPlanningClient();
+        contentReviewClient = new FakeContentReviewClient();
         ObjectMapper objectMapper = new ObjectMapper();
         service = new ActivityPlanningServiceImpl(
                 new ActivityPlanningPromptBuilder(objectMapper),
                 client,
                 new ActivityPlanningOutputGuard(),
+                new ActivityPlanningContentSafetyGuard(contentReviewClient),
                 objectMapper);
     }
 
@@ -117,6 +122,28 @@ class ActivityPlanningServiceImplTest {
     }
 
     @Test
+    @DisplayName("二次内容安全审核不通过时应抛出 AI 输出不可用业务异常")
+    void shouldRejectModelOutputWhenContentReviewBlocks() {
+        contentReviewClient.textResult = new ContentReviewScanResult(ContentReviewRisk.block, List.of("命中违规内容"), null);
+        client.content = """
+                {
+                  "title": "周末羽毛球轻运动",
+                  "tags": ["运动", "羽毛球", "交友"],
+                  "introduction": "适合初学者参加的周末羽毛球活动，提供轻松分组和轮换机制。",
+                  "safetyNotice": "请穿着运动鞋，提前热身，如有不适及时停止。",
+                  "suggestedCapacity": 16,
+                  "suggestedRegistrationDeadline": "2026-07-08T12:00:00Z"
+                }
+                """;
+
+        assertThatThrownBy(() -> service.generateActivityPlan(request()))
+                .isInstanceOfSatisfying(BusinessException.class, exception -> {
+                    assertThat(exception.getCode()).isEqualTo(ErrorCodes.AI_OUTPUT_UNAVAILABLE);
+                    assertThat(exception.getBusinessMessage()).isEqualTo("AI output is unavailable");
+                });
+    }
+
+    @Test
     @DisplayName("客户端业务异常应原样向上抛出")
     void shouldPropagateClientBusinessException() {
         client.exception = new BusinessException(ErrorCodes.AI_SERVICE_UNAVAILABLE, "AI service is unavailable");
@@ -147,6 +174,21 @@ class ActivityPlanningServiceImplTest {
                 throw exception;
             }
             return content;
+        }
+    }
+
+    private static class FakeContentReviewClient implements ContentReviewClient {
+
+        private ContentReviewScanResult textResult = ContentReviewScanResult.low();
+
+        @Override
+        public ContentReviewScanResult scanText(String content) {
+            return textResult;
+        }
+
+        @Override
+        public ContentReviewScanResult scanImages(List<MediaFile> images) {
+            return ContentReviewScanResult.low();
         }
     }
 }

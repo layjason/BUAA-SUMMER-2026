@@ -27,6 +27,7 @@ public class ActivityPlanningServiceImpl implements ActivityPlanningService {
     private final ActivityPlanningPromptBuilder promptBuilder;
     private final ActivityPlanningClient activityPlanningClient;
     private final ActivityPlanningOutputGuard outputGuard;
+    private final ActivityPlanningContentSafetyGuard contentSafetyGuard;
     private final ObjectMapper objectMapper;
 
     /**
@@ -78,6 +79,7 @@ public class ActivityPlanningServiceImpl implements ActivityPlanningService {
         result.setSuggestedCapacity(positiveInteger(root.get("suggestedCapacity")));
         result.setSuggestedRegistrationDeadline(text(root, "suggestedRegistrationDeadline"));
         outputGuard.validate(result);
+        contentSafetyGuard.review(result);
         return result;
     }
 
