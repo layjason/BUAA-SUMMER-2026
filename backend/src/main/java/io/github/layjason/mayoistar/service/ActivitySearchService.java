@@ -81,12 +81,16 @@ public class ActivitySearchService {
     }
 
     /**
-     * 有距离筛选时：先查询全量非距离候选集，内存中距离过滤后再统一分页，
-     * 确保 total 和 items 与距离筛选结果一致。
+     * 有距离筛选时：先在数据库层通过矩形边界框预过滤，再在内存中做精确距离过滤与分页。
+     *
+     * <p>bbox 预过滤可大幅减少候选集，避免全量加载后逐条 Haversine 计算。
      */
     private PageResult<ActivityDtos.ActivitySummary> searchWithDistanceFilter(
             SearchCriteria criteria, int page, int pageSize) {
-        List<Activity> candidates = activityRepository.findAll(buildSpecification(criteria));
+        double[] bbox = computeBoundingBox(criteria.latitude(), criteria.longitude(), criteria.distanceMeters());
+        Specification<Activity> baseSpec = buildSpecification(criteria);
+        Specification<Activity> bboxSpec = buildBboxSpecification(bbox);
+        List<Activity> candidates = activityRepository.findAll(baseSpec.and(bboxSpec));
         List<Activity> withinDistance = candidates.stream()
                 .filter(activity -> matchesDistance(activity, criteria))
                 .toList();
@@ -289,6 +293,37 @@ public class ActivitySearchService {
             return DEFAULT_PAGE_SIZE;
         }
         return Math.min(pageSize, MAX_PAGE_SIZE);
+    }
+
+    /**
+     * 构建矩形边界框（bounding box）的 JPA Specification。
+     *
+     * <p>前置条件：bbox 为 [minLat, maxLat, minLon, maxLon]。
+     *
+     * <p>后置条件：返回约束 pointLat 在 [minLat, maxLat] 且 pointLon 在 [minLon, maxLon] 的 Specification。
+     *
+     * @param bbox 边界框 [minLat, maxLat, minLon, maxLon]
+     * @return JPA Specification
+     */
+    private static Specification<Activity> buildBboxSpecification(double[] bbox) {
+        return (root, query, cb) -> cb.and(
+                cb.between(root.get("pointLat"), bbox[0], bbox[1]), cb.between(root.get("pointLon"), bbox[2], bbox[3]));
+    }
+
+    /**
+     * 根据中心点和半径计算矩形边界框。
+     *
+     * <p>纬度 1 度 ≈ 111320 米，经度 1 度 ≈ 111320 * cos(lat) 米。
+     *
+     * @param lat          中心纬度
+     * @param lon          中心经度
+     * @param radiusMeters 半径（米）
+     * @return [minLat, maxLat, minLon, maxLon]
+     */
+    public static double[] computeBoundingBox(double lat, double lon, int radiusMeters) {
+        double latDelta = radiusMeters / 111_320.0;
+        double lonDelta = radiusMeters / (111_320.0 * Math.cos(Math.toRadians(lat)));
+        return new double[] {lat - latDelta, lat + latDelta, lon - lonDelta, lon + lonDelta};
     }
 
     public record SearchCriteria(

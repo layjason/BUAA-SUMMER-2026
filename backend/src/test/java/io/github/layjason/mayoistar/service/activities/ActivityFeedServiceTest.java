@@ -1,6 +1,7 @@
 package io.github.layjason.mayoistar.service.activities;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -19,6 +20,7 @@ import io.github.layjason.mayoistar.service.ActivitySearchService;
 import io.github.layjason.mayoistar.service.ai.AiContentReviewSnapshotMapper;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -283,5 +285,65 @@ class ActivityFeedServiceTest {
         assertThat(result.getTotal()).isZero();
         assertThat(result.getPage()).isEqualTo(1);
         assertThat(result.getTotalPages()).isZero();
+    }
+
+    @Test
+    @DisplayName("computeBoundingBox 在赤道附近计算正确范围")
+    void shouldComputeCorrectBoundingBoxAtEquator() {
+        double[] bbox = ActivitySearchService.computeBoundingBox(0.0, 0.0, 111_320);
+        // 赤道上 1 度经度 ≈ 111320m，所以半径 111320m 的 bbox 约 ±1 度
+        assertThat(bbox[0]).isCloseTo(-1.0, within(0.01)); // minLat
+        assertThat(bbox[1]).isCloseTo(1.0, within(0.01)); // maxLat
+        assertThat(bbox[2]).isCloseTo(-1.0, within(0.01)); // minLon
+        assertThat(bbox[3]).isCloseTo(1.0, within(0.01)); // maxLon
+    }
+
+    @Test
+    @DisplayName("computeBoundingBox 在高纬度地区经度范围更大")
+    void shouldComputeWiderLongitudeAtHighLatitude() {
+        double[] bboxEquator = ActivitySearchService.computeBoundingBox(0.0, 0.0, 100_000);
+        double[] bboxHigh = ActivitySearchService.computeBoundingBox(60.0, 0.0, 100_000);
+        double lonWidthEquator = bboxEquator[3] - bboxEquator[2];
+        double lonWidthHigh = bboxHigh[3] - bboxHigh[2];
+        // 高纬度经度跨度应更大（cos(60°) = 0.5，经度跨度约为赤道的 2 倍）
+        assertThat(lonWidthHigh).isGreaterThan(lonWidthEquator * 1.5);
+    }
+
+    @Test
+    @DisplayName("附近 Tab 使用 bbox 预过滤排除远处活动")
+    void shouldExcludeDistantActivitiesByBboxForNearbyTab() {
+        Instant now = Instant.now();
+        // 天安门附近
+        activityRepository.save(activityWithLocation("故宫", 39.9180, 116.3975, now));
+        // 上海（远在天安门 bbox 之外）
+        activityRepository.save(activityWithLocation("东方明珠", 31.2304, 121.4737, now));
+
+        // 以天安门为中心，半径 10km
+        PageResult<ActivityDtos.ActivitySummary> result =
+                activityFeedService.getFeed("nearby", criteriaWithLocation(39.9042, 116.3975, 10000, 1, 20));
+
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().get(0).getTitle()).isEqualTo("故宫");
+    }
+
+    @Test
+    @DisplayName("推荐 Tab 对大数量活动仍能正确分页")
+    void shouldPaginateLargeRecommendedFeedCorrectly() {
+        Instant now = Instant.now();
+        for (int i = 0; i < 50; i++) {
+            activityRepository.save(activity("活动" + i, now.minusSeconds(i * 60)));
+        }
+
+        PageResult<ActivityDtos.ActivitySummary> page1 =
+                activityFeedService.getFeed("recommended", criteriaWithPage(1, 10));
+
+        assertThat(page1.getItems()).hasSize(10);
+        assertThat(page1.getTotal()).isEqualTo(50);
+        assertThat(page1.getTotalPages()).isEqualTo(5);
+        // 单页内不应有重复活动
+        List<String> ids = page1.getItems().stream()
+                .map(ActivityDtos.ActivitySummary::getActivityId)
+                .toList();
+        assertThat(ids).doesNotHaveDuplicates();
     }
 }

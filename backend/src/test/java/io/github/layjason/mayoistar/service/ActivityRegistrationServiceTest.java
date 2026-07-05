@@ -10,10 +10,13 @@ import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
 import io.github.layjason.mayoistar.entity.identity.AccountStatus;
+import io.github.layjason.mayoistar.entity.identity.PersonalProfile;
 import io.github.layjason.mayoistar.entity.identity.User;
 import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
+import io.github.layjason.mayoistar.repository.PersonalProfileRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
 import java.math.BigDecimal;
@@ -44,6 +47,9 @@ class ActivityRegistrationServiceTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PersonalProfileRepository personalProfileRepository;
 
     @Autowired
     private ActivityRegistrationService activityRegistrationService;
@@ -251,6 +257,76 @@ class ActivityRegistrationServiceTest {
         ActivityRegistration promoted = findRegistration(activity.getActivityId(), nextWaitingUserId);
         assertThat(promoted.getStatus()).isEqualTo(RegistrationStatus.waitingConfirmation);
         assertThat(promoted.getConfirmationDeadline()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("过期的候补待确认记录被自动取消并顺延给下一位候补者")
+    void shouldCancelExpiredWaitingConfirmationAndPromoteNext() {
+        Activity activity = activity(1);
+        activityRepository.save(activity);
+        String nextWaitingUserId = createUser("waiting-next");
+        activityRegistrationRepository.save(registration(
+                activity.getActivityId(),
+                participantId,
+                RegistrationStatus.waitingConfirmation,
+                null,
+                Instant.now().minusSeconds(1)));
+        activityRegistrationRepository.save(
+                registration(activity.getActivityId(), nextWaitingUserId, RegistrationStatus.waiting, 1, null));
+
+        activityRegistrationService.processExpiredWaitingConfirmations(Instant.now());
+
+        ActivityRegistration expired = findRegistration(activity.getActivityId(), participantId);
+        assertThat(expired.getStatus()).isEqualTo(RegistrationStatus.canceled);
+        ActivityRegistration promoted = findRegistration(activity.getActivityId(), nextWaitingUserId);
+        assertThat(promoted.getStatus()).isEqualTo(RegistrationStatus.waitingConfirmation);
+        assertThat(promoted.getConfirmationDeadline()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("报名时minAge不满要求时拒绝")
+    void shouldRejectRegistrationWhenAgeBelowMinimum() {
+        Activity activity = activity(2);
+        activity.setMinAge(18);
+        activityRepository.save(activity);
+
+        assertThatThrownBy(() -> activityRegistrationService.registerActivity(
+                        activity.getActivityId(), participantId, registerRequest(true)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(ErrorCodes.AGE_REQUIREMENT_NOT_MET);
+    }
+
+    @Test
+    @DisplayName("报名时无minAge要求则跳过年龄校验")
+    void shouldSkipAgeCheckWhenMinAgeIsNull() {
+        Activity activity = activity(2);
+        activity.setMinAge(null);
+        activityRepository.save(activity);
+
+        var result = activityRegistrationService.registerActivity(
+                activity.getActivityId(), participantId, registerRequest(true));
+
+        assertThat(result.getStatus()).isEqualTo(RegistrationStatus.registered);
+    }
+
+    @Test
+    @DisplayName("报名时年龄满足minAge要求通过校验")
+    void shouldAllowRegistrationWhenAgeMeetsMinimum() {
+        Activity activity = activity(2);
+        activity.setMinAge(18);
+        activityRepository.save(activity);
+        String adultUserId = createUser("adult");
+        User adultUser = userRepository.findById(adultUserId).orElseThrow();
+        PersonalProfile profile = new PersonalProfile();
+        profile.setUser(adultUser);
+        profile.setBirthday("2000-01-01");
+        personalProfileRepository.save(profile);
+
+        var result = activityRegistrationService.registerActivity(
+                activity.getActivityId(), adultUserId, registerRequest(true));
+
+        assertThat(result.getStatus()).isEqualTo(RegistrationStatus.registered);
     }
 
     private ActivityDtos.RegisterActivityRequest registerRequest(boolean acceptedSafetyNotice) {

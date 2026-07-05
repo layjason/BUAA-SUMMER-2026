@@ -2,8 +2,10 @@ package io.github.layjason.mayoistar.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.layjason.mayoistar.config.ActivityProperties;
 import io.github.layjason.mayoistar.entity.activities.Activity;
 import io.github.layjason.mayoistar.entity.activities.ActivityRegistration;
+import io.github.layjason.mayoistar.entity.activities.ActivityReview;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
@@ -13,6 +15,7 @@ import io.github.layjason.mayoistar.entity.identity.UserKind;
 import io.github.layjason.mayoistar.repository.ActivityRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityRegistrationRepository;
+import io.github.layjason.mayoistar.repository.activities.ActivityReviewRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -24,13 +27,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 @DataJpaTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = Replace.NONE)
-@Import(ActivityRegistrationStateService.class)
+@Import({ActivityRegistrationStateService.class, ActivityRegistrationStateServiceTest.TestConfig.class})
 class ActivityRegistrationStateServiceTest {
 
     @Autowired
@@ -43,6 +48,9 @@ class ActivityRegistrationStateServiceTest {
     private UserRepository userRepository;
 
     @Autowired
+    private ActivityReviewRepository activityReviewRepository;
+
+    @Autowired
     private ActivityRegistrationStateService activityRegistrationStateService;
 
     private String organizerId;
@@ -51,6 +59,7 @@ class ActivityRegistrationStateServiceTest {
     @BeforeEach
     void setUp() {
         activityRegistrationRepository.deleteAll();
+        activityReviewRepository.deleteAll();
         activityRepository.deleteAll();
         userRepository.deleteAll();
         organizerId = createUser("organizer");
@@ -154,6 +163,123 @@ class ActivityRegistrationStateServiceTest {
         assertThat(result.getCanCancelRegistration()).isFalse();
         assertThat(result.getCanConfirmWaitingSeat()).isFalse();
         assertThat(result.getCanCheckIn()).isFalse();
+        assertThat(result.getCanReview()).isFalse();
+    }
+
+    @Test
+    @DisplayName("活动已结束且已签到且未评价时可以评价")
+    void shouldAllowReviewWhenActivityEndedAndCheckedInAndNotReviewed() {
+        Instant now = Instant.now();
+        Activity activity = Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizerId)
+                .title("已结束活动")
+                .tags(List.of("桌游"))
+                .introduction("活动简介")
+                .startAt(now.minusSeconds(14400))
+                .endAt(now.minusSeconds(7200))
+                .pointLon(116.397)
+                .pointLat(39.907)
+                .city("北京")
+                .address("北京地址")
+                .placeName("北京地点")
+                .safetyNotice("注意安全")
+                .capacity(20)
+                .feeAmount(BigDecimal.ZERO)
+                .registrationDeadline(now.minusSeconds(36000))
+                .reviewStatus(ActivityReviewStatus.approved)
+                .runtimeStatus(ActivityRuntimeStatus.ended)
+                .manualReviewRequired(false)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        activityRepository.save(activity);
+        activityRegistrationRepository.save(
+                registration(activity.getActivityId(), RegistrationStatus.checkedIn, null, null));
+
+        var result = activityRegistrationStateService.getParticipationState(activity.getActivityId(), participantId);
+
+        assertThat(result.getCanReview()).isTrue();
+        assertThat(result.getReviewWindowEndsAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("已评价后不能再评价")
+    void shouldDisallowReviewWhenAlreadyReviewed() {
+        Instant now = Instant.now();
+        Activity activity = Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizerId)
+                .title("已结束活动")
+                .tags(List.of("桌游"))
+                .introduction("活动简介")
+                .startAt(now.minusSeconds(14400))
+                .endAt(now.minusSeconds(7200))
+                .pointLon(116.397)
+                .pointLat(39.907)
+                .city("北京")
+                .address("北京地址")
+                .placeName("北京地点")
+                .safetyNotice("注意安全")
+                .capacity(20)
+                .feeAmount(BigDecimal.ZERO)
+                .registrationDeadline(now.minusSeconds(36000))
+                .reviewStatus(ActivityReviewStatus.approved)
+                .runtimeStatus(ActivityRuntimeStatus.ended)
+                .manualReviewRequired(false)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        activityRepository.save(activity);
+        activityRegistrationRepository.save(
+                registration(activity.getActivityId(), RegistrationStatus.checkedIn, null, null));
+        activityReviewRepository.save(ActivityReview.builder()
+                .reviewId(UUID.randomUUID().toString())
+                .activityId(activity.getActivityId())
+                .userId(participantId)
+                .rating(5)
+                .createdAt(Instant.now())
+                .build());
+
+        var result = activityRegistrationStateService.getParticipationState(activity.getActivityId(), participantId);
+
+        assertThat(result.getCanReview()).isFalse();
+    }
+
+    @Test
+    @DisplayName("评价窗口过期后不能评价")
+    void shouldDisallowReviewWhenWindowExpired() {
+        Instant now = Instant.now();
+        Activity activity = Activity.builder()
+                .activityId(UUID.randomUUID().toString())
+                .organizerId(organizerId)
+                .title("很久以前结束的活动")
+                .tags(List.of("桌游"))
+                .introduction("活动简介")
+                .startAt(now.minusSeconds(864000))
+                .endAt(now.minusSeconds(864000 - 7200))
+                .pointLon(116.397)
+                .pointLat(39.907)
+                .city("北京")
+                .address("北京地址")
+                .placeName("北京地点")
+                .safetyNotice("注意安全")
+                .capacity(20)
+                .feeAmount(BigDecimal.ZERO)
+                .registrationDeadline(now.minusSeconds(864000))
+                .reviewStatus(ActivityReviewStatus.approved)
+                .runtimeStatus(ActivityRuntimeStatus.ended)
+                .manualReviewRequired(false)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        activityRepository.save(activity);
+        activityRegistrationRepository.save(
+                registration(activity.getActivityId(), RegistrationStatus.checkedIn, null, null));
+
+        var result = activityRegistrationStateService.getParticipationState(activity.getActivityId(), participantId);
+
+        assertThat(result.getCanReview()).isFalse();
     }
 
     private String createUser(String nicknamePrefix) {
@@ -212,5 +338,13 @@ class ActivityRegistrationStateServiceTest {
                 .confirmationDeadline(confirmationDeadline)
                 .registeredAt(Instant.now())
                 .build();
+    }
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        ActivityProperties activityProperties() {
+            return new ActivityProperties();
+        }
     }
 }
