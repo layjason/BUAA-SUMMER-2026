@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -39,6 +40,20 @@ public class SecurityConfiguration {
         "/identity/interest-tags",
         "/admin/auth/login",
         "/media/**",
+        "/activities/feed",
+        "/activities/search",
+        "/activities/map",
+        "/activities/templates",
+        "/activities/*/reviews",
+        "/activities/*/summaries",
+    };
+
+    private static final String[] PUBLIC_GET_ENDPOINTS = {
+        "/social/teams",
+        "/social/teams/*",
+        "/social/teams/*/members",
+        "/social/teams/*/points",
+        "/activities/*",
     };
 
     private static final String[] MERCHANT_ENDPOINTS = {
@@ -72,6 +87,8 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(PUBLIC_ENDPOINTS)
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS)
                         .permitAll()
                         .requestMatchers(WEBSOCKET_ENDPOINTS)
                         .permitAll()
