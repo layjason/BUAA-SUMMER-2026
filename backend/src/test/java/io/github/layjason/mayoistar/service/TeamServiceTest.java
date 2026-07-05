@@ -167,6 +167,73 @@ class TeamServiceTest {
     }
 
     @Nested
+    @DisplayName("我的小队")
+    class MyTeams {
+
+        private User tomorin;
+        private String mygoTeamId;
+        private String crychicTeamId;
+
+        @BeforeEach
+        void setUp() {
+            tomorin = createUser("tomorin@mygo.band", "燈");
+
+            SocialDtos.TeamCreateRequest mygoReq = createRequest("MyGO!!!!!", TeamJoinMode.publicJoin);
+            mygoTeamId = teamService.createTeam(tomorin.getUserId(), mygoReq).getTeamId();
+
+            SocialDtos.TeamCreateRequest crychicReq = createRequest("CRYCHIC", TeamJoinMode.approvalRequired);
+            crychicTeamId =
+                    teamService.createTeam(tomorin.getUserId(), crychicReq).getTeamId();
+        }
+
+        @Test
+        @DisplayName("燈查看自己加入的小队——一生の思い出")
+        void listMyTeamsReturnsJoinedTeams() {
+            var result = teamService.listMyTeams(tomorin.getUserId(), 1, 20);
+
+            assertThat(result.getItems()).hasSize(2);
+            assertThat(result.getItems().stream().map(SocialDtos.TeamProfile::getName))
+                    .containsExactlyInAnyOrder("MyGO!!!!!", "CRYCHIC");
+        }
+
+        @Test
+        @DisplayName("解散后仍出现在我的小队——解散了也是曾经的回忆")
+        void dissolvedTeamStillInMyTeams() {
+            teamService.dissolveTeam(crychicTeamId, tomorin.getUserId());
+
+            var result = teamService.listMyTeams(tomorin.getUserId(), 1, 20);
+
+            assertThat(result.getItems()).hasSize(2);
+            assertThat(result.getItems().stream().map(SocialDtos.TeamProfile::getStatus))
+                    .contains(TeamStatus.dissolved);
+        }
+
+        @Test
+        @DisplayName("未加入任何小队的瓦鲁多返回空列表")
+        void userWithNoTeamsReturnsEmpty() {
+            User warudo = createUser("warudo@mygo.band", "ワルド");
+
+            var result = teamService.listMyTeams(warudo.getUserId(), 1, 20);
+
+            assertThat(result.getItems()).isEmpty();
+            assertThat(result.getTotal()).isZero();
+        }
+
+        @Test
+        @DisplayName("分页正常-第一页1条第二页1条")
+        void paginationWorksCorrectly() {
+            var page1 = teamService.listMyTeams(tomorin.getUserId(), 1, 1);
+            var page2 = teamService.listMyTeams(tomorin.getUserId(), 2, 1);
+
+            assertThat(page1.getItems()).hasSize(1);
+            assertThat(page2.getItems()).hasSize(1);
+            assertThat(page1.getTotal()).isEqualTo(2);
+            assertThat(page1.getItems().get(0).getTeamId())
+                    .isNotEqualTo(page2.getItems().get(0).getTeamId());
+        }
+    }
+
+    @Nested
     @DisplayName("加入小队")
     class JoinTeam {
 

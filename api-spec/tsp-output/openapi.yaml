@@ -6595,6 +6595,74 @@ paths:
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
       tags:
         - 好友社群
+  /social/teams/mine:
+    get:
+      operationId: SocialOperations_listMyTeams
+      description: 获取当前用户加入的小队列表，含已解散/已停用的历史小队，按加入时间倒序。
+      parameters:
+        - $ref: '#/components/parameters/PageQuery.page'
+        - $ref: '#/components/parameters/PageQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        type: object
+                        required:
+                          - items
+                          - total
+                          - page
+                          - pageSize
+                          - totalPages
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Social.TeamProfile'
+                            description: 当前页数据。
+                          total:
+                            type: integer
+                            format: int64
+                            description: 匹配总数。
+                          page:
+                            type: integer
+                            format: int32
+                            description: 当前页码。
+                          pageSize:
+                            type: integer
+                            format: int32
+                            description: 每页数量。
+                          totalPages:
+                            type: integer
+                            format: int32
+                            description: 匹配总页数。
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+      tags:
+        - 好友社群
   /social/teams/{teamId}:
     get:
       operationId: SocialOperations_getTeam

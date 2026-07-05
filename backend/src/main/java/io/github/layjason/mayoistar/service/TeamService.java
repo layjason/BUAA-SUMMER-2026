@@ -221,6 +221,42 @@ public class TeamService {
         return new PageResult<>(items, total, dbPage.getNumber() + 1, dbPage.getSize(), totalPages);
     }
 
+    /**
+     * 获取当前用户加入的小队列表。
+     *
+     * <p>前置条件：userId 对应当前已登录的用户。
+     *
+     * <p>后置条件：返回含所有状态（active/dissolved/disabled）的小队，
+     * 按加入时间倒序排列。
+     *
+     * <p>不变量：分页结果总数与 {@link TeamMemberRepository#countByUserId} 一致。
+     *
+     * @param userId   当前用户标识
+     * @param page     页码
+     * @param pageSize 每页数量
+     * @return 分页小队资料
+     */
+    @Transactional(readOnly = true)
+    public PageResult<SocialDtos.TeamProfile> listMyTeams(String userId, int page, int pageSize) {
+        var pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "joinedAt"));
+        var memberPage = teamMemberRepository.findByUserId(userId, pageable);
+
+        List<String> teamIds =
+                memberPage.getContent().stream().map(TeamMember::getTeamId).toList();
+
+        Map<String, Team> teamMap =
+                teamRepository.findAllById(teamIds).stream().collect(Collectors.toMap(Team::getTeamId, t -> t));
+
+        var items = memberPage.getContent().stream()
+                .map(member -> {
+                    Team team = teamMap.get(member.getTeamId());
+                    return toTeamProfile(team, (int) teamMemberRepository.countByTeamId(member.getTeamId()));
+                })
+                .collect(Collectors.toList());
+
+        return new PageResult<>(items, memberPage.getTotalElements(), page, pageSize, memberPage.getTotalPages());
+    }
+
     private boolean hasTags(@Nullable List<String> tags) {
         return tags != null && !tags.isEmpty();
     }

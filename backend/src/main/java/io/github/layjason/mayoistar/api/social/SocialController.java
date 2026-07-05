@@ -171,6 +171,14 @@ public class SocialController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
+    @GetMapping("/teams/mine")
+    public ResponseEntity<ApiResponse<PageResult<SocialDtos.TeamProfile>>> listMyTeams(
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
+        var result = teamService.listMyTeams(securityUtils.getCurrentUserId(), page, pageSize);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
     @GetMapping("/teams/{teamId}")
     public ResponseEntity<ApiResponse<SocialDtos.TeamProfile>> getTeam(@PathVariable String teamId) {
         var result = teamService.getTeam(teamId);
