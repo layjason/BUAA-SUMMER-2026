@@ -1,7 +1,7 @@
 # Docker Compose 配置 - MayoiStar CLIP 分类服务（GPU + Kafka Consumer）
 # 启动方式：
 #   cp .env.example .env && vim .env    # 填入 Java 服务器 IP
-#   docker compose up -d --scale clip-classifier=5
+#   docker compose up -d --scale clip-classifier=2
 #
 # 前置条件：
 #   - NVIDIA Container Toolkit 已安装（https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html）
@@ -36,7 +36,6 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
               capabilities: [gpu]
     restart: unless-stopped
 

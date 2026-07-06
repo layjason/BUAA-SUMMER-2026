@@ -6,6 +6,8 @@
   - 初始版本：确立 Java + Kafka + GPU 集群部署拓扑和步骤
 - Version: 2 20260706 154940
   - 简化 GPU 部署流程：合并 .env.gpu.example 到 .env.example，改用 docker compose --scale 一键启动
+- Version: 3 20260706 161029
+  - 新增 GPU 显存与实例数对照，补充多实例部署注意事项
 
 ---
 
@@ -151,7 +153,16 @@ RUSTFS_ENDPOINT=http://<VPN_IP>:9000
 
 ### 4.2 启动 Consumer 进程
 
-每台 GPU 机器通过 `--scale` 启动多个容器实例（共享同一 `group.id`，Kafka 自动负载均衡）：
+每台 GPU 机器通过 `--scale` 启动多个容器实例（共享同一 `group.id`，Kafka 自动负载均衡）。
+
+每增加一个实例额外占用约 1-2GB 显存（各实例独立加载模型，不共享权重），请根据 GPU 显存调整 `--scale` 值：
+
+| GPU 显存 | 建议 `--scale` 值 |
+|----------|-------------------|
+| 8GB | 2-3 |
+| 12GB | 3-4 |
+| 16GB | 5 |
+| 24GB | 5-10 |
 
 ```bash
 cd clip-service
