@@ -258,7 +258,13 @@ public class AdminService {
                 String pattern = "%" + keyword.toLowerCase() + "%";
                 Predicate emailLike = cb.like(cb.lower(root.get("email")), pattern);
                 Predicate nicknameLike = cb.like(cb.lower(root.get("nickname")), pattern);
-                predicates.add(cb.or(emailLike, nicknameLike));
+                var merchantNameQuery = query.subquery(String.class);
+                var merchantProfileRoot = merchantNameQuery.from(MerchantProfile.class);
+                merchantNameQuery.select(merchantProfileRoot.get("userId"));
+                merchantNameQuery.where(
+                        cb.equal(merchantProfileRoot.get("userId"), root.get("userId")),
+                        cb.like(cb.lower(merchantProfileRoot.get("merchantName")), pattern));
+                predicates.add(cb.or(emailLike, nicknameLike, cb.exists(merchantNameQuery)));
             }
             if (kind != null) {
                 predicates.add(cb.equal(root.get("kind"), kind));
@@ -266,15 +272,29 @@ public class AdminService {
             if (accountStatus != null) {
                 predicates.add(cb.equal(root.get("accountStatus"), accountStatus));
             }
+            if (qualificationStatus != null) {
+                var qualificationQuery = query.subquery(String.class);
+                var qualificationRoot = qualificationQuery.from(Qualification.class);
+                qualificationQuery.select(qualificationRoot.get("userId"));
+                if (qualificationStatus == QualificationStatus.not_submitted) {
+                    qualificationQuery.where(cb.equal(qualificationRoot.get("userId"), root.get("userId")));
+                    predicates.add(cb.or(
+                            cb.notEqual(root.get("kind"), UserKind.merchant), cb.not(cb.exists(qualificationQuery))));
+                } else {
+                    qualificationQuery.where(
+                            cb.equal(qualificationRoot.get("userId"), root.get("userId")),
+                            cb.equal(qualificationRoot.get("status"), qualificationStatus));
+                    predicates.add(
+                            cb.and(cb.equal(root.get("kind"), UserKind.merchant), cb.exists(qualificationQuery)));
+                }
+            }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
         Page<User> userPage = userRepository.findAll(spec, pageable);
 
-        List<AdminDtos.AdminUserSummary> items = userPage.getContent().stream()
-                .filter(user -> filterByQualificationStatus(user, qualificationStatus))
-                .map(this::buildAdminUserSummary)
-                .collect(Collectors.toList());
+        List<AdminDtos.AdminUserSummary> items =
+                userPage.getContent().stream().map(this::buildAdminUserSummary).collect(Collectors.toList());
 
         return new PageResult<>(
                 items,
@@ -282,24 +302,6 @@ public class AdminService {
                 userPage.getNumber() + 1,
                 userPage.getSize(),
                 userPage.getTotalPages());
-    }
-
-    /**
-     * 按资质状态过滤用户。
-     */
-    private boolean filterByQualificationStatus(User user, QualificationStatus qualificationStatus) {
-        if (qualificationStatus == null) {
-            return true;
-        }
-        if (user.getKind() != UserKind.merchant) {
-            return qualificationStatus == QualificationStatus.not_submitted;
-        }
-        Qualification qualification =
-                qualificationRepository.findByUserId(user.getUserId()).orElse(null);
-        if (qualification == null) {
-            return qualificationStatus == QualificationStatus.not_submitted;
-        }
-        return qualification.getStatus() == qualificationStatus;
     }
 
     /**

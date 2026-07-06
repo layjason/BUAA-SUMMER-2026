@@ -22,12 +22,13 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * GlobalExceptionHandler 单元测试。
  *
- * <p>类职责：验证框架层异常（NoResourceFoundException、校验异常、通用 Exception）返回正确的 HTTP 状态码和统一 JSON 错误响应。
+ * <p>类职责：验证框架层异常（NoHandlerFoundException、NoResourceFoundException、校验异常、通用 Exception）返回正确的 HTTP 状态码和统一 JSON 错误响应。
  */
 @DisplayName("GlobalExceptionHandler")
 class GlobalExceptionHandlerTests {
@@ -57,6 +58,32 @@ class GlobalExceptionHandlerTests {
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getCode()).isEqualTo(404);
             assertThat(response.getBody().getMessage()).contains("/nonexistent");
+        }
+    }
+
+    @Nested
+    @DisplayName("Controller 处理器未找到处理")
+    class NoHandlerFoundTests {
+
+        /**
+         * 验证 Controller 不存在时返回 HTTP 404。
+         *
+         * <p>前置条件：DispatcherServlet 抛出 NoHandlerFoundException。
+         *
+         * <p>后置条件：HTTP 状态码为 404，响应体为 code=404、message 含有请求方法和路径的 ApiErrorResponse。
+         */
+        @Test
+        @DisplayName("应返回 HTTP 404 和 code=404 的错误响应")
+        void shouldReturn404WhenControllerNotMapped() {
+            NoHandlerFoundException ex = new NoHandlerFoundException("GET", "/chat/conversation/messages", null);
+
+            ResponseEntity<ApiErrorResponse<EmptyData>> response = handler.handleNoHandlerFound(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getCode()).isEqualTo(404);
+            assertThat(response.getBody().getMessage()).contains("GET");
+            assertThat(response.getBody().getMessage()).contains("/chat/conversation/messages");
         }
     }
 
