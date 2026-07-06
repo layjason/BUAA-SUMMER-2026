@@ -202,7 +202,7 @@ import {
   uploadMerchantLicense,
 } from '@/api/modules/profile'
 import { getErrorMessage } from '@/utils/error'
-import { resolveMediaPreviewUrl } from '@/utils/media-preview'
+import { resolveMediaPreviewUrl, toAbsoluteMediaUrl } from '@/utils/media-preview'
 import { BottomActionBar, FormInput, FormError } from '@/components'
 
 const { t } = useI18n()
@@ -528,7 +528,7 @@ async function handleAvatarClick(): Promise<void> {
     try {
       const result = await uploadAvatar(tempPath)
       avatarMediaId.value = result.mediaId
-      avatarUrl.value = result.signedUrl || tempPath
+      avatarUrl.value = result.signedUrl ? toAbsoluteMediaUrl(result.signedUrl) : tempPath
     } catch {
       formError.value = t('editProfile.avatarUploadFailed')
     }
@@ -645,7 +645,7 @@ async function loadProfile(): Promise<void> {
       if (generation !== loadProfileGeneration) return
       formNickname.value = profile.nickname ?? ''
       formMerchantName.value = profile.merchantName ?? ''
-      if (profile.avatar?.signedUrl) avatarUrl.value = profile.avatar.signedUrl
+      if (profile.avatar?.signedUrl) avatarUrl.value = toAbsoluteMediaUrl(profile.avatar.signedUrl)
       if (profile.interestedActivityFields?.length) {
         selectedTags.value = new Set(profile.interestedActivityFields)
       } else {
@@ -668,7 +668,7 @@ async function loadProfile(): Promise<void> {
       const profile = await getMyProfile()
       if (generation !== loadProfileGeneration) return
       formNickname.value = profile.nickname ?? ''
-      if (profile.avatar?.signedUrl) avatarUrl.value = profile.avatar.signedUrl
+      if (profile.avatar?.signedUrl) avatarUrl.value = toAbsoluteMediaUrl(profile.avatar.signedUrl)
       if (profile.gender) formGender.value = profile.gender as typeof formGender.value
       if (profile.birthday) formBirthday.value = profile.birthday ?? ''
       if (profile.signature) formSignature.value = profile.signature ?? ''
@@ -1045,7 +1045,11 @@ async function handleSave(): Promise<void> {
 }
 
 .qualification-submit[disabled] {
-  opacity: 0.5;
+  background: var(--q-color-bg-soft);
+  color: var(--q-color-text-muted);
+  border: 1rpx solid var(--q-color-border);
+  box-shadow: none;
+  opacity: 1;
 }
 
 .qualification-hint {

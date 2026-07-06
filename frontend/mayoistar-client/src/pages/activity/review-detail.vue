@@ -7,9 +7,7 @@
         <view class="card">
           <view class="header-row">
             <text class="nickname">{{ review.nickname }}</text>
-            <text class="rating">{{
-              t('activityDetail.reviewStars', { rating: review.rating })
-            }}</text>
+            <text class="rating">{{ reviewRatingText(review.rating) }}</text>
           </view>
           <text class="meta">{{ formatDateTime(review.createdAt) }}</text>
 
@@ -48,10 +46,11 @@ import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { getActivityReviews, type ActivityReviewListItem } from '@/api/modules/activities'
 import { formatDateTime } from '@/utils/date'
+import { formatI18nTemplate } from '@/utils/i18n-template'
 import { resolveMediaPreviewUrl } from '@/utils/media-preview'
 import { useAuthStore } from '@/stores/auth'
 
-const { t } = useI18n()
+const { t, tm } = useI18n()
 const authStore = useAuthStore()
 
 const loading = ref(true)
@@ -68,6 +67,11 @@ const reviewTextContent = computed(() => {
   const content = review.value?.content ?? ''
   return content.replace(markdownImagePattern, '').trim()
 })
+
+/** 格式化评价分数文案，避免原生端外显 i18n 命名占位符。 */
+function reviewRatingText(rating: number): string {
+  return formatI18nTemplate(String(tm('activityDetail.reviewStars')), { rating })
+}
 
 /**
  * 解析评价正文中的 Markdown 图片为可展示地址。

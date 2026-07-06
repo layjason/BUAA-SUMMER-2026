@@ -33,7 +33,7 @@
         >
           <image
             v-if="activity.coverImage?.signedUrl"
-            :src="activity.coverImage.signedUrl"
+            :src="getMediaUrl(activity.coverImage.signedUrl)"
             class="activity-cover"
             mode="aspectFill"
           />
@@ -75,6 +75,7 @@ import { getTeamMembers, listTeamActivities, createTeamActivity } from '@/api/mo
 import { extractPageItems } from '@/utils/page-result'
 import { getTeamErrorMessage } from '@/utils/team-error-message'
 import { useAuthStore } from '@/stores/auth'
+import { toAbsoluteMediaUrl } from '@/utils/media-preview'
 import type { components } from '@/api/types/schema'
 
 type ActivitySummary = components['schemas']['Activities.ActivitySummary']
@@ -88,7 +89,7 @@ const loading = ref(false)
 const activityTitle = ref('')
 
 const authStore = useAuthStore()
-const currentUserId = ref(authStore.userId || '10001')
+const currentUserId = ref(authStore.userId || '')
 
 const canManage = computed(() => {
   const me = members.value.find((m) => m.userId === currentUserId.value)
@@ -114,6 +115,11 @@ function formatDate(isoStr: string): string {
   return `${date.getMonth() + 1}月${date.getDate()}日`
 }
 
+/** 获取 App 可直接渲染的媒体地址 */
+function getMediaUrl(signedUrl: string): string {
+  return toAbsoluteMediaUrl(signedUrl)
+}
+
 /** 构建最小活动创建请求 */
 function buildMinimalActivityRequest(title: string): ActivityUpsertRequest {
   const start = new Date()
@@ -129,7 +135,7 @@ function buildMinimalActivityRequest(title: string): ActivityUpsertRequest {
     capacity: 20,
     introduction: '队内活动',
     safetyNotice: '请注意活动安全',
-    tags: [],
+    tags: ['队内活动'],
     startAt: start.toISOString(),
     endAt: end.toISOString(),
     registrationDeadline: deadline.toISOString(),
@@ -204,8 +210,8 @@ function goToDetail(activityId: string) {
 }
 
 onLoad((query) => {
-  teamId.value = query?.teamId || ''
-  loadData()
+  teamId.value = typeof query?.teamId === 'string' ? query.teamId : ''
+  void loadData()
 })
 </script>
 

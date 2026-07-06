@@ -97,6 +97,7 @@ import { resolveFriendConversationId } from '@/utils/friend-chat'
 import type { components } from '@/api/types/schema'
 
 type FriendRequest = components['schemas']['Social.FriendRequest']
+type PublicUserProfile = components['schemas']['Identity.PublicUserProfile']
 
 const activeTab = ref<'received' | 'sent'>('received')
 const receivedRequests = ref<FriendRequest[]>([])
@@ -244,9 +245,8 @@ async function loadData() {
     await Promise.all(
       [...allIds].map(async (id) => {
         try {
-          const profile = await getUserProfile(id)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          nicknameCache.value[id] = (profile as any).nickname || `用户 ${id}`
+          const profile = (await getUserProfile(id)) as PublicUserProfile
+          nicknameCache.value[id] = profile.nickname || `用户 ${id}`
         } catch {
           nicknameCache.value[id] = `用户 ${id}`
         }

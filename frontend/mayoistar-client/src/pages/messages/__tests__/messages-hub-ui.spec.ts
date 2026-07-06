@@ -46,4 +46,34 @@ describe('消息页 UI', () => {
     expect(chatSource).not.toContain('🙂')
     expect(chatSource).not.toContain('avatar-placeholder')
   })
+
+  it('操作面板入口不应存在空图标', () => {
+    const indexSource = readFileSync(resolve(process.cwd(), 'src/pages/messages/index.vue'), 'utf8')
+
+    expect(indexSource).not.toMatch(/<text class="action-sheet__icon">\s*<\/text>/)
+  })
+
+  it('重复功能入口应收敛到快捷卡片', () => {
+    const indexSource = readFileSync(resolve(process.cwd(), 'src/pages/messages/index.vue'), 'utf8')
+    const quickCardsSource = readFileSync(
+      resolve(process.cwd(), 'src/components/social/SocialQuickCards.vue'),
+      'utf8',
+    )
+    const addFriendSheetStart = indexSource.indexOf('<!-- Add Friend Action Sheet -->')
+    const moreMenuStart = indexSource.indexOf('<!-- More Menu Action Sheet -->')
+    const createSheetStart = indexSource.indexOf('<!-- Create Menu Action Sheet -->')
+    const searchStart = indexSource.indexOf('<!-- 内联搜索下拉')
+    const addFriendSheet = indexSource.slice(addFriendSheetStart, moreMenuStart)
+    const createSheet = indexSource.slice(createSheetStart, searchStart)
+
+    expect(indexSource).toContain('@create-team-tap="goToCreateTeam"')
+    expect(indexSource).toContain('@companions-tap="goToActivityCompanions"')
+    expect(indexSource).toContain('@friend-requests-tap="goToFriendRequests"')
+    expect(indexSource).toContain('@pending-team-requests-tap="goToPendingTeamRequests"')
+    expect(quickCardsSource).toContain('pendingTeamRequestsTap')
+    expect(quickCardsSource).toContain('@tap.stop="onPendingTeamRequestsTap"')
+    expect(addFriendSheet).not.toContain('活动同伴推荐')
+    expect(addFriendSheet).not.toContain('好友申请')
+    expect(createSheet).not.toContain('创建小队')
+  })
 })

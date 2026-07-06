@@ -10,6 +10,7 @@
 import { ref, onMounted } from 'vue'
 import { getFeed } from '@/api/modules/activities'
 import { formatDate } from '@/utils/date'
+import { toAbsoluteMediaUrl } from '@/utils/media-preview'
 
 /** 推荐活动条目 */
 interface RecommendItem {
@@ -58,6 +59,11 @@ function goMap(): void {
 /** 跳转活动详情 */
 function goDetail(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
+}
+
+/** 获取 App 可直接渲染的媒体地址 */
+function getMediaUrl(signedUrl: string): string {
+  return toAbsoluteMediaUrl(signedUrl)
 }
 
 /** 获取状态文本 */
@@ -120,7 +126,11 @@ function getStatusText(status: string): string {
             >
               <view class="recommend-inner">
                 <view v-if="item.coverImage?.signedUrl" class="recommend-cover">
-                  <image :src="item.coverImage.signedUrl" mode="aspectFill" class="cover-img" />
+                  <image
+                    :src="getMediaUrl(item.coverImage.signedUrl)"
+                    mode="aspectFill"
+                    class="cover-img"
+                  />
                 </view>
                 <view v-else class="recommend-cover recommend-cover-placeholder">
                   <text class="placeholder-icon">📌</text>

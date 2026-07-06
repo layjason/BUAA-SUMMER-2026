@@ -11,6 +11,14 @@ describe('地图模式定位参数', () => {
     expect(source).toContain('getCurrentCenter')
     expect(source).toContain('timeout: 8000')
     expect(source).toContain('routeFilters.value')
+    expect(source).toContain('const longitude = query.longitude ? Number(query.longitude) : NaN')
+    expect(source).toContain('const latitude = query.latitude ? Number(query.latitude) : NaN')
+    expect(source).toContain(
+      'const routeDistanceMeters = query.distanceMeters ? Number(query.distanceMeters) : NaN',
+    )
+    expect(source).toContain('const point = normalizeGeoPoint(longitude, latitude)')
+    expect(source).toContain('centerLongitude.value = point.longitude')
+    expect(source).toContain('distanceMeters.value = routeDistanceMeters')
     expect(source).toContain('getMapActivities({')
     expect(source).toContain('page: 1')
     expect(source).toContain('pageSize: 100')

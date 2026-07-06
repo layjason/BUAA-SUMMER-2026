@@ -65,6 +65,7 @@ import type {
   TeamMember,
   TeamMemberRole,
   TeamProfile,
+  TeamUpdateRequest,
   UpdateMerchantProfileRequest,
   UpdatePersonalProfileRequest,
   UserKind,
@@ -274,6 +275,22 @@ export function login(email: string, password: string): LoginResult {
       expiresAt,
     },
   }
+}
+
+/** 修改当前用户密码 */
+export function changePassword(
+  userId: number,
+  oldPassword: string,
+  newPassword: string,
+): EmptyData {
+  const db = getMockDb()
+  const user = db.users.find((u) => u.id === userId)
+  if (!user || user.password !== oldPassword) {
+    throw new MockBusinessError(10016, 'Old password is invalid')
+  }
+  user.password = newPassword
+  persistMockDb()
+  return {}
 }
 
 /* ================================================================
@@ -1893,6 +1910,56 @@ export function createTeam(leaderId: number, data: TeamCreateRequest): TeamProfi
   })
   persistMockDb()
 
+  return teamToProfile(team)
+}
+
+/** 更新小队资料 */
+export function updateTeam(
+  teamId: number,
+  operatorId: number,
+  data: TeamUpdateRequest,
+): TeamProfile {
+  const db = getMockDb()
+  const team = db.teams.find((t) => t.id === teamId)
+  if (!team) throw new MockBusinessError(40009, 'Team is not visible')
+  if (team.leaderId !== operatorId) {
+    throw new MockBusinessError(40020, 'Team operation is not allowed')
+  }
+
+  if (data.name !== undefined) {
+    const name = data.name.trim()
+    if (!name) throw new MockBusinessError(40008, 'Team name is invalid')
+    const duplicated = db.teams.some((t) => t.id !== teamId && t.name === name)
+    if (duplicated) throw new MockBusinessError(40008, 'Team name is already taken')
+    team.name = name
+  }
+  if (data.tags !== undefined) {
+    const tags = data.tags
+      .filter((tag): tag is string => typeof tag === 'string')
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0)
+    if (tags.length === 0) throw new MockBusinessError(40008, 'Team tags are required')
+    team.tags = [...new Set(tags)]
+  }
+  if (data.joinMode !== undefined) team.joinMode = data.joinMode
+  if (data.capacity !== undefined) {
+    if (data.capacity < team.memberCount) {
+      throw new MockBusinessError(40010, 'Team capacity cannot be less than current members')
+    }
+    team.maxMembers = data.capacity
+  }
+  if (data.description !== undefined) team.description = data.description.trim()
+  if (data.avatarMediaId !== undefined) {
+    team.coverUrl = mediaFileFromId(data.avatarMediaId, new Date().toISOString(), `team_${teamId}`)
+      .signedUrl as string
+  }
+
+  if (team.conversationId) {
+    const conv = db.conversations.find((c) => c.id === team.conversationId)
+    if (conv) conv.name = team.name
+  }
+
+  persistMockDb()
   return teamToProfile(team)
 }
 

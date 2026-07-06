@@ -113,6 +113,7 @@ import { ref, computed, reactive } from 'vue'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import { api } from '@/api'
 import { createTeam } from '@/api/modules/teams'
+import { toAbsoluteMediaUrl } from '@/utils/media-preview'
 import type { components } from '@/api/types/schema'
 
 type TeamCreateRequest = components['schemas']['Social.TeamCreateRequest']
@@ -169,7 +170,7 @@ async function pickAvatar() {
         signedUrl: string
       }
       avatarMediaId.value = result.mediaId
-      avatarPreview.value = result.signedUrl
+      avatarPreview.value = result.signedUrl ? toAbsoluteMediaUrl(result.signedUrl) : tempPath
     } catch {
       uni.showToast({ title: '头像上传失败', icon: 'none' })
     }
@@ -420,7 +421,18 @@ async function submit() {
   }
 
   &--disabled {
-    opacity: 0.5;
+    background: $color-bg-soft;
+    border: 1px solid $color-border-light;
+    box-shadow: none;
+    opacity: 1;
+
+    .submit-btn-text {
+      color: $color-text-muted;
+    }
+
+    &:active {
+      transform: none;
+    }
   }
 }
 

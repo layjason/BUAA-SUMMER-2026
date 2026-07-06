@@ -65,3 +65,10 @@ export function resetPassword(token: string, newPassword: string) {
     body: { token, newPassword },
   })
 }
+
+/** 修改当前登录用户密码 */
+export function changePassword(oldPassword: string, newPassword: string) {
+  return post('/identity/me/password', {
+    body: { oldPassword, newPassword },
+  })
+}

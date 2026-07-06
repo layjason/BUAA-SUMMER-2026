@@ -8,6 +8,13 @@
         <text class="loading-text">加载中...</text>
       </view>
 
+      <view v-else-if="errorMessage" class="error-state">
+        <EmptyState title="无法加载小队" :description="errorMessage" />
+        <view v-if="teamId" class="retry-btn" @tap="loadTeam">
+          <text class="retry-btn-text">重新加载</text>
+        </view>
+      </view>
+
       <template v-else-if="team">
         <!-- Team Header -->
         <view class="team-header">
@@ -162,9 +169,10 @@
  *
  * 展示小队信息、成员列表和操作（加入/退出/管理）
  */
-import { ref, computed, onMounted } from 'vue'
-import { onHide } from '@dcloudio/uni-app'
+import { ref, computed } from 'vue'
+import { onHide, onLoad } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
+import EmptyState from '@/components/base/EmptyState.vue'
 import UserAvatar from '@/components/base/UserAvatar.vue'
 import {
   getTeamDetail,
@@ -175,6 +183,7 @@ import {
 } from '@/api/modules/teams'
 import { BusinessError } from '@/api'
 import { getTeamErrorMessage } from '@/utils/team-error-message'
+import { readFirstQueryString } from '@/utils/page-query'
 import { useAuthStore } from '@/stores/auth'
 import type { components } from '@/api/types/schema'
 
@@ -185,12 +194,18 @@ const teamId = ref('')
 const team = ref<TeamProfile | null>(null)
 const members = ref<TeamMember[]>([])
 const loading = ref(false)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const managePopup = ref<any>(null)
+const errorMessage = ref('')
+
+interface PopupRef {
+  open: () => void
+  close: () => void
+}
+
+const managePopup = ref<PopupRef | null>(null)
 
 // 从 auth store 获取当前用户 ID
 const authStore = useAuthStore()
-const currentUserId = ref(authStore.userId || '10001')
+const currentUserId = ref(authStore.userId || '')
 
 const isMember = computed(() => members.value.some((m) => m.userId === currentUserId.value))
 const isLeader = computed(() => team.value?.leaderId === currentUserId.value)
@@ -223,9 +238,15 @@ const joinHint = computed(() => {
 
 /** 加载小队详情 */
 async function loadTeam() {
-  if (!teamId.value) return
+  if (!teamId.value) {
+    team.value = null
+    members.value = []
+    errorMessage.value = '缺少小队标识，请返回后重新进入。'
+    return
+  }
 
   loading.value = true
+  errorMessage.value = ''
   try {
     const [teamResult, membersResult] = await Promise.all([
       getTeamDetail(teamId.value),
@@ -240,6 +261,12 @@ async function loadTeam() {
     members.value = memberItems
   } catch (error) {
     console.error('Failed to load team:', error)
+    team.value = null
+    members.value = []
+    errorMessage.value =
+      error instanceof BusinessError
+        ? getTeamErrorMessage(error.code, error.message)
+        : '小队不存在、已不可见或网络异常。'
     uni.showToast({ title: '加载失败', icon: 'none' })
   } finally {
     loading.value = false
@@ -343,14 +370,9 @@ onHide(() => {
   closeManageMenu()
 })
 
-onMounted(() => {
-  const pages = getCurrentPages()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const currentPage = pages[pages.length - 1] as any
-  const options = currentPage.options || {}
-  teamId.value = options.teamId || ''
-
-  loadTeam()
+onLoad((query) => {
+  teamId.value = readFirstQueryString(query, ['teamId', 'id'])
+  void loadTeam()
 })
 </script>
 
@@ -376,6 +398,27 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: $spacing-2xl;
+}
+
+.error-state {
+  padding: $spacing-2xl $spacing-lg;
+}
+
+.retry-btn {
+  margin: $spacing-xl auto 0;
+  width: 160px;
+  height: 40px;
+  border-radius: $radius-full;
+  background: $gradient-primary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.retry-btn-text {
+  font-size: $font-base;
+  font-weight: $weight-medium;
+  color: $color-text-inverse;
 }
 
 .loading-text {
@@ -530,7 +573,14 @@ onMounted(() => {
   }
 
   &--disabled {
-    opacity: 0.55;
+    background: $color-bg-soft;
+    border: 1px solid $color-border-light;
+    box-shadow: none;
+    opacity: 1;
+
+    .action-btn-text {
+      color: $color-text-muted;
+    }
 
     &:active {
       transform: none;

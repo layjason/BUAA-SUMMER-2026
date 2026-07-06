@@ -70,10 +70,9 @@ import { useI18n } from 'vue-i18n'
 import { onShow } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/auth'
 import { logout } from '@/api/modules/auth'
-import { getMerchantProfile } from '@/api/modules/profile'
+import { getMerchantProfile, getMyProfile } from '@/api/modules/profile'
 import { ensureAuthenticatedAccess } from '@/utils/auth-guard'
 import { UserAvatar } from '@/components'
-import { loadCurrentUserProfileDisplay } from '@/utils/current-user-profile'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -168,6 +167,22 @@ const nickname = ref('')
 const avatarUrl = ref('')
 const merchantQualificationStatus = ref('')
 
+/**
+ * 为当前用户头像展示 URL 附加刷新版本。
+ *
+ * 前置条件：signedUrl 来自当前用户资料接口，可为空、相对地址或绝对地址。
+ * 后置条件：返回带 avatarVersion 参数的展示 URL；空地址仍为空。
+ * 不变量：仅影响本页 image 请求缓存，不修改后端 MediaFile URL。
+ *
+ * @param signedUrl 头像签名 URL
+ */
+function withAvatarRefreshVersion(signedUrl: string | null | undefined): string {
+  const url = signedUrl ?? ''
+  if (!url) return ''
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}avatarVersion=${Date.now()}`
+}
+
 const qualificationStatusMap: Record<string, string> = {
   not_submitted: '未提交资质',
   pending: '资质审核中',
@@ -178,16 +193,19 @@ const qualificationStatusMap: Record<string, string> = {
 async function loadNickname(): Promise<void> {
   if (!authStore.isLoggedIn) return
   try {
-    const profile = await loadCurrentUserProfileDisplay()
-    nickname.value = profile.nickname
-    avatarUrl.value = profile.avatarUrl
     if (authStore.userKind === 'merchant') {
-      const merchantProfile = await getMerchantProfile()
-      merchantQualificationStatus.value = merchantProfile.qualificationStatus
+      const profile = await getMerchantProfile()
+      nickname.value = profile.nickname ?? ''
+      avatarUrl.value = withAvatarRefreshVersion(profile.avatar?.signedUrl)
+      merchantQualificationStatus.value = profile.qualificationStatus
       return
     }
+    const profile = await getMyProfile()
+    nickname.value = profile.nickname ?? ''
+    avatarUrl.value = withAvatarRefreshVersion(profile.avatar?.signedUrl)
     merchantQualificationStatus.value = ''
   } catch {
+    nickname.value = ''
     avatarUrl.value = ''
     merchantQualificationStatus.value = ''
   }

@@ -25,8 +25,48 @@ describe('活动详情页审核进度加载', () => {
     expect(loadDataBody).toContain('const act = await getActivityDetail(activityId.value)')
     expect(loadDataBody).toContain('authStore.isLoggedIn')
     expect(loadDataBody).toContain('await fetchParticipationState(activityId.value)')
+    expect(loadDataBody).toContain('} else {\n      participation.value = null\n    }')
     expect(extrasBody).toContain('if (authStore.isLoggedIn)')
     expect(extrasBody).toContain('await getMyActivityReview(activityId.value)')
+  })
+
+  it('参与状态加载失败不应阻断公开详情展示', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/activity/detail.vue'), 'utf8')
+    const loadDataBody = source.slice(
+      source.indexOf('async function loadData(): Promise<void> {'),
+      source.indexOf('onLoad((query) => {'),
+    )
+
+    expect(loadDataBody).toContain('activity.value = act')
+    expect(loadDataBody).toContain(
+      'try {\n        participation.value = await fetchParticipationState',
+    )
+    expect(loadDataBody).toContain('catch {\n        participation.value = null')
+    expect(loadDataBody).toContain("uni.showToast({ title: '参与状态加载失败，活动详情已显示'")
+    expect(loadDataBody.indexOf('activity.value = act')).toBeLessThan(
+      loadDataBody.indexOf('await fetchParticipationState(activityId.value)'),
+    )
+  })
+
+  it('活动图片预览加载失败不应阻断公开详情展示', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/activity/detail.vue'), 'utf8')
+    const previewBody = source.slice(
+      source.indexOf('async function loadActivityImagePreviews(act: ActivityDetail): Promise<void> {'),
+      source.indexOf('/**\n * 加载已发布活动的总结与评价信息。'),
+    )
+    const loadDataBody = source.slice(
+      source.indexOf('async function loadData(): Promise<void> {'),
+      source.indexOf('onLoad((query) => {'),
+    )
+
+    expect(previewBody).toContain('try {')
+    expect(previewBody).toContain(
+      "uni.showToast({ title: '活动图片加载失败，活动详情已显示'",
+    )
+    expect(previewBody).toContain('activityImagePreviews.value = []')
+    expect(loadDataBody.indexOf('activity.value = act')).toBeLessThan(
+      loadDataBody.indexOf('await loadActivityImagePreviews(act)'),
+    )
   })
 
   it('审核中活动应先加载核心详情，附属总结评价不应阻断页面展示', () => {

@@ -187,8 +187,8 @@ function onVote(poll: TeamPoll, option: TeamPollOption) {
 }
 
 onLoad((query) => {
-  teamId.value = query?.teamId || ''
-  loadPolls()
+  teamId.value = typeof query?.teamId === 'string' ? query.teamId : ''
+  void loadPolls()
 })
 </script>
 

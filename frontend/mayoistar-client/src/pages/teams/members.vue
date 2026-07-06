@@ -104,12 +104,17 @@ const teamId = ref('')
 const members = ref<TeamMember[]>([])
 const loading = ref(false)
 const selectedMember = ref<TeamMember | null>(null)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const memberPopup = ref<any>(null)
+
+interface PopupRef {
+  open: () => void
+  close: () => void
+}
+
+const memberPopup = ref<PopupRef | null>(null)
 
 // 从 auth store 获取当前用户 ID
 const authStore = useAuthStore()
-const currentUserId = ref(authStore.userId || '10001')
+const currentUserId = ref(authStore.userId || '')
 
 const canManage = computed(() => {
   const me = members.value.find((m) => m.userId === currentUserId.value)
@@ -171,8 +176,8 @@ async function setRole(role: 'admin' | 'member') {
 }
 
 onLoad((query) => {
-  teamId.value = query?.teamId || ''
-  loadMembers()
+  teamId.value = typeof query?.teamId === 'string' ? query.teamId : ''
+  void loadMembers()
 })
 </script>
 

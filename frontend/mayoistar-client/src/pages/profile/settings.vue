@@ -4,22 +4,76 @@
       <view class="settings-container">
         <text class="section-label">通用设置</text>
         <view class="settings-card">
-          <view class="settings-item">
-            <text class="item-text">清除缓存</text>
+          <view class="settings-item" @tap="openPasswordPanel">
+            <text class="item-text">修改密码</text>
             <text class="item-arrow">›</text>
           </view>
-          <view class="settings-item">
-            <text class="item-text">通知设置</text>
-            <text class="item-arrow">›</text>
-          </view>
-          <view class="settings-item">
+          <view class="settings-item" @tap="openInfoPanel('privacy')">
             <text class="item-text">隐私政策</text>
             <text class="item-arrow">›</text>
           </view>
-          <view class="settings-item">
+          <view class="settings-item" @tap="openInfoPanel('about')">
             <text class="item-text">关于趣聚</text>
             <text class="item-arrow">›</text>
           </view>
+        </view>
+
+        <view v-if="passwordPanelVisible" class="password-card">
+          <view class="password-header">
+            <text class="password-title">修改密码</text>
+            <text class="password-close" @tap="closePasswordPanel">×</text>
+          </view>
+          <input
+            v-model="oldPassword"
+            class="password-input"
+            password
+            type="safe-password"
+            placeholder="当前密码"
+          />
+          <input
+            v-model="newPassword"
+            class="password-input"
+            password
+            type="safe-password"
+            placeholder="新密码（至少 8 位）"
+          />
+          <input
+            v-model="confirmPassword"
+            class="password-input"
+            password
+            type="safe-password"
+            placeholder="确认新密码"
+          />
+          <text v-if="passwordError" class="password-error">{{ passwordError }}</text>
+          <button
+            class="password-submit"
+            :disabled="changingPassword"
+            :loading="changingPassword"
+            @tap="handleChangePassword"
+          >
+            {{ changingPassword ? '' : '保存新密码' }}
+          </button>
+        </view>
+
+        <view v-if="activePanel === 'privacy'" class="info-card">
+          <view class="info-header">
+            <text class="info-title">隐私政策</text>
+            <text class="info-close" @tap="closeInfoPanel">×</text>
+          </view>
+          <text class="info-text">
+            迷星群聚仅在活动报名、签到、好友互动和小队协作所需范围内使用资料信息。位置数据仅用于附近活动、地图展示和需要位置校验的签到流程。
+          </text>
+          <text class="info-text"> 你可以在编辑资料页更新头像、昵称、兴趣标签等公开资料。 </text>
+        </view>
+
+        <view v-if="activePanel === 'about'" class="info-card">
+          <view class="info-header">
+            <text class="info-title">关于趣聚</text>
+            <text class="info-close" @tap="closeInfoPanel">×</text>
+          </view>
+          <text class="info-text">迷星群聚 MayoiStar</text>
+          <text class="info-text">面向活动发现、报名、社交和小队协作的移动端客户端。</text>
+          <text class="info-meta">当前版本：0.0.0</text>
         </view>
 
         <!-- Mock 模式：重置演示数据入口 -->
@@ -49,10 +103,81 @@
  * 包含通用设置项和 Mock 模式下的演示数据重置入口。
  */
 import { ref } from 'vue'
+import { BusinessError } from '@/api'
 import { USE_MOCK } from '@/api/config'
+import { changePassword } from '@/api/modules/auth'
 import { resetMockDb } from '@/mock/database'
+import { getErrorMessage } from '@/utils/error'
+
+type InfoPanel = 'privacy' | 'about'
 
 const isMockMode = ref(USE_MOCK)
+const passwordPanelVisible = ref(false)
+const changingPassword = ref(false)
+const oldPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const passwordError = ref('')
+const activePanel = ref<InfoPanel | null>(null)
+
+/** 打开修改密码面板 */
+function openPasswordPanel(): void {
+  passwordPanelVisible.value = true
+  activePanel.value = null
+  passwordError.value = ''
+}
+
+/** 关闭修改密码面板并清空敏感输入 */
+function closePasswordPanel(): void {
+  passwordPanelVisible.value = false
+  oldPassword.value = ''
+  newPassword.value = ''
+  confirmPassword.value = ''
+  passwordError.value = ''
+}
+
+/** 打开普通设置面板 */
+function openInfoPanel(panel: InfoPanel): void {
+  passwordPanelVisible.value = false
+  activePanel.value = activePanel.value === panel ? null : panel
+}
+
+/** 关闭普通设置面板 */
+function closeInfoPanel(): void {
+  activePanel.value = null
+}
+
+/** 校验并提交当前用户密码修改 */
+async function handleChangePassword(): Promise<void> {
+  if (changingPassword.value) return
+  passwordError.value = ''
+  const oldValue = oldPassword.value
+  const newValue = newPassword.value
+  if (!oldValue) {
+    passwordError.value = '请输入当前密码'
+    return
+  }
+  if (newValue.length < 8) {
+    passwordError.value = '新密码至少 8 位'
+    return
+  }
+  if (newValue !== confirmPassword.value) {
+    passwordError.value = '两次输入的新密码不一致'
+    return
+  }
+
+  changingPassword.value = true
+  try {
+    await changePassword(oldValue, newValue)
+    uni.showToast({ title: '密码已修改', icon: 'success' })
+    closePasswordPanel()
+  } catch (error) {
+    passwordError.value =
+      error instanceof BusinessError ? getErrorMessage(error.code) : getErrorMessage(0, '修改失败')
+  } finally {
+    changingPassword.value = false
+  }
+}
 
 /** 重置 mock 演示数据 */
 function handleResetMock(): void {
@@ -105,6 +230,103 @@ function handleResetMock(): void {
   border-radius: $radius-xl;
   overflow: hidden;
   margin-bottom: $spacing-xl;
+}
+
+.password-card {
+  background: $color-bg-card;
+  border: 1px solid $color-border-light;
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-xl;
+}
+
+.info-card {
+  background: $color-bg-card;
+  border: 1px solid $color-border-light;
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-xl;
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.info-title {
+  font-size: $font-base;
+  font-weight: $weight-semibold;
+  color: $color-text;
+}
+
+.info-close {
+  font-size: $font-xl;
+  color: $color-text-muted;
+}
+
+.info-text,
+.info-meta {
+  display: block;
+  font-size: $font-sm;
+  color: $color-text-sub;
+  line-height: 1.6;
+  margin-bottom: $spacing-sm;
+}
+
+.info-meta {
+  color: $color-text-muted;
+}
+
+.password-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.password-title {
+  font-size: $font-base;
+  font-weight: $weight-semibold;
+  color: $color-text;
+}
+
+.password-close {
+  font-size: $font-xl;
+  color: $color-text-muted;
+}
+
+.password-input {
+  height: 44px;
+  background: var(--q-color-bg-soft);
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  padding: 0 $spacing-md;
+  margin-bottom: $spacing-md;
+  font-size: $font-base;
+}
+
+.password-error {
+  display: block;
+  margin-bottom: $spacing-md;
+  color: $color-danger;
+  font-size: $font-sm;
+}
+
+.password-submit {
+  background: $color-primary;
+  color: $color-text-inverse;
+  border-radius: $radius-md;
+  font-size: $font-base;
+}
+
+.password-submit[disabled] {
+  background: $color-bg-soft;
+  color: $color-text-muted;
+  border: 1px solid $color-border-light;
+  box-shadow: none;
+  opacity: 1;
 }
 
 .settings-item {

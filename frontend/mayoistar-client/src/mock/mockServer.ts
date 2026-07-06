@@ -25,6 +25,7 @@ import type {
   RegisterActivityRequest,
   SendMessageRequest,
   TeamCreateRequest,
+  TeamUpdateRequest,
   TeamMemberRole,
   UpdateMerchantProfileRequest,
 } from './schema-types'
@@ -32,6 +33,7 @@ import { persistMockDb, resetMockDb } from './database'
 import { MockBusinessError } from './workflow'
 import {
   login,
+  changePassword,
   register,
   getFeed,
   getActivityDetail,
@@ -49,6 +51,7 @@ import {
   sendMessage,
   recallMessage,
   createTeam,
+  updateTeam,
   joinTeam,
   searchActivities,
   getMapActivities,
@@ -128,6 +131,7 @@ import {
   getTeamPointRanks,
 } from './teamFeatures'
 import { MOCK_IMAGE_BASE_URL } from '@/config/env'
+import type { DownloadFileResult } from '@/api/request'
 
 /* ---- 辅助函数 ---- */
 
@@ -275,6 +279,14 @@ const routes: Route[] = [
     method: 'POST',
     pattern: '/identity/auth/password-reset',
     handler: () => ok(null),
+  },
+  {
+    method: 'POST',
+    pattern: '/identity/me/password',
+    handler: (_p, _q, body) =>
+      ok(
+        changePassword(getCurrentUserId(), body.oldPassword as string, body.newPassword as string),
+      ),
   },
 
   /* ===== 个人资料 ===== */
@@ -809,6 +821,12 @@ const routes: Route[] = [
     handler: (params) => ok(getTeamDetail(parseInt(params.teamId, 10))),
   },
   {
+    method: 'PATCH',
+    pattern: '/social/teams/{teamId}',
+    handler: (params, _q, body) =>
+      ok(updateTeam(parseInt(params.teamId, 10), getCurrentUserId(), body as TeamUpdateRequest)),
+  },
+  {
     method: 'POST',
     pattern: '/social/teams/{teamId}/join',
     handler: (params, _q, body) => {
@@ -1205,6 +1223,26 @@ export function handleMockBinaryRequest(path: string): Promise<ArrayBuffer> | nu
     return Promise.resolve(getPersonalQrCodePng(getCurrentUserId()))
   }
   return null
+}
+
+/**
+ * Mock 文件下载（如签到 CSV）。
+ *
+ * 前置条件：path 为后端下载接口路径。
+ * 后置条件：匹配时返回可交给下载调用方处理的临时文件路径。
+ * 不变量：只模拟文件下载，不返回 APIResponse JSON 包装。
+ */
+export function handleMockDownloadRequest(path: string): Promise<DownloadFileResult> | null {
+  const basePath = path.split('?')[0]
+  const params = matchPath('/activities/{activityId}/check-ins/export', basePath)
+  if (!params) return null
+
+  const csv = exportCheckInsCsv(parseInt(params.activityId, 10))
+  const encodedCsv = encodeURIComponent(csv)
+  return Promise.resolve({
+    tempFilePath: `data:text/csv;charset=utf-8,${encodedCsv}`,
+    statusCode: 200,
+  })
 }
 
 export function handleMockRequest(

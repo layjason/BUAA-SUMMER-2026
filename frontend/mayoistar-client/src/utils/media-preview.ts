@@ -1,24 +1,44 @@
 import { API_BASE_URL } from '@/config/env'
 
+const MEDIA_ACCESS_PATH_PREFIXES = ['/media/', '/common/media/']
+
+/**
+ * 判断路径是否属于后端媒体访问端点。
+ *
+ * 前置条件：pathname 来自 URL pathname 或标准化后的相对路径。
+ * 后置条件：返回 true 表示该路径可按后端媒体 URL 规则处理。
+ * 不变量：仅做前缀判断，不修改输入。
+ *
+ * @param pathname URL 路径
+ */
+function isBackendMediaPath(pathname: string): boolean {
+  return MEDIA_ACCESS_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+}
+
 /**
  * 判断媒体签名 URL 是否属于后端媒体访问端点。
  *
  * 前置条件：signedUrl 可能为相对路径或绝对 URL。
- * 后置条件：返回 true 表示该 URL 指向后端 /media 端点。
+ * 后置条件：返回 true 表示该 URL 指向后端媒体访问端点。
  * 不变量：仅解析字符串，不发起网络请求。
  *
  * @param signedUrl 媒体签名访问地址
  */
 export function isBackendMediaSignedUrl(signedUrl: string): boolean {
-  if (signedUrl.startsWith('/media/')) return true
+  if (isBackendMediaPath(signedUrl)) return true
   const normalizedApiBase = API_BASE_URL.replace(/\/+$/, '')
-  if (normalizedApiBase && signedUrl.startsWith(`${normalizedApiBase}/media/`)) {
+  if (
+    normalizedApiBase &&
+    MEDIA_ACCESS_PATH_PREFIXES.some((prefix) =>
+      signedUrl.startsWith(`${normalizedApiBase}${prefix}`),
+    )
+  ) {
     return true
   }
-  // H5 开发时 image 组件会把 /media/... 解析为 http://localhost:3000/media/...
+  // H5 开发时 image 组件会把相对媒体路径解析为 http://localhost:3000/...
   try {
     const pathname = new URL(signedUrl).pathname
-    return pathname.startsWith('/media/')
+    return isBackendMediaPath(pathname)
   } catch {
     return false
   }

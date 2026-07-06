@@ -3,7 +3,7 @@
     <image
       v-if="showImage"
       class="user-avatar__image"
-      :src="avatarUrl"
+      :src="resolvedAvatarUrl"
       mode="aspectFill"
       @error="onImageError"
     />
@@ -15,6 +15,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { resolveMediaPreviewUrl } from '@/utils/media-preview'
+import { useAuthStore } from '@/stores/auth'
 
 const props = withDefaults(
   defineProps<{
@@ -34,15 +36,26 @@ const props = withDefaults(
 )
 
 const imageFailed = ref(false)
+const resolvedAvatarUrl = ref('')
+const authStore = useAuthStore()
+let resolveGeneration = 0
 
 watch(
   () => props.avatarUrl,
-  () => {
+  async (avatarUrl) => {
+    const generation = ++resolveGeneration
     imageFailed.value = false
+    resolvedAvatarUrl.value = ''
+    if (!avatarUrl) return
+
+    const previewUrl = await resolveMediaPreviewUrl(avatarUrl, authStore.getAccessToken())
+    if (generation !== resolveGeneration) return
+    resolvedAvatarUrl.value = previewUrl
   },
+  { immediate: true },
 )
 
-const showImage = computed(() => Boolean(props.avatarUrl) && !imageFailed.value)
+const showImage = computed(() => Boolean(resolvedAvatarUrl.value) && !imageFailed.value)
 
 const displayInitial = computed(() => {
   if (props.initial) return props.initial.charAt(0).toUpperCase()
@@ -51,7 +64,8 @@ const displayInitial = computed(() => {
   return '?'
 })
 
-function onImageError() {
+/** 头像图片加载失败时回退为首字占位。 */
+function onImageError(): void {
   imageFailed.value = true
 }
 </script>

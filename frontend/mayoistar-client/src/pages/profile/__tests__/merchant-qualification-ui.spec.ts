@@ -59,6 +59,30 @@ describe('商家资料资质提交 UI', () => {
     expect(source).toContain('merchantNameRequired')
   })
 
+  it('编辑资料页应展示并保存个人兴趣标签和商家关注领域', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
+
+    expect(source).toContain('getInterestTags')
+    expect(source).toContain('availableTags')
+    expect(source).toContain('selectedTags')
+    expect(source).toContain('toggleTag(tag.name)')
+    expect(source).toContain('profile.interestTags?.length')
+    expect(source).toContain('profile.interestedActivityFields?.length')
+    expect(source).toContain('interestTags: [...selectedTags.value]')
+    expect(source).toContain('interestedActivityFields: [...selectedTags.value]')
+  })
+
+  it('设置页不应保留无实际作用的清缓存和通知设置入口', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/settings.vue'), 'utf8')
+
+    expect(source).toContain('openPasswordPanel')
+    expect(source).toContain("openInfoPanel('privacy')")
+    expect(source).toContain("openInfoPanel('about')")
+    expect(source).toContain('handleResetMock')
+    expect(source).not.toContain('清除缓存')
+    expect(source).not.toContain('通知设置')
+  })
+
   it('编辑资料页无修改时应禁用保存按钮', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
 
@@ -66,6 +90,18 @@ describe('商家资料资质提交 UI', () => {
     expect(source).toContain('initialProfileSnapshot')
     expect(source).toContain('getEditableProfileSnapshot')
     expect(source).toContain('if (!hasProfileChanges.value) return')
+  })
+
+  it('资料页禁用按钮应覆盖默认禁用颜色', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
+    const qualificationDisabled = source.slice(
+      source.indexOf('.qualification-submit[disabled]'),
+      source.indexOf('.qualification-hint'),
+    )
+
+    expect(qualificationDisabled).toContain('background: var(--q-color-bg-soft);')
+    expect(qualificationDisabled).toContain('color: var(--q-color-text-muted);')
+    expect(qualificationDisabled).toContain('opacity: 1;')
   })
 
   it('昵称恢复为初始昵称时应跳过唯一性检查并允许提交', () => {
@@ -101,6 +137,9 @@ describe('商家资料资质提交 UI', () => {
     expect(source).toContain("authStore.userKind === 'merchant'")
     expect(source).toContain('profile.qualificationStatus')
     expect(source).toContain('avatarUrl')
+    expect(source).toContain('function withAvatarRefreshVersion')
+    expect(source).toContain('avatarVersion=${Date.now()}')
+    expect(source).toContain('withAvatarRefreshVersion(profile.avatar?.signedUrl)')
     expect(source).toContain("from '@/api/modules/auth'")
     expect(source).toContain('logout')
     expect(source).not.toContain("api.get('/identity/me/profile')")

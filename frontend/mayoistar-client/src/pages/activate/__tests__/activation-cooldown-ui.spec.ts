@@ -46,4 +46,15 @@ describe('激活页重发邮件倒计时', () => {
     expect(source).toContain("state === 'success' && shouldShowLoginButton")
     expect(source).toContain('const shouldShowLoginButton = computed(')
   })
+
+  it('通用提交与冷却按钮禁用态应覆盖默认文字和背景颜色', () => {
+    const submitButtonSource = readSource('src/components/SubmitButton.vue')
+    const cooldownButtonSource = readSource('src/components/CooldownButton.vue')
+
+    for (const source of [submitButtonSource, cooldownButtonSource]) {
+      expect(source).toMatch(/\[disabled\]\s*\{[\s\S]*background:\s*\$color-bg-soft;/)
+      expect(source).toMatch(/\[disabled\]\s*\{[\s\S]*color:\s*\$color-text-muted;/)
+      expect(source).toMatch(/\[disabled\]\s*\{[\s\S]*opacity:\s*1;/)
+    }
+  })
 })

@@ -6,6 +6,7 @@
       refresher-enabled
       :refresher-triggered="refreshing"
       @refresherrefresh="onRefresh"
+      @scrolltolower="loadMore"
     >
       <view v-if="loading" class="loading-text">{{ t('加载中') }}</view>
 
@@ -26,7 +27,7 @@
             <image
               v-if="item.coverImage?.signedUrl"
               class="card-cover"
-              :src="item.coverImage.signedUrl"
+              :src="getMediaUrl(item.coverImage.signedUrl)"
               mode="aspectFill"
             />
             <view v-else class="card-cover card-cover-placeholder">
@@ -86,12 +87,17 @@ import { BusinessError } from '@/api'
 import { getMyRegistrations } from '@/api/modules/registrations'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
+import { toAbsoluteMediaUrl } from '@/utils/media-preview'
 
 const { t } = useI18n()
 
 const loading = ref(true)
 const refreshing = ref(false)
+const loadingMore = ref(false)
 const errorMsg = ref('')
+const currentPage = ref(1)
+const noMoreData = ref(false)
+const pageSize = 20
 
 const statusMap: Record<string, string> = {
   registered: t('myRegistrations.statusRegistered'),
@@ -129,12 +135,15 @@ const items = ref<RegistrationItem[]>([])
  * 后置条件：items 更新为 OpenAPI RegisteredActivitySummary 分页结果。
  * 不变量：页面只通过 registrations API 模块访问业务接口。
  */
-async function loadData(): Promise<void> {
-  loading.value = true
+async function loadData(page = 1, append = false): Promise<void> {
+  if (!append) loading.value = true
   errorMsg.value = ''
   try {
-    const result = await getMyRegistrations(1, 100)
-    items.value = (result.items ?? []) as RegistrationItem[]
+    const result = await getMyRegistrations(page, pageSize)
+    const nextItems = (result.items ?? []) as RegistrationItem[]
+    items.value = append ? [...items.value, ...nextItems] : nextItems
+    currentPage.value = result.page ?? page
+    noMoreData.value = currentPage.value >= (result.totalPages ?? currentPage.value)
   } catch (error) {
     if (error instanceof BusinessError) {
       errorMsg.value = getErrorMessage(error.code)
@@ -142,7 +151,7 @@ async function loadData(): Promise<void> {
       errorMsg.value = getErrorMessage(0, '加载失败')
     }
   } finally {
-    loading.value = false
+    if (!append) loading.value = false
   }
 }
 
@@ -156,13 +165,24 @@ async function loadData(): Promise<void> {
 async function onRefresh(): Promise<void> {
   refreshing.value = true
   errorMsg.value = ''
+  noMoreData.value = false
   try {
-    const result = await getMyRegistrations(1, 100)
-    items.value = (result.items ?? []) as RegistrationItem[]
+    await loadData(1, false)
   } catch {
     /* 静默 */
   } finally {
     refreshing.value = false
+  }
+}
+
+/** 触底加载下一页报名记录 */
+async function loadMore(): Promise<void> {
+  if (loading.value || loadingMore.value || noMoreData.value) return
+  loadingMore.value = true
+  try {
+    await loadData(currentPage.value + 1, true)
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -190,6 +210,11 @@ function statusText(status: string): string {
  */
 function goDetail(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
+}
+
+/** 获取 App 可直接渲染的媒体地址 */
+function getMediaUrl(signedUrl: string): string {
+  return toAbsoluteMediaUrl(signedUrl)
 }
 </script>
 

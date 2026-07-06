@@ -7,9 +7,11 @@ import { get, post, patch, del } from '@/api/request'
 import type { components } from '@/api/types/schema'
 
 type TeamCreateRequest = components['schemas']['Social.TeamCreateRequest']
+type TeamUpdateRequest = components['schemas']['Social.TeamUpdateRequest']
 type JoinTeamRequest = components['schemas']['Social.JoinTeamRequest']
 type TeamJoinRequestDecision = components['schemas']['Social.TeamJoinRequestDecision']
 type TeamMemberRoleUpdate = components['schemas']['Social.TeamMemberRoleUpdate']
+type ManualPointAdjustmentRequest = components['schemas']['Social.ManualPointAdjustmentRequest']
 
 /** 发现/搜索小队查询参数（对齐 OpenAPI SocialOperations_searchTeams） */
 export type SearchTeamsParams = {
@@ -49,6 +51,14 @@ export function createTeam(data: TeamCreateRequest) {
 export function getTeamDetail(teamId: string) {
   return get('/social/teams/{teamId}', {
     path: { teamId },
+  })
+}
+
+/** 更新队伍资料 */
+export function updateTeam(teamId: string, data: TeamUpdateRequest) {
+  return patch('/social/teams/{teamId}', {
+    path: { teamId },
+    body: data,
   })
 }
 
@@ -117,6 +127,26 @@ export function updateMemberRole(
 export function getTeamPoints(teamId: string, page = 1, pageSize = 50) {
   return get('/social/teams/{teamId}/points', {
     path: { teamId },
+    query: { page, pageSize },
+  })
+}
+
+/** 手动调整小队成员积分 */
+export function adjustTeamMemberPoints(
+  teamId: string,
+  userId: string,
+  data: ManualPointAdjustmentRequest,
+) {
+  return post('/social/teams/{teamId}/members/{userId}/points', {
+    path: { teamId, userId },
+    body: data,
+  })
+}
+
+/** 获取小队成员积分变动历史 */
+export function getTeamMemberPointHistory(teamId: string, userId: string, page = 1, pageSize = 20) {
+  return get('/social/teams/{teamId}/members/{userId}/points/history', {
+    path: { teamId, userId },
     query: { page, pageSize },
   })
 }

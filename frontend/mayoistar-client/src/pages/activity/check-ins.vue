@@ -117,12 +117,12 @@ interface CheckInItem {
 }
 
 type CheckInFilter = 'all' | 'checkedIn' | 'registered' | 'waiting'
-type ExportPayload = string | { url?: string }
 
 const items = ref<CheckInItem[]>([])
 const currentPage = ref(1)
 const totalPages = ref(1)
 const noMore = ref(false)
+const pageSize = 50
 
 const filterOptions: Array<{ label: string; value: CheckInFilter }> = [
   { label: '全部', value: 'all' },
@@ -210,21 +210,23 @@ function setStatusFilter(filter: CheckInFilter): void {
  * 后置条件：刷新签到列表、分页状态和空态。
  * 不变量：只读取 OpenAPI 签到列表接口。
  */
-async function loadData(): Promise<void> {
-  noMore.value = false
-  loading.value = true
+async function loadData(page = 1, append = false): Promise<void> {
+  if (!append) {
+    noMore.value = false
+    loading.value = true
+  }
 
   try {
-    const result = (await getCheckIns(activityId.value)) as {
+    const result = (await getCheckIns(activityId.value, page, pageSize)) as {
       items: CheckInItem[]
       page: number
       totalPages: number
     }
 
-    items.value = result.items
+    items.value = append ? [...items.value, ...result.items] : result.items
     currentPage.value = result.page ?? 1
     totalPages.value = result.totalPages ?? 1
-    noMore.value = true
+    noMore.value = currentPage.value >= totalPages.value
   } catch (error) {
     if (error instanceof BusinessError) {
       errorMsg.value = getErrorMessage(error.code)
@@ -246,7 +248,7 @@ async function loadData(): Promise<void> {
 async function onRefresh(): Promise<void> {
   refreshing.value = true
   errorMsg.value = ''
-  await loadData()
+  await loadData(1, false)
   refreshing.value = false
 }
 
@@ -254,36 +256,32 @@ async function onRefresh(): Promise<void> {
  * 上拉加载更多。
  *
  * 前置条件：滚动到底部。
- * 后置条件：当前 mock 一次性返回全部数据，因此不追加请求。
- * 不变量：不改变现有列表。
+ * 后置条件：请求下一页并追加到当前列表。
+ * 不变量：不会重复触发并发分页请求。
  */
-function onLoadMore(): void {
-  // 当前 mock 模式下一次性加载全部，后续接入真实分页时再追加请求。
+async function onLoadMore(): Promise<void> {
+  if (loadingMore.value || noMore.value || loading.value) return
+  loadingMore.value = true
+  try {
+    await loadData(currentPage.value + 1, true)
+  } finally {
+    loadingMore.value = false
+  }
 }
 
 /**
  * 导出签到数据。
  *
  * 前置条件：activityId 非空。
- * 后置条件：URL 导出尝试下载并打开；CSV 文本导出复制到剪贴板供演示使用。
+ * 后置条件：下载后端 CSV 文件并交给系统文档能力打开。
  * 不变量：只调用 OpenAPI 定义的导出 path，不构造额外正式业务路由。
  */
 async function handleExport(): Promise<void> {
   if (exporting.value) return
   exporting.value = true
   try {
-    const payload = (await exportCheckIns(activityId.value)) as ExportPayload
-    if (typeof payload === 'string' && /^https?:\/\//.test(payload)) {
-      await downloadExportFile(payload)
-      return
-    }
-    if (typeof payload !== 'string' && payload.url) {
-      await downloadExportFile(payload.url)
-      return
-    }
-    const csvContent = typeof payload === 'string' ? payload : buildLocalCsv()
-    await uni.setClipboardData({ data: csvContent })
-    uni.showToast({ title: '签到数据已复制，可粘贴保存', icon: 'none' })
+    const downloadResult = await exportCheckIns(activityId.value)
+    await openExportFile(downloadResult.tempFilePath)
   } catch (error) {
     if (error instanceof BusinessError) {
       uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
@@ -296,44 +294,31 @@ async function handleExport(): Promise<void> {
 }
 
 /**
- * 下载并打开导出文件。
+ * 打开已下载的导出文件。
  *
- * 前置条件：url 为 HTTP(S) 文件地址。
+ * 前置条件：filePath 为 uni.downloadFile 返回的临时文件路径。
  * 后置条件：支持文件系统的平台打开临时文件。
  * 不变量：失败时由调用方统一提示。
  */
-async function downloadExportFile(url: string): Promise<void> {
-  const downloadResult = await uni.downloadFile({ url })
-  if (downloadResult.statusCode && downloadResult.statusCode >= 400) {
-    throw new Error('download failed')
+async function openExportFile(filePath: string): Promise<void> {
+  if (filePath.startsWith('data:text/csv')) {
+    // #ifdef H5
+    const link = document.createElement('a')
+    link.href = filePath
+    link.download = `check-ins-${activityId.value}.csv`
+    link.click()
+    return
+    // #endif
+    // #ifndef H5
+    uni.showToast({ title: 'CSV 已生成，请在 H5 预览下载', icon: 'none' })
+    return
+    // #endif
   }
+
   await uni.openDocument({
-    filePath: downloadResult.tempFilePath,
+    filePath,
     showMenu: true,
   })
-}
-
-/**
- * 构造本地 CSV 兜底内容。
- *
- * 前置条件：items 为当前已加载签到记录。
- * 后置条件：返回 CSV 文本。
- * 不变量：字段只来自 CheckInRecord 展示数据。
- */
-function buildLocalCsv(): string {
-  const header = ['registrationId', 'userId', 'nickname', 'registrationStatus', 'checkedInAt']
-  const rows = items.value.map((item) =>
-    [
-      item.registrationId,
-      item.userId,
-      item.nickname,
-      item.registrationStatus,
-      item.checkedInAt ?? '',
-    ]
-      .map((cell) => `"${cell.replace(/"/g, '""')}"`)
-      .join(','),
-  )
-  return [header.join(','), ...rows].join('\n')
 }
 
 onLoad((query) => {

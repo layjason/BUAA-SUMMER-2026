@@ -114,7 +114,7 @@ import {
   uploadActivityImages,
   type MyActivitySummaryResult,
 } from '@/api/modules/activities'
-import { classifyImages, type ImageClassificationResult } from '@/api/modules/ai'
+import { classifyImagesAndWait, type ImageClassificationResult } from '@/api/modules/ai'
 import { getErrorMessage } from '@/utils/error'
 import { FormError, BottomActionBar } from '@/components'
 
@@ -161,14 +161,16 @@ async function handleAddImage(): Promise<void> {
         if (previewUrl) imagePreviews.value.push(previewUrl)
         newMediaIds.push(mediaId)
       }
-      // 调用 AI 图片分类
+      // 调用 AI 图片分类任务并轮询结果
       try {
-        const classification: ImageClassificationResult = await classifyImages(newMediaIds)
+        const classification: ImageClassificationResult = await classifyImagesAndWait(newMediaIds)
         if (classification.status === 'succeeded' && classification.items) {
           for (const item of classification.items) {
             imageClassifications.value.set(item.mediaId, item.suggestedTags)
             confirmedImageTagMap.value.set(item.mediaId, new Set(item.suggestedTags))
           }
+          imageClassifications.value = new Map(imageClassifications.value)
+          confirmedImageTagMap.value = new Map(confirmedImageTagMap.value)
         }
       } catch {
         // 分类失败不阻塞

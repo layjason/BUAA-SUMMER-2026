@@ -1843,7 +1843,8 @@ export interface paths {
         delete: operations["SocialOperations_dissolveTeam"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** @description 更新兴趣小队资料，调用方必须为队长。名称变更需保持全局唯一，容量不得低于当前成员数，群聊标题与头像随小队资料同步。 */
+        patch: operations["SocialOperations_updateTeam"];
         trace?: never;
     };
     "/social/teams/{teamId}/activities": {
@@ -5339,6 +5340,24 @@ export interface components {
          * @enum {string}
          */
         "Social.TeamStatus": "active" | "dissolved" | "disabled";
+        /** @description 小队资料更新请求，调用方为队长，允许更新名称、标签、加入方式、容量、简介与头像。 */
+        "Social.TeamUpdateRequest": {
+            /** @description 小队头像媒体文件标识。 */
+            avatarMediaId?: components["schemas"]["EntityId"];
+            /**
+             * Format: int32
+             * @description 小队人数上限。
+             */
+            capacity?: number;
+            /** @description 小队简介。 */
+            description?: string;
+            /** @description 小队加入方式。 */
+            joinMode?: components["schemas"]["Social.TeamJoinMode"];
+            /** @description 小队名称。 */
+            name?: string;
+            /** @description 小队兴趣标签。 */
+            tags?: string[];
+        };
         /**
          * Format: int32
          * @description 一天内从 00:00:00 开始计算的秒数。
@@ -11016,6 +11035,45 @@ export interface operations {
                          */
                         message: "For Super Earth!";
                     } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Social.TeamNotVisible"] | components["schemas"]["Errors.Social.TeamPermissionDenied"];
+                };
+            };
+        };
+    };
+    SocialOperations_updateTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Social.TeamUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["Social.TeamProfile"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Social.TeamNotVisible"] | components["schemas"]["Errors.Social.TeamPermissionDenied"] | components["schemas"]["Errors.Social.TeamNameUnavailable"] | components["schemas"]["Errors.Social.TeamFull"];
                 };
             };
         };

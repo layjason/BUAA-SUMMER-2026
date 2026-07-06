@@ -18,26 +18,26 @@ import {
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
 import { reviewStatusText, runtimeStatusText } from '@/utils/status'
+import {
+  mergeUnpublishedActivityItems,
+  toActivityUnpublishedItems,
+  toDraftUnpublishedItems,
+  type UnpublishedActivityItem,
+} from '@/utils/unpublished-activities'
 
 type ActivityTab = 'published' | 'unpublished'
-type UnpublishedSource = 'draft' | 'activity'
-type UnpublishedActivityItem = {
-  activityId: string
-  title?: string
-  reviewStatus: ActivityDraftSummary['reviewStatus']
-  createdAt: string
-  updatedAt: string
-  source: UnpublishedSource
-  runtimeStatus?: ActivitySummary['runtimeStatus']
-  startAt?: string
-}
 
 const activeTab = ref<ActivityTab>('published')
 const loading = ref(true)
 const refreshing = ref(false)
+const loadingMore = ref(false)
 const errorMsg = ref('')
 const activities = ref<ActivitySummary[]>([])
 const unpublishedActivities = ref<UnpublishedActivityItem[]>([])
+const currentPage = ref(1)
+const totalPages = ref(1)
+const noMoreData = ref(false)
+const pageSize = 20
 
 const unpublishedCountText = computed(() => {
   const draftCount = unpublishedActivities.value.filter(
@@ -82,10 +82,14 @@ function translateStatus(key: string): string {
  * 后置条件：只保留 reviewStatus 为 approved 的活动。
  * 不变量：不会把审核中或草稿活动展示到已发布 Tab。
  */
-async function loadPublishedActivities(): Promise<void> {
+async function loadPublishedActivities(page = 1, append = false): Promise<void> {
   try {
-    const result = await getMyActivities()
-    activities.value = (result.items ?? []).filter((item) => item.reviewStatus === 'approved')
+    const result = await getMyActivities(page, pageSize)
+    const nextItems = (result.items ?? []).filter((item) => item.reviewStatus === 'approved')
+    activities.value = append ? [...activities.value, ...nextItems] : nextItems
+    currentPage.value = result.page ?? page
+    totalPages.value = result.totalPages ?? currentPage.value
+    noMoreData.value = currentPage.value >= totalPages.value
   } catch (error) {
     if (error instanceof BusinessError) {
       errorMsg.value = getErrorMessage(error.code)
@@ -102,34 +106,21 @@ async function loadPublishedActivities(): Promise<void> {
  * 后置条件：展示所有非 approved 状态，包含草稿、审核中、需修改和已驳回。
  * 不变量：已发布活动不会出现在未发布 Tab。
  */
-async function loadUnpublishedActivities(): Promise<void> {
+async function loadUnpublishedActivities(page = 1, append = false): Promise<void> {
   try {
-    const [draftResult, activityResult] = await Promise.all([getDrafts(), getMyActivities()])
-    const draftItems: UnpublishedActivityItem[] = (draftResult.items ?? [])
-      .filter((item) => item.reviewStatus === 'draft')
-      .map((item) => ({
-        activityId: item.activityId,
-        title: item.title,
-        reviewStatus: item.reviewStatus,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        source: 'draft',
-      }))
-    const reviewingItems: UnpublishedActivityItem[] = (activityResult.items ?? [])
-      .filter((item) => item.reviewStatus !== 'approved')
-      .map((item) => ({
-        activityId: item.activityId,
-        title: item.title,
-        reviewStatus: item.reviewStatus,
-        createdAt: item.startAt,
-        updatedAt: item.startAt,
-        source: 'activity',
-        runtimeStatus: item.runtimeStatus,
-        startAt: item.startAt,
-      }))
-    unpublishedActivities.value = [...draftItems, ...reviewingItems].sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    )
+    const [draftResult, activityResult] = await Promise.all([
+      append ? Promise.resolve({ items: [] as ActivityDraftSummary[] }) : getDrafts(),
+      getMyActivities(page, pageSize),
+    ])
+    const draftItems = append ? [] : toDraftUnpublishedItems(draftResult.items ?? [])
+    const reviewingItems = toActivityUnpublishedItems(activityResult.items ?? [])
+    unpublishedActivities.value = mergeUnpublishedActivityItems([
+      ...(append ? unpublishedActivities.value : draftItems),
+      ...reviewingItems,
+    ])
+    currentPage.value = activityResult.page ?? page
+    totalPages.value = activityResult.totalPages ?? currentPage.value
+    noMoreData.value = currentPage.value >= totalPages.value
   } catch (error) {
     if (error instanceof BusinessError) {
       errorMsg.value = getErrorMessage(error.code)
@@ -149,11 +140,14 @@ async function loadUnpublishedActivities(): Promise<void> {
 async function loadCurrentTab(): Promise<void> {
   loading.value = true
   errorMsg.value = ''
+  currentPage.value = 1
+  totalPages.value = 1
+  noMoreData.value = false
   try {
     if (activeTab.value === 'published') {
-      await loadPublishedActivities()
+      await loadPublishedActivities(1, false)
     } else {
-      await loadUnpublishedActivities()
+      await loadUnpublishedActivities(1, false)
     }
   } finally {
     loading.value = false
@@ -185,14 +179,32 @@ function switchTab(tab: ActivityTab): void {
 async function onRefresh(): Promise<void> {
   refreshing.value = true
   errorMsg.value = ''
+  currentPage.value = 1
+  totalPages.value = 1
+  noMoreData.value = false
   try {
     if (activeTab.value === 'published') {
-      await loadPublishedActivities()
+      await loadPublishedActivities(1, false)
     } else {
-      await loadUnpublishedActivities()
+      await loadUnpublishedActivities(1, false)
     }
   } finally {
     refreshing.value = false
+  }
+}
+
+/** 触底加载当前 Tab 下一页 */
+async function loadMore(): Promise<void> {
+  if (loading.value || loadingMore.value || noMoreData.value) return
+  loadingMore.value = true
+  try {
+    if (activeTab.value === 'published') {
+      await loadPublishedActivities(currentPage.value + 1, true)
+    } else {
+      await loadUnpublishedActivities(currentPage.value + 1, true)
+    }
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -333,6 +345,7 @@ onShow(() => {
       refresher-enabled
       :refresher-triggered="refreshing"
       @refresherrefresh="onRefresh"
+      @scrolltolower="loadMore"
     >
       <view v-if="loading" class="loading-text">加载中...</view>
 
@@ -399,6 +412,11 @@ onShow(() => {
           </view>
         </view>
       </view>
+
+      <view v-if="!loading && !errorMsg" class="load-more-state">
+        <text v-if="loadingMore">加载更多...</text>
+        <text v-else-if="noMoreData">已加载全部</text>
+      </view>
     </scroll-view>
   </view>
 </template>
@@ -463,6 +481,13 @@ onShow(() => {
 
 .list-hint {
   margin: 8rpx 32rpx 4rpx;
+  color: $color-text-muted;
+  font-size: 24rpx;
+}
+
+.load-more-state {
+  padding: 24rpx 0 40rpx;
+  text-align: center;
   color: $color-text-muted;
   font-size: 24rpx;
 }

@@ -100,22 +100,6 @@
               <text class="action-sheet__desc">分享你的个人二维码</text>
             </view>
           </view>
-
-          <view class="action-sheet__item" @tap="goToActivityCompanions">
-            <text class="action-sheet__icon"></text>
-            <view class="action-sheet__content">
-              <text class="action-sheet__label">活动同伴推荐</text>
-              <text class="action-sheet__desc">来自相同活动的参与者</text>
-            </view>
-          </view>
-
-          <view class="action-sheet__item" @tap="goToFriendRequests">
-            <text class="action-sheet__icon">📨</text>
-            <view class="action-sheet__content">
-              <text class="action-sheet__label">好友申请</text>
-              <text class="action-sheet__desc">{{ pendingRequestsCount }}条待处理</text>
-            </view>
-          </view>
         </view>
       </view>
     </uni-popup>
@@ -165,14 +149,6 @@
         </view>
 
         <view class="action-sheet__items">
-          <view class="action-sheet__item" @tap="goToCreateTeam">
-            <text class="action-sheet__icon"></text>
-            <view class="action-sheet__content">
-              <text class="action-sheet__label">创建小队</text>
-              <text class="action-sheet__desc">创建兴趣小队并邀请成员</text>
-            </view>
-          </view>
-
           <view class="action-sheet__item" @tap="startNewChat">
             <text class="action-sheet__icon">💬</text>
             <view class="action-sheet__content">

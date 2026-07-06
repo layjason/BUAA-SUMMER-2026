@@ -33,6 +33,7 @@ import { isActivityAtCapacity } from '@/utils/activity-capacity'
 import { formatDateTime, formatTimeRange } from '@/utils/date'
 import { getErrorMessage } from '@/utils/error'
 import { resolveMediaPreviewUrl } from '@/utils/media-preview'
+import { readFirstQueryString } from '@/utils/page-query'
 import { useAuthStore } from '@/stores/auth'
 import { QR_CODE_API_BASE_URL } from '@/config/env'
 import { buildActivityLocationDisplay, openActivityLocationMap } from '@/services/activity-location'
@@ -770,17 +771,22 @@ async function handleConfirmWaiting(): Promise<void> {
  * 解析活动详情图片为 image 组件可展示地址。
  *
  * 前置条件：act 来自活动详情接口，图片 signedUrl 可能为后端相对签名地址。
- * 后置条件：activityImagePreviews 与 act.images 顺序一致；无法加载的图片会被过滤。
+ * 后置条件：activityImagePreviews 与 act.images 顺序一致；无法加载的图片会被过滤，解析异常时清空图片区但保留详情。
  * 不变量：不修改活动详情对象，只维护展示层预览地址。
  *
  * @param act 活动详情
  */
 async function loadActivityImagePreviews(act: ActivityDetail): Promise<void> {
-  const accessToken = authStore.getAccessToken()
-  const resolvedUrls = await Promise.all(
-    act.images.map((image) => resolveMediaPreviewUrl(image.signedUrl, accessToken)),
-  )
-  activityImagePreviews.value = resolvedUrls.filter(Boolean)
+  try {
+    const accessToken = authStore.getAccessToken()
+    const resolvedUrls = await Promise.all(
+      act.images.map((image) => resolveMediaPreviewUrl(image.signedUrl, accessToken)),
+    )
+    activityImagePreviews.value = resolvedUrls.filter(Boolean)
+  } catch {
+    activityImagePreviews.value = []
+    uni.showToast({ title: '活动图片加载失败，活动详情已显示', icon: 'none' })
+  }
 }
 
 /**
@@ -821,10 +827,19 @@ async function loadPublishedActivityExtras(): Promise<void> {
 async function loadData(): Promise<void> {
   try {
     const act = await getActivityDetail(activityId.value)
-    const state = authStore.isLoggedIn ? await fetchParticipationState(activityId.value) : null
     activity.value = act
-    participation.value = state
+    errorMsg.value = ''
     await loadActivityImagePreviews(act)
+    if (authStore.isLoggedIn) {
+      try {
+        participation.value = await fetchParticipationState(activityId.value)
+      } catch {
+        participation.value = null
+        uni.showToast({ title: '参与状态加载失败，活动详情已显示', icon: 'none' })
+      }
+    } else {
+      participation.value = null
+    }
     if (act.reviewStatus === 'approved') {
       await loadPublishedActivityExtras()
     } else {
@@ -845,7 +860,7 @@ async function loadData(): Promise<void> {
 }
 
 onLoad((query) => {
-  activityId.value = (query?.activityId as string) ?? ''
+  activityId.value = readFirstQueryString(query, ['activityId', 'id'])
   if (!activityId.value) {
     errorMsg.value = '缺少活动标识'
     loading.value = false

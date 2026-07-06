@@ -43,12 +43,16 @@ export function connectChatRealtime(
   handlers: RealtimeConnectionHandlers | ChatRealtimeHandler,
 ): () => void {
   const resolved = normalizeHandlers(handlers)
-  const numericUserId = Number(userId)
-  if (!userId || Number.isNaN(numericUserId)) {
+  const trimmedUserId = userId.trim()
+  if (!trimmedUserId) {
     return () => {}
   }
 
   if (USE_MOCK) {
+    const numericUserId = Number(trimmedUserId)
+    if (Number.isNaN(numericUserId)) {
+      return () => {}
+    }
     const releaseConnection = connectMockChatRealtime(numericUserId)
     const unsubscribeChat = subscribeMockChatRealtime(numericUserId, resolved.onChatEvent)
     const unsubscribeSocial = resolved.onSocialEvent

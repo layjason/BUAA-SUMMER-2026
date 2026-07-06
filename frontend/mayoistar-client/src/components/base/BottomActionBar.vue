@@ -109,4 +109,18 @@ defineProps<{
   color: $color-text-inverse;
   box-shadow: 0 8px 18px rgba(220, 38, 38, 0.16);
 }
+
+:deep(.bar-btn[disabled]),
+:deep(.bar-btn-disabled) {
+  background: $color-bg-soft;
+  color: $color-text-muted;
+  border: 1px solid $color-border-light;
+  box-shadow: none;
+  opacity: 1;
+
+  &:active {
+    transform: none;
+    opacity: 1;
+  }
+}
 </style>

@@ -27,6 +27,14 @@ describe('媒体预览 URL 工具', () => {
     ).toBe(true)
   })
 
+  it('应识别通用媒体下载端点', () => {
+    const signedUrl = '/common/media/86af0132-5eb1-414c-abad-93b204c339af?policy=teamMember'
+
+    expect(isBackendMediaSignedUrl(signedUrl)).toBe(true)
+    expect(requiresAuthenticatedMediaDownload(signedUrl)).toBe(true)
+    expect(toAbsoluteMediaUrl(signedUrl)).toContain('/common/media/')
+  })
+
   it('非 publicAccess 的后端媒体应要求鉴权下载', () => {
     expect(requiresAuthenticatedMediaDownload('/media/id?v=1&policy=activityOwner')).toBe(true)
     expect(requiresAuthenticatedMediaDownload('/media/id?v=1&policy=publicAccess')).toBe(false)

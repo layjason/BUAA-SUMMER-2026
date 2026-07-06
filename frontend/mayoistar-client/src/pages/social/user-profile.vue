@@ -165,7 +165,7 @@ const userId = ref('')
 const friendRequestSource = ref<FriendRequestSource>('profile')
 
 const isSelf = computed(() => {
-  const currentId = authStore.userId || '10001'
+  const currentId = authStore.userId || ''
   return userId.value === currentId
 })
 

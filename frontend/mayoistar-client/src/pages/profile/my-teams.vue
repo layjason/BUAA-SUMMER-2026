@@ -24,7 +24,7 @@
         >
           <image
             v-if="team.avatar?.signedUrl"
-            :src="team.avatar.signedUrl"
+            :src="getMediaUrl(team.avatar.signedUrl)"
             class="team-avatar"
             mode="aspectFill"
           />
@@ -63,6 +63,7 @@ import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import { listMyTeams } from '@/api/modules/teams'
 import { extractPageItems } from '@/utils/page-result'
+import { toAbsoluteMediaUrl } from '@/utils/media-preview'
 import type { components } from '@/api/types/schema'
 
 type TeamProfile = components['schemas']['Social.TeamProfile']
@@ -88,6 +89,10 @@ function goDetail(teamId: string) {
 
 function goDiscover() {
   uni.navigateTo({ url: '/pages/teams/index?tab=discover' })
+}
+
+function getMediaUrl(signedUrl: string) {
+  return toAbsoluteMediaUrl(signedUrl)
 }
 
 onShow(loadTeams)

@@ -156,15 +156,24 @@ import { resolveFriendConversationId } from '@/utils/friend-chat'
 import type { components } from '@/api/types/schema'
 
 type FriendItem = components['schemas']['Social.FriendItem']
+type FriendItemLike = Omit<FriendItem, 'groupTags'> & {
+  groupTags?: string[] | null
+}
+
+interface PopupRef {
+  open: () => void
+  close: () => void
+}
 
 const friends = ref<FriendItem[]>([])
 const loading = ref(false)
+const loadingMore = ref(false)
 const noMore = ref(false)
+const currentPage = ref(1)
+const pageSize = 20
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const friendMenuPopup = ref<any>(null)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const editPopup = ref<any>(null)
+const friendMenuPopup = ref<PopupRef | null>(null)
+const editPopup = ref<PopupRef | null>(null)
 const selectedFriend = ref<FriendItem | null>(null)
 
 const GROUP_TAG_OPTIONS = ['兴趣', '户外', '同事', '家人', '活动']
@@ -172,17 +181,63 @@ const editRemark = ref('')
 const editGroupTags = ref<string[]>([])
 const editCustomTags = ref('')
 
-async function loadData() {
+/**
+ * 归一化好友条目。
+ *
+ * 前置条件：item 来自好友列表或备注更新接口，运行时可能缺失可选数组字段。
+ * 后置条件：返回 groupTags 一定为字符串数组的 FriendItem，避免模板读取 length 时白屏。
+ * 不变量：不修改接口返回的原对象。
+ */
+function normalizeFriendItem(item: FriendItemLike): FriendItem {
+  return {
+    ...item,
+    groupTags: Array.isArray(item.groupTags)
+      ? item.groupTags.filter((tag): tag is string => typeof tag === 'string')
+      : [],
+  }
+}
+
+/**
+ * 解析好友列表接口结果。
+ *
+ * 前置条件：result 可能是分页结构，也可能是 Mock 兼容数组。
+ * 后置条件：返回统一分页信息和已归一化好友数组。
+ * 不变量：仅做展示层容错，不改变分页语义。
+ */
+function normalizeFriendListResult(
+  result: unknown,
+  fallbackPage: number,
+): { items: FriendItem[]; page: number; totalPages: number } {
+  if (Array.isArray(result)) {
+    return {
+      items: (result as FriendItemLike[]).map(normalizeFriendItem),
+      page: fallbackPage,
+      totalPages: fallbackPage,
+    }
+  }
+
+  const pageResult = result as {
+    items?: FriendItemLike[]
+    page?: number
+    totalPages?: number
+  }
+  return {
+    items: (pageResult.items ?? []).map(normalizeFriendItem),
+    page: pageResult.page ?? fallbackPage,
+    totalPages: pageResult.totalPages ?? pageResult.page ?? fallbackPage,
+  }
+}
+
+/** 加载好友列表数据 */
+async function loadData(page = 1, append = false): Promise<void> {
   if (loading.value) return
-  loading.value = true
+  loading.value = !append
   try {
-    const result = await getFriends()
-    // Handle both paginated and plain array responses (mock compat)
-    const items = Array.isArray(result)
-      ? result
-      : (((result as Record<string, unknown>).items as FriendItem[]) ?? [])
-    friends.value = items
-    noMore.value = true
+    const result = await getFriends(page, pageSize)
+    const normalized = normalizeFriendListResult(result, page)
+    friends.value = append ? [...friends.value, ...normalized.items] : normalized.items
+    currentPage.value = normalized.page
+    noMore.value = currentPage.value >= normalized.totalPages
   } catch {
     uni.showToast({ title: '加载失败', icon: 'none' })
   } finally {
@@ -190,24 +245,35 @@ async function loadData() {
   }
 }
 
-function loadMore() {
-  // Pagination not needed for now, all friends loaded at once
+/** 加载下一页好友 */
+async function loadMore(): Promise<void> {
+  if (loading.value || loadingMore.value || noMore.value) return
+  loadingMore.value = true
+  try {
+    await loadData(currentPage.value + 1, true)
+  } finally {
+    loadingMore.value = false
+  }
 }
 
-function goToProfile(userId: string) {
+/** 打开好友公开资料页 */
+function goToProfile(userId: string): void {
   uni.navigateTo({ url: `/pages/social/user-profile?id=${userId}` })
 }
 
-function goToAddFriend() {
+/** 打开添加好友页 */
+function goToAddFriend(): void {
   uni.navigateTo({ url: '/pages/social/add-friend' })
 }
 
-function showFriendMenu(friend: FriendItem) {
+/** 打开好友操作菜单 */
+function showFriendMenu(friend: FriendItem): void {
   selectedFriend.value = friend
   friendMenuPopup.value?.open()
 }
 
-function closeFriendMenu() {
+/** 关闭好友操作菜单 */
+function closeFriendMenu(): void {
   friendMenuPopup.value?.close()
 }
 
@@ -218,7 +284,8 @@ function closeAllPopups() {
   editPopup.value?.close()
 }
 
-async function onChatTap() {
+/** 从好友菜单进入单聊 */
+async function onChatTap(): Promise<void> {
   closeFriendMenu()
   if (!selectedFriend.value) return
   const friend = selectedFriend.value
@@ -238,6 +305,7 @@ async function onChatTap() {
   })
 }
 
+/** 解析用户输入的分组标签 */
 function parseGroupTags(input: string): string[] {
   return input
     .split(/[,，、\s]+/)
@@ -245,22 +313,25 @@ function parseGroupTags(input: string): string[] {
     .filter(Boolean)
 }
 
-function onEditRemarkAndGroupsTap() {
+/** 打开备注和分组编辑面板 */
+function onEditRemarkAndGroupsTap(): void {
   if (!selectedFriend.value) return
   const friend = selectedFriend.value
   editRemark.value = friend.remark || ''
-  editGroupTags.value = [...friend.groupTags]
+  editGroupTags.value = [...normalizeFriendItem(friend).groupTags]
   editCustomTags.value = ''
   closeFriendMenu()
   editPopup.value?.open()
 }
 
-function closeEditPopup() {
+/** 关闭备注和分组编辑面板 */
+function closeEditPopup(): void {
   uni.hideKeyboard()
   editPopup.value?.close()
 }
 
-function toggleGroupTag(tag: string) {
+/** 切换预设分组标签 */
+function toggleGroupTag(tag: string): void {
   if (editGroupTags.value.includes(tag)) {
     editGroupTags.value = editGroupTags.value.filter((t) => t !== tag)
   } else {
@@ -268,7 +339,8 @@ function toggleGroupTag(tag: string) {
   }
 }
 
-async function saveRemarkAndGroups() {
+/** 保存好友备注和分组 */
+async function saveRemarkAndGroups(): Promise<void> {
   if (!selectedFriend.value) return
   const friend = selectedFriend.value
   const remark = editRemark.value.trim()
@@ -280,11 +352,14 @@ async function saveRemarkAndGroups() {
       friend.userId,
       remark || undefined,
       groupTags,
-    )) as FriendItem
+    )) as FriendItemLike
     const target = friends.value.find((f) => f.userId === friend.userId)
     if (target) {
       target.remark = updated.remark
-      target.groupTags = updated.groupTags
+      target.groupTags = normalizeFriendItem({
+        ...updated,
+        groupTags: updated.groupTags ?? groupTags,
+      }).groupTags
     }
     closeEditPopup()
     await nextTick()
@@ -295,7 +370,8 @@ async function saveRemarkAndGroups() {
   }
 }
 
-function onRemoveFriendTap() {
+/** 从好友菜单发起删除好友确认 */
+function onRemoveFriendTap(): void {
   closeFriendMenu()
   if (!selectedFriend.value) return
   const friend = selectedFriend.value
@@ -316,7 +392,8 @@ function onRemoveFriendTap() {
   })
 }
 
-function onBlockTap() {
+/** 从好友菜单发起加入黑名单确认 */
+function onBlockTap(): void {
   closeFriendMenu()
   if (!selectedFriend.value) return
   const friend = selectedFriend.value

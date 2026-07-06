@@ -92,7 +92,11 @@ function handleClick() {
 
   /* ===== 禁用态 ===== */
   &--disabled {
-    opacity: 0.5;
+    background: $color-bg-soft;
+    color: $color-text-muted;
+    border: 1px solid $color-border-light;
+    box-shadow: none;
+    opacity: 1;
     pointer-events: none;
   }
 

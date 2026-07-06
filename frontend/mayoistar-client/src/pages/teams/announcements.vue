@@ -103,11 +103,16 @@ const loading = ref(false)
 const draftContent = ref('')
 const editingId = ref('')
 const selectedAnnouncement = ref<TeamAnnouncement | null>(null)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const actionPopup = ref<any>(null)
+
+interface PopupRef {
+  open: () => void
+  close: () => void
+}
+
+const actionPopup = ref<PopupRef | null>(null)
 
 const authStore = useAuthStore()
-const currentUserId = ref(authStore.userId || '10001')
+const currentUserId = ref(authStore.userId || '')
 
 const canManage = computed(() => {
   const me = members.value.find((m) => m.userId === currentUserId.value)
@@ -240,8 +245,8 @@ function closeActionMenu() {
 }
 
 onLoad((query) => {
-  teamId.value = query?.teamId || ''
-  loadData()
+  teamId.value = typeof query?.teamId === 'string' ? query.teamId : ''
+  void loadData()
 })
 </script>
 

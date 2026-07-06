@@ -64,6 +64,19 @@ describe('活动页面底部操作栏', () => {
     expect(source).not.toContain('class="action-btn"')
   })
 
+  it('底部操作栏禁用按钮应覆盖默认禁用样式，避免主色背景和主色文字冲突', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/components/base/BottomActionBar.vue'),
+      'utf8',
+    )
+
+    expect(source).toContain(':deep(.bar-btn[disabled])')
+    expect(source).toContain(':deep(.bar-btn-disabled)')
+    expect(source).toMatch(/:deep\(\.bar-btn\[disabled\]\),[\s\S]*background:\s*\$color-bg-soft;/)
+    expect(source).toMatch(/:deep\(\.bar-btn\[disabled\]\),[\s\S]*color:\s*\$color-text-muted;/)
+    expect(source).toMatch(/:deep\(\.bar-btn\[disabled\]\),[\s\S]*opacity:\s*1;/)
+  })
+
   it('详情页主按钮应让报名中未来活动优先取消报名而不是签到', () => {
     const source = readActivityPage('detail.vue')
     const buttonTextBody = source.slice(

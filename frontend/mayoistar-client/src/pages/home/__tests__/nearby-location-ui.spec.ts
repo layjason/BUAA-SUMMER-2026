@@ -18,6 +18,7 @@ describe('首页附近 Tab 定位参数', () => {
     expect(source).toContain('class="home-search-entry"')
     expect(source).toContain('搜索活动名称、标签...')
     expect(source).toContain('高级筛选')
+    expect((source.match(/高级筛选/g) ?? []).length).toBe(1)
     expect(source).toContain('类型、时间、城市、费用、距离')
     expect(source).toContain("activeTab === 'nearby'")
     expect(source).toContain('地图模式')

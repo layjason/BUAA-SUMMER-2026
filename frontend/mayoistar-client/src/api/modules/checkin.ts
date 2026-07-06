@@ -3,7 +3,7 @@
  *
  * 封装签到二维码生成、扫码签到、签到列表查看与导出等接口。
  */
-import { get, post } from '@/api/request'
+import { downloadFile, get, post } from '@/api/request'
 import type { components } from '@/api/types/schema'
 
 type CheckInRequest = components['schemas']['Activities.CheckInRequest']
@@ -44,9 +44,13 @@ export function getCheckIns(activityId: string, page = 1, pageSize = 100) {
   })
 }
 
-/** 导出活动签到数据（返回二进制表格文件） */
-export function exportCheckIns(activityId: string): Promise<unknown> {
-  return get('/activities/{activityId}/check-ins/export', {
-    path: { activityId },
-  }) as Promise<unknown>
+/**
+ * 导出活动签到数据。
+ *
+ * 前置条件：activityId 非空，当前用户为活动发起人或管理员。
+ * 后置条件：下载后端 text/csv 文件响应并返回本地临时文件路径。
+ * 不变量：该接口不走 APIResponse JSON 解析。
+ */
+export function exportCheckIns(activityId: string) {
+  return downloadFile(`/activities/${encodeURIComponent(activityId)}/check-ins/export`)
 }

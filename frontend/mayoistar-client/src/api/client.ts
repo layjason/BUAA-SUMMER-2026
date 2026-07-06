@@ -356,6 +356,59 @@ export function getBinary(path: string): Promise<ArrayBuffer> {
   })
 }
 
+export interface DownloadFileResult {
+  tempFilePath: string
+  statusCode?: number
+}
+
+type DownloadFileHandler = (path: string) => Promise<DownloadFileResult> | null | undefined
+let downloadFileHandler: DownloadFileHandler | null = null
+
+export function setDownloadFileHandler(handler: DownloadFileHandler | null | undefined): void {
+  downloadFileHandler = handler ?? null
+}
+
+/**
+ * 下载后端文件响应（如 CSV、PDF），自动携带当前访问令牌。
+ *
+ * 前置条件：path 为后端 API 路径或绝对 URL，main.ts 已设置 tokenGetter。
+ * 后置条件：返回 uni.downloadFile 生成的本地临时文件路径。
+ * 不变量：只负责下载文件，不解析 APIResponse JSON。
+ */
+export function downloadFile(path: string): Promise<DownloadFileResult> {
+  if (downloadFileHandler) {
+    const mockResult = downloadFileHandler(path)
+    if (mockResult) return mockResult
+  }
+
+  const token = tokenGetter()
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const url = /^https?:\/\//i.test(path) ? path : `${baseUrl}${path}`
+
+  return new Promise((resolve, reject) => {
+    uni.downloadFile({
+      url,
+      header: headers,
+      success: (res) => {
+        if (res.statusCode && res.statusCode >= 400) {
+          reject(new BusinessError(res.statusCode, '下载失败'))
+          return
+        }
+        if (!res.tempFilePath) {
+          reject(new Error('下载失败：缺少临时文件路径'))
+          return
+        }
+        resolve({
+          tempFilePath: res.tempFilePath,
+          statusCode: res.statusCode,
+        })
+      },
+      fail: (err) => reject(new Error(`下载失败: ${err.errMsg}`)),
+    })
+  })
+}
+
 export function get<P extends keyof paths>(
   path: P,
   options?: { path?: OpPath<GetOpType<P>>; query?: OpQuery<GetOpType<P>> },

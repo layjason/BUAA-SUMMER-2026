@@ -1,64 +1,89 @@
 <template>
   <view class="page">
-    <AppNavbar title="小队资料" />
+    <AppNavbar title="编辑小队资料" />
     <scroll-view class="scroll-area" scroll-y>
       <view v-if="loading" class="loading-state">
         <text class="loading-text">加载中...</text>
       </view>
 
       <view v-else-if="team" class="form-section">
-        <!-- Team Avatar -->
-        <view class="avatar-section">
+        <view class="avatar-section" @tap="pickAvatar">
           <view class="team-avatar">
             <image
-              v-if="team.avatar?.signedUrl"
-              :src="team.avatar.signedUrl"
+              v-if="avatarPreview"
+              :src="avatarPreview"
               class="team-avatar-image"
               mode="aspectFill"
             />
-            <text v-else class="team-avatar-placeholder">👥</text>
+            <text v-else class="team-avatar-placeholder">上传头像</text>
           </view>
-          <text class="avatar-hint">小队头像</text>
+          <text class="avatar-hint">点击更换小队头像</text>
         </view>
 
-        <!-- Name -->
         <view class="form-item">
           <text class="form-label">小队名称</text>
-          <text class="form-value">{{ team.name }}</text>
+          <input v-model="form.name" class="form-input" type="text" maxlength="100" />
         </view>
 
-        <!-- Description -->
         <view class="form-item">
           <text class="form-label">小队简介</text>
-          <text class="form-value form-desc">{{ team.description || '暂无简介' }}</text>
+          <textarea v-model="form.description" class="form-textarea" maxlength="200" />
+          <text class="form-hint">{{ form.description.length }}/200</text>
         </view>
 
-        <!-- Capacity -->
         <view class="form-item">
           <text class="form-label">人数上限</text>
-          <text class="form-value">{{ team.capacity }} 人</text>
-        </view>
-
-        <!-- Join Mode -->
-        <view class="form-item">
-          <text class="form-label">加入方式</text>
-          <text class="form-value">{{
-            team.joinMode === 'publicJoin' ? '自由加入' : '需要审批'
-          }}</text>
-        </view>
-
-        <!-- Tags -->
-        <view class="form-item">
-          <text class="form-label">标签</text>
-          <view v-if="team.tags.length > 0" class="tags">
-            <view v-for="(tag, idx) in team.tags" :key="idx" class="tag">
-              <text class="tag-text">{{ tag }}</text>
+          <view class="capacity-row">
+            <view class="capacity-btn" @tap="decreaseCapacity">
+              <text class="capacity-btn-text">-</text>
+            </view>
+            <text class="capacity-value">{{ form.capacity }}</text>
+            <view class="capacity-btn" @tap="increaseCapacity">
+              <text class="capacity-btn-text">+</text>
             </view>
           </view>
-          <text v-else class="form-value form-desc">暂无标签</text>
+          <text class="form-hint">不得低于当前 {{ team.memberCount }} 名成员</text>
         </view>
 
-        <!-- Status -->
+        <view class="form-item">
+          <text class="form-label">加入方式</text>
+          <view class="radio-group">
+            <view
+              class="radio-item"
+              :class="{ 'radio-item--active': form.joinMode === 'publicJoin' }"
+              @tap="form.joinMode = 'publicJoin'"
+            >
+              <text class="radio-label">自由加入</text>
+              <text class="radio-desc">任何人可直接加入</text>
+            </view>
+            <view
+              class="radio-item"
+              :class="{ 'radio-item--active': form.joinMode === 'approvalRequired' }"
+              @tap="form.joinMode = 'approvalRequired'"
+            >
+              <text class="radio-label">需审批</text>
+              <text class="radio-desc">需要队长或管理员审批</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">兴趣标签</text>
+          <input
+            v-model="tagInput"
+            class="form-input"
+            type="text"
+            placeholder="输入标签后回车添加"
+            @confirm="addTag"
+          />
+          <view class="tags">
+            <view v-for="(tag, idx) in form.tags" :key="tag" class="tag">
+              <text class="tag-text">{{ tag }}</text>
+              <text class="tag-remove" @tap="removeTag(idx)">×</text>
+            </view>
+          </view>
+        </view>
+
         <view class="form-item">
           <text class="form-label">状态</text>
           <view class="status-badge" :class="`status-badge--${team.status}`">
@@ -66,10 +91,11 @@
           </view>
         </view>
 
-        <!-- Notice -->
-        <view class="notice">
-          <text class="notice-text">小队资料仅队长可修改，修改功能即将上线</text>
-        </view>
+        <text v-if="errorMessage" class="error-text">{{ errorMessage }}</text>
+
+        <button class="submit-btn" :disabled="!canSubmit" :loading="saving" @tap="submit">
+          {{ saving ? '' : '保存资料' }}
+        </button>
       </view>
 
       <view v-else class="empty-state">
@@ -81,53 +107,164 @@
 
 <script setup lang="ts">
 /**
- * 小队资料查看页
+ * 小队资料编辑页。
  *
- * OpenAPI 暂无 PATCH /social/teams/{teamId} 端点，
- * 因此仅展示小队资料，不支持编辑。
+ * 队长可修改小队名称、简介、容量、加入方式、标签和头像。
  */
-import { ref, computed, onMounted } from 'vue'
+import { computed, reactive, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
-import { getTeamDetail } from '@/api/modules/teams'
+import { BusinessError } from '@/api'
+import { getTeamDetail, updateTeam } from '@/api/modules/teams'
+import { uploadAvatar } from '@/api/modules/profile'
+import { getTeamErrorMessage } from '@/utils/team-error-message'
+import { toAbsoluteMediaUrl } from '@/utils/media-preview'
 import type { components } from '@/api/types/schema'
 
 type TeamProfile = components['schemas']['Social.TeamProfile']
+type TeamCreateRequest = components['schemas']['Social.TeamCreateRequest']
 
+const teamId = ref('')
 const team = ref<TeamProfile | null>(null)
 const loading = ref(false)
-const teamId = ref('')
+const saving = ref(false)
+const errorMessage = ref('')
+const tagInput = ref('')
+const avatarPreview = ref('')
+const avatarMediaId = ref('')
+
+const form = reactive({
+  name: '',
+  description: '',
+  capacity: 2,
+  joinMode: 'publicJoin' as TeamCreateRequest['joinMode'],
+  tags: [] as string[],
+})
 
 const statusLabel = computed(() => {
   if (!team.value) return ''
-  switch (team.value.status) {
-    case 'active':
-      return '活跃'
-    case 'dissolved':
-      return '已解散'
-    case 'disabled':
-      return '已停用'
-    default:
-      return team.value.status
+  const map: Record<string, string> = {
+    active: '活跃',
+    dissolved: '已解散',
+    disabled: '已停用',
   }
+  return map[team.value.status] ?? team.value.status
 })
 
-onMounted(async () => {
-  const pages = getCurrentPages()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const currentPage = pages[pages.length - 1] as any
-  teamId.value = currentPage.options?.teamId || ''
+const canSubmit = computed(() => {
+  return Boolean(form.name.trim()) && form.tags.length > 0 && !saving.value
+})
 
+/** 使用接口返回值回填页面表单 */
+function fillForm(profile: TeamProfile): void {
+  team.value = profile
+  form.name = profile.name
+  form.description = profile.description ?? ''
+  form.capacity = profile.capacity
+  form.joinMode = profile.joinMode
+  form.tags = [...profile.tags]
+  avatarPreview.value = profile.avatar?.signedUrl
+    ? toAbsoluteMediaUrl(profile.avatar.signedUrl)
+    : ''
+  avatarMediaId.value = ''
+}
+
+/** 加载小队资料 */
+async function loadTeam(): Promise<void> {
   if (!teamId.value) return
-
   loading.value = true
+  errorMessage.value = ''
   try {
-    const result = await getTeamDetail(teamId.value)
-    team.value = result as TeamProfile
-  } catch {
-    uni.showToast({ title: '加载失败', icon: 'none' })
+    fillForm(await getTeamDetail(teamId.value))
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      errorMessage.value = getTeamErrorMessage(error.code, error.message)
+    } else {
+      errorMessage.value = '加载失败'
+    }
   } finally {
     loading.value = false
   }
+}
+
+/** 选择并上传小队头像 */
+async function pickAvatar(): Promise<void> {
+  try {
+    const result = await uni.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+    })
+    const tempPath = result.tempFilePaths[0]
+    if (!tempPath) return
+    avatarPreview.value = tempPath
+    const uploaded = await uploadAvatar(tempPath)
+    avatarMediaId.value = uploaded.mediaId
+    avatarPreview.value = uploaded.signedUrl ? toAbsoluteMediaUrl(uploaded.signedUrl) : tempPath
+  } catch {
+    uni.showToast({ title: '头像上传失败或已取消', icon: 'none' })
+  }
+}
+
+/** 增加人数上限 */
+function increaseCapacity(): void {
+  if (form.capacity < 500) form.capacity += 1
+}
+
+/** 降低人数上限 */
+function decreaseCapacity(): void {
+  const minCapacity = Math.max(1, team.value?.memberCount ?? 1)
+  if (form.capacity > minCapacity) form.capacity -= 1
+}
+
+/** 添加兴趣标签 */
+function addTag(): void {
+  const tag = tagInput.value.trim()
+  if (!tag || form.tags.includes(tag) || form.tags.length >= 10) return
+  form.tags.push(tag)
+  tagInput.value = ''
+}
+
+/** 移除兴趣标签 */
+function removeTag(index: number): void {
+  form.tags.splice(index, 1)
+}
+
+/** 提交小队资料修改 */
+async function submit(): Promise<void> {
+  if (!canSubmit.value || !team.value) return
+  if (form.capacity < team.value.memberCount) {
+    errorMessage.value = '人数上限不能低于当前成员数'
+    return
+  }
+
+  saving.value = true
+  errorMessage.value = ''
+  try {
+    const updated = await updateTeam(teamId.value, {
+      name: form.name.trim(),
+      description: form.description.trim(),
+      capacity: form.capacity,
+      joinMode: form.joinMode,
+      tags: [...form.tags],
+      avatarMediaId: avatarMediaId.value || undefined,
+    })
+    fillForm(updated)
+    uni.showToast({ title: '资料已保存', icon: 'success' })
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      errorMessage.value = getTeamErrorMessage(error.code, error.message)
+    } else {
+      errorMessage.value = '保存失败'
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+onLoad((query) => {
+  teamId.value = typeof query?.teamId === 'string' ? query.teamId : ''
+  void loadTeam()
 })
 </script>
 
@@ -147,18 +284,7 @@ onMounted(async () => {
   -webkit-overflow-scrolling: touch;
 }
 
-.loading-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: $spacing-2xl;
-}
-
-.loading-text {
-  font-size: $font-base;
-  color: $color-text-sub;
-}
-
+.loading-state,
 .empty-state {
   display: flex;
   align-items: center;
@@ -166,6 +292,7 @@ onMounted(async () => {
   padding: $spacing-2xl;
 }
 
+.loading-text,
 .empty-text {
   font-size: $font-base;
   color: $color-text-sub;
@@ -199,10 +326,12 @@ onMounted(async () => {
 }
 
 .team-avatar-placeholder {
-  font-size: 40px;
+  font-size: $font-xs;
+  color: $color-text-muted;
 }
 
-.avatar-hint {
+.avatar-hint,
+.form-hint {
   font-size: $font-xs;
   color: $color-text-muted;
   margin-top: $spacing-xs;
@@ -211,16 +340,8 @@ onMounted(async () => {
 .form-item {
   background: var(--q-color-bg-card);
   padding: $spacing-md;
-  margin-bottom: 1px;
-
-  &:first-of-type {
-    border-radius: $radius-lg $radius-lg 0 0;
-  }
-
-  &:last-of-type {
-    border-radius: 0 0 $radius-lg $radius-lg;
-    margin-bottom: $spacing-lg;
-  }
+  margin-bottom: $spacing-sm;
+  border-radius: $radius-lg;
 }
 
 .form-label {
@@ -230,30 +351,90 @@ onMounted(async () => {
   margin-bottom: $spacing-xs;
 }
 
-.form-value {
+.form-input {
+  height: 42px;
   font-size: $font-base;
   color: $color-text;
-  font-weight: $weight-medium;
 }
 
-.form-desc {
+.form-textarea {
+  width: 100%;
+  min-height: 92px;
+  font-size: $font-base;
+  color: $color-text;
+}
+
+.capacity-row {
+  display: flex;
+  align-items: center;
+  gap: $spacing-lg;
+}
+
+.capacity-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: $radius-full;
+  background: var(--q-color-bg-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.capacity-btn-text,
+.capacity-value {
+  font-size: $font-lg;
+  color: $color-text;
+}
+
+.radio-group {
+  display: flex;
+  gap: $spacing-sm;
+}
+
+.radio-item {
+  flex: 1;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+
+  &--active {
+    border-color: $color-primary;
+    background: rgba($color-primary, 0.08);
+  }
+}
+
+.radio-label {
+  display: block;
+  font-size: $font-sm;
+  font-weight: $weight-semibold;
+  color: $color-text;
+}
+
+.radio-desc {
+  display: block;
+  margin-top: 2px;
+  font-size: $font-xs;
   color: $color-text-muted;
-  font-weight: $weight-regular;
 }
 
 .tags {
   display: flex;
   flex-wrap: wrap;
   gap: $spacing-xs;
+  margin-top: $spacing-sm;
 }
 
 .tag {
   background: rgba($color-primary, 0.1);
   padding: 2px $spacing-sm;
   border-radius: $radius-sm;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
 }
 
-.tag-text {
+.tag-text,
+.tag-remove {
   font-size: $font-xs;
   color: $color-primary;
 }
@@ -286,14 +467,27 @@ onMounted(async () => {
   color: var(--q-color-success);
 }
 
-.notice {
-  text-align: center;
-  padding: $spacing-lg;
+.error-text {
+  display: block;
+  color: $color-danger;
+  font-size: $font-sm;
+  margin: $spacing-md 0;
 }
 
-.notice-text {
-  font-size: $font-sm;
+.submit-btn {
+  margin-top: $spacing-lg;
+  background: $color-primary;
+  color: $color-text-inverse;
+  border-radius: $radius-md;
+  font-size: $font-base;
+}
+
+.submit-btn[disabled] {
+  background: $color-bg-soft;
   color: $color-text-muted;
+  border: 1px solid $color-border-light;
+  box-shadow: none;
+  opacity: 1;
 }
 </style>
 

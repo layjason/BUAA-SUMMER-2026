@@ -15,7 +15,8 @@
 // 兼容层：直接重新导出 client.ts 的全部公开 API
 // 当 USE_MOCK = true 时，main.ts 已将 mockServer.handleMockRequest 注入 client.ts 的 mockHandler
 // 当 USE_MOCK = false 时，mockHandler 为 null，所有请求走真实 HTTP
-export { get, post, put, patch, del, upload, getBinary } from './client'
+export { get, post, put, patch, del, upload, getBinary, downloadFile } from './client'
+export type { DownloadFileResult } from './client'
 
 // 兼容导出错误类型
 export { BusinessError, TokenExpiredError } from './types'

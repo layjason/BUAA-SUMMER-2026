@@ -12,6 +12,7 @@ import { searchActivities } from '@/api/modules/activities'
 import { getInterestTags } from '@/api/modules/profile'
 import { formatDate } from '@/utils/date'
 import { getCurrentLocation } from '@/utils/location'
+import { toAbsoluteMediaUrl } from '@/utils/media-preview'
 import {
   buildSearchActivitiesQuery,
   hasSearchFilters,
@@ -216,14 +217,45 @@ async function loadMoreSearchResults(): Promise<void> {
   }
 }
 
-/** 跳转到地图模式 */
+/**
+ * 将搜索 query 转换为地图页 query string。
+ *
+ * 前置条件：query 来自 buildSearchActivitiesQuery，仅包含 OpenAPI 查询字段。
+ * 后置条件：返回可附加到地图页 URL 的 query string；空参数返回空字符串。
+ * 不变量：不会传递分页字段，地图页自行决定点位分页范围。
+ */
+function buildMapQueryString(query: ReturnType<typeof buildSearchActivitiesQuery>): string {
+  const params: string[] = []
+  for (const [key, value] of Object.entries(query)) {
+    if (key === 'page' || key === 'pageSize' || value == null) continue
+    const encodedValue = Array.isArray(value) ? value.join(',') : String(value)
+    if (!encodedValue) continue
+    params.push(`${encodeURIComponent(key)}=${encodeURIComponent(encodedValue)}`)
+  }
+  return params.join('&')
+}
+
+/**
+ * 跳转到地图模式。
+ *
+ * 前置条件：用户可已选择任意搜索筛选条件。
+ * 后置条件：地图页携带当前高级筛选条件打开，避免切换地图后筛选丢失。
+ * 不变量：分页参数不透传给地图页。
+ */
 function goToMap(): void {
-  uni.navigateTo({ url: '/pages/discover/map' })
+  const query = buildSearchActivitiesQuery(keyword.value, getFilterSelection(), 1, pageSize)
+  const queryString = buildMapQueryString(query)
+  uni.navigateTo({ url: `/pages/discover/map${queryString ? `?${queryString}` : ''}` })
 }
 
 /** 跳转到活动详情 */
 function goDetail(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
+}
+
+/** 获取 App 可直接渲染的媒体地址 */
+function getMediaUrl(signedUrl: string): string {
+  return toAbsoluteMediaUrl(signedUrl)
 }
 
 loadTypeOptions()
@@ -379,7 +411,11 @@ function displayOccupiedCount(item: SearchResultItem): number {
       >
         <view class="result-card-inner">
           <view v-if="item.coverImage?.signedUrl" class="result-cover">
-            <image :src="item.coverImage.signedUrl" mode="aspectFill" class="cover-img" />
+            <image
+              :src="getMediaUrl(item.coverImage.signedUrl)"
+              mode="aspectFill"
+              class="cover-img"
+            />
           </view>
           <view v-else class="result-cover result-cover-placeholder">
             <text class="placeholder-icon">📌</text>

@@ -1,18 +1,23 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { initMockDb, resetMockDb } from '../database'
 import {
-  joinTeam,
-  leaveTeam,
-  dissolveTeam,
-  getTeams,
-  searchTeams,
-  handleJoinRequest,
+  MockBusinessError,
+  changePassword,
   createTeam,
   countPendingJoinRequestsForManager,
-  updateMemberRole,
+  dissolveTeam,
+  getConversations,
   getTeamMembers,
+  getTeams,
+  handleJoinRequest,
+  joinTeam,
+  leaveTeam,
+  login,
+  searchTeams,
+  setCurrentUserId,
+  updateMemberRole,
+  updateTeam,
 } from '../workflow'
-import { setCurrentUserId } from '../workflow'
 
 describe('小队生命周期 mock 工作流', () => {
   beforeEach(() => {
@@ -78,6 +83,62 @@ describe('小队生命周期 mock 工作流', () => {
     expect(members.find((m) => m.userId === '10001')?.role).toBe('admin')
   })
 
+  it('队长可更新小队资料并同步群聊标题', () => {
+    const tagsWithInvalidValue = ['徒步', null, ' 户外 ', '徒步'] as unknown as string[]
+    const updated = updateTeam(1, 10003, {
+      name: ' 北京周末徒步队 ',
+      tags: tagsWithInvalidValue,
+      joinMode: 'approvalRequired',
+      capacity: 12,
+      description: '  每周末出发  ',
+    })
+
+    expect(updated.name).toBe('北京周末徒步队')
+    expect(updated.tags).toEqual(['徒步', '户外'])
+    expect(updated.joinMode).toBe('approvalRequired')
+    expect(updated.capacity).toBe(12)
+    expect(updated.description).toBe('每周末出发')
+    expect(getConversations(10003).find((c) => c.conversationId === '3')?.title).toBe(
+      '北京周末徒步队 (3)',
+    )
+  })
+
+  it('非队长不能更新小队资料', () => {
+    expect(() => updateTeam(1, 10001, { name: '管理员不能改名' })).toThrow(MockBusinessError)
+  })
+
+  it('更新不存在小队时返回小队不可见错误码', () => {
+    try {
+      updateTeam(999999, 10003, { name: '不存在的小队' })
+      throw new Error('should throw')
+    } catch (error) {
+      expect(error).toBeInstanceOf(MockBusinessError)
+      expect((error as MockBusinessError).code).toBe(40009)
+    }
+  })
+
+  it('小队容量不能低于当前成员数', () => {
+    expect(() => updateTeam(1, 10003, { capacity: 2 })).toThrowError(/capacity/)
+  })
+
+  it('小队名称和标签无效时返回名称不可用错误码', () => {
+    try {
+      updateTeam(1, 10003, { name: '   ' })
+      throw new Error('should throw')
+    } catch (error) {
+      expect(error).toBeInstanceOf(MockBusinessError)
+      expect((error as MockBusinessError).code).toBe(40008)
+    }
+
+    try {
+      updateTeam(1, 10003, { tags: ['   '] })
+      throw new Error('should throw')
+    } catch (error) {
+      expect(error).toBeInstanceOf(MockBusinessError)
+      expect((error as MockBusinessError).code).toBe(40008)
+    }
+  })
+
   it('队长解散后我的小队显示 dissolved', () => {
     setCurrentUserId(10003)
     const created = createTeam(10003, {
@@ -100,5 +161,22 @@ describe('小队生命周期 mock 工作流', () => {
   it('队长不能直接退出', () => {
     setCurrentUserId(10003)
     expect(() => leaveTeam(1, 10003)).toThrowError(/leader cannot leave/)
+  })
+
+  it('修改密码后旧密码失效且新密码可登录', () => {
+    changePassword(10001, 'Pass1234', 'NewPass1234')
+
+    expect(() => login('user@example.com', 'Pass1234')).toThrow(MockBusinessError)
+    expect(login('user@example.com', 'NewPass1234').userId).toBe('10001')
+  })
+
+  it('旧密码错误时拒绝修改密码', () => {
+    try {
+      changePassword(10001, 'WrongPass1234', 'NewPass1234')
+      throw new Error('should throw')
+    } catch (error) {
+      expect(error).toBeInstanceOf(MockBusinessError)
+      expect((error as MockBusinessError).code).toBe(10016)
+    }
   })
 })

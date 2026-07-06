@@ -10,7 +10,11 @@
 
         <view class="social-quick-card__content">
           <text class="social-quick-card__desc">{{ teamDesc }}</text>
-          <view v-if="pendingTeamRequests > 0" class="social-quick-card__alert">
+          <view
+            v-if="pendingTeamRequests > 0"
+            class="social-quick-card__alert"
+            @tap.stop="onPendingTeamRequestsTap"
+          >
             <text class="social-quick-card__alert-icon">🔔</text>
             <text class="social-quick-card__alert-text">{{ pendingTeamRequests }}条待审核</text>
           </view>
@@ -116,22 +120,32 @@ const emit = defineEmits<{
   createTeamTap: []
   companionsTap: []
   friendRequestsTap: []
+  pendingTeamRequestsTap: []
 }>()
 
-function onTeamsTap() {
+/** 打开小队列表 */
+function onTeamsTap(): void {
   emit('teamsTap')
 }
 
-function onCreateTeamTap() {
+/** 打开创建小队 */
+function onCreateTeamTap(): void {
   emit('createTeamTap')
 }
 
-function onCompanionsTap() {
+/** 打开活动同伴推荐 */
+function onCompanionsTap(): void {
   emit('companionsTap')
 }
 
-function onFriendRequestsTap() {
+/** 打开好友申请 */
+function onFriendRequestsTap(): void {
   emit('friendRequestsTap')
+}
+
+/** 打开待审核入队申请 */
+function onPendingTeamRequestsTap(): void {
+  emit('pendingTeamRequestsTap')
 }
 </script>
 

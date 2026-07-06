@@ -133,6 +133,19 @@ function readRouteFilters(query: Record<string, string | undefined>): void {
   if (query.startAtTo) nextFilters.startAtTo = decodeURIComponent(query.startAtTo)
   if (query.minFee) nextFilters.minFee = Number(query.minFee)
   if (query.maxFee) nextFilters.maxFee = Number(query.maxFee)
+  const longitude = query.longitude ? Number(query.longitude) : NaN
+  const latitude = query.latitude ? Number(query.latitude) : NaN
+  const routeDistanceMeters = query.distanceMeters ? Number(query.distanceMeters) : NaN
+  const point = normalizeGeoPoint(longitude, latitude)
+  if (point) {
+    centerLongitude.value = point.longitude
+    centerLatitude.value = point.latitude
+    currentLongitude.value = point.longitude
+    currentLatitude.value = point.latitude
+  }
+  if (Number.isFinite(routeDistanceMeters) && routeDistanceMeters > 0) {
+    distanceMeters.value = routeDistanceMeters
+  }
   routeFilters.value = nextFilters
 }
 

@@ -48,7 +48,11 @@ defineEmits<{
 }
 
 .submit-btn[disabled] {
-  opacity: 0.6;
+  background: $color-bg-soft;
+  color: $color-text-muted;
+  border: 1rpx solid $color-border-light;
+  box-shadow: none;
+  opacity: 1;
 }
 
 .submit-btn--secondary {

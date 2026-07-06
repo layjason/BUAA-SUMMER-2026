@@ -101,11 +101,16 @@ import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { AppNavbar, EmptyState, ImagePreviewOverlay } from '@/components'
 import { BusinessError } from '@/api'
+import { downloadFile } from '@/api/request'
 import { getTeamMembers } from '@/api/modules/teams'
 import { listTeamFiles, uploadTeamFile, deleteTeamFiles } from '@/api/modules/teamChat'
 import { extractPageItems } from '@/utils/page-result'
 import { getTeamErrorMessage } from '@/utils/team-error-message'
-import { resolveMediaPreviewUrl, resolveMediaPreviewUrlMap } from '@/utils/media-preview'
+import {
+  resolveMediaPreviewUrl,
+  resolveMediaPreviewUrlMap,
+  toAbsoluteMediaUrl,
+} from '@/utils/media-preview'
 import { useAuthStore } from '@/stores/auth'
 import type { components } from '@/api/types/schema'
 
@@ -124,16 +129,31 @@ const selectedFile = ref<MediaFile | null>(null)
 const previewVisible = ref(false)
 const previewUrls = ref<string[]>([])
 const previewCurrent = ref('')
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const actionPopup = ref<any>(null)
 
 const authStore = useAuthStore()
-const currentUserId = ref(authStore.userId || '10001')
+const currentUserId = ref(authStore.userId || '')
 
 const canManage = computed(() => {
   const me = members.value.find((m) => m.userId === currentUserId.value)
   return me?.role === 'leader' || me?.role === 'admin'
 })
+
+interface UniFileChooser {
+  chooseFile?: (opts: { count: number; type?: string }) => Promise<ChooseFileResult>
+  chooseMessageFile?: (opts: { count: number; type: string }) => Promise<ChooseFileResult>
+}
+
+interface ChooseFileResult {
+  tempFiles?: Array<{ path?: string; tempFilePath?: string }>
+  tempFilePaths?: string[]
+}
+
+interface PopupRef {
+  open: () => void
+  close: () => void
+}
+
+const actionPopup = ref<PopupRef | null>(null)
 
 /** 判断是否已选中 */
 function isSelected(mediaId: string): boolean {
@@ -216,17 +236,22 @@ async function onUpload() {
 
   try {
     let filePath = ''
+    /*
+     * UNKNOWN-TYPE: uni-app 平台扩展文件选择 API 类型不一致
+     *
+     * chooseFile/chooseMessageFile 在不同端的官方类型与 Promise 化返回值不同，
+     * 这里收敛到页面实际需要的 temp file path 结构。
+     */
+    const uniFileChooser = uni as unknown as UniFileChooser
 
-    // 优先使用 chooseMessageFile，不支持时回退 chooseImage
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const chooseMessageFile = (uni as any).chooseMessageFile as
-      | ((opts: { count: number; type: string }) => Promise<{ tempFiles: Array<{ path: string }> }>)
-      | undefined
-
-    if (chooseMessageFile) {
-      const res = await chooseMessageFile({ count: 1, type: 'all' })
-      filePath = res.tempFiles[0]?.path || ''
+    if (uniFileChooser.chooseFile) {
+      const res = await uniFileChooser.chooseFile({ count: 1, type: 'all' })
+      filePath = getChosenFilePath(res)
+    } else if (uniFileChooser.chooseMessageFile) {
+      const res = await uniFileChooser.chooseMessageFile({ count: 1, type: 'all' })
+      filePath = getChosenFilePath(res)
     } else {
+      uni.showToast({ title: '当前平台仅支持上传图片', icon: 'none' })
       const res = await uni.chooseImage({ count: 1 })
       filePath = res.tempFilePaths[0] || ''
     }
@@ -247,6 +272,12 @@ async function onUpload() {
   } finally {
     uploading.value = false
   }
+}
+
+/** 从平台文件选择结果中提取临时文件路径 */
+function getChosenFilePath(result: ChooseFileResult): string {
+  const firstFile = result.tempFiles?.[0]
+  return firstFile?.path || firstFile?.tempFilePath || result.tempFilePaths?.[0] || ''
 }
 
 /** 打开图片全屏预览 */
@@ -274,10 +305,6 @@ async function openImagePreview(file: MediaFile) {
 function onFileTap(file: MediaFile) {
   if (isImageFile(file)) {
     void openImagePreview(file)
-    return
-  }
-  if (canManage.value) {
-    toggleSelect(file.mediaId)
     return
   }
   selectedFile.value = file
@@ -313,10 +340,13 @@ async function onPreview() {
     await openImagePreview(file)
     return
   }
-  uni.setClipboardData({
-    data: file.signedUrl,
-    success: () => uni.showToast({ title: '链接已复制', icon: 'none' }),
-  })
+  try {
+    const result = await downloadFile(file.signedUrl)
+    await uni.openDocument({ filePath: result.tempFilePath, showMenu: true })
+  } catch {
+    await uni.setClipboardData({ data: toAbsoluteMediaUrl(file.signedUrl) })
+    uni.showToast({ title: '暂无法打开，链接已复制', icon: 'none' })
+  }
 }
 
 /** 删除单个文件 */
@@ -359,8 +389,8 @@ function closeActionMenu() {
 }
 
 onLoad((query) => {
-  teamId.value = query?.teamId || ''
-  loadData()
+  teamId.value = typeof query?.teamId === 'string' ? query.teamId : ''
+  void loadData()
 })
 </script>
 

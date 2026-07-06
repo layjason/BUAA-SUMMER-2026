@@ -33,6 +33,8 @@ export interface SearchActivitiesQuery {
   distanceMeters?: number
 }
 
+const UTC8_OFFSET_MS = 8 * 60 * 60 * 1000
+
 /**
  * 判断是否存在可执行的筛选条件
  *
@@ -50,16 +52,34 @@ export function hasSearchFilters(selection: SearchFilterSelection): boolean {
 }
 
 /**
- * 将日期格式化为 UTC+8 ISO 字符串
+ * 将时间戳格式化为 UTC+8 ISO 字符串
  *
- * 前置条件：date 为有效日期
+ * 前置条件：timestampMs 为有效 Unix 毫秒时间戳
  * 后置条件：返回 YYYY-MM-DDTHH:mm:ss+08:00 格式
  */
-function formatDateTimeOffset8(date: Date): string {
-  const offsetMs = 8 * 60 * 60 * 1000
-  const local = new Date(date.getTime() + offsetMs)
+function formatTimestampOffset8(timestampMs: number): string {
+  const local = new Date(timestampMs + UTC8_OFFSET_MS)
   const iso = local.toISOString().slice(0, 19)
   return `${iso}+08:00`
+}
+
+/**
+ * 将 UTC+8 墙钟时间转换为真实时间戳
+ *
+ * 前置条件：year/month/day/hour/minute/second/millisecond 组成合法日期时间。
+ * 后置条件：返回该 UTC+8 本地时间对应的 Unix 毫秒时间戳。
+ * 不变量：计算不依赖宿主运行时区。
+ */
+function offset8WallTimeToTimestamp(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+  millisecond: number,
+): number {
+  return Date.UTC(year, month, day, hour, minute, second, millisecond) - UTC8_OFFSET_MS
 }
 
 /**
@@ -67,35 +87,49 @@ function formatDateTimeOffset8(date: Date): string {
  *
  * 前置条件：preset 为 today/week/month
  * 后置条件：返回覆盖该时间范围的 ISO 字符串
+ * 不变量：始终按 UTC+8 自然日/周/月计算，不受 CI 或设备运行时区影响。
  */
 export function getTimeRange(
   preset: TimeFilter,
   now: Date = new Date(),
 ): { startAtFrom: string; startAtTo: string } {
-  const start = new Date(now)
-  const end = new Date(now)
+  const offsetNow = new Date(now.getTime() + UTC8_OFFSET_MS)
+  const year = offsetNow.getUTCFullYear()
+  const month = offsetNow.getUTCMonth()
+  const dayOfMonth = offsetNow.getUTCDate()
+
+  let startDay = dayOfMonth
+  let startMonth = month
+  let startYear = year
+  let endDay = dayOfMonth
+  let endMonth = month
+  let endYear = year
 
   if (preset === 'today') {
-    start.setHours(0, 0, 0, 0)
-    end.setHours(23, 59, 59, 999)
+    startDay = dayOfMonth
+    endDay = dayOfMonth
   } else if (preset === 'week') {
-    const day = start.getDay()
-    const mondayOffset = day === 0 ? -6 : 1 - day
-    start.setDate(start.getDate() + mondayOffset)
-    start.setHours(0, 0, 0, 0)
-    end.setTime(start.getTime())
-    end.setDate(start.getDate() + 6)
-    end.setHours(23, 59, 59, 999)
+    const weekday = offsetNow.getUTCDay()
+    const mondayOffset = weekday === 0 ? -6 : 1 - weekday
+    const monday = new Date(Date.UTC(year, month, dayOfMonth + mondayOffset))
+    const sunday = new Date(Date.UTC(year, month, dayOfMonth + mondayOffset + 6))
+    startDay = monday.getUTCDate()
+    startMonth = monday.getUTCMonth()
+    startYear = monday.getUTCFullYear()
+    endDay = sunday.getUTCDate()
+    endMonth = sunday.getUTCMonth()
+    endYear = sunday.getUTCFullYear()
   } else {
-    start.setDate(1)
-    start.setHours(0, 0, 0, 0)
-    end.setMonth(start.getMonth() + 1, 0)
-    end.setHours(23, 59, 59, 999)
+    startDay = 1
+    const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0))
+    endDay = lastDayOfMonth.getUTCDate()
   }
 
+  const startTimestamp = offset8WallTimeToTimestamp(startYear, startMonth, startDay, 0, 0, 0, 0)
+  const endTimestamp = offset8WallTimeToTimestamp(endYear, endMonth, endDay, 23, 59, 59, 999)
   return {
-    startAtFrom: formatDateTimeOffset8(start),
-    startAtTo: formatDateTimeOffset8(end),
+    startAtFrom: formatTimestampOffset8(startTimestamp),
+    startAtTo: formatTimestampOffset8(endTimestamp),
   }
 }
 

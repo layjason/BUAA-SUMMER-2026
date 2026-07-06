@@ -10,10 +10,15 @@ import {
   setRefreshTokenGetter,
   setMockHandler,
   setBinaryHandler,
+  setDownloadFileHandler,
 } from '@/api/client'
 import { USE_MOCK, API_BASE_URL } from '@/api/config'
 import { initMockDb } from '@/mock/database'
-import { handleMockRequest, handleMockBinaryRequest } from '@/mock/mockServer'
+import {
+  handleMockRequest,
+  handleMockBinaryRequest,
+  handleMockDownloadRequest,
+} from '@/mock/mockServer'
 import { setCurrentUserId } from '@/mock/workflow'
 import { useAuthStore } from '@/stores/auth'
 import { installAuthGuard } from '@/utils/auth-guard'
@@ -55,6 +60,7 @@ export function createApp() {
       if (result) return result
       return Promise.reject(new Error(`Mock 未实现二进制路由: ${path}`))
     })
+    setDownloadFileHandler((path) => handleMockDownloadRequest(path))
   }
 
   // ===== Token 与 API 基础配置 =====

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetMockDb } from '@/mock/database'
-import { handleMockRequest } from '@/mock/mockServer'
+import { handleMockDownloadRequest, handleMockRequest } from '@/mock/mockServer'
 import {
   cancelRegistration,
   checkIn,
@@ -272,6 +272,18 @@ describe('活动 mock workflow 契约对齐', () => {
           checkedInAt: expect.any(String),
         }),
       ]),
+    )
+  })
+
+  it('签到导出 mock 下载应返回 CSV 文件结果', async () => {
+    const response = await handleMockDownloadRequest('/activities/6/check-ins/export')
+
+    expect(response).toMatchObject({
+      tempFilePath: expect.stringContaining('data:text/csv;charset=utf-8,'),
+      statusCode: 200,
+    })
+    expect(decodeURIComponent(response?.tempFilePath.split(',')[1] ?? '')).toContain(
+      'registrationId,userId,nickname,registrationStatus,checkedInAt',
     )
   })
 

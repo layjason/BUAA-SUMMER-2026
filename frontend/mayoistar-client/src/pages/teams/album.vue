@@ -108,7 +108,7 @@ const previewUrls = ref<string[]>([])
 const previewCurrent = ref('')
 
 const authStore = useAuthStore()
-const currentUserId = ref(authStore.userId || '10001')
+const currentUserId = ref(authStore.userId || '')
 
 const canManage = computed(() => {
   const me = members.value.find((m) => m.userId === currentUserId.value)
@@ -291,8 +291,8 @@ function onDeleteSelected() {
 }
 
 onLoad((query) => {
-  teamId.value = query?.teamId || ''
-  loadData()
+  teamId.value = typeof query?.teamId === 'string' ? query.teamId : ''
+  void loadData()
 })
 </script>
 

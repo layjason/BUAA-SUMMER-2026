@@ -107,10 +107,11 @@ import {
 } from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
 import { formatDateTime } from '@/utils/date'
+import { formatI18nTemplate } from '@/utils/i18n-template'
 import { toAbsoluteMediaUrl } from '@/utils/media-preview'
 import { FormError, BottomActionBar } from '@/components'
 
-const { t } = useI18n()
+const { t, tm } = useI18n()
 
 const activityId = ref('')
 const rating = ref(0)
@@ -130,7 +131,9 @@ const selectedTags = ref<string[]>([])
 const reviewDeadlineText = computed(() => {
   const endsAt = participation.value?.reviewWindowEndsAt
   if (!endsAt) return ''
-  return t('activityReview.deadline', { time: formatDateTime(endsAt) })
+  return formatI18nTemplate(String(tm('activityReview.deadline')), {
+    time: formatDateTime(endsAt),
+  })
 })
 
 /** 当前评价窗口是否已经在本地时间中过期，最终结果仍以后端提交接口校验为准 */

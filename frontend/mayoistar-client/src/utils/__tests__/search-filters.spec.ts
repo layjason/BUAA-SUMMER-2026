@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSearchActivitiesQuery, hasSearchFilters } from '@/utils/search-filters'
+import { buildSearchActivitiesQuery, getTimeRange, hasSearchFilters } from '@/utils/search-filters'
 
 describe('search-filters', () => {
   it('hasSearchFilters 应在无筛选时返回 false', () => {
@@ -85,10 +85,21 @@ describe('search-filters', () => {
     expect(query.distanceMeters).toBeUndefined()
   })
 
-  /*
-  REMOVE-UNIT-TEST-FOR: getTimeRange 在 CI（UTC）与本地（UTC+8）结果不一致
+  it('getTimeRange 应按 UTC+8 固定计算本月边界', () => {
+    const range = getTimeRange('month', new Date('2026-07-05T16:30:00.000Z'))
 
-  原测试固定断言本月起止时间为 UTC+8 墙钟，但 getTimeRange 当前依赖运行环境时区，
-  导致 GitHub Actions 上返回 2026-07-01T08:00:00+08:00。待实现改为固定 UTC+8 计算后再恢复。
-  */
+    expect(range).toEqual({
+      startAtFrom: '2026-07-01T00:00:00+08:00',
+      startAtTo: '2026-07-31T23:59:59+08:00',
+    })
+  })
+
+  it('getTimeRange 应按 UTC+8 固定计算跨月本周边界', () => {
+    const range = getTimeRange('week', new Date('2026-08-31T16:30:00.000Z'))
+
+    expect(range).toEqual({
+      startAtFrom: '2026-08-31T00:00:00+08:00',
+      startAtTo: '2026-09-06T23:59:59+08:00',
+    })
+  })
 })

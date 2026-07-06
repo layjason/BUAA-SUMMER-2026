@@ -12,9 +12,6 @@
           <text>{{ tab.label }}</text>
         </view>
       </view>
-      <view class="filter-entry" @click="goSearch">
-        <text>高级筛选</text>
-      </view>
     </view>
 
     <scroll-view
@@ -65,7 +62,7 @@
             <image
               v-if="item.coverImage?.signedUrl"
               class="card-cover"
-              :src="item.coverImage.signedUrl"
+              :src="getMediaUrl(item.coverImage.signedUrl)"
               mode="aspectFill"
             />
             <view v-else class="card-cover card-cover-placeholder">
@@ -97,7 +94,7 @@
                 <text class="registered">{{
                   item.registeredCount >= item.capacity
                     ? t('home.full')
-                    : t('home.registered', { count: item.registeredCount, total: item.capacity })
+                    : formatRegisteredText(item.registeredCount, item.capacity)
                 }}</text>
               </view>
             </view>
@@ -131,10 +128,12 @@ import { BusinessError } from '@/api'
 import { getFeed, type FeedActivitiesParams } from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
+import { formatI18nTemplate } from '@/utils/i18n-template'
 import { getCurrentLocation } from '@/utils/location'
 import { runtimeStatusText } from '@/utils/status'
+import { toAbsoluteMediaUrl } from '@/utils/media-preview'
 
-const { t } = useI18n()
+const { t, tm } = useI18n()
 
 type FeedTab = 'recommended' | 'latest' | 'nearby'
 
@@ -179,6 +178,16 @@ interface ActivityItem {
 
 function getStatusText(status: string): string {
   return runtimeStatusText(status, t)
+}
+
+/** 格式化报名人数文案，避免原生端外显 i18n 命名占位符。 */
+function formatRegisteredText(count: number, total: number): string {
+  return formatI18nTemplate(String(tm('home.registered')), { count, total })
+}
+
+/** 获取 App 可直接渲染的媒体地址 */
+function getMediaUrl(signedUrl: string): string {
+  return toAbsoluteMediaUrl(signedUrl)
 }
 
 /** 确保附近 Tab 使用真实定位参数
@@ -336,13 +345,6 @@ function goMap(): void {
   color: var(--q-color-primary);
   border-bottom-color: var(--q-color-primary);
   font-weight: 600;
-}
-
-.filter-entry {
-  padding: 0 32rpx;
-  font-size: 26rpx;
-  color: var(--q-color-primary);
-  white-space: nowrap;
 }
 
 .scroll-area {
