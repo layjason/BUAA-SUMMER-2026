@@ -17,6 +17,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -111,6 +112,26 @@ public class GlobalExceptionHandler {
         body.setMessage(message);
         body.setData(new EmptyData());
         return ResponseEntity.ok(body);
+    }
+
+    /**
+     * 处理未找到 Controller 处理器的异常。
+     *
+     * <p>前置条件：DispatcherServlet 未找到匹配的 Controller 映射，NoHandlerFoundException 被抛出。
+     *
+     * <p>后置条件：返回 code=404、message 含有请求路径的 API 错误响应，HTTP 404。
+     *
+     * @param ex Controller 处理器未找到异常
+     * @return 错误响应
+     */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<ApiErrorResponse<EmptyData>> handleNoHandlerFound(NoHandlerFoundException ex) {
+        log.warn("Controller 未找到: {} {}", ex.getHttpMethod(), ex.getRequestURL());
+        ApiErrorResponse<EmptyData> body = new ApiErrorResponse<>();
+        body.setCode(404);
+        body.setMessage("找不到 " + ex.getHttpMethod() + " " + ex.getRequestURL());
+        body.setData(new EmptyData());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
     /**
