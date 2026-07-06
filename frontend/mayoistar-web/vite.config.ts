@@ -15,9 +15,9 @@ export default defineConfig(() => {
       port: 5173,
       host: '0.0.0.0',
       proxy: {
-        '/admin': 'http://10.251.252.62:10086',
-        '/identity': 'http://10.251.252.62:10086',
-        '/media': 'http://10.251.252.62:10086',
+        '/admin': 'http://localhost:8080',
+        '/identity': 'http://localhost:8080',
+        '/media': 'http://localhost:8080',
       },
     },
   };
