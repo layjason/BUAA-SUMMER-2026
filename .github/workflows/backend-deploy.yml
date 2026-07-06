@@ -2,20 +2,56 @@ name: Backend Full-Stack Deploy
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Backend CI"]
-    types:
-      - completed
+  push:
+    branches:
+      - main
+    paths:
+      - "api-spec/**"
+      - "backend/**"
+      - ".github/workflows/backend-deploy.yml"
 
 jobs:
+  backend-checks:
+    name: Backend checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Install editorconfig-checker
+        run: |
+          curl -sSL https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.6.1/ec-linux-amd64.tar.gz \
+            | sudo tar -xz --strip-components=1 -C /usr/local/bin bin/ec-linux-amd64
+          sudo mv /usr/local/bin/ec-linux-amd64 /usr/local/bin/ec
+
+      - name: Check EditorConfig
+        run: ec
+
+      - name: Check formatting
+        run: mvn -B -ntp spotless:check
+
+      - name: Check SpotBugs
+        run: mvn -B -ntp spotbugs:check
+
+      - name: Test
+        run: mvn -B -ntp test
+      
   deploy:
     name: Full Stack Deployment
     runs-on: self-hosted
-    if: >-
-      ${{ 
-        github.event_name == 'workflow_dispatch' || 
-        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') 
-      }}
+    needs: backend-checks
+    if: github.ref == 'refs/heads/main'
     defaults:
       run:
         working-directory: backend

@@ -6,11 +6,6 @@ on:
       - "api-spec/**"
       - "backend/**"
       - ".github/workflows/backend-ci.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/backend-deploy.yml"
   pull_request:
     paths:
       - "api-spec/**"
@@ -48,8 +43,8 @@ jobs:
       - name: Check formatting
         run: mvn -B -ntp spotless:check
 
-      - name: Test
-        run: mvn -B -ntp test
-
       - name: Check SpotBugs
         run: mvn -B -ntp spotbugs:check
+
+      - name: Test
+        run: mvn -B -ntp test
