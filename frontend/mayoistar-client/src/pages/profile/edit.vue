@@ -263,6 +263,8 @@ const qualificationSubmitting = ref(false)
 const nicknameChecked = ref(false)
 /** 昵称是否可用 */
 const nicknameAvailable = ref(false)
+/** 最近一次唯一性检查对应的昵称 */
+const checkedNickname = ref('')
 
 /** 商家资质信息（只读） */
 const qualification = ref<{
@@ -311,6 +313,20 @@ function getEditableProfileSnapshot(): EditableProfileSnapshot {
 
 function sameStringArray(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((item, index) => item === right[index])
+}
+
+/** 判断昵称是否相对初始资料发生变化
+ *
+ * 前置条件：nickname 已按提交规则 trim。
+ * 后置条件：返回 true 表示需要执行昵称唯一性检查；资料尚未加载时保守返回 true。
+ * 不变量：比较基准始终是页面最初加载的昵称，不受中间编辑过程影响。
+ *
+ * @param nickname 当前待提交昵称
+ */
+function isNicknameChangedFromInitial(nickname: string): boolean {
+  const initial = initialProfileSnapshot.value
+  if (!initial) return true
+  return nickname !== initial.nickname
 }
 
 /** 当前资料表单是否有未保存修改 */
@@ -400,11 +416,18 @@ let nicknameTimer: ReturnType<typeof setTimeout> | null = null
 function checkNickname(): void {
   nicknameError.value = ''
   nicknameChecked.value = false
+  checkedNickname.value = ''
 
   if (nicknameTimer) clearTimeout(nicknameTimer)
 
   const value = formNickname.value.trim()
   if (!value) return
+  if (!isNicknameChangedFromInitial(value)) {
+    nicknameAvailable.value = true
+    nicknameChecked.value = true
+    checkedNickname.value = value
+    return
+  }
 
   nicknameTimer = setTimeout(async () => {
     try {
@@ -413,6 +436,7 @@ function checkNickname(): void {
 
       nicknameAvailable.value = result.available
       nicknameChecked.value = true
+      checkedNickname.value = value
       if (!result.available) {
         nicknameError.value = t('editProfile.nicknameUnavailable')
       }
@@ -429,11 +453,19 @@ function checkNickname(): void {
  * 后置条件：返回 true 表示昵称可提交；返回 false 时 nicknameError 已包含错误提示。
  */
 async function ensureNicknameAvailable(nickname: string): Promise<boolean> {
-  if (nicknameChecked.value) return nicknameAvailable.value
+  if (!isNicknameChangedFromInitial(nickname)) {
+    nicknameError.value = ''
+    nicknameAvailable.value = true
+    nicknameChecked.value = true
+    checkedNickname.value = nickname
+    return true
+  }
+  if (nicknameChecked.value && checkedNickname.value === nickname) return nicknameAvailable.value
   try {
     const result = await checkNicknameAvailability(nickname)
     nicknameAvailable.value = result.available
     nicknameChecked.value = true
+    checkedNickname.value = nickname
     if (!result.available) {
       nicknameError.value = t('editProfile.nicknameUnavailable')
     }
@@ -657,7 +689,7 @@ async function handleSave(): Promise<void> {
     nicknameError.value = t('editProfile.nicknameRequired')
     return
   }
-  if (nicknameChecked.value && !nicknameAvailable.value) {
+  if (nicknameChecked.value && checkedNickname.value === nickname && !nicknameAvailable.value) {
     nicknameError.value = t('editProfile.nicknameUnavailable')
     return
   }

@@ -53,6 +53,31 @@ describe('商家资料资质提交 UI', () => {
     expect(source).toContain('if (!hasProfileChanges.value) return')
   })
 
+  it('昵称恢复为初始昵称时应跳过唯一性检查并允许提交', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
+    const checkNicknameBody = source.slice(
+      source.indexOf('function checkNickname(): void {'),
+      source.indexOf('/** 确保当前昵称可用'),
+    )
+    const ensureBody = source.slice(
+      source.indexOf(
+        'async function ensureNicknameAvailable(nickname: string): Promise<boolean> {',
+      ),
+      source.indexOf('// ================= 标签切换 ================='),
+    )
+    const saveBody = source.slice(
+      source.indexOf('async function handleSave(): Promise<void> {'),
+      source.indexOf('</script>'),
+    )
+
+    expect(source).toContain('function isNicknameChangedFromInitial(nickname: string): boolean')
+    expect(source).toContain('const checkedNickname = ref')
+    expect(checkNicknameBody).toContain('if (!isNicknameChangedFromInitial(value))')
+    expect(ensureBody).toContain('if (!isNicknameChangedFromInitial(nickname))')
+    expect(ensureBody).toContain('return true')
+    expect(saveBody).toContain('checkedNickname.value === nickname')
+  })
+
   it('我的页应按用户类型读取 api-spec 对应资料接口', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/index.vue'), 'utf8')
 
