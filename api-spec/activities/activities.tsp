@@ -359,7 +359,31 @@ model ActivityTemplate {
   defaultCapacity: int32;
 
   @doc("模板默认活动封面图片。签名 URL 为公开稳定型，URL 稳定、可公共缓存。")
-  defaultCoverImage: MediaFile;
+  defaultCoverImage?: MediaFile;
+}
+
+@doc("活动模板创建或更新请求，管理员维护平台级模板，模板对全部用户可见。")
+model ActivityTemplateUpsertRequest {
+  @doc("模板名称。")
+  name: string;
+
+  @doc("模板所属活动类型。")
+  activityType: string;
+
+  @doc("模板默认标签。")
+  defaultTags: string[];
+
+  @doc("模板默认活动简介。")
+  defaultIntroduction: string;
+
+  @doc("模板默认安全须知。")
+  defaultSafetyNotice: string;
+
+  @doc("模板默认人数上限。")
+  defaultCapacity: int32;
+
+  @doc("模板默认封面媒体文件标识。传入时必须是可用的活动图片媒体，保存后封面图片对全部用户公开可见。")
+  defaultCoverImageMediaId?: EntityId;
 }
 
 @doc("活动搜索条件，GET 请求通过 URL 传递，返回匹配活动，多选活动类型使用重复 query 参数或逗号分隔由实现统一处理。")

@@ -1,8 +1,10 @@
 package io.github.layjason.mayoistar;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -155,6 +157,80 @@ class ActivityDraftControllerTests {
                 .andExpect(jsonPath("$.data.items[0].templateId").value("template-a"))
                 .andExpect(jsonPath("$.data.items[0].activityType").value("社交"))
                 .andExpect(jsonPath("$.data.items[0].defaultTags[0]").value("桌游"));
+    }
+
+    @Test
+    void adminCreateActivityTemplateShouldPersistTemplate() throws Exception {
+        mockMvc.perform(post("/admin/activities/templates")
+                        .with(SecurityMockMvcRequestPostProcessors.user("admin-a")
+                                .roles("admin"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createTemplateRequestJson("城市探索模板", "城市探索", 20)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.templateId").isNotEmpty())
+                .andExpect(jsonPath("$.data.name").value("城市探索模板"))
+                .andExpect(jsonPath("$.data.activityType").value("城市探索"))
+                .andExpect(jsonPath("$.data.defaultTags[0]").value("探索"));
+
+        mockMvc.perform(get("/activities/templates")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].name").value("城市探索模板"));
+    }
+
+    @Test
+    void adminUpdateActivityTemplateShouldOverwriteTemplate() throws Exception {
+        saveTemplate("template-a", "桌游模板", "社交", List.of("桌游", "轻松"));
+
+        mockMvc.perform(put("/admin/activities/templates/{templateId}", "template-a")
+                        .with(SecurityMockMvcRequestPostProcessors.user("admin-a")
+                                .roles("admin"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createTemplateRequestJson("更新模板", "户外", 30)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.templateId").value("template-a"))
+                .andExpect(jsonPath("$.data.name").value("更新模板"))
+                .andExpect(jsonPath("$.data.defaultCapacity").value(30));
+    }
+
+    @Test
+    void adminDeleteActivityTemplateShouldRemoveTemplate() throws Exception {
+        saveTemplate("template-a", "桌游模板", "社交", List.of("桌游", "轻松"));
+
+        mockMvc.perform(delete("/admin/activities/templates/{templateId}", "template-a")
+                        .with(SecurityMockMvcRequestPostProcessors.user("admin-a")
+                                .roles("admin")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isMap());
+
+        mockMvc.perform(get("/activities/templates")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(0));
+    }
+
+    @Test
+    void adminActivityTemplateManagementShouldRejectPersonalUser() throws Exception {
+        mockMvc.perform(post("/admin/activities/templates")
+                        .with(SecurityMockMvcRequestPostProcessors.user("user-a")
+                                .roles("personal"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createTemplateRequestJson("城市探索模板", "城市探索", 20)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminUpdateActivityTemplateShouldRejectMissingTemplate() throws Exception {
+        mockMvc.perform(put("/admin/activities/templates/{templateId}", "missing")
+                        .with(SecurityMockMvcRequestPostProcessors.user("admin-a")
+                                .roles("admin"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createTemplateRequestJson("城市探索模板", "城市探索", 20)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(20001));
     }
 
     @Test
@@ -376,6 +452,17 @@ class ActivityDraftControllerTests {
                 + "\"feeDescription\":\"AA\","
                 + "\"minAge\":18,"
                 + "\"imageIds\":[" + imageIdsJson + "]"
+                + "}";
+    }
+
+    private String createTemplateRequestJson(String name, String activityType, int defaultCapacity) {
+        return "{"
+                + "\"name\":\"" + name + "\","
+                + "\"activityType\":\"" + activityType + "\","
+                + "\"defaultTags\":[\"探索\",\"拍照\"],"
+                + "\"defaultIntroduction\":\"沿着城市线索完成探索任务\","
+                + "\"defaultSafetyNotice\":\"注意交通安全，结伴行动\","
+                + "\"defaultCapacity\":" + defaultCapacity
                 + "}";
     }
 
