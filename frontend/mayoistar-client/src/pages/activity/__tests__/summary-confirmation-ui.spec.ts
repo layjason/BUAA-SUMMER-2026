@@ -31,7 +31,7 @@ describe('活动总结 AI 分类人工确认 UI', () => {
     expect(source).toContain('reviewMarkdownImageUrls')
     expect(source).toContain('const selectedPaths = res.tempFilePaths as string[]')
     expect(source).toContain('const previewUrl = selectedPaths[index]')
-    expect(source).toContain('const markdownUrl = r.signedUrl ||')
+    expect(source).toContain('const markdownUrl = r.signedUrl ? toAbsoluteMediaUrl(r.signedUrl) :')
     expect(source).toContain('imageUrls.value.push(previewUrl)')
     expect(source).toContain('reviewMarkdownImageUrls.value.push(markdownUrl)')
     expect(source).toContain('content.value += `![评价图片](${markdownUrl})`')
@@ -52,12 +52,41 @@ describe('活动总结 AI 分类人工确认 UI', () => {
   it('活动编辑新上传图片应本地预览，草稿回显应下载私有 signedUrl 后预览', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/pages/activity/edit.vue'), 'utf8')
     const viteConfigSource = readFileSync(resolve(process.cwd(), 'vite.config.ts'), 'utf8')
+    const mediaPreviewSource = readFileSync(
+      resolve(process.cwd(), 'src/utils/media-preview.ts'),
+      'utf8',
+    )
 
     expect(source).toContain('imagePreviews.value.push(tempPath)')
-    expect(source).toContain('downloadSignedMediaPreview')
-    expect(source).toContain('header: { Authorization: `Bearer ${accessToken}` }')
+    expect(source).toContain('resolveMediaPreviewUrl')
+    expect(mediaPreviewSource).toContain('header: { Authorization: `Bearer ${accessToken}` }')
     expect(source).toContain('imagePreviews.value = await Promise.all(')
     expect(viteConfigSource).toContain("'/media': {")
     expect(source).not.toContain('imagePreviews.value.push(result.signedUrl || tempPath)')
+  })
+
+  it('活动详情及总结评价详情应解析媒体签名 URL 后再展示', () => {
+    const detailSource = readFileSync(
+      resolve(process.cwd(), 'src/pages/activity/detail.vue'),
+      'utf8',
+    )
+    const summaryDetailSource = readFileSync(
+      resolve(process.cwd(), 'src/pages/activity/summary-detail.vue'),
+      'utf8',
+    )
+    const reviewDetailSource = readFileSync(
+      resolve(process.cwd(), 'src/pages/activity/review-detail.vue'),
+      'utf8',
+    )
+
+    expect(detailSource).toContain('activityImagePreviews')
+    expect(detailSource).toContain('loadActivityImagePreviews')
+    expect(detailSource).toContain('resolveMediaPreviewUrl(image.signedUrl')
+    expect(detailSource).not.toContain(':src="img.signedUrl"')
+    expect(detailSource).not.toContain(':src="activity.images[0].signedUrl"')
+    expect(summaryDetailSource).toContain('summaryImagePreviews')
+    expect(summaryDetailSource).toContain('resolveMediaPreviewUrl(image.signedUrl')
+    expect(reviewDetailSource).toContain('loadReviewImagePreviews')
+    expect(reviewDetailSource).toContain('resolveMediaPreviewUrl(url, accessToken)')
   })
 })

@@ -10,14 +10,14 @@
           <text class="content">{{ summary.content }}</text>
         </view>
 
-        <view v-if="summary.images.length > 0" class="card">
+        <view v-if="summaryImagePreviews.length > 0" class="card">
           <text class="section-title">{{ t('activitySummary.images') }}</text>
           <view class="image-grid">
             <image
-              v-for="image in summary.images"
-              :key="image.mediaId"
+              v-for="imageUrl in summaryImagePreviews"
+              :key="imageUrl"
               class="summary-image"
-              :src="image.signedUrl"
+              :src="imageUrl"
               mode="aspectFill"
             />
           </view>
@@ -50,14 +50,35 @@ import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { getActivitySummaries, type ActivitySummaryPost } from '@/api/modules/activities'
 import { formatDateTime } from '@/utils/date'
+import { resolveMediaPreviewUrl } from '@/utils/media-preview'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const errorMsg = ref('')
 const activityId = ref('')
 const summaryId = ref('')
 const summary = ref<ActivitySummaryPost | null>(null)
+const summaryImagePreviews = ref<string[]>([])
+
+/**
+ * 解析总结图片为 image 组件可展示地址。
+ *
+ * 前置条件：currentSummary 来自活动总结接口。
+ * 后置条件：summaryImagePreviews 按接口图片顺序保存可展示地址。
+ * 不变量：不修改总结正文或远端媒体数据。
+ *
+ * @param currentSummary 活动总结详情
+ */
+async function loadSummaryImagePreviews(currentSummary: ActivitySummaryPost): Promise<void> {
+  const accessToken = authStore.getAccessToken()
+  const resolvedUrls = await Promise.all(
+    currentSummary.images.map((image) => resolveMediaPreviewUrl(image.signedUrl, accessToken)),
+  )
+  summaryImagePreviews.value = resolvedUrls.filter(Boolean)
+}
 
 /** 加载活动总结详情
  *
@@ -71,8 +92,14 @@ async function loadSummaryDetail(): Promise<void> {
   try {
     const result = await getActivitySummaries(activityId.value, 1, 50)
     summary.value = (result.items ?? []).find((item) => item.summaryId === summaryId.value) ?? null
-    if (!summary.value) errorMsg.value = '未找到活动总结'
+    if (!summary.value) {
+      summaryImagePreviews.value = []
+      errorMsg.value = '未找到活动总结'
+      return
+    }
+    await loadSummaryImagePreviews(summary.value)
   } catch {
+    summaryImagePreviews.value = []
     errorMsg.value = '加载活动总结失败'
   } finally {
     loading.value = false

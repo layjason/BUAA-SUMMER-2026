@@ -24,7 +24,7 @@
                   <image
                     v-if="tpl.defaultCoverImage?.signedUrl"
                     class="card-cover"
-                    :src="tpl.defaultCoverImage.signedUrl"
+                    :src="getTemplateCoverUrl(tpl)"
                     mode="aspectFill"
                   />
                   <view v-else class="card-cover card-cover-placeholder">
@@ -70,6 +70,7 @@ import {
 } from '@/api/modules/activities'
 import { BottomActionBar } from '@/components'
 import { getErrorMessage } from '@/utils/error'
+import { toAbsoluteMediaUrl } from '@/utils/media-preview'
 
 const { t } = useI18n()
 
@@ -96,6 +97,19 @@ async function loadTemplates(): Promise<void> {
   } finally {
     loadingTemplates.value = false
   }
+}
+
+/**
+ * 获取模板封面展示地址。
+ *
+ * 前置条件：tpl 来自活动模板接口，封面 signedUrl 可能是后端相对地址。
+ * 后置条件：返回 image 组件可访问的绝对地址；无封面时返回空字符串。
+ * 不变量：只转换展示 URL，不修改模板数据。
+ *
+ * @param tpl 活动模板
+ */
+function getTemplateCoverUrl(tpl: ActivityTemplate): string {
+  return tpl.defaultCoverImage?.signedUrl ? toAbsoluteMediaUrl(tpl.defaultCoverImage.signedUrl) : ''
 }
 
 async function selectTemplate(tpl: ActivityTemplate): Promise<void> {

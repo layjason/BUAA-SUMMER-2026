@@ -107,6 +107,7 @@ import {
 } from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
 import { formatDateTime } from '@/utils/date'
+import { toAbsoluteMediaUrl } from '@/utils/media-preview'
 import { FormError, BottomActionBar } from '@/components'
 
 const { t } = useI18n()
@@ -167,7 +168,7 @@ async function handleAddReviewImage(): Promise<void> {
       const results = await uploadReviewImages(selectedPaths)
       for (const [index, r] of results.entries()) {
         const previewUrl = selectedPaths[index]
-        const markdownUrl = r.signedUrl || ''
+        const markdownUrl = r.signedUrl ? toAbsoluteMediaUrl(r.signedUrl) : ''
         if (!previewUrl) continue
         imageUrls.value.push(previewUrl)
         reviewMarkdownImageUrls.value.push(markdownUrl)

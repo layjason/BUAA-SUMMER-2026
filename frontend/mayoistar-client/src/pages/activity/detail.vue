@@ -32,6 +32,7 @@ import { BottomActionBar } from '@/components'
 import { isActivityAtCapacity } from '@/utils/activity-capacity'
 import { formatDateTime, formatTimeRange } from '@/utils/date'
 import { getErrorMessage } from '@/utils/error'
+import { resolveMediaPreviewUrl } from '@/utils/media-preview'
 import { useAuthStore } from '@/stores/auth'
 import { QR_CODE_API_BASE_URL } from '@/config/env'
 import { buildActivityLocationDisplay, openActivityLocationMap } from '@/services/activity-location'
@@ -45,6 +46,7 @@ const activityId = ref('')
 
 const activity = ref<ActivityDetail | null>(null)
 const participation = ref<ActivityParticipationState | null>(null)
+const activityImagePreviews = ref<string[]>([])
 const publishedSummaries = ref<ActivitySummaryPost[]>([])
 const publishedReviews = ref<ActivityReviewListItem[]>([])
 const hasReviewed = ref(false)
@@ -748,6 +750,23 @@ async function handleConfirmWaiting(): Promise<void> {
 }
 
 /**
+ * 解析活动详情图片为 image 组件可展示地址。
+ *
+ * 前置条件：act 来自活动详情接口，图片 signedUrl 可能为后端相对签名地址。
+ * 后置条件：activityImagePreviews 与 act.images 顺序一致；无法加载的图片会被过滤。
+ * 不变量：不修改活动详情对象，只维护展示层预览地址。
+ *
+ * @param act 活动详情
+ */
+async function loadActivityImagePreviews(act: ActivityDetail): Promise<void> {
+  const accessToken = authStore.getAccessToken()
+  const resolvedUrls = await Promise.all(
+    act.images.map((image) => resolveMediaPreviewUrl(image.signedUrl, accessToken)),
+  )
+  activityImagePreviews.value = resolvedUrls.filter(Boolean)
+}
+
+/**
  * 加载已发布活动的总结与评价信息。
  *
  * 前置条件：活动详情已加载，且 reviewStatus 为 approved。
@@ -786,6 +805,7 @@ async function loadData(): Promise<void> {
     ])
     activity.value = act
     participation.value = state
+    await loadActivityImagePreviews(act)
     if (act.reviewStatus === 'approved') {
       await loadPublishedActivityExtras()
     } else {
@@ -799,6 +819,7 @@ async function loadData(): Promise<void> {
     } else {
       errorMsg.value = getErrorMessage(0, '加载活动详情失败')
     }
+    activityImagePreviews.value = []
   } finally {
     loading.value = false
   }
@@ -828,9 +849,9 @@ onShow(() => {
 
     <template v-else-if="activity">
       <scroll-view class="scroll-area" scroll-y>
-        <view v-if="activity.images.length > 0" class="swiper-wrapper">
+        <view v-if="activityImagePreviews.length > 0" class="swiper-wrapper">
           <swiper
-            v-if="activity.images.length > 1"
+            v-if="activityImagePreviews.length > 1"
             class="swiper"
             indicator-dots
             indicator-color="rgba(255,255,255,0.5)"
@@ -839,16 +860,11 @@ onShow(() => {
             interval="4000"
             circular
           >
-            <swiper-item v-for="img in activity.images" :key="img.mediaId">
-              <image class="swiper-image" :src="img.signedUrl" mode="aspectFill" />
+            <swiper-item v-for="img in activityImagePreviews" :key="img">
+              <image class="swiper-image" :src="img" mode="aspectFill" />
             </swiper-item>
           </swiper>
-          <image
-            v-else
-            class="single-image"
-            :src="activity.images[0].signedUrl"
-            mode="aspectFill"
-          />
+          <image v-else class="single-image" :src="activityImagePreviews[0]" mode="aspectFill" />
         </view>
         <view v-else class="image-placeholder">
           <text class="placeholder-icon">📷</text>

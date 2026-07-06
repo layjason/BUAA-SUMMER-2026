@@ -48,28 +48,46 @@ import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { getActivityReviews, type ActivityReviewListItem } from '@/api/modules/activities'
 import { formatDateTime } from '@/utils/date'
+import { resolveMediaPreviewUrl } from '@/utils/media-preview'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const errorMsg = ref('')
 const activityId = ref('')
 const reviewId = ref('')
 const review = ref<ActivityReviewListItem | null>(null)
+const reviewImageUrls = ref<string[]>([])
 
 const markdownImagePattern = /!\[[^\]]*]\(([^)]+)\)/g
-
-/** 评价正文中的 Markdown 图片 URL 列表 */
-const reviewImageUrls = computed(() => {
-  const content = review.value?.content ?? ''
-  return [...content.matchAll(markdownImagePattern)].map((match) => match[1]).filter(Boolean)
-})
 
 /** 去除 Markdown 图片后的评价文本 */
 const reviewTextContent = computed(() => {
   const content = review.value?.content ?? ''
   return content.replace(markdownImagePattern, '').trim()
 })
+
+/**
+ * 解析评价正文中的 Markdown 图片为可展示地址。
+ *
+ * 前置条件：currentReview 来自活动评价列表接口，content 可能包含 Markdown 图片。
+ * 后置条件：reviewImageUrls 保存 image 组件可展示的图片地址。
+ * 不变量：不修改评价正文；图片 Markdown 仍由 reviewTextContent 负责从正文中剥离。
+ *
+ * @param currentReview 活动评价
+ */
+async function loadReviewImagePreviews(currentReview: ActivityReviewListItem): Promise<void> {
+  const markdownUrls = [...(currentReview.content ?? '').matchAll(markdownImagePattern)]
+    .map((match) => match[1])
+    .filter(Boolean)
+  const accessToken = authStore.getAccessToken()
+  const resolvedUrls = await Promise.all(
+    markdownUrls.map((url) => resolveMediaPreviewUrl(url, accessToken)),
+  )
+  reviewImageUrls.value = resolvedUrls.filter(Boolean)
+}
 
 /** 加载活动评价详情
  *
@@ -83,8 +101,14 @@ async function loadReviewDetail(): Promise<void> {
   try {
     const result = await getActivityReviews(activityId.value, 1, 50)
     review.value = (result.items ?? []).find((item) => item.reviewId === reviewId.value) ?? null
-    if (!review.value) errorMsg.value = '未找到活动评价'
+    if (!review.value) {
+      reviewImageUrls.value = []
+      errorMsg.value = '未找到活动评价'
+      return
+    }
+    await loadReviewImagePreviews(review.value)
   } catch {
+    reviewImageUrls.value = []
     errorMsg.value = '加载活动评价失败'
   } finally {
     loading.value = false

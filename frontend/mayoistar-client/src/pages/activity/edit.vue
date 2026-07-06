@@ -247,7 +247,6 @@ import { computed, ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
-import { API_BASE_URL } from '@/config/env'
 import { useAuthStore } from '@/stores/auth'
 import {
   createDraft,
@@ -259,6 +258,7 @@ import {
 import { AMAP_WEB_API_KEY } from '@/services/amap'
 import { getErrorMessage } from '@/utils/error'
 import { normalizeGeoPoint } from '@/utils/map-move'
+import { resolveMediaPreviewUrl } from '@/utils/media-preview'
 import { BottomActionBar, FormInput, FormError } from '@/components'
 
 const { t } = useI18n()
@@ -551,56 +551,6 @@ function removeImage(index: number): void {
 }
 
 /**
- * 判断媒体签名 URL 是否属于后端媒体访问端点。
- *
- * 前置条件：signedUrl 来自 MediaFile.signedUrl，可能为相对路径或绝对 URL。
- * 后置条件：返回 true 表示该 URL 需要通过带鉴权的下载流程转换成本地预览路径。
- *
- * @param signedUrl 媒体签名访问地址
- */
-function isBackendMediaSignedUrl(signedUrl: string): boolean {
-  if (signedUrl.startsWith('/media/')) return true
-  const normalizedApiBase = API_BASE_URL.replace(/\/+$/, '')
-  return signedUrl.startsWith(`${normalizedApiBase}/media/`)
-}
-
-/**
- * 将后端相对媒体 URL 转换为绝对 URL。
- *
- * 前置条件：signedUrl 为后端返回的媒体签名 URL。
- * 后置条件：返回可交给 uni.downloadFile 访问的绝对 URL。
- *
- * @param signedUrl 媒体签名访问地址
- */
-function toAbsoluteMediaUrl(signedUrl: string): string {
-  if (/^https?:\/\//i.test(signedUrl)) return signedUrl
-  return `${API_BASE_URL.replace(/\/+$/, '')}/${signedUrl.replace(/^\/+/, '')}`
-}
-
-/**
- * 下载后端私有媒体到本地临时文件用于图片预览。
- *
- * 前置条件：signedUrl 指向后端 /media 端点，当前用户已登录。
- * 后置条件：下载成功时返回本地临时文件路径；失败时返回空字符串，保持图片与 mediaId 索引对齐。
- *
- * @param signedUrl 媒体签名访问地址
- */
-async function downloadSignedMediaPreview(signedUrl: string): Promise<string> {
-  const accessToken = authStore.getAccessToken()
-  if (!accessToken) return ''
-
-  try {
-    const result = await uni.downloadFile({
-      url: toAbsoluteMediaUrl(signedUrl),
-      header: { Authorization: `Bearer ${accessToken}` },
-    })
-    return result.statusCode === 200 ? result.tempFilePath : ''
-  } catch {
-    return ''
-  }
-}
-
-/**
  * 将草稿接口返回的媒体文件转换为 image 组件可展示的预览路径。
  *
  * 前置条件：media.signedUrl 可能是后端相对私有 URL，也可能是 mock/public 绝对 URL。
@@ -609,10 +559,7 @@ async function downloadSignedMediaPreview(signedUrl: string): Promise<string> {
  * @param media 草稿图片媒体文件
  */
 async function resolveDraftImagePreview(media: { signedUrl?: string | null }): Promise<string> {
-  const signedUrl = media.signedUrl ?? ''
-  if (!signedUrl) return ''
-  if (!isBackendMediaSignedUrl(signedUrl)) return signedUrl
-  return downloadSignedMediaPreview(signedUrl)
+  return resolveMediaPreviewUrl(media.signedUrl, authStore.getAccessToken())
 }
 
 // ================= 表单数据组装 =================
