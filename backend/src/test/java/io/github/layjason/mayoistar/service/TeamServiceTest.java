@@ -19,6 +19,8 @@ import io.github.layjason.mayoistar.entity.social.TeamMediaFile;
 import io.github.layjason.mayoistar.entity.social.TeamMemberRole;
 import io.github.layjason.mayoistar.entity.social.TeamStatus;
 import io.github.layjason.mayoistar.exception.BusinessException;
+import io.github.layjason.mayoistar.exception.ErrorCodes;
+import io.github.layjason.mayoistar.repository.ConversationRepository;
 import io.github.layjason.mayoistar.repository.MediaFileRepository;
 import io.github.layjason.mayoistar.repository.TeamJoinRequestRepository;
 import io.github.layjason.mayoistar.repository.TeamMediaFileRepository;
@@ -26,6 +28,7 @@ import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
 import io.github.layjason.mayoistar.repository.UserRepository;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,6 +61,9 @@ class TeamServiceTest {
 
     @Autowired
     private TeamJoinRequestRepository teamJoinRequestRepository;
+
+    @Autowired
+    private ConversationRepository conversationRepository;
 
     @Autowired
     private MediaFileRepository mediaFileRepository;
@@ -163,6 +169,92 @@ class TeamServiceTest {
             teamService.dissolveTeam(teamId, anon.getUserId());
             var result = teamService.searchTeams("MyGO", null, 1, 20);
             assertThat(result.getItems()).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("小队资料更新")
+    class UpdateTeam {
+
+        private User tomori;
+        private User anon;
+        private String teamId;
+
+        @BeforeEach
+        void setUp() {
+            tomori = createUser("tomori-update@mygo.band", "燈");
+            anon = createUser("anon-update@mygo.band", "愛音");
+
+            SocialDtos.TeamCreateRequest request = createRequest("MyGO!!!!! 編集前", TeamJoinMode.publicJoin);
+            var team = teamService.createTeam(tomori.getUserId(), request);
+            teamId = team.getTeamId();
+
+            SocialDtos.JoinTeamRequest joinReq = new SocialDtos.JoinTeamRequest();
+            teamService.joinTeam(teamId, anon.getUserId(), joinReq);
+        }
+
+        @Test
+        @DisplayName("队长更新小队资料并同步群聊标题")
+        void leaderUpdatesTeamProfile() {
+            SocialDtos.TeamUpdateRequest request = new SocialDtos.TeamUpdateRequest();
+            request.setName("MyGO!!!!! 編集後");
+            var tags = new ArrayList<String>();
+            tags.add("ライブ");
+            tags.add(null);
+            tags.add(" 練習 ");
+            tags.add("ライブ");
+            request.setTags(tags);
+            request.setJoinMode(TeamJoinMode.approvalRequired);
+            request.setCapacity(30);
+            request.setDescription("");
+
+            var result = teamService.updateTeam(teamId, tomori.getUserId(), request);
+
+            assertThat(result.getName()).isEqualTo("MyGO!!!!! 編集後");
+            assertThat(result.getTags()).containsExactly("ライブ", "練習");
+            assertThat(result.getJoinMode()).isEqualTo(TeamJoinMode.approvalRequired);
+            assertThat(result.getCapacity()).isEqualTo(30);
+            assertThat(result.getDescription()).isEmpty();
+
+            var conversation =
+                    conversationRepository.findById(result.getChatId()).orElseThrow();
+            assertThat(conversation.getTitle()).isEqualTo("MyGO!!!!! 編集後");
+        }
+
+        @Test
+        @DisplayName("非队长不能修改小队资料")
+        void nonLeaderCannotUpdateTeamProfile() {
+            SocialDtos.TeamUpdateRequest request = new SocialDtos.TeamUpdateRequest();
+            request.setName("愛音の独断");
+
+            assertThatThrownBy(() -> teamService.updateTeam(teamId, anon.getUserId(), request))
+                    .isInstanceOfSatisfying(
+                            BusinessException.class,
+                            error -> assertThat(error.getCode()).isEqualTo(ErrorCodes.TEAM_PERMISSION_DENIED));
+        }
+
+        @Test
+        @DisplayName("非成员不能修改小队资料")
+        void nonMemberCannotUpdateTeamProfile() {
+            User raana = createUser("raana-update@mygo.band", "楽奈");
+            SocialDtos.TeamUpdateRequest request = new SocialDtos.TeamUpdateRequest();
+            request.setName("楽奈の気まぐれ");
+
+            assertThatThrownBy(() -> teamService.updateTeam(teamId, raana.getUserId(), request))
+                    .isInstanceOfSatisfying(
+                            BusinessException.class,
+                            error -> assertThat(error.getCode()).isEqualTo(ErrorCodes.TEAM_PERMISSION_DENIED));
+        }
+
+        @Test
+        @DisplayName("容量不能低于当前成员数")
+        void capacityCannotBeLessThanCurrentMembers() {
+            SocialDtos.TeamUpdateRequest request = new SocialDtos.TeamUpdateRequest();
+            request.setCapacity(1);
+
+            assertThatThrownBy(() -> teamService.updateTeam(teamId, tomori.getUserId(), request))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("capacity cannot be less");
         }
     }
 

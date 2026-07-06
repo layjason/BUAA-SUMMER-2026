@@ -185,6 +185,13 @@ public class SocialController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
+    @PatchMapping("/teams/{teamId}")
+    public ResponseEntity<ApiResponse<SocialDtos.TeamProfile>> updateTeam(
+            @PathVariable String teamId, @Valid @RequestBody SocialDtos.TeamUpdateRequest request) {
+        var result = teamService.updateTeam(teamId, securityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
     @DeleteMapping("/teams/{teamId}")
     public ResponseEntity<ApiResponse<EmptyData>> dissolveTeam(@PathVariable String teamId) {
         teamService.dissolveTeam(teamId, securityUtils.getCurrentUserId());

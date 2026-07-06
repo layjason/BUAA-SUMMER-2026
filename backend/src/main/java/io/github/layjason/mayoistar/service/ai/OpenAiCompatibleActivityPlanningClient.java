@@ -35,6 +35,21 @@ public class OpenAiCompatibleActivityPlanningClient implements ActivityPlanningC
         this.objectMapper = objectMapper;
     }
 
+    static OpenAiCompatibleActivityPlanningClient forTest(
+            AiProperties aiProperties, ObjectMapper objectMapper, RestClient.Builder restClientBuilder) {
+        return new OpenAiCompatibleActivityPlanningClient(aiProperties, objectMapper) {
+            @Override
+            protected RestClient.Builder restClientBuilder() {
+                return restClientBuilder;
+            }
+
+            @Override
+            protected boolean configureRequestFactory() {
+                return false;
+            }
+        };
+    }
+
     /**
      * 调用兼容 Chat Completions 的活动策划模型。
      *
@@ -85,17 +100,27 @@ public class OpenAiCompatibleActivityPlanningClient implements ActivityPlanningC
     }
 
     private RestClient restClient() {
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        Duration timeout = Duration.ofSeconds(properties.getTimeoutSeconds());
-        requestFactory.setConnectTimeout(timeout);
-        requestFactory.setReadTimeout(timeout);
+        RestClient.Builder builder = restClientBuilder().clone();
+        if (configureRequestFactory()) {
+            SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+            Duration timeout = Duration.ofSeconds(properties.getTimeoutSeconds());
+            requestFactory.setConnectTimeout(timeout);
+            requestFactory.setReadTimeout(timeout);
+            builder.requestFactory(requestFactory);
+        }
 
-        return RestClient.builder()
-                .requestFactory(requestFactory)
-                .defaultHeader("Authorization", "Bearer " + properties.getApiKey())
+        return builder.defaultHeader("Authorization", "Bearer " + properties.getApiKey())
                 .messageConverters(
                         converters -> converters.addFirst(new MappingJackson2HttpMessageConverter(objectMapper)))
                 .build();
+    }
+
+    protected RestClient.Builder restClientBuilder() {
+        return RestClient.builder();
+    }
+
+    protected boolean configureRequestFactory() {
+        return true;
     }
 
     private Map<String, Object> requestBody(String prompt) {
