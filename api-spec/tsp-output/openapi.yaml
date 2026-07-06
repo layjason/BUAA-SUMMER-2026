@@ -1792,6 +1792,148 @@ paths:
                   - $ref: '#/components/schemas/InternalServerErrorResponse'
       tags:
         - 后台管理
+  /admin/activities/templates:
+    post:
+      operationId: AdminOperations_createActivityTemplate
+      description: 创建平台活动模板，管理员已登录，模板创建后对全部用户可见，可用于快速创建活动草稿。
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Activities.ActivityTemplate'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Activities.MediaFileUnavailable'
+      tags:
+        - 后台管理
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Activities.ActivityTemplateUpsertRequest'
+  /admin/activities/templates/{templateId}:
+    put:
+      operationId: AdminOperations_updateActivityTemplate
+      description: 更新平台活动模板，管理员已登录，覆盖模板基础信息和默认封面，已由模板生成的草稿不受影响。
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Activities.ActivityTemplate'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Activities.TemplateNotFound'
+                  - $ref: '#/components/schemas/Errors.Activities.MediaFileUnavailable'
+      tags:
+        - 后台管理
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Activities.ActivityTemplateUpsertRequest'
+    delete:
+      operationId: AdminOperations_deleteActivityTemplate
+      description: 删除平台活动模板，管理员已登录，删除后不再出现在用户模板列表，已创建的活动草稿不受影响。
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/EmptyData'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Activities.TemplateNotFound'
+      tags:
+        - 后台管理
   /admin/activities/{activityId}:
     get:
       operationId: AdminOperations_getActivity
@@ -8524,7 +8666,6 @@ components:
         - defaultIntroduction
         - defaultSafetyNotice
         - defaultCapacity
-        - defaultCoverImage
       properties:
         templateId:
           allOf:
@@ -8556,6 +8697,42 @@ components:
             - $ref: '#/components/schemas/MediaFile'
           description: 模板默认活动封面图片。签名 URL 为公开稳定型，URL 稳定、可公共缓存。
       description: 活动模板。
+    Activities.ActivityTemplateUpsertRequest:
+      type: object
+      required:
+        - name
+        - activityType
+        - defaultTags
+        - defaultIntroduction
+        - defaultSafetyNotice
+        - defaultCapacity
+      properties:
+        name:
+          type: string
+          description: 模板名称。
+        activityType:
+          type: string
+          description: 模板所属活动类型。
+        defaultTags:
+          type: array
+          items:
+            type: string
+          description: 模板默认标签。
+        defaultIntroduction:
+          type: string
+          description: 模板默认活动简介。
+        defaultSafetyNotice:
+          type: string
+          description: 模板默认安全须知。
+        defaultCapacity:
+          type: integer
+          format: int32
+          description: 模板默认人数上限。
+        defaultCoverImageMediaId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 模板默认封面媒体文件标识。传入时必须是可用的活动图片媒体，保存后封面图片对全部用户公开可见。
+      description: 活动模板创建或更新请求，管理员维护平台级模板，模板对全部用户可见。
     Activities.ActivityUpsertRequest:
       type: object
       required:

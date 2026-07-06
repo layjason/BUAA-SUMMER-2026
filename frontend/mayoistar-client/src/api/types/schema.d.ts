@@ -536,6 +536,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/activities/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 创建平台活动模板，管理员已登录，模板创建后对全部用户可见，可用于快速创建活动草稿。 */
+        post: operations["AdminOperations_createActivityTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/activities/templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description 更新平台活动模板，管理员已登录，覆盖模板基础信息和默认封面，已由模板生成的草稿不受影响。 */
+        put: operations["AdminOperations_updateActivityTemplate"];
+        post?: never;
+        /** @description 删除平台活动模板，管理员已登录，删除后不再出现在用户模板列表，已创建的活动草稿不受影响。 */
+        delete: operations["AdminOperations_deleteActivityTemplate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/auth/login": {
         parameters: {
             query?: never;
@@ -2396,7 +2431,7 @@ export interface components {
              */
             defaultCapacity: number;
             /** @description 模板默认活动封面图片。签名 URL 为公开稳定型，URL 稳定、可公共缓存。 */
-            defaultCoverImage: components["schemas"]["MediaFile"];
+            defaultCoverImage?: components["schemas"]["MediaFile"];
             /** @description 模板默认活动简介。 */
             defaultIntroduction: string;
             /** @description 模板默认安全须知。 */
@@ -2407,6 +2442,26 @@ export interface components {
             name: string;
             /** @description 模板标识。 */
             templateId: components["schemas"]["EntityId"];
+        };
+        /** @description 活动模板创建或更新请求，管理员维护平台级模板，模板对全部用户可见。 */
+        "Activities.ActivityTemplateUpsertRequest": {
+            /** @description 模板所属活动类型。 */
+            activityType: string;
+            /**
+             * Format: int32
+             * @description 模板默认人数上限。
+             */
+            defaultCapacity: number;
+            /** @description 模板默认封面媒体文件标识。传入时必须是可用的活动图片媒体，保存后封面图片对全部用户公开可见。 */
+            defaultCoverImageMediaId?: components["schemas"]["EntityId"];
+            /** @description 模板默认活动简介。 */
+            defaultIntroduction: string;
+            /** @description 模板默认安全须知。 */
+            defaultSafetyNotice: string;
+            /** @description 模板默认标签。 */
+            defaultTags: string[];
+            /** @description 模板名称。 */
+            name: string;
         };
         /** @description 活动基础信息请求，地点来自地图选点，时间范围合法，可用于草稿保存或提交审核，费用字段只表达信息，不触发支付。 */
         "Activities.ActivityUpsertRequest": {
@@ -5076,13 +5131,6 @@ export interface components {
             /** @description 调整原因。 */
             reason: string;
         };
-        /** @description 扫码添加好友请求，调用方通过扫描二维码获取 token 并提交，系统解码 token 后自动创建好友申请。 */
-        "Social.QrCodeScanRequest": {
-            /** @description 附加的好友申请附言。 */
-            message?: string;
-            /** @description 从二维码中解码得到的 token。 */
-            token: string;
-        };
         /** @description 举报记录。 */
         "Social.Report": {
             /** @description 举报创建时间。 */
@@ -7025,6 +7073,117 @@ export interface operations {
                          */
                         message: "For Super Earth!";
                     } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Admin.ActivityNotFound"] | components["schemas"]["Errors.Admin.ActivityModerationStateInvalid"] | components["schemas"]["Errors.Admin.ReviewReasonRequired"];
+                };
+            };
+        };
+    };
+    AdminOperations_createActivityTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Activities.ActivityTemplateUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["Activities.ActivityTemplate"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.MediaFileUnavailable"];
+                };
+            };
+        };
+    };
+    AdminOperations_updateActivityTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Activities.ActivityTemplateUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["Activities.ActivityTemplate"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.TemplateNotFound"] | components["schemas"]["Errors.Activities.MediaFileUnavailable"];
+                };
+            };
+        };
+    };
+    AdminOperations_deleteActivityTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: components["schemas"]["EntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 平台响应代码，成功响应固定为 200。
+                         * @enum {number}
+                         */
+                        code: 200;
+                        /** @description 响应数据。 */
+                        data: components["schemas"]["EmptyData"];
+                        /**
+                         * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                         * @enum {string}
+                         */
+                        message: "For Super Earth!";
+                    } | components["schemas"]["BadRequestResponse"] | components["schemas"]["UnauthorizedResponse"] | components["schemas"]["ForbiddenResponse"] | components["schemas"]["InternalServerErrorResponse"] | components["schemas"]["Errors.Activities.TemplateNotFound"];
                 };
             };
         };

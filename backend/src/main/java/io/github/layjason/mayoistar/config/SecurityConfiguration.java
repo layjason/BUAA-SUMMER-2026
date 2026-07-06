@@ -4,6 +4,7 @@ import io.github.layjason.mayoistar.exception.SecurityErrorHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -49,11 +50,7 @@ public class SecurityConfiguration {
     };
 
     private static final String[] PUBLIC_GET_ENDPOINTS = {
-        "/social/teams",
-        "/social/teams/*",
-        "/social/teams/*/members",
-        "/social/teams/*/points",
-        "/activities/*",
+        "/social/teams", "/social/teams/*", "/social/teams/*/members", "/social/teams/*/points", "/activities/*",
     };
 
     private static final String[] MERCHANT_ENDPOINTS = {
@@ -88,6 +85,8 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(PUBLIC_ENDPOINTS)
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/activities/mine")
+                        .authenticated()
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS)
                         .permitAll()
                         .requestMatchers(WEBSOCKET_ENDPOINTS)

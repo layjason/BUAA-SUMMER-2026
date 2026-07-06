@@ -225,7 +225,8 @@ public class ActivityController {
 
     private Optional<String> getOptionalCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()
+        if (authentication == null
+                || !authentication.isAuthenticated()
                 || "anonymousUser".equals(authentication.getPrincipal())) {
             return Optional.empty();
         }
