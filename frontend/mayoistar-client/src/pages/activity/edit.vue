@@ -220,8 +220,6 @@
             <switch :checked="formRequireLocationCheck" @change="onRequireLocationCheckChange" />
           </view>
         </view>
-
-        <FormError :message="formError" />
       </view>
     </scroll-view>
     <BottomActionBar fixed>
@@ -259,7 +257,7 @@ import { AMAP_WEB_API_KEY } from '@/services/amap'
 import { getErrorMessage } from '@/utils/error'
 import { normalizeGeoPoint } from '@/utils/map-move'
 import { resolveMediaPreviewUrl } from '@/utils/media-preview'
-import { BottomActionBar, FormInput, FormError } from '@/components'
+import { BottomActionBar, FormInput } from '@/components'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -298,7 +296,6 @@ const imageIds = ref<string[]>([])
 
 const savingDraft = ref(false)
 const submitting = ref(false)
-const formError = ref('')
 const errors = ref<Record<string, string>>({})
 
 interface PickedLocation {
@@ -537,7 +534,7 @@ async function handleAddImage(): Promise<void> {
         imageIds.value.push(result.mediaId)
         imagePreviews.value.push(tempPath)
       } catch {
-        formError.value = '图片上传失败'
+        showActivityEditErrorToast('图片上传失败')
       }
     }
   } catch {
@@ -560,6 +557,19 @@ function removeImage(index: number): void {
  */
 async function resolveDraftImagePreview(media: { signedUrl?: string | null }): Promise<string> {
   return resolveMediaPreviewUrl(media.signedUrl, authStore.getAccessToken())
+}
+
+/**
+ * 展示活动编辑页的页面级错误。
+ *
+ * 前置条件：message 来自本地校验或 API 错误映射。
+ * 后置条件：用户通过 toast 获得显著反馈。
+ * 不变量：不修改字段级 errors，避免覆盖具体表单项提示。
+ *
+ * @param message 要展示的错误文案
+ */
+function showActivityEditErrorToast(message: string): void {
+  uni.showToast({ title: message, icon: 'none', duration: 2500 })
 }
 
 // ================= 表单数据组装 =================
@@ -658,7 +668,12 @@ function validate(): boolean {
   if (!formSafetyNotice.value.trim()) e.safetyNotice = t('activityEdit.safetyNoticeRequired')
 
   errors.value = e
-  return Object.keys(e).length === 0
+  const firstError = Object.values(e)[0]
+  if (firstError) {
+    showActivityEditErrorToast(firstError)
+    return false
+  }
+  return true
 }
 
 // ================= 保存草稿 =================
@@ -666,7 +681,6 @@ function validate(): boolean {
 async function handleSaveDraft(): Promise<void> {
   if (savingDraft.value) return
   savingDraft.value = true
-  formError.value = ''
 
   try {
     const payload = buildPayload()
@@ -681,9 +695,9 @@ async function handleSaveDraft(): Promise<void> {
     uni.showToast({ title: t('activityEdit.saveSuccess'), icon: 'success' })
   } catch (error) {
     if (error instanceof BusinessError) {
-      formError.value = getErrorMessage(error.code)
+      showActivityEditErrorToast(getErrorMessage(error.code))
     } else {
-      formError.value = getErrorMessage(0, '保存失败')
+      showActivityEditErrorToast(getErrorMessage(0, '保存失败'))
     }
   } finally {
     savingDraft.value = false
@@ -705,7 +719,6 @@ function onRequireLocationCheckChange(event: Event): void {
 
 async function handleSubmit(): Promise<void> {
   if (submitting.value) return
-  formError.value = ''
 
   if (!validate()) return
 
@@ -729,9 +742,9 @@ async function handleSubmit(): Promise<void> {
     setTimeout(() => uni.navigateBack(), 1500)
   } catch (error) {
     if (error instanceof BusinessError) {
-      formError.value = getErrorMessage(error.code)
+      showActivityEditErrorToast(getErrorMessage(error.code))
     } else {
-      formError.value = getErrorMessage(0, '提交失败')
+      showActivityEditErrorToast(getErrorMessage(0, '提交失败'))
     }
   } finally {
     submitting.value = false
@@ -795,9 +808,9 @@ async function loadDraft(): Promise<void> {
     imagePreviews.value = await Promise.all(draftImages.map(resolveDraftImagePreview))
   } catch (error) {
     if (error instanceof BusinessError) {
-      formError.value = getErrorMessage(error.code)
+      showActivityEditErrorToast(getErrorMessage(error.code))
     } else {
-      formError.value = getErrorMessage(0, t('activityEdit.loadFailed'))
+      showActivityEditErrorToast(getErrorMessage(0, t('activityEdit.loadFailed')))
     }
   }
 }
@@ -831,7 +844,7 @@ onUnload(() => {
 }
 
 .edit-container {
-  padding: 32rpx 32rpx calc(48rpx + env(safe-area-inset-bottom));
+  padding: 32rpx 32rpx calc(176rpx + env(safe-area-inset-bottom));
 }
 
 .section {

@@ -17,4 +17,37 @@ describe('活动详情页审核进度加载', () => {
     expect(loadDataBody).not.toContain('getActivityReviews(activityId.value, 1, 10)')
     expect(loadDataBody).not.toContain('getMyActivityReview(activityId.value)')
   })
+
+  it('审核原因应按 reviewedAt 降序选取最新评审意见', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/activity/detail.vue'), 'utf8')
+    const latestRecordBody = source.slice(
+      source.indexOf(
+        'function getLatestReviewRecord(records: ReviewRecord[]): ReviewRecord | null {',
+      ),
+      source.indexOf('/** 审核原因，仅驳回和要求修改时展示。 */'),
+    )
+    const reviewReasonBody = source.slice(
+      source.indexOf('const reviewReason = computed(() => {'),
+      source.indexOf('/** 是否展示审核原因。 */'),
+    )
+
+    expect(latestRecordBody).toContain('[...records].sort')
+    expect(latestRecordBody).toContain('new Date(right.reviewedAt).getTime()')
+    expect(latestRecordBody).toContain('return rightTime - leftTime')
+    expect(reviewReasonBody).toContain('getLatestReviewRecord(records)?.reason')
+    expect(reviewReasonBody).not.toContain('records[records.length - 1]?.reason')
+  })
+
+  it('签到二维码按钮禁用态应覆盖主按钮和 ghost 按钮背景', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/activity/detail.vue'), 'utf8')
+    const disabledSelectorPattern =
+      String.raw`\.checkin-action\[disabled\],[\s\S]*` +
+      String.raw`\.checkin-action-ghost\[disabled\]\s*\{[\s\S]*`
+
+    expect(source).toContain('.checkin-action[disabled],\n.checkin-action-ghost[disabled]')
+    expect(source).toMatch(
+      new RegExp(`${disabledSelectorPattern}background:\\s*var\\(--q-color-bg-soft\\);`),
+    )
+    expect(source).toMatch(new RegExp(`${disabledSelectorPattern}opacity:\\s*1;`))
+  })
 })

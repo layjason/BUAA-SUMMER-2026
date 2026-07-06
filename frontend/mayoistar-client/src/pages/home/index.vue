@@ -113,10 +113,6 @@
         </view>
       </view>
     </scroll-view>
-
-    <view class="fab" @click="goCreate">
-      <text class="fab-icon">+</text>
-    </view>
   </view>
 </template>
 
@@ -291,10 +287,6 @@ onShow(() => {
 
 function goDetail(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
-}
-
-function goCreate(): void {
-  uni.navigateTo({ url: '/pages/activity/templates' })
 }
 
 function goSearch(): void {
@@ -618,27 +610,6 @@ function goMap(): void {
 
 .load-error {
   color: var(--q-color-danger);
-}
-
-.fab {
-  position: fixed;
-  right: 32rpx;
-  bottom: calc(32rpx + env(safe-area-inset-bottom) + 120rpx);
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 50%;
-  background: var(--q-gradient-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 10rpx 24rpx rgba(22, 160, 133, 0.24);
-}
-
-.fab-icon {
-  font-size: 56rpx;
-  color: var(--q-color-bg-card);
-  line-height: 1;
-  margin-top: -4rpx;
 }
 </style>
 

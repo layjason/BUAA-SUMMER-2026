@@ -12,6 +12,17 @@ describe('活动页面底部操作栏', () => {
 
     expect(source).toMatch(/<BottomActionBar\b[^>]*\bfixed\b[^>]*>/)
     expect(source).toMatch(/import\s+\{[^}]*BottomActionBar[^}]*}\s+from\s+['"]@\/components['"]/)
+    expect(source).toMatch(/\.edit-container\s*\{[\s\S]*padding:[^;]*176rpx/)
+  })
+
+  it('编辑页提交错误应使用 toast 且不再展示底部表单错误条', () => {
+    const source = readActivityPage('edit.vue')
+
+    expect(source).toContain('function showActivityEditErrorToast(message: string): void')
+    expect(source).toContain("uni.showToast({ title: message, icon: 'none', duration: 2500 })")
+    expect(source).toContain('showActivityEditErrorToast(getErrorMessage(error.code))')
+    expect(source).not.toContain('<FormError')
+    expect(source).not.toMatch(/import\s+\{[^}]*FormError[^}]*}\s+from\s+['"]@\/components['"]/)
   })
 
   it('模板选择页应使用固定底部操作栏，避免按钮被手机安全区遮挡', () => {

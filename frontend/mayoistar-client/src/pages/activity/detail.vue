@@ -107,12 +107,33 @@ const showReviewProgress = computed(() => {
   return Boolean(isOrganizer.value && activity.value?.reviewStatus)
 })
 
+type ReviewRecord = NonNullable<ActivityDetail['reviewRecords']>[number]
+
+/**
+ * 获取最新活动审核记录。
+ *
+ * 前置条件：records 来自活动详情接口，reviewedAt 为可解析时间字符串或空值。
+ * 后置条件：返回 reviewedAt 时间最新的一条审核记录；空列表返回 null。
+ * 不变量：不修改原始 records 顺序，避免影响页面其它展示逻辑。
+ *
+ * @param records 活动审核记录列表
+ */
+function getLatestReviewRecord(records: ReviewRecord[]): ReviewRecord | null {
+  if (records.length === 0) return null
+  const sortedRecords = [...records].sort((left, right) => {
+    const rightTime = new Date(right.reviewedAt).getTime() || 0
+    const leftTime = new Date(left.reviewedAt).getTime() || 0
+    return rightTime - leftTime
+  })
+  return sortedRecords[0]
+}
+
 /** 审核原因，仅驳回和要求修改时展示。 */
 const reviewReason = computed(() => {
   const act = activity.value
   if (!act || (act.reviewStatus !== 'rejected' && act.reviewStatus !== 'changeRequired')) return ''
   const records = act.reviewRecords ?? []
-  return records[records.length - 1]?.reason ?? ''
+  return getLatestReviewRecord(records)?.reason ?? ''
 })
 
 /** 是否展示审核原因。 */
@@ -1578,14 +1599,18 @@ onShow(() => {
   font-weight: 600;
 }
 
-.checkin-action[disabled] {
-  background-color: var(--q-color-text-muted);
-  color: var(--q-color-bg-card);
-}
-
 .checkin-action-ghost {
   background: var(--q-gradient-primary-soft);
   color: var(--q-color-primary);
+}
+
+.checkin-action[disabled],
+.checkin-action-ghost[disabled] {
+  background: var(--q-color-bg-soft);
+  color: var(--q-color-text-muted);
+  border: 1rpx solid var(--q-color-border);
+  box-shadow: none;
+  opacity: 1;
 }
 
 .review-progress-card {
