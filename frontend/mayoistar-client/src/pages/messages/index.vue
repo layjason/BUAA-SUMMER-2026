@@ -206,6 +206,7 @@ import { extractPageItems } from '@/utils/page-result'
 import { getConversations } from '@/api/modules/chat'
 import { useAuthStore } from '@/stores/auth'
 import { fetchActivityCompanions } from '@/utils/activity-companions'
+import { ensureAuthenticatedAccess } from '@/utils/auth-guard'
 import { scanPersonalQrAndAddFriend } from '@/utils/personal-qr'
 import type { components } from '@/api/types/schema'
 
@@ -527,6 +528,11 @@ const { connect: connectRealtime, close: closeRealtime } = useChatRealtime(
 
 onShow(() => {
   closeAllPopups()
+  const authStore = useAuthStore()
+  if (!ensureAuthenticatedAccess('/pages/messages/index', () => authStore.isLoggedIn)) {
+    closeRealtime()
+    return
+  }
   loadSocialData()
   connectRealtime()
 })

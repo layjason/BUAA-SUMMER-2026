@@ -2,8 +2,8 @@
 /**
  * 活动详情页。
  *
- * 前置条件：通过页面 query 传入 activityId，且当前用户已登录。
- * 后置条件：展示活动详情、审核进度、参与状态，并按 OpenAPI 状态执行报名、候补、签到、评价、总结等操作。
+ * 前置条件：通过页面 query 传入 activityId。
+ * 后置条件：展示活动公开详情；已登录时同步参与状态并展示报名、候补、签到、评价、总结等操作。
  * 不变量：页面只使用 OpenAPI 已定义字段，不新增正式业务状态或接口结构。
  */
 import { computed, ref } from 'vue'
@@ -787,19 +787,23 @@ async function loadActivityImagePreviews(act: ActivityDetail): Promise<void> {
  * 加载已发布活动的总结与评价信息。
  *
  * 前置条件：活动详情已加载，且 reviewStatus 为 approved。
- * 后置条件：同步总结列表、评价列表和当前用户评价状态；附属内容失败时仅清空附属区，不阻断详情展示。
+ * 后置条件：同步总结列表、评价列表；已登录时同步当前用户评价状态；附属内容失败时仅清空附属区，不阻断详情展示。
  * 不变量：不改变活动详情、参与状态或任何业务状态。
  */
 async function loadPublishedActivityExtras(): Promise<void> {
   try {
-    const [summariesRes, reviewsRes, myReviewRes] = await Promise.all([
+    const [summariesRes, reviewsRes] = await Promise.all([
       getActivitySummaries(activityId.value, 1, 5),
       getActivityReviews(activityId.value, 1, 10),
-      getMyActivityReview(activityId.value),
     ])
     publishedSummaries.value = summariesRes.items ?? []
     publishedReviews.value = reviewsRes.items ?? []
-    hasReviewed.value = Boolean(myReviewRes.review)
+    if (authStore.isLoggedIn) {
+      const myReviewRes = await getMyActivityReview(activityId.value)
+      hasReviewed.value = Boolean(myReviewRes.review)
+    } else {
+      hasReviewed.value = false
+    }
   } catch {
     publishedSummaries.value = []
     publishedReviews.value = []
@@ -811,15 +815,13 @@ async function loadPublishedActivityExtras(): Promise<void> {
  * 加载详情页全部数据。
  *
  * 前置条件：activityId 已存在。
- * 后置条件：同步活动详情、参与状态、总结、评价和我的评价状态。
- * 不变量：详情和参与状态是主数据；总结/评价仅在已发布活动中加载，失败不影响详情展示。
+ * 后置条件：同步活动公开详情；已登录时同步参与状态、总结、评价和我的评价状态。
+ * 不变量：公开详情不依赖登录态；总结/评价仅在已发布活动中加载，失败不影响详情展示。
  */
 async function loadData(): Promise<void> {
   try {
-    const [act, state] = await Promise.all([
-      getActivityDetail(activityId.value),
-      fetchParticipationState(activityId.value),
-    ])
+    const act = await getActivityDetail(activityId.value)
+    const state = authStore.isLoggedIn ? await fetchParticipationState(activityId.value) : null
     activity.value = act
     participation.value = state
     await loadActivityImagePreviews(act)

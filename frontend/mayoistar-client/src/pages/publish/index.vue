@@ -6,6 +6,22 @@
  * 后置条件：根据用户选择跳转到对应创建流程。
  * 不变量：入口页不直接创建、提交或克隆活动。
  */
+import { onShow } from '@dcloudio/uni-app'
+import { useAuthStore } from '@/stores/auth'
+import { ensureAuthenticatedAccess } from '@/utils/auth-guard'
+
+const authStore = useAuthStore()
+
+/**
+ * 检查发布 Tab 登录态。
+ *
+ * 前置条件：页面进入显示阶段。
+ * 后置条件：未登录用户被引导到登录页。
+ * 不变量：已登录用户不受影响。
+ */
+onShow(() => {
+  ensureAuthenticatedAccess('/pages/publish/index', () => authStore.isLoggedIn)
+})
 
 /**
  * 跳转到空白活动创建页。

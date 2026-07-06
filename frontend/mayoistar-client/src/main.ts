@@ -16,6 +16,7 @@ import { initMockDb } from '@/mock/database'
 import { handleMockRequest, handleMockBinaryRequest } from '@/mock/mockServer'
 import { setCurrentUserId } from '@/mock/workflow'
 import { useAuthStore } from '@/stores/auth'
+import { installAuthGuard } from '@/utils/auth-guard'
 import zhCN from './locales/zh-CN.json'
 
 const i18n = createI18n({
@@ -33,6 +34,7 @@ export function createApp() {
 
   const authStore = useAuthStore()
   authStore.initFromStorage()
+  installAuthGuard(() => authStore.isLoggedIn)
 
   // ===== 有状态 Mock Server =====
   // USE_MOCK 为 true 时，所有 API 请求走内存态 mockDb（有状态 workflow）

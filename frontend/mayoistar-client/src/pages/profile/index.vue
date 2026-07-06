@@ -67,6 +67,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/auth'
 import { logout } from '@/api/modules/auth'
 import { getMerchantProfile, getMyProfile } from '@/api/modules/profile'
+import { ensureAuthenticatedAccess } from '@/utils/auth-guard'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -239,7 +240,7 @@ onShow(() => {
   }
   if (!authStore.isLoggedIn && !autoRedirected) {
     autoRedirected = true
-    uni.navigateTo({ url: '/pages/login/index' })
+    ensureAuthenticatedAccess('/pages/profile/index', () => authStore.isLoggedIn)
   }
   if (authStore.isLoggedIn) loadNickname()
 })

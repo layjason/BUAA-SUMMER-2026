@@ -11,6 +11,24 @@ describe('活动详情页审核进度加载', () => {
     expect(source).not.toContain('.image-placeholder')
   })
 
+  it('未登录查看活动详情时不应请求参与状态或我的评价状态', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/activity/detail.vue'), 'utf8')
+    const loadDataBody = source.slice(
+      source.indexOf('async function loadData(): Promise<void> {'),
+      source.indexOf('onLoad((query) => {'),
+    )
+    const extrasBody = source.slice(
+      source.indexOf('async function loadPublishedActivityExtras(): Promise<void> {'),
+      source.indexOf('/**\n * 加载详情页全部数据。'),
+    )
+
+    expect(loadDataBody).toContain('const act = await getActivityDetail(activityId.value)')
+    expect(loadDataBody).toContain('authStore.isLoggedIn')
+    expect(loadDataBody).toContain('await fetchParticipationState(activityId.value)')
+    expect(extrasBody).toContain('if (authStore.isLoggedIn)')
+    expect(extrasBody).toContain('await getMyActivityReview(activityId.value)')
+  })
+
   it('审核中活动应先加载核心详情，附属总结评价不应阻断页面展示', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/pages/activity/detail.vue'), 'utf8')
     const loadDataBody = source.slice(
