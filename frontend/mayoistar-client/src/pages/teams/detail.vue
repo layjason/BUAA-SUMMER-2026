@@ -11,15 +11,7 @@
       <template v-else-if="team">
         <!-- Team Header -->
         <view class="team-header">
-          <view class="team-avatar-large">
-            <image
-              v-if="team.avatar?.signedUrl"
-              :src="team.avatar.signedUrl"
-              class="team-avatar-image"
-              mode="aspectFill"
-            />
-            <text v-else class="team-avatar-placeholder">👥</text>
-          </view>
+          <UserAvatar size="xl" :avatar-url="team.avatar?.signedUrl || ''" :name="team.name" />
           <view class="team-info">
             <view class="team-name-row">
               <text class="team-name">{{ team.name }}</text>
@@ -89,15 +81,12 @@
 
           <view class="member-list">
             <view v-for="member in members.slice(0, 5)" :key="member.userId" class="member-item">
-              <view class="member-avatar">
-                <image
-                  v-if="member.avatar?.signedUrl"
-                  :src="member.avatar.signedUrl"
-                  class="member-avatar-image"
-                  mode="aspectFill"
-                />
-                <text v-else class="member-avatar-placeholder">👤</text>
-              </view>
+              <UserAvatar
+                size="md"
+                :avatar-url="member.avatar?.signedUrl || ''"
+                :name="member.nickname"
+                :user-id="member.userId"
+              />
               <view class="member-info">
                 <view class="member-name-row">
                   <text class="member-name">{{ member.nickname }}</text>
@@ -176,6 +165,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { onHide } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import {
   getTeamDetail,
   getTeamMembers,
@@ -397,7 +387,7 @@ onMounted(() => {
   background: var(--q-color-bg-card);
   padding: $spacing-xl;
   display: flex;
-  gap: $spacing-md;
+  gap: $spacing-lg;
 }
 
 .team-avatar-large {

@@ -7,15 +7,7 @@
     <view class="social-topbar__bar">
       <!-- Left: Avatar -->
       <view class="social-topbar__left" @tap="onAvatarTap">
-        <image
-          v-if="userAvatar"
-          class="social-topbar__avatar"
-          :src="userAvatar"
-          mode="aspectFill"
-        />
-        <view v-else class="social-topbar__avatar-placeholder">
-          <text class="social-topbar__avatar-icon">👤</text>
-        </view>
+        <UserAvatar :avatar-url="userAvatar" :name="userName" size="md" />
         <view v-if="hasNotification" class="social-topbar__badge"></view>
       </view>
 
@@ -47,9 +39,13 @@
  *
  * 包含：用户头像、搜索入口、加好友按钮（带红点）、更多菜单
  */
+import UserAvatar from '@/components/base/UserAvatar.vue'
+
 interface Props {
   /** 当前用户头像 URL */
   userAvatar?: string
+  /** 当前用户昵称，用于头像首字占位 */
+  userName?: string
   /** 是否有通知 */
   hasNotification?: boolean
   /** 待处理好友申请数量 */
@@ -60,6 +56,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   userAvatar: '',
+  userName: '',
   hasNotification: false,
   pendingRequests: 0,
   placeholder: '搜索好友、小队',
@@ -124,30 +121,6 @@ function onMoreTap() {
     width: 48px;
     height: 48px;
     flex-shrink: 0;
-  }
-
-  &__avatar {
-    width: 100%;
-    height: 100%;
-    border-radius: $radius-full;
-    border: 2px solid var(--q-color-bg-card);
-    box-shadow: $shadow-sm;
-  }
-
-  &__avatar-placeholder {
-    width: 100%;
-    height: 100%;
-    border-radius: $radius-full;
-    background: $gradient-primary-soft;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid var(--q-color-bg-card);
-    box-shadow: $shadow-sm;
-  }
-
-  &__avatar-icon {
-    font-size: 24px;
   }
 
   &__badge {

@@ -11,17 +11,12 @@
         <!-- Profile Card -->
         <view class="profile-card">
           <view class="profile-header">
-            <view class="profile-avatar-wrapper">
-              <image
-                v-if="profile.avatar?.signedUrl"
-                class="profile-avatar"
-                :src="profile.avatar.signedUrl"
-                mode="aspectFill"
-              />
-              <view v-else class="profile-avatar-placeholder">
-                <text class="profile-avatar-text">{{ profile.nickname.charAt(0) }}</text>
-              </view>
-            </view>
+            <UserAvatar
+              size="xl"
+              :avatar-url="profile.avatar?.signedUrl || ''"
+              :name="profile.nickname"
+              :user-id="profile.userId"
+            />
 
             <view class="profile-main">
               <text class="profile-name">{{ profile.nickname }}</text>
@@ -137,6 +132,7 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import {
   getUserProfile,
@@ -410,6 +406,7 @@ onLoad((query) => {
 .profile-header {
   display: flex;
   align-items: flex-start;
+  gap: $spacing-lg;
 }
 
 .profile-avatar-wrapper {

@@ -17,8 +17,8 @@
 
       <view v-else class="request-list">
         <view v-for="req in requests" :key="req.requestId" class="request-card">
-          <view class="request-avatar" @tap="goToProfile(req.userId)">
-            <text class="request-avatar-text">{{ getNickname(req.userId).charAt(0) }}</text>
+          <view @tap="goToProfile(req.userId)">
+            <UserAvatar size="md" :name="getNickname(req.userId)" :user-id="req.userId" />
           </view>
 
           <view class="request-body" @tap="goToProfile(req.userId)">
@@ -51,7 +51,7 @@
  */
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { AppNavbar, EmptyState } from '@/components'
+import { AppNavbar, EmptyState, UserAvatar } from '@/components'
 import { BusinessError } from '@/api'
 import { getTeamMembers, getTeamJoinRequests, handleJoinRequest } from '@/api/modules/teams'
 import { getUserProfile } from '@/api/modules/social'

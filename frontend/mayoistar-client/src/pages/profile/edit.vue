@@ -109,10 +109,14 @@
                 {{ t('editProfile.rejectReason') }}: {{ qualificationRejectReason }}
               </text>
             </view>
-            <view v-if="submittedLicenseUrls.length > 0" class="submitted-license-section">
+            <view v-if="submittedLicensePreviewUrls.length > 0" class="submitted-license-section">
               <text class="sub-label">{{ t('editProfile.qualificationImages') }}</text>
               <view class="license-grid">
-                <view v-for="url in submittedLicenseUrls" :key="url" class="license-preview">
+                <view
+                  v-for="(url, index) in submittedLicensePreviewUrls"
+                  :key="index"
+                  class="license-preview"
+                >
                   <image class="license-image" :src="url" mode="aspectFill" />
                 </view>
               </view>
@@ -198,6 +202,7 @@ import {
   uploadMerchantLicense,
 } from '@/api/modules/profile'
 import { getErrorMessage } from '@/utils/error'
+import { resolveMediaPreviewUrl } from '@/utils/media-preview'
 import { BottomActionBar, FormInput, FormError } from '@/components'
 
 const { t } = useI18n()
@@ -277,6 +282,8 @@ const qualification = ref<{
 
 const licenseMediaIds = ref<string[]>([])
 const licensePreviewUrls = ref<string[]>([])
+/** 已提交资质图片的可展示地址（私有媒体需鉴权下载） */
+const submittedLicensePreviewUrls = ref<string[]>([])
 
 interface EditableProfileSnapshot {
   nickname: string
@@ -290,6 +297,13 @@ interface EditableProfileSnapshot {
 
 const initialProfileSnapshot = ref<EditableProfileSnapshot | null>(null)
 
+/** 忽略过期的 loadProfile 结果，避免并发请求用旧错误覆盖新数据 */
+let loadProfileGeneration = 0
+
+function normalizeFormText(value: string | null | undefined): string {
+  return (value ?? '').trim()
+}
+
 function sortedTags(): string[] {
   return [...selectedTags.value].sort()
 }
@@ -301,11 +315,11 @@ function sortedTags(): string[] {
  */
 function getEditableProfileSnapshot(): EditableProfileSnapshot {
   return {
-    nickname: formNickname.value.trim(),
-    merchantName: formMerchantName.value.trim(),
+    nickname: normalizeFormText(formNickname.value),
+    merchantName: normalizeFormText(formMerchantName.value),
     gender: formGender.value,
     birthday: formBirthday.value,
-    signature: formSignature.value.trim(),
+    signature: normalizeFormText(formSignature.value),
     tags: sortedTags(),
     avatarMediaId: avatarMediaId.value,
   }
@@ -370,7 +384,6 @@ const qualificationRejectReason = computed(() => {
 
 const qualificationSubmittedAt = computed(() => qualification.value?.submittedAt ?? '')
 const qualificationReviewedAt = computed(() => qualification.value?.reviewedAt ?? '')
-const submittedLicenseUrls = computed(() => qualification.value?.licenseImageUrls ?? [])
 
 const reputationScoreText = computed(() => {
   return reputationScore.value === null ? '-' : String(reputationScore.value)
@@ -601,6 +614,21 @@ function onBirthdayChange(e: { detail: { value: string } }): void {
   formBirthday.value = e.detail.value
 }
 
+/** 解析已提交资质图片的可展示地址
+ *
+ * 前置条件：licenseImageUrls 来自商家资料接口。
+ * 后置条件：私有后端媒体在有 token 时下载为本地临时路径；公开 URL 原样保留。
+ */
+async function resolveSubmittedLicensePreviews(urls: string[] | undefined): Promise<void> {
+  if (!urls?.length) {
+    submittedLicensePreviewUrls.value = []
+    return
+  }
+  const token = authStore.getAccessToken()
+  const previews = await Promise.all(urls.map((url) => resolveMediaPreviewUrl(url, token)))
+  submittedLicensePreviewUrls.value = previews.filter((preview) => Boolean(preview))
+}
+
 // ================= 加载资料 =================
 
 /**
@@ -609,11 +637,13 @@ function onBirthdayChange(e: { detail: { value: string } }): void {
  * 根据用户类型调用对应的资料 API 并回填表单。
  */
 async function loadProfile(): Promise<void> {
+  const generation = ++loadProfileGeneration
   try {
     if (isMerchant.value) {
       const profile = await getMerchantProfile()
-      formNickname.value = profile.nickname
-      formMerchantName.value = profile.merchantName
+      if (generation !== loadProfileGeneration) return
+      formNickname.value = profile.nickname ?? ''
+      formMerchantName.value = profile.merchantName ?? ''
       if (profile.avatar?.signedUrl) avatarUrl.value = profile.avatar.signedUrl
       if (profile.interestedActivityFields?.length) {
         selectedTags.value = new Set(profile.interestedActivityFields)
@@ -628,13 +658,19 @@ async function loadProfile(): Promise<void> {
         rejectReason: profile.qualification?.rejectReason,
         licenseImageUrls: profile.qualification?.licenseImageUrls,
       }
+      try {
+        await resolveSubmittedLicensePreviews(profile.qualification?.licenseImageUrls)
+      } catch {
+        submittedLicensePreviewUrls.value = []
+      }
     } else {
       const profile = await getMyProfile()
-      formNickname.value = profile.nickname
+      if (generation !== loadProfileGeneration) return
+      formNickname.value = profile.nickname ?? ''
       if (profile.avatar?.signedUrl) avatarUrl.value = profile.avatar.signedUrl
       if (profile.gender) formGender.value = profile.gender as typeof formGender.value
-      if (profile.birthday) formBirthday.value = profile.birthday
-      if (profile.signature) formSignature.value = profile.signature
+      if (profile.birthday) formBirthday.value = profile.birthday ?? ''
+      if (profile.signature) formSignature.value = profile.signature ?? ''
       if (profile.interestTags?.length) {
         selectedTags.value = new Set(profile.interestTags)
       } else {
@@ -642,8 +678,11 @@ async function loadProfile(): Promise<void> {
       }
       reputationScore.value = profile.reputationScore
     }
+    if (generation !== loadProfileGeneration) return
     initialProfileSnapshot.value = getEditableProfileSnapshot()
+    formError.value = ''
   } catch (error) {
+    if (generation !== loadProfileGeneration) return
     if (error instanceof BusinessError) {
       formError.value = getErrorMessage(error.code)
     } else {
@@ -721,7 +760,7 @@ async function handleSave(): Promise<void> {
       })
     }
     uni.showToast({ title: t('editProfile.saveSuccess'), icon: 'success' })
-    loadProfile()
+    await loadProfile()
   } catch (error) {
     if (error instanceof BusinessError) {
       formError.value = getErrorMessage(error.code)

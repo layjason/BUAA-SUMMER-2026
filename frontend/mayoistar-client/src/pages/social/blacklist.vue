@@ -13,15 +13,12 @@
 
       <view v-else class="list">
         <view v-for="item in items" :key="item.userId" class="list-item">
-          <view class="item-avatar">
-            <image
-              v-if="item.avatar?.signedUrl"
-              :src="item.avatar.signedUrl"
-              class="item-avatar-image"
-              mode="aspectFill"
-            />
-            <text v-else class="item-avatar-placeholder">👤</text>
-          </view>
+          <UserAvatar
+            size="md"
+            :avatar-url="item.avatar?.signedUrl || ''"
+            :name="item.nickname"
+            :user-id="item.userId"
+          />
 
           <view class="item-info">
             <text class="item-name">{{ item.nickname }}</text>
@@ -48,6 +45,7 @@
 import { ref, onMounted } from 'vue'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import { getBlacklist, unblockUser } from '@/api/modules/social'
 import type { components } from '@/api/types/schema'
 

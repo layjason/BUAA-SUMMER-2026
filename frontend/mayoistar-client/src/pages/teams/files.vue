@@ -34,7 +34,13 @@
           @longpress="canManage ? toggleSelect(file.mediaId) : undefined"
         >
           <view class="file-icon">
-            <text class="file-icon-text">{{ getFileIcon(file) }}</text>
+            <image
+              v-if="isImageFile(file) && getFilePreviewUrl(file.mediaId)"
+              :src="getFilePreviewUrl(file.mediaId)"
+              class="file-thumb"
+              mode="aspectFill"
+            />
+            <text v-else class="file-icon-text">{{ getFileIcon(file) }}</text>
           </view>
           <view class="file-info">
             <text class="file-name">{{ file.fileName }}</text>
@@ -74,6 +80,14 @@
         </view>
       </view>
     </uni-popup>
+
+    <ImagePreviewOverlay
+      :visible="previewVisible"
+      :urls="previewUrls"
+      :current="previewCurrent"
+      :show-save="true"
+      @close="closeImagePreview"
+    />
   </view>
 </template>
 
@@ -85,12 +99,13 @@
  */
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { AppNavbar, EmptyState } from '@/components'
+import { AppNavbar, EmptyState, ImagePreviewOverlay } from '@/components'
 import { BusinessError } from '@/api'
 import { getTeamMembers } from '@/api/modules/teams'
 import { listTeamFiles, uploadTeamFile, deleteTeamFiles } from '@/api/modules/teamChat'
 import { extractPageItems } from '@/utils/page-result'
 import { getTeamErrorMessage } from '@/utils/team-error-message'
+import { resolveMediaPreviewUrl, resolveMediaPreviewUrlMap } from '@/utils/media-preview'
 import { useAuthStore } from '@/stores/auth'
 import type { components } from '@/api/types/schema'
 
@@ -99,11 +114,16 @@ type TeamMember = components['schemas']['Social.TeamMember']
 
 const teamId = ref('')
 const files = ref<MediaFile[]>([])
+/** 群文件图片鉴权下载后的本地预览地址（mediaId -> previewUrl） */
+const imagePreviewUrls = ref<Record<string, string>>({})
 const members = ref<TeamMember[]>([])
 const loading = ref(false)
 const uploading = ref(false)
 const selectedIds = ref<string[]>([])
 const selectedFile = ref<MediaFile | null>(null)
+const previewVisible = ref(false)
+const previewUrls = ref<string[]>([])
+const previewCurrent = ref('')
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const actionPopup = ref<any>(null)
 
@@ -120,9 +140,28 @@ function isSelected(mediaId: string): boolean {
   return selectedIds.value.includes(mediaId)
 }
 
+/** 判断是否为图片文件 */
+function isImageFile(file: MediaFile): boolean {
+  return file.contentType.startsWith('image/')
+}
+
+/** 获取图片文件可展示地址（teamMember 私有媒体需鉴权下载） */
+function getFilePreviewUrl(mediaId: string): string {
+  return imagePreviewUrls.value[mediaId] || ''
+}
+
+/** 批量解析群文件中的图片预览 */
+async function resolveFileImagePreviews(items: MediaFile[]): Promise<void> {
+  const imageFiles = items.filter((file) => isImageFile(file))
+  imagePreviewUrls.value = await resolveMediaPreviewUrlMap(
+    imageFiles.map((file) => ({ id: file.mediaId, signedUrl: file.signedUrl })),
+    authStore.getAccessToken(),
+  )
+}
+
 /** 获取文件图标 */
 function getFileIcon(file: MediaFile): string {
-  if (file.contentType.startsWith('image/')) return '🖼️'
+  if (isImageFile(file)) return '🖼️'
   if (file.contentType.includes('pdf')) return '📄'
   if (file.contentType.includes('video')) return '🎬'
   return '📁'
@@ -162,6 +201,7 @@ async function loadData() {
     ])
     members.value = extractPageItems<TeamMember>(membersResult)
     files.value = extractPageItems<MediaFile>(filesResult)
+    await resolveFileImagePreviews(files.value)
   } catch (error) {
     console.error('Failed to load files:', error)
     showBusinessError(error, '加载失败')
@@ -209,8 +249,33 @@ async function onUpload() {
   }
 }
 
-/** 点击文件打开操作菜单 */
+/** 打开图片全屏预览 */
+async function openImagePreview(file: MediaFile) {
+  if (!file.signedUrl) {
+    uni.showToast({ title: '无法预览', icon: 'none' })
+    return
+  }
+  const preview =
+    getFilePreviewUrl(file.mediaId) ||
+    (await resolveMediaPreviewUrl(file.signedUrl, authStore.getAccessToken()))
+  if (!preview) {
+    uni.showToast({ title: '无法预览', icon: 'none' })
+    return
+  }
+  if (!getFilePreviewUrl(file.mediaId)) {
+    imagePreviewUrls.value = { ...imagePreviewUrls.value, [file.mediaId]: preview }
+  }
+  previewUrls.value = [preview]
+  previewCurrent.value = preview
+  previewVisible.value = true
+}
+
+/** 点击文件：图片直接预览，其他文件打开操作菜单；队长/管理员长按多选 */
 function onFileTap(file: MediaFile) {
+  if (isImageFile(file)) {
+    void openImagePreview(file)
+    return
+  }
   if (canManage.value) {
     toggleSelect(file.mediaId)
     return
@@ -229,21 +294,29 @@ function toggleSelect(mediaId: string) {
   }
 }
 
+/** 关闭全屏图片预览 */
+function closeImagePreview() {
+  previewVisible.value = false
+  previewUrls.value = []
+  previewCurrent.value = ''
+}
+
 /** 预览文件 */
-function onPreview() {
+async function onPreview() {
   closeActionMenu()
-  if (!selectedFile.value?.signedUrl) {
+  const file = selectedFile.value
+  if (!file?.signedUrl) {
     uni.showToast({ title: '无法预览', icon: 'none' })
     return
   }
-  if (selectedFile.value.contentType.startsWith('image/')) {
-    uni.previewImage({ urls: [selectedFile.value.signedUrl] })
-  } else {
-    uni.setClipboardData({
-      data: selectedFile.value.signedUrl,
-      success: () => uni.showToast({ title: '链接已复制', icon: 'none' }),
-    })
+  if (isImageFile(file)) {
+    await openImagePreview(file)
+    return
   }
+  uni.setClipboardData({
+    data: file.signedUrl,
+    success: () => uni.showToast({ title: '链接已复制', icon: 'none' }),
+  })
 }
 
 /** 删除单个文件 */
@@ -386,6 +459,12 @@ onLoad((query) => {
 
 .file-icon-text {
   font-size: 22px;
+}
+
+.file-thumb {
+  width: 100%;
+  height: 100%;
+  border-radius: $radius-md;
 }
 
 .file-info {

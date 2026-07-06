@@ -12,7 +12,16 @@ import { API_BASE_URL } from '@/config/env'
 export function isBackendMediaSignedUrl(signedUrl: string): boolean {
   if (signedUrl.startsWith('/media/')) return true
   const normalizedApiBase = API_BASE_URL.replace(/\/+$/, '')
-  return signedUrl.startsWith(`${normalizedApiBase}/media/`)
+  if (normalizedApiBase && signedUrl.startsWith(`${normalizedApiBase}/media/`)) {
+    return true
+  }
+  // H5 开发时 image 组件会把 /media/... 解析为 http://localhost:3000/media/...
+  try {
+    const pathname = new URL(signedUrl).pathname
+    return pathname.startsWith('/media/')
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -26,7 +35,11 @@ export function isBackendMediaSignedUrl(signedUrl: string): boolean {
  */
 export function toAbsoluteMediaUrl(signedUrl: string): string {
   if (/^https?:\/\//i.test(signedUrl)) return signedUrl
-  return `${API_BASE_URL.replace(/\/+$/, '')}/${signedUrl.replace(/^\/+/, '')}`
+  const base = API_BASE_URL.replace(/\/+$/, '')
+  const path = signedUrl.replace(/^\/+/, '')
+  // 开发环境 API_BASE_URL 为空时保持相对路径，走 Vite 同源代理
+  if (!base) return `/${path}`
+  return `${base}/${path}`
 }
 
 /**
@@ -72,8 +85,36 @@ export async function resolveMediaPreviewUrl(
       url: absoluteUrl,
       header: { Authorization: `Bearer ${accessToken}` },
     })
-    return result.statusCode === 200 ? result.tempFilePath : ''
+    if (!result || result.statusCode !== 200 || !result.tempFilePath) return ''
+    return result.tempFilePath
   } catch {
     return ''
   }
+}
+
+/**
+ * 批量解析媒体列表的可展示地址。
+ *
+ * 前置条件：items 中 id 唯一，signedUrl 可能为空。
+ * 后置条件：返回仅包含解析成功项的 id -> previewUrl 映射。
+ * 不变量：不改变媒体权限策略，不持久化下载结果。
+ *
+ * @param items 待解析的媒体项
+ * @param accessToken 当前访问令牌，可为空
+ */
+export async function resolveMediaPreviewUrlMap(
+  items: ReadonlyArray<{ id: string; signedUrl?: string | null }>,
+  accessToken: string | null,
+): Promise<Record<string, string>> {
+  const results = await Promise.all(
+    items.map(async (item) => {
+      const preview = await resolveMediaPreviewUrl(item.signedUrl, accessToken)
+      return { id: item.id, preview }
+    }),
+  )
+  const map: Record<string, string> = {}
+  for (const { id, preview } of results) {
+    if (preview) map[id] = preview
+  }
+  return map
 }

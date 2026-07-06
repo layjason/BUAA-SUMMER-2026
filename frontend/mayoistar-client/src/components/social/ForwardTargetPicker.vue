@@ -31,19 +31,9 @@
             <text v-if="isSelected(item.conversationId)" class="forward-checkbox-mark">✓</text>
           </view>
 
-          <view class="forward-avatar">
-            <image
-              v-if="item.avatarUrl"
-              class="forward-avatar-image"
-              :src="item.avatarUrl"
-              mode="aspectFill"
-            />
-            <text v-else class="forward-avatar-placeholder">{{
-              item.kind === 'team' ? '👥' : '👤'
-            }}</text>
-          </view>
+          <UserAvatar size="sm" :avatar-url="item.avatarUrl || ''" :name="avatarLabel(item)" />
 
-          <text class="forward-name">{{ displayName(item) }}</text>
+          <text class="forward-name">{{ item.title }}</text>
         </view>
       </view>
     </scroll-view>
@@ -75,6 +65,7 @@
  * 展示好友单聊与小队群聊列表，支持并行勾选多个转发目标。
  */
 import { ref, onMounted } from 'vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import { fetchForwardTargets, type ForwardTargetItem } from '@/utils/forward-targets'
 
 interface Props {
@@ -121,12 +112,9 @@ function toggleSelection(conversationId: string) {
   }
 }
 
-/** 小队展示人数，好友不展示 */
-function displayName(item: ForwardTargetItem): string {
-  if (item.kind === 'team' && item.memberCount !== undefined) {
-    return `${item.title} (${item.memberCount})`
-  }
-  return item.title
+/** 头像占位首字：标题已含人数时去掉末尾 (N) */
+function avatarLabel(item: ForwardTargetItem): string {
+  return item.title.replace(/\s*\(\d+\)\s*$/, '').trim() || item.title
 }
 
 function emitClose() {

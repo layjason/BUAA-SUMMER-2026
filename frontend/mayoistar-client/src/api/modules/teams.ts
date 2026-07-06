@@ -7,6 +7,7 @@ import { get, post, patch, del } from '@/api/request'
 import type { components } from '@/api/types/schema'
 
 type TeamCreateRequest = components['schemas']['Social.TeamCreateRequest']
+type JoinTeamRequest = components['schemas']['Social.JoinTeamRequest']
 type TeamJoinRequestDecision = components['schemas']['Social.TeamJoinRequestDecision']
 type TeamMemberRoleUpdate = components['schemas']['Social.TeamMemberRoleUpdate']
 
@@ -59,9 +60,12 @@ export function dissolveTeam(teamId: string) {
 }
 
 /** 申请加入队伍 */
-export function joinTeam(teamId: string) {
+export function joinTeam(teamId: string, message?: string) {
+  const body: JoinTeamRequest = {}
+  if (message?.trim()) body.message = message.trim()
   return post('/social/teams/{teamId}/join', {
     path: { teamId },
+    body,
   })
 }
 

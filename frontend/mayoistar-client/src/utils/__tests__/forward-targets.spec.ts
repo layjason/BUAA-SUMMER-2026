@@ -27,4 +27,12 @@ describe('fetchForwardTargets', () => {
     expect(team).toBeTruthy()
     expect(team?.memberCount).toBeGreaterThan(0)
   })
+
+  it('team title should not duplicate member count suffix', async () => {
+    const targets = await fetchForwardTargets('1')
+    for (const team of targets.filter((t) => t.kind === 'team')) {
+      const matches = team.title.match(/\(\d+\)/g) ?? []
+      expect(matches.length).toBeLessThanOrEqual(1)
+    }
+  })
 })

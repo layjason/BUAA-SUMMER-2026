@@ -3,8 +3,10 @@
     <!-- Top Bar -->
     <SocialTopBar
       :user-avatar="userAvatar"
+      :user-name="userNickname"
       :has-notification="false"
       :pending-requests="pendingRequestsCount"
+      placeholder="搜索好友、用户或小队"
       @avatar-tap="onAvatarTap"
       @search-tap="onSearchTap"
       @add-friend-tap="showAddFriendMenu"
@@ -42,8 +44,7 @@
         <ConversationCard
           v-for="conv in conversations"
           :key="conv.conversationId"
-          :avatar="conv.avatar?.signedUrl || ''"
-          :avatar-icon="conv.kind === 'team' ? '👥' : '👤'"
+          :avatar="avatarSignedUrl(conv.avatar)"
           :name="conv.title"
           :tag="conv.kind === 'team' ? '小队' : '好友'"
           :tag-type="conv.kind"
@@ -51,7 +52,6 @@
           :time="formatTime(conv.updatedAt)"
           :unread-count="conv.unreadCount"
           :is-online="false"
-          :show-right-icon="true"
           @tap="openChat(conv)"
         />
       </view>
@@ -183,6 +183,80 @@
         </view>
       </view>
     </uni-popup>
+
+    <!-- 内联搜索下拉（替代 uni-popup top，避免黑屏遮罩） -->
+    <view v-if="searchActive" class="search-overlay" @tap="closeSearch">
+      <view class="search-dropdown" @tap.stop>
+        <view class="search-dropdown__header">
+          <view class="search-dropdown__input-wrap">
+            <text class="search-dropdown__icon">🔍</text>
+            <input
+              v-model="searchKeyword"
+              class="search-dropdown__input"
+              type="text"
+              confirm-type="search"
+              placeholder="搜索好友、用户或小队"
+              :focus="searchFocused"
+            />
+          </view>
+          <text class="search-dropdown__cancel" @tap="closeSearch">取消</text>
+        </view>
+
+        <scroll-view
+          v-if="searchKeyword.trim()"
+          class="search-dropdown__results"
+          scroll-y
+          @tap.stop
+        >
+          <view v-if="!hasSearchResults" class="search-dropdown__empty">
+            <text>未找到相关好友、用户或小队</text>
+          </view>
+
+          <view v-if="friendSearchResults.length > 0" class="search-dropdown__group">
+            <text class="search-dropdown__group-title">好友</text>
+            <view
+              v-for="item in friendSearchResults"
+              :key="item.key"
+              class="search-dropdown__item"
+              @tap="openFriendSearchResult(item)"
+            >
+              <UserAvatar size="sm" :avatar-url="item.avatarUrl" :name="item.title" />
+              <text class="search-dropdown__name">{{ item.title }}</text>
+            </view>
+          </view>
+
+          <view v-if="nonFriendSearchResults.length > 0" class="search-dropdown__group">
+            <text class="search-dropdown__group-title">非好友</text>
+            <view
+              v-for="item in nonFriendSearchResults"
+              :key="item.key"
+              class="search-dropdown__item"
+              @tap="openNonFriendSearchResult(item)"
+            >
+              <UserAvatar size="sm" :avatar-url="item.avatarUrl" :name="item.title" />
+              <text class="search-dropdown__name">{{ item.title }}</text>
+            </view>
+          </view>
+
+          <view v-if="teamSearchResults.length > 0" class="search-dropdown__group">
+            <text class="search-dropdown__group-title">小队</text>
+            <view
+              v-for="item in teamSearchResults"
+              :key="item.key"
+              class="search-dropdown__item"
+              @tap="openTeamSearchResult(item)"
+            >
+              <UserAvatar size="sm" :avatar-url="item.avatarUrl" :name="item.title" />
+              <view class="search-dropdown__meta">
+                <text class="search-dropdown__name">{{ item.title }}</text>
+                <text class="search-dropdown__subtitle">{{ teamSearchSubtitle(item) }}</text>
+              </view>
+              <text class="search-dropdown__action">{{ teamSearchActionLabel(item) }}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -192,7 +266,7 @@
  *
  * 承载：好友单聊、小队群聊、好友申请、活动同伴推荐、小队入口
  */
-import { ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { useChatRealtime, type ChatRealtimeEvent } from '@/composables/useChatRealtime'
 import SocialTopBar from '@/components/social/SocialTopBar.vue'
@@ -200,14 +274,18 @@ import SocialQuickCards from '@/components/social/SocialQuickCards.vue'
 import ConversationCard from '@/components/social/ConversationCard.vue'
 import FloatingCreateButton from '@/components/social/FloatingCreateButton.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
-import { getReceivedFriendRequests } from '@/api/modules/social'
-import { listMyTeams, getTeamMembers, getTeamJoinRequests } from '@/api/modules/teams'
+import UserAvatar from '@/components/base/UserAvatar.vue'
+import { getFriends, getReceivedFriendRequests } from '@/api/modules/social'
+import { resolveFriendConversationId } from '@/utils/friend-chat'
+import { listMyTeams, searchTeams, getTeamMembers, getTeamJoinRequests } from '@/api/modules/teams'
 import { extractPageItems } from '@/utils/page-result'
 import { getConversations } from '@/api/modules/chat'
 import { useAuthStore } from '@/stores/auth'
 import { fetchActivityCompanions } from '@/utils/activity-companions'
 import { ensureAuthenticatedAccess } from '@/utils/auth-guard'
 import { scanPersonalQrAndAddFriend } from '@/utils/personal-qr'
+import { loadCurrentUserProfileDisplay } from '@/utils/current-user-profile'
+import { enrichConversationSummaries, avatarSignedUrl } from '@/utils/conversation-display'
 import type { components } from '@/api/types/schema'
 
 type FriendRequest = components['schemas']['Social.FriendRequest']
@@ -215,14 +293,45 @@ type TeamProfile = components['schemas']['Social.TeamProfile']
 type TeamMember = components['schemas']['Social.TeamMember']
 type TeamJoinRequest = components['schemas']['Social.TeamJoinRequest']
 type ConversationSummary = components['schemas']['Chat.ConversationSummary']
+type FriendItem = components['schemas']['Social.FriendItem']
 type MessageCreatedPayload = components['schemas']['Chat.MessageCreatedPayload']
 type MessageForwardedPayload = components['schemas']['Chat.MessageForwardedPayload']
 
+type TeamMemberUser = {
+  userId: string
+  nickname: string
+  avatarUrl: string
+}
+
+type HubUserSearchResult = {
+  key: string
+  title: string
+  avatarUrl: string
+  userId: string
+  conversationId?: string
+}
+
+type HubTeamSearchResult = {
+  key: string
+  title: string
+  avatarUrl: string
+  teamId: string
+  conversationId?: string
+  isMember: boolean
+  joinMode: TeamProfile['joinMode']
+  memberCount: number
+  capacity: number
+}
+
 // User state
-const userAvatar = ref('') // Will be loaded from user store
+const userAvatar = ref('')
+const userNickname = ref('')
 const loading = ref(false)
 
 // Real data from API
+const friends = ref<FriendItem[]>([])
+const teamMemberUsers = ref<TeamMemberUser[]>([])
+const discoverTeams = ref<TeamProfile[]>([])
 const teams = ref<TeamProfile[]>([])
 const pendingRequestsCount = ref(0)
 const pendingTeamRequests = ref(0)
@@ -231,6 +340,9 @@ const activityCompanions = ref<{ userId: string }[]>([])
 
 // Real conversations from chat API
 const conversations = ref<ConversationSummary[]>([])
+const searchActive = ref(false)
+const searchKeyword = ref('')
+const searchFocused = ref(false)
 
 // Popup refs
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -240,13 +352,168 @@ const moreMenuPopup = ref<any>(null)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const createMenuPopup = ref<any>(null)
 
+const friendIdSet = computed(() => new Set(friends.value.map((f) => f.userId)))
+const myTeamIdSet = computed(() => new Set(teams.value.map((t) => t.teamId)))
+
+const friendSearchResults = computed<HubUserSearchResult[]>(() => {
+  const keyword = searchKeyword.value.trim().toLowerCase()
+  if (!keyword) return []
+
+  return friends.value
+    .filter((friend) => {
+      const displayName = friend.remark?.trim() || friend.nickname
+      const haystack = `${displayName} ${friend.nickname} ${friend.remark ?? ''}`.toLowerCase()
+      return haystack.includes(keyword)
+    })
+    .map((friend) => {
+      const displayName = friend.remark?.trim() || friend.nickname
+      const conv = conversations.value.find(
+        (c) =>
+          c.kind === 'friend' &&
+          (c.title === displayName || c.title === friend.nickname || c.title === friend.remark),
+      )
+      return {
+        key: `friend-${friend.userId}`,
+        title: displayName,
+        avatarUrl: friend.avatar?.signedUrl ?? '',
+        userId: friend.userId,
+        conversationId: conv?.conversationId,
+      }
+    })
+})
+
+const nonFriendSearchResults = computed<HubUserSearchResult[]>(() => {
+  const keyword = searchKeyword.value.trim().toLowerCase()
+  if (!keyword) return []
+
+  return teamMemberUsers.value
+    .filter(
+      (user) =>
+        !friendIdSet.value.has(user.userId) && user.nickname.toLowerCase().includes(keyword),
+    )
+    .map((user) => ({
+      key: `user-${user.userId}`,
+      title: user.nickname,
+      avatarUrl: user.avatarUrl,
+      userId: user.userId,
+    }))
+})
+
+const teamSearchResults = computed<HubTeamSearchResult[]>(() => {
+  const keyword = searchKeyword.value.trim().toLowerCase()
+  if (!keyword) return []
+
+  const seen = new Set<string>()
+  const results: HubTeamSearchResult[] = []
+
+  for (const team of [...teams.value, ...discoverTeams.value]) {
+    if (seen.has(team.teamId)) continue
+    seen.add(team.teamId)
+
+    const haystack = [team.name, team.description ?? '', ...team.tags].join(' ').toLowerCase()
+    if (!haystack.includes(keyword)) continue
+
+    const isMember = myTeamIdSet.value.has(team.teamId)
+    if (!isMember && team.status !== 'active') continue
+
+    results.push({
+      key: `team-${team.teamId}`,
+      title: team.name,
+      avatarUrl: team.avatar?.signedUrl ?? '',
+      teamId: team.teamId,
+      conversationId: isMember ? team.chatId : undefined,
+      isMember,
+      joinMode: team.joinMode,
+      memberCount: team.memberCount,
+      capacity: team.capacity,
+    })
+  }
+
+  return results
+})
+
+const hasSearchResults = computed(
+  () =>
+    friendSearchResults.value.length > 0 ||
+    nonFriendSearchResults.value.length > 0 ||
+    teamSearchResults.value.length > 0,
+)
+
+function teamSearchSubtitle(item: HubTeamSearchResult): string {
+  const members = `${item.memberCount}/${item.capacity} 成员`
+  if (item.isMember) return members
+  return `${members} · ${item.joinMode === 'publicJoin' ? '自由加入' : '需审批'}`
+}
+
+function teamSearchActionLabel(item: HubTeamSearchResult): string {
+  if (item.isMember) return '群聊'
+  return item.joinMode === 'publicJoin' ? '加入' : '申请'
+}
+
 // Event handlers
 function onAvatarTap() {
   uni.navigateTo({ url: '/pages/social/add-friend?showQr=1' })
 }
 
-function onSearchTap() {
-  uni.showToast({ title: '搜索功能开发中', icon: 'none' })
+async function onSearchTap() {
+  closeAllPopups()
+  searchKeyword.value = ''
+  searchActive.value = true
+  searchFocused.value = false
+  await nextTick()
+  searchFocused.value = true
+}
+
+function closeSearch() {
+  searchFocused.value = false
+  searchActive.value = false
+  searchKeyword.value = ''
+}
+
+function openFriendSearchResult(item: HubUserSearchResult) {
+  closeSearch()
+
+  if (item.conversationId) {
+    uni.navigateTo({
+      url: `/pages/messages/chat?conversationId=${item.conversationId}&kind=friend`,
+    })
+    return
+  }
+
+  void resolveAndOpenFriendChat(item.userId)
+}
+
+function openNonFriendSearchResult(item: HubUserSearchResult) {
+  closeSearch()
+  uni.navigateTo({ url: `/pages/social/user-profile?id=${item.userId}` })
+}
+
+function openTeamSearchResult(item: HubTeamSearchResult) {
+  closeSearch()
+
+  if (item.isMember && item.conversationId) {
+    uni.navigateTo({
+      url: `/pages/messages/chat?conversationId=${item.conversationId}&kind=team&teamId=${item.teamId}`,
+    })
+    return
+  }
+
+  uni.navigateTo({ url: `/pages/teams/detail?teamId=${item.teamId}` })
+}
+
+async function resolveAndOpenFriendChat(userId: string) {
+  try {
+    const conversationId = await resolveFriendConversationId(userId)
+    if (!conversationId) {
+      uni.showToast({ title: '找不到与该好友的会话', icon: 'none' })
+      return
+    }
+    uni.navigateTo({
+      url: `/pages/messages/chat?conversationId=${conversationId}&kind=friend&targetUserId=${userId}`,
+    })
+  } catch {
+    uni.showToast({ title: '打开会话失败', icon: 'none' })
+  }
 }
 
 function showAddFriendMenu() {
@@ -287,6 +554,7 @@ function closeAllPopups() {
   addFriendPopup.value?.close()
   moreMenuPopup.value?.close()
   createMenuPopup.value?.close()
+  closeSearch()
 }
 
 // Navigation functions
@@ -296,8 +564,7 @@ function onScanQrAddFriend() {
 }
 
 function onSearchUserAddFriend() {
-  closeAddFriendMenu()
-  uni.showToast({ title: '用户搜索待 API 支持', icon: 'none' })
+  void onSearchTap()
 }
 
 function goToMyQRCode() {
@@ -375,8 +642,7 @@ function openChat(conv: ConversationSummary) {
 }
 
 function startNewChat() {
-  closeCreateMenu()
-  uni.showToast({ title: '选择好友功能开发中', icon: 'none' })
+  void onSearchTap()
 }
 
 /** 格式化时间 */
@@ -394,6 +660,37 @@ function formatTime(isoTime: string): string {
   const month = date.getMonth() + 1
   const day = date.getDate()
   return `${month}月${day}日`
+}
+
+/** 从「我的小队 + 发现小队」聚合全部成员，作为非好友搜索候选 */
+async function loadTeamMemberUsers(
+  myTeams: TeamProfile[],
+  discoverTeamItems: TeamProfile[],
+  currentUserId: string,
+): Promise<TeamMemberUser[]> {
+  const teamMap = new Map<string, TeamProfile>()
+  for (const team of [...myTeams, ...discoverTeamItems]) {
+    teamMap.set(team.teamId, team)
+  }
+
+  const pool = new Map<string, TeamMemberUser>()
+  const memberResults = await Promise.all(
+    [...teamMap.values()].map((team) => getTeamMembers(team.teamId, 1, 100).catch(() => null)),
+  )
+
+  for (const result of memberResults) {
+    if (!result) continue
+    for (const member of extractPageItems<TeamMember>(result)) {
+      if (!member.userId || member.userId === currentUserId || pool.has(member.userId)) continue
+      pool.set(member.userId, {
+        userId: member.userId,
+        nickname: member.nickname,
+        avatarUrl: member.avatar?.signedUrl ?? '',
+      })
+    }
+  }
+
+  return Array.from(pool.values())
 }
 
 /** 统计当前用户可审核的待处理入队申请数，并记录有待审的小队列表 */
@@ -437,15 +734,34 @@ async function loadSocialData() {
   }
 
   try {
-    // 并行加载请求、小队、会话、活动同伴
-    const [requestsResult, teamsResult, conversationsResult, companionsResult] = await Promise.all([
+    // 并行加载请求、小队、会话、活动同伴与当前用户头像
+    const [
+      requestsResult,
+      friendsResult,
+      teamsResult,
+      discoverResult,
+      conversationsResult,
+      companionsResult,
+      profileDisplay,
+    ] = await Promise.all([
       getReceivedFriendRequests().catch(() => []),
+      getFriends(1, 100).catch(() => []),
       listMyTeams(1, 100).catch(() => []),
+      searchTeams({ page: 1, pageSize: 100 }).catch(() => []),
       getConversations().catch(() => []),
       fetchActivityCompanions(currentUserId).catch(() => []),
+      loadCurrentUserProfileDisplay(),
     ])
 
+    userAvatar.value = profileDisplay.avatarUrl
+    userNickname.value = profileDisplay.nickname
+
     activityCompanions.value = companionsResult
+
+    const friendItems = Array.isArray(friendsResult)
+      ? friendsResult
+      : (((friendsResult as Record<string, unknown>).items as FriendItem[]) ?? [])
+    friends.value = friendItems
 
     // 处理好友请求 (只统计 pending 状态)
     const requestItems = Array.isArray(requestsResult)
@@ -460,21 +776,27 @@ async function loadSocialData() {
       ? teamsResult
       : (((teamsResult as Record<string, unknown>).items as TeamProfile[]) ?? [])
     teams.value = teamItems
+    const discoverTeamItems = extractPageItems<TeamProfile>(discoverResult)
+    discoverTeams.value = discoverTeamItems
 
-    // 处理会话列表（小队会话标题附带成员数）
     const convItems = Array.isArray(conversationsResult)
       ? conversationsResult
       : (((conversationsResult as Record<string, unknown>).items as ConversationSummary[]) ?? [])
-    conversations.value = convItems.map((conv) => {
-      if (conv.kind !== 'team') return conv
-      const matchedTeam = teamItems.find((team) => team.chatId === conv.conversationId)
-      if (!matchedTeam) return conv
-      return { ...conv, title: `${matchedTeam.name} (${matchedTeam.memberCount})` }
-    })
+    const allTeamsForConv = [...teamItems]
+    for (const team of discoverTeamItems) {
+      if (!allTeamsForConv.some((item) => item.teamId === team.teamId)) {
+        allTeamsForConv.push(team)
+      }
+    }
+    conversations.value = enrichConversationSummaries(convItems, allTeamsForConv, friendItems)
 
-    const pendingStats = await countPendingTeamJoinRequests(teamItems, currentUserId)
+    const [pendingStats, memberUsers] = await Promise.all([
+      countPendingTeamJoinRequests(teamItems, currentUserId),
+      loadTeamMemberUsers(teamItems, discoverTeams.value, currentUserId),
+    ])
     pendingTeamRequests.value = pendingStats.total
     pendingTeamRequestTargets.value = pendingStats.targets
+    teamMemberUsers.value = memberUsers
   } catch (error) {
     console.error('Failed to load social data:', error)
     uni.showToast({ title: '加载失败', icon: 'none' })
@@ -661,6 +983,133 @@ onHide(() => {
   &__desc {
     font-size: $font-xs;
     color: $color-text-sub;
+  }
+}
+
+.search-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.search-dropdown {
+  background: var(--q-color-bg-card);
+  padding: calc(var(--status-bar-height, 44px) + 72px) $spacing-lg $spacing-md;
+  border-bottom-left-radius: $radius-xl;
+  border-bottom-right-radius: $radius-xl;
+  box-shadow: $shadow-md;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__input-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 $spacing-md;
+    background: $color-bg-soft;
+    border: 1px solid $color-border-light;
+    border-radius: $radius-full;
+    gap: $spacing-xs;
+  }
+
+  &__icon {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  &__input {
+    flex: 1;
+    height: 100%;
+    font-size: $font-base;
+    background: transparent;
+    border: none;
+  }
+
+  &__cancel {
+    font-size: $font-sm;
+    color: $color-primary;
+    flex-shrink: 0;
+  }
+
+  &__results {
+    max-height: 360px;
+    margin-top: $spacing-md;
+  }
+
+  &__empty {
+    padding: $spacing-xl 0;
+    text-align: center;
+    color: $color-text-sub;
+    font-size: $font-sm;
+  }
+
+  &__group {
+    &:not(:first-child) {
+      margin-top: $spacing-md;
+    }
+  }
+
+  &__group-title {
+    display: block;
+    font-size: $font-xs;
+    color: $color-text-muted;
+    font-weight: $weight-semibold;
+    padding-bottom: $spacing-xs;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md 0;
+    border-bottom: 1px solid $color-border-light;
+
+    &:active {
+      opacity: 0.7;
+    }
+  }
+
+  &__meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__name {
+    flex: 1;
+    font-size: $font-base;
+    color: $color-text;
+    font-weight: $weight-medium;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__subtitle {
+    font-size: $font-xs;
+    color: $color-text-sub;
+  }
+
+  &__action {
+    font-size: $font-xs;
+    color: $color-primary;
+    font-weight: $weight-medium;
+    flex-shrink: 0;
   }
 }
 </style>
