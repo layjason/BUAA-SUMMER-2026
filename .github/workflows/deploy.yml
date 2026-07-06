@@ -152,6 +152,11 @@ jobs:
           echo "ALIBABA_CLOUD_ACCESS_KEY_ID=${{ secrets.ALIBABA_AK }}" >> .env
           echo "ALIBABA_CLOUD_ACCESS_KEY_SECRET=${{ secrets.ALIBABA_SK }}" >> .env
 
+          echo "MAYOISTAR_AI_ACTIVITY_PLANNING_ENDPOINT=${{ secrets.AI_ACTIVITY_PLANNING_ENDPOINT }}" >> .env
+          echo "MAYOISTAR_AI_ACTIVITY_PLANNING_MODEL=${{ secrets.AI_ACTIVITY_PLANNING_MODEL }}" >> .env
+          echo "MAYOISTAR_AI_ACTIVITY_PLANNING_API_KEY=${{ secrets.AI_ACTIVITY_PLANNING_API_KEY }}" >> .env
+          echo "MAYOISTAR_AI_MAX_REQUESTS_PER_MINUTE=8" >> .env
+
           echo ".env file generated successfully."
 
       - name: Docker Compose Deploy
