@@ -49,11 +49,15 @@ describe('活动总结 AI 分类人工确认 UI', () => {
     expect(source).not.toContain('imageUrls.value.push(imageUrl)')
   })
 
-  it('活动编辑新上传图片应本地预览，草稿回显继续使用 signedUrl', () => {
+  it('活动编辑新上传图片应本地预览，草稿回显应下载私有 signedUrl 后预览', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/pages/activity/edit.vue'), 'utf8')
+    const viteConfigSource = readFileSync(resolve(process.cwd(), 'vite.config.ts'), 'utf8')
 
     expect(source).toContain('imagePreviews.value.push(tempPath)')
-    expect(source).toContain('draft.images ?? []).map((i) => i.signedUrl ??')
+    expect(source).toContain('downloadSignedMediaPreview')
+    expect(source).toContain('header: { Authorization: `Bearer ${accessToken}` }')
+    expect(source).toContain('imagePreviews.value = await Promise.all(')
+    expect(viteConfigSource).toContain("'/media': {")
     expect(source).not.toContain('imagePreviews.value.push(result.signedUrl || tempPath)')
   })
 })
