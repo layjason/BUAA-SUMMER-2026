@@ -23,6 +23,9 @@ export interface SavedRegisterForm {
   type: 'personal' | 'merchant'
 }
 
+/** 激活页进入来源，决定已激活后的后续动作 */
+export type ActivationEntrySource = 'register' | 'login'
+
 /**
  * 认证 Store
  */
@@ -39,6 +42,8 @@ export const useAuthStore = defineStore('auth', () => {
   const savedRegisterForm = ref<SavedRegisterForm | null>(null)
   /** 是否需要自动调用重发激活邮件（登录页 10004 跳转过来时设置） */
   const autoResendActivation = ref(false)
+  /** 进入激活页前的业务来源 */
+  const activationEntrySource = ref<ActivationEntrySource | null>(null)
 
   const isLoggedIn = computed(() => token.value !== null && refreshToken.value !== null)
 
@@ -96,6 +101,8 @@ export const useAuthStore = defineStore('auth', () => {
     accountStatus.value = null
     pendingActivationEmail.value = null
     savedRegisterForm.value = null
+    autoResendActivation.value = false
+    activationEntrySource.value = null
     try {
       uni.removeStorageSync(TOKEN_KEY)
       uni.removeStorageSync(REFRESH_TOKEN_KEY)
@@ -137,6 +144,8 @@ export const useAuthStore = defineStore('auth', () => {
     // 登录成功清除激活流程中的临时状态
     pendingActivationEmail.value = null
     savedRegisterForm.value = null
+    autoResendActivation.value = false
+    activationEntrySource.value = null
   }
 
   /**
@@ -179,6 +188,7 @@ export const useAuthStore = defineStore('auth', () => {
     pendingActivationEmail,
     savedRegisterForm,
     autoResendActivation,
+    activationEntrySource,
     initFromStorage,
     saveTokens,
     clearTokens,

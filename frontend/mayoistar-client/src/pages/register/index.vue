@@ -325,6 +325,8 @@ async function handleRegister() {
     }
 
     authStore.pendingActivationEmail = email.value.trim()
+    authStore.autoResendActivation = false
+    authStore.activationEntrySource = 'register'
     authStore.savedRegisterForm = {
       email: email.value.trim(),
       password: password.value,

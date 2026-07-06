@@ -30,4 +30,20 @@ describe('激活页重发邮件倒计时', () => {
     expect(sentBranch).toContain('await handleResend()')
     expect(sentBranch).toContain('startCooldown()')
   })
+
+  it('待激活状态应提供查询按钮，成功状态不展示重发和重新注册操作', () => {
+    const source = readSource('src/pages/activate/index.vue')
+    const actionStart = source.indexOf(
+      "v-if=\"pendingEmail && (state === 'sent' || state === 'error')\"",
+    )
+    const actionEnd = source.indexOf('</view>', source.indexOf("t('activate.emailWrong')"))
+    const pendingActions = source.slice(actionStart, actionEnd)
+
+    expect(pendingActions).toContain("t('activate.checkStatusButton')")
+    expect(pendingActions).toContain('handleCheckActivationStatus')
+    expect(pendingActions).toContain("t('activate.resendButton')")
+    expect(pendingActions).toContain("t('activate.emailWrong')")
+    expect(source).toContain("state === 'success' && shouldShowLoginButton")
+    expect(source).toContain('const shouldShowLoginButton = computed(')
+  })
 })

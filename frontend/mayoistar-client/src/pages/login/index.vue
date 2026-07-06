@@ -151,6 +151,7 @@ async function handleLogin() {
         loading.value = false
         authStore.pendingActivationEmail = email.value.trim()
         authStore.autoResendActivation = true
+        authStore.activationEntrySource = 'login'
         authStore.savedRegisterForm = {
           email: email.value.trim(),
           password: password.value,
