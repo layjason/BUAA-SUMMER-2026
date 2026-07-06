@@ -3,6 +3,14 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 describe('活动详情页审核进度加载', () => {
+  it('活动无可预览图片时不应渲染图片占位区域', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/pages/activity/detail.vue'), 'utf8')
+
+    expect(source).toContain('v-if="activityImagePreviews.length > 0"')
+    expect(source).not.toContain('class="image-placeholder"')
+    expect(source).not.toContain('.image-placeholder')
+  })
+
   it('审核中活动应先加载核心详情，附属总结评价不应阻断页面展示', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/pages/activity/detail.vue'), 'utf8')
     const loadDataBody = source.slice(

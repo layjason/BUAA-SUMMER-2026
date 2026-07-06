@@ -883,10 +883,6 @@ onShow(() => {
           </swiper>
           <image v-else class="single-image" :src="activityImagePreviews[0]" mode="aspectFill" />
         </view>
-        <view v-else class="image-placeholder">
-          <text class="placeholder-icon">📷</text>
-        </view>
-
         <view class="section card">
           <view class="title-row">
             <text class="title">{{ activity.title }}</text>
@@ -1168,25 +1164,13 @@ onShow(() => {
 .swiper-wrapper,
 .swiper,
 .swiper-image,
-.single-image,
-.image-placeholder {
+.single-image {
   width: 100%;
   height: 420rpx;
 }
 
 .single-image {
   display: block;
-}
-
-.image-placeholder {
-  background-color: $color-bg-soft;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.placeholder-icon {
-  font-size: 80rpx;
 }
 
 .section {
