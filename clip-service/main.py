@@ -32,6 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="MayoiStar CLIP Classifier", version="2.0.0")
+_consumer_thread_started = False
 
 
 class ClassifyRequest(BaseModel):
@@ -63,6 +64,7 @@ async def startup():
     """服务启动时加载 CLIP 模型并预计算文本特征。"""
     logger.info("正在启动 CLIP 分类服务...")
     load_model()
+    _start_kafka_consumer_if_enabled()
     logger.info("CLIP 分类服务已就绪")
 
 
@@ -117,21 +119,34 @@ def _start_kafka_consumer():
     run_consumer()
 
 
+def _start_kafka_consumer_if_enabled():
+    """
+    当 MODE=kafka 时启动 Kafka Consumer。
+
+    前置条件：CLIP 模型已经完成加载。
+    后置条件：Kafka 模式下仅启动一个后台 consumer 线程；HTTP 模式不启动 consumer。
+    不变量：无论入口是 python main.py 还是 uvicorn main:app，启动行为一致。
+    """
+    global _consumer_thread_started
+
+    mode = os.environ.get("MODE", "fastapi").lower()
+    if mode != "kafka":
+        logger.info("运行模式: FastAPI HTTP")
+        return
+
+    if _consumer_thread_started:
+        logger.info("Kafka Consumer 已启动，跳过重复启动")
+        return
+
+    logger.info("运行模式: Kafka Consumer + HTTP (health/metrics)")
+    consumer_thread = threading.Thread(target=_start_kafka_consumer, daemon=True)
+    consumer_thread.start()
+    _consumer_thread_started = True
+
+
 if __name__ == "__main__":
     import uvicorn
 
-    mode = os.environ.get("MODE", "fastapi")
     host = os.environ.get("CLIP_HOST", "0.0.0.0")
     port = int(os.environ.get("CLIP_PORT", "8000"))
-
-    if mode == "kafka":
-        # Kafka 模式：模型在主线程加载，consumer 在子线程运行，HTTP 在主线程
-        logger.info("运行模式: Kafka Consumer + HTTP (health/metrics)")
-        load_model()
-        consumer_thread = threading.Thread(target=_start_kafka_consumer, daemon=True)
-        consumer_thread.start()
-        uvicorn.run(app, host=host, port=port)
-    else:
-        # FastAPI 模式（默认）
-        logger.info("运行模式: FastAPI HTTP")
-        uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=host, port=port)
