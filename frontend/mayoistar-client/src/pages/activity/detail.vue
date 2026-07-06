@@ -212,13 +212,9 @@ const showSummaryPostedStatus = computed(() => {
   )
 })
 
-/** 活动驳回或需修改时是否可返回编辑页。 */
+/** 活动要求修改时是否可返回编辑页。 */
 const canResubmit = computed(() => {
-  return (
-    isOrganizer.value &&
-    (activity.value?.reviewStatus === 'rejected' ||
-      activity.value?.reviewStatus === 'changeRequired')
-  )
+  return Boolean(isOrganizer.value && activity.value?.reviewStatus === 'changeRequired')
 })
 
 /** 是否展示人工审核等待提示。 */

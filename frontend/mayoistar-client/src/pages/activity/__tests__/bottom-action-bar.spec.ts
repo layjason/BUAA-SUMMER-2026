@@ -83,6 +83,17 @@ describe('活动页面底部操作栏', () => {
     )
   })
 
+  it('详情页驳回活动不应通过主按钮进入编辑页', () => {
+    const source = readActivityPage('detail.vue')
+    const canResubmitBody = source.slice(
+      source.indexOf('const canResubmit = computed(() => {'),
+      source.indexOf('/** 是否展示人工审核等待提示。 */'),
+    )
+
+    expect(canResubmitBody).toContain("activity.value?.reviewStatus === 'changeRequired'")
+    expect(canResubmitBody).not.toContain("activity.value?.reviewStatus === 'rejected'")
+  })
+
   it('详情页评价入口应使用后端参与状态控制并展示截止时间', () => {
     const source = readActivityPage('detail.vue')
 
