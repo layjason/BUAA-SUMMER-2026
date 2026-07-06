@@ -97,6 +97,32 @@ public final class ActivityDtos {
     }
 
     @Data
+    public static class ActivityTemplateUpsertRequest {
+        @NotBlank
+        @Size(max = 100)
+        private String name;
+
+        @NotBlank
+        @Size(max = 50)
+        private String activityType;
+
+        @NotNull
+        private List<@NotBlank @Size(max = 50) String> defaultTags;
+
+        @NotBlank
+        private String defaultIntroduction;
+
+        @NotBlank
+        private String defaultSafetyNotice;
+
+        @NotNull
+        @Positive
+        private Integer defaultCapacity;
+
+        private UUID defaultCoverImageMediaId;
+    }
+
+    @Data
     public static class RegisterActivityRequest {
         private String participantNote;
 

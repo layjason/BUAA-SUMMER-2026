@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { changePassword } from '../api/adminAuth';
+import { BusinessError } from '../api/client';
+import { ADMIN_PASSWORD_MIN_LENGTH } from '../constants/admin';
+import { getAdminErrorMessage } from '../constants/adminErrorMessages';
 import { KeyRound, ShieldAlert, Sparkles, RefreshCw, Eye, EyeOff } from 'lucide-react';
 
 export const SettingsPassword: React.FC = () => {
@@ -38,8 +41,8 @@ export const SettingsPassword: React.FC = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError('新密码长度必须不小于 6 位，以确保后台治理安全性');
+    if (newPassword.length < ADMIN_PASSWORD_MIN_LENGTH) {
+      setError(`新密码长度必须不小于 ${ADMIN_PASSWORD_MIN_LENGTH} 位，以确保后台治理安全性`);
       return;
     }
 
@@ -57,7 +60,11 @@ export const SettingsPassword: React.FC = () => {
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : '修改密码失败，请核对旧密码是否输入正确');
+      if (err instanceof BusinessError) {
+        setError(getAdminErrorMessage(err.code, err.message));
+      } else {
+        setError(err instanceof Error ? err.message : '修改密码失败，请核对旧密码是否输入正确');
+      }
     } finally {
       setLoading(false);
     }
@@ -76,7 +83,7 @@ export const SettingsPassword: React.FC = () => {
         <div className="space-y-1 text-slate-600 leading-relaxed font-semibold text-xs">
           <p className="text-slate-800 font-bold">后台审计级安全规范：</p>
           <p className="text-slate-400 font-semibold leading-relaxed">
-            由于您具备趣聚平台最高级别的内容下架、用户封锁和资质审核权限，请确保新设置的密码不低于6位，包含字符、数字的组合，并且严禁与微信、邮箱等日常账号的密码相同，以防止社交劫持。
+            由于您具备趣聚平台最高级别的内容下架、用户封锁和资质审核权限，请确保新设置的密码不低于8位，包含字符、数字的组合，并且严禁与微信、邮箱等日常账号的密码相同，以防止社交劫持。
           </p>
         </div>
       </div>
@@ -122,7 +129,7 @@ export const SettingsPassword: React.FC = () => {
                 type={showNew ? 'text' : 'password'}
                 required
                 disabled={loading}
-                placeholder="设置新密码 (长度不小于 6 位)"
+                placeholder="设置新密码 (长度不小于 8 位)"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="w-full text-xs px-3.5 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800 font-mono font-bold"

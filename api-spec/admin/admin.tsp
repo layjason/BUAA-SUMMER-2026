@@ -361,6 +361,37 @@ interface AdminOperations {
   ): APIResponse<QujuApi.Activities.ActivityDetail>;
 
   @post
+  @route("/activities/templates")
+  @doc("创建平台活动模板，管理员已登录，模板创建后对全部用户可见，可用于快速创建活动草稿。")
+  createActivityTemplate(
+    @body body: QujuApi.Activities.ActivityTemplateUpsertRequest,
+  ): APIResult<
+    QujuApi.Activities.ActivityTemplate,
+    QujuApi.Errors.Activities.MediaFileUnavailable
+  >;
+
+  @put
+  @route("/activities/templates/{templateId}")
+  @doc("更新平台活动模板，管理员已登录，覆盖模板基础信息和默认封面，已由模板生成的草稿不受影响。")
+  updateActivityTemplate(
+    @path templateId: EntityId,
+    @body body: QujuApi.Activities.ActivityTemplateUpsertRequest,
+  ): APIResult<
+    QujuApi.Activities.ActivityTemplate,
+
+      | QujuApi.Errors.Activities.TemplateNotFound
+      | QujuApi.Errors.Activities.MediaFileUnavailable
+  >;
+
+  @delete
+  @route("/activities/templates/{templateId}")
+  @doc("删除平台活动模板，管理员已登录，删除后不再出现在用户模板列表，已创建的活动草稿不受影响。")
+  deleteActivityTemplate(@path templateId: EntityId): APIResult<
+    EmptyData,
+    QujuApi.Errors.Activities.TemplateNotFound
+  >;
+
+  @post
   @route("/activities/{activityId}/review")
   @doc("管理员提交通过、驳回或要求修改的处理结果，驳回或要求修改必须填写原因。")
   reviewActivity(

@@ -34,6 +34,7 @@ import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityImageRepository;
 import io.github.layjason.mayoistar.repository.activities.ActivityTemplateRepository;
 import io.github.layjason.mayoistar.service.activities.ActivityDraftService;
+import io.github.layjason.mayoistar.service.activities.ActivityTemplateAdminService;
 import io.github.layjason.mayoistar.service.ai.ContentReviewRisk;
 import io.github.layjason.mayoistar.service.ai.ContentReviewScanResult;
 import io.github.layjason.mayoistar.service.storage.FileStorageService;
@@ -58,6 +59,9 @@ class ActivityDraftServiceTests {
 
     @Autowired
     private ActivityDraftService activityDraftService;
+
+    @Autowired
+    private ActivityTemplateAdminService activityTemplateAdminService;
 
     @Autowired
     private ActivityRepository activityRepository;
@@ -363,6 +367,98 @@ class ActivityDraftServiceTests {
         assertThat(firstTemplate.getActivityType()).isEqualTo("社交");
         assertThat(firstTemplate.getDefaultTags()).containsExactly("桌游", "轻松");
         assertThat(activityDraftService.listTemplates(1, 1).getTotal()).isEqualTo(2);
+    }
+
+    @Test
+    void createTemplateShouldPersistTemplateAndPublishCoverImage() {
+        User adminUploader = saveUser("admin-uploader");
+        MediaFile coverImage = saveMediaFile(IMAGE_A_ID, adminUploader.getUserId());
+
+        ActivityDtos.ActivityTemplate created =
+                activityTemplateAdminService.createTemplate(createTemplateRequest(coverImage.getMediaId()));
+
+        ActivityTemplate savedTemplate =
+                activityTemplateRepository.findById(created.getTemplateId()).orElseThrow();
+        assertThat(savedTemplate.getName()).isEqualTo("城市探索模板");
+        assertThat(savedTemplate.getActivityType()).isEqualTo("城市探索");
+        assertThat(savedTemplate.getDefaultTags()).containsExactly("探索", "拍照");
+        assertThat(savedTemplate.getDefaultCoverImageMediaId()).isEqualTo(coverImage.getMediaId());
+        assertThat(created.getDefaultCoverImage()).isNotNull();
+        assertThat(created.getDefaultCoverImage().getMediaId()).isEqualTo(coverImage.getMediaId());
+
+        MediaFile publishedCover =
+                mediaFileRepository.findById(coverImage.getMediaId()).orElseThrow();
+        assertThat(publishedCover.getAccessPolicy()).isEqualTo(MediaAccessPolicy.publicAccess);
+        assertThat(publishedCover.getVisibility()).isEqualTo(MediaVisibility.publicVisible);
+        assertThat(publishedCover.getAccessVersion()).isEqualTo(2L);
+    }
+
+    @Test
+    void updateTemplateShouldOverwriteFieldsAndClearCoverImage() {
+        User adminUploader = saveUser("admin-uploader");
+        MediaFile coverImage = saveMediaFile(IMAGE_A_ID, adminUploader.getUserId());
+        ActivityTemplate template = activityTemplateRepository.save(ActivityTemplate.builder()
+                .templateId("template-a")
+                .name("旧模板")
+                .activityType("旧类型")
+                .defaultTags(List.of("旧标签"))
+                .defaultIntroduction("旧介绍")
+                .defaultSafetyNotice("旧安全须知")
+                .defaultCapacity(8)
+                .defaultCoverImageMediaId(coverImage.getMediaId())
+                .build());
+        ActivityDtos.ActivityTemplateUpsertRequest request = createTemplateRequest(null);
+        request.setName("更新后的模板");
+        request.setDefaultCapacity(18);
+
+        ActivityDtos.ActivityTemplate updated =
+                activityTemplateAdminService.updateTemplate(template.getTemplateId(), request);
+
+        ActivityTemplate savedTemplate =
+                activityTemplateRepository.findById(template.getTemplateId()).orElseThrow();
+        assertThat(updated.getName()).isEqualTo("更新后的模板");
+        assertThat(savedTemplate.getName()).isEqualTo("更新后的模板");
+        assertThat(savedTemplate.getDefaultCapacity()).isEqualTo(18);
+        assertThat(savedTemplate.getDefaultCoverImageMediaId()).isNull();
+        assertThat(updated.getDefaultCoverImage()).isNull();
+    }
+
+    @Test
+    void deleteTemplateShouldRemoveTemplate() {
+        saveTemplate("template-a", "桌游模板", "社交", List.of("桌游", "轻松"));
+
+        activityTemplateAdminService.deleteTemplate("template-a");
+
+        assertThat(activityTemplateRepository.findById("template-a")).isEmpty();
+    }
+
+    @Test
+    void updateTemplateShouldRejectMissingTemplate() {
+        assertThatThrownBy(() -> activityTemplateAdminService.updateTemplate("missing", createTemplateRequest(null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(20001);
+    }
+
+    @Test
+    void createTemplateShouldRejectUnavailableCoverImage() {
+        User adminUploader = saveUser("admin-uploader");
+        MediaFile avatar = mediaFileRepository.save(MediaFile.builder()
+                .mediaId(IMAGE_A_ID)
+                .fileName("avatar.png")
+                .contentType("image/png")
+                .sizeBytes(1L)
+                .usage(MediaUsage.avatar)
+                .storagePath("/tmp/avatar.png")
+                .uploadedBy(adminUploader.getUserId())
+                .uploadedAt(Instant.now())
+                .build());
+
+        assertThatThrownBy(
+                        () -> activityTemplateAdminService.createTemplate(createTemplateRequest(avatar.getMediaId())))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(20017);
     }
 
     @Test
@@ -789,6 +885,18 @@ class ActivityDraftServiceTests {
                 .defaultSafetyNotice("模板安全须知")
                 .defaultCapacity(12)
                 .build());
+    }
+
+    private ActivityDtos.ActivityTemplateUpsertRequest createTemplateRequest(UUID defaultCoverImageMediaId) {
+        ActivityDtos.ActivityTemplateUpsertRequest request = new ActivityDtos.ActivityTemplateUpsertRequest();
+        request.setName("城市探索模板");
+        request.setActivityType("城市探索");
+        request.setDefaultTags(List.of("探索", "拍照"));
+        request.setDefaultIntroduction("沿着城市线索完成探索任务");
+        request.setDefaultSafetyNotice("注意交通安全，结伴行动");
+        request.setDefaultCapacity(20);
+        request.setDefaultCoverImageMediaId(defaultCoverImageMediaId);
+        return request;
     }
 
     private ActivityDtos.ActivityDraftUpsertRequest createDraftRequest(List<UUID> imageIds) {

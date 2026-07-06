@@ -21,7 +21,9 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -217,9 +219,25 @@ public class ActivityController {
 
     @GetMapping("/{activityId}")
     public ResponseEntity<ApiResponse<ActivityDtos.ActivityDetail>> getActivity(@PathVariable String activityId) {
-        String userId = securityUtils.getCurrentUserId();
         return ResponseEntity.ok(
-                ApiResponse.success(activityQueryService.getActivity(Optional.of(userId), activityId)));
+                ApiResponse.success(activityQueryService.getActivity(getOptionalCurrentUserId(), activityId)));
+    }
+
+    private Optional<String> getOptionalCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            return Optional.empty();
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof String userId) {
+            return Optional.of(userId);
+        }
+        if (principal instanceof UserDetails userDetails) {
+            return Optional.of(userDetails.getUsername());
+        }
+        return Optional.empty();
     }
 
     @PostMapping("/{activityId}/check-in-qrcode")
