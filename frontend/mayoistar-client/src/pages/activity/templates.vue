@@ -43,7 +43,7 @@
       </view>
     </scroll-view>
 
-    <BottomActionBar>
+    <BottomActionBar fixed>
       <button class="bar-btn bar-btn-secondary" @click="skipTemplate">
         {{ t('activityTemplates.skip') }}
       </button>

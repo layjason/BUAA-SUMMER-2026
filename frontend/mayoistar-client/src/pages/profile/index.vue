@@ -143,10 +143,7 @@ const menuSections: MenuSection[] = [
   },
   {
     title: t('profile.sectionOther'),
-    items: [
-      { key: 'editProfile', label: t('profile.editProfile'), route: '/pages/profile/edit' },
-      { key: 'settings', label: t('profile.settings'), route: '/pages/profile/settings' },
-    ],
+    items: [{ key: 'editProfile', label: t('profile.editProfile'), route: '/pages/profile/edit' }],
   },
 ]
 

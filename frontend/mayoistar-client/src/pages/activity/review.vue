@@ -71,7 +71,7 @@
       </view>
     </scroll-view>
 
-    <BottomActionBar>
+    <BottomActionBar fixed>
       <button
         class="bar-btn bar-btn-primary"
         :loading="submitting"
@@ -300,7 +300,7 @@ onLoad((query) => {
 }
 
 .form-container {
-  padding: 32rpx;
+  padding: 32rpx 32rpx calc(176rpx + env(safe-area-inset-bottom));
 }
 
 .title {

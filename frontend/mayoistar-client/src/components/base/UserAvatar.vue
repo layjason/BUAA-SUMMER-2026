@@ -3,7 +3,7 @@
     <image
       v-if="showImage"
       class="user-avatar__image"
-      :src="avatarUrl"
+      :src="resolvedAvatarUrl"
       mode="aspectFill"
       @error="onImageError"
     />
@@ -15,10 +15,18 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import type { components } from '@/api/types/schema'
+import { useAuthStore } from '@/stores/auth'
+import { extractAvatarSignedUrl, resolveAvatarDisplayUrl } from '@/utils/avatar-display'
+
+type MediaFile = components['schemas']['MediaFile']
 
 const props = withDefaults(
   defineProps<{
+    /** 头像访问地址（通常为 MediaFile.signedUrl） */
     avatarUrl?: string
+    /** OpenAPI 头像媒体，与 avatarUrl 二选一 */
+    avatar?: MediaFile | null
     name?: string
     userId?: string
     initial?: string
@@ -26,6 +34,7 @@ const props = withDefaults(
   }>(),
   {
     avatarUrl: '',
+    avatar: null,
     name: '',
     userId: '',
     initial: '',
@@ -33,16 +42,13 @@ const props = withDefaults(
   },
 )
 
+const authStore = useAuthStore()
 const imageFailed = ref(false)
+const resolvedAvatarUrl = ref('')
 
-watch(
-  () => props.avatarUrl,
-  () => {
-    imageFailed.value = false
-  },
-)
+const sourceSignedUrl = computed(() => extractAvatarSignedUrl(props.avatar, props.avatarUrl))
 
-const showImage = computed(() => Boolean(props.avatarUrl) && !imageFailed.value)
+const showImage = computed(() => Boolean(resolvedAvatarUrl.value) && !imageFailed.value)
 
 const displayInitial = computed(() => {
   if (props.initial) return props.initial.charAt(0).toUpperCase()
@@ -50,6 +56,27 @@ const displayInitial = computed(() => {
   if (props.userId) return props.userId.charAt(0).toUpperCase()
   return '?'
 })
+
+async function refreshResolvedAvatar(): Promise<void> {
+  imageFailed.value = false
+  resolvedAvatarUrl.value = await resolveAvatarDisplayUrl(
+    sourceSignedUrl.value,
+    authStore.getAccessToken(),
+  )
+}
+
+watch(sourceSignedUrl, () => {
+  void refreshResolvedAvatar()
+})
+
+watch(
+  () => authStore.token,
+  () => {
+    void refreshResolvedAvatar()
+  },
+)
+
+void refreshResolvedAvatar()
 
 function onImageError() {
   imageFailed.value = true

@@ -20,7 +20,7 @@
         >
           <UserAvatar
             size="md"
-            :avatar-url="member.avatar?.signedUrl || ''"
+            :avatar="getCachedAvatar(profileCache, member.userId)"
             :name="member.nickname"
             :user-id="member.userId"
           />
@@ -95,6 +95,11 @@ import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import UserAvatar from '@/components/base/UserAvatar.vue'
 import { getTeamMembers, updateMemberRole } from '@/api/modules/teams'
+import {
+  getCachedAvatar,
+  loadUserProfileCache,
+  type ProfileCacheEntry,
+} from '@/utils/profile-cache'
 import { useAuthStore } from '@/stores/auth'
 import type { components } from '@/api/types/schema'
 
@@ -102,6 +107,7 @@ type TeamMember = components['schemas']['Social.TeamMember']
 
 const teamId = ref('')
 const members = ref<TeamMember[]>([])
+const profileCache = ref<Record<string, ProfileCacheEntry>>({})
 const loading = ref(false)
 const selectedMember = ref<TeamMember | null>(null)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -133,6 +139,7 @@ async function loadMembers() {
       ? result
       : (((result as Record<string, unknown>).items as TeamMember[]) ?? [])
     members.value = items
+    profileCache.value = await loadUserProfileCache(items.map((member) => member.userId))
   } catch (error) {
     console.error('Failed to load members:', error)
     uni.showToast({ title: '加载失败', icon: 'none' })

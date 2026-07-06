@@ -25,7 +25,12 @@
           class="list-item"
           @tap="goToProfile(item.userId)"
         >
-          <UserAvatar size="md" :name="item.nickname" :user-id="item.userId" />
+          <UserAvatar
+            size="md"
+            :avatar="resolveCachedAvatar(profileCache, item.userId, item.avatar)"
+            :name="item.nickname"
+            :user-id="item.userId"
+          />
 
           <view class="item-info">
             <text class="item-name">{{ item.nickname }}</text>
@@ -64,6 +69,12 @@ import { resolveApiError } from '@/utils/error'
 import { useAuthStore } from '@/stores/auth'
 import { fetchActivityCompanions, type ActivityCompanionItem } from '@/utils/activity-companions'
 import {
+  collectUserIdsMissingAvatar,
+  loadUserProfileCache,
+  resolveCachedAvatar,
+  type ProfileCacheEntry,
+} from '@/utils/profile-cache'
+import {
   fetchBulkSocialRelationContext,
   resolveFriendListActionState,
   friendListActionLabel,
@@ -73,6 +84,7 @@ import {
 
 const loading = ref(false)
 const companions = ref<ActivityCompanionItem[]>([])
+const profileCache = ref<Record<string, ProfileCacheEntry>>({})
 const relationCtx = ref<BulkSocialRelationContext | null>(null)
 
 const authStore = useAuthStore()
@@ -90,6 +102,7 @@ async function loadData() {
       fetchBulkSocialRelationContext(),
     ])
     companions.value = list
+    profileCache.value = await loadUserProfileCache(collectUserIdsMissingAvatar(list))
     relationCtx.value = ctx
   } catch {
     uni.showToast({ title: '加载失败', icon: 'none' })
@@ -195,33 +208,15 @@ onMounted(() => {
 .list-item {
   display: flex;
   align-items: center;
-  padding: $spacing-md 0;
+  gap: $spacing-lg;
+  padding: $spacing-lg 0;
   border-bottom: 1px solid $color-border-light;
-}
-
-.item-avatar {
-  width: 44px;
-  height: 44px;
-  margin-right: $spacing-md;
-  flex-shrink: 0;
-}
-
-.item-avatar-placeholder {
-  width: 44px;
-  height: 44px;
-  border-radius: $radius-full;
-  background: $color-primary-light;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: $font-lg;
-  font-weight: $weight-semibold;
-  color: $color-primary-dark;
 }
 
 .item-info {
   flex: 1;
   min-width: 0;
+  margin-right: $spacing-sm;
 }
 
 .item-name {
@@ -229,20 +224,23 @@ onMounted(() => {
   font-weight: $weight-medium;
   color: $color-text;
   display: block;
+  line-height: 1.4;
 }
 
 .item-source {
   font-size: $font-xs;
   color: $color-text-sub;
-  margin-top: 2px;
+  margin-top: 6px;
   display: block;
+  line-height: 1.4;
 }
 
 .item-action {
-  padding: $spacing-xs $spacing-md;
+  padding: $spacing-xs $spacing-lg;
   background: $color-primary;
   border-radius: $radius-full;
   flex-shrink: 0;
+  margin-left: $spacing-xs;
 
   &--muted {
     background: rgba(0, 0, 0, 0.08);

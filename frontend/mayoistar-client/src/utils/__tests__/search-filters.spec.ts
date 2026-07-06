@@ -7,6 +7,7 @@ describe('search-filters', () => {
       hasSearchFilters({
         activityTypes: [],
         city: null,
+        detectedCity: null,
         fee: null,
         time: null,
         distanceMeters: null,
@@ -21,6 +22,7 @@ describe('search-filters', () => {
       {
         activityTypes: ['运动', '户外'],
         city: '北京',
+        detectedCity: '上海',
         fee: 'free',
         time: 'today',
         distanceMeters: 3000,
@@ -33,7 +35,7 @@ describe('search-filters', () => {
     expect(query).toMatchObject({
       keyword: '羽毛球',
       activityTypes: ['运动', '户外'],
-      city: '北京',
+      city: '北京市',
       minFee: 0,
       maxFee: 0,
       longitude: 116.4,
@@ -52,6 +54,7 @@ describe('search-filters', () => {
       {
         activityTypes: [],
         city: null,
+        detectedCity: null,
         fee: 'paid',
         time: null,
         distanceMeters: null,
@@ -71,6 +74,7 @@ describe('search-filters', () => {
       {
         activityTypes: [],
         city: null,
+        detectedCity: null,
         fee: null,
         time: null,
         distanceMeters: 5000,
@@ -83,6 +87,44 @@ describe('search-filters', () => {
     expect(query.longitude).toBeUndefined()
     expect(query.latitude).toBeUndefined()
     expect(query.distanceMeters).toBeUndefined()
+  })
+
+  it('未选手动城市时应使用高德定位城市', () => {
+    const query = buildSearchActivitiesQuery(
+      '露营',
+      {
+        activityTypes: [],
+        city: null,
+        detectedCity: '北京市',
+        fee: null,
+        time: null,
+        distanceMeters: null,
+        location: null,
+      },
+      1,
+      20,
+    )
+
+    expect(query.city).toBe('北京市')
+  })
+
+  it('手动选择城市应优先于定位城市', () => {
+    const query = buildSearchActivitiesQuery(
+      '',
+      {
+        activityTypes: [],
+        city: '广州',
+        detectedCity: '北京',
+        fee: null,
+        time: null,
+        distanceMeters: null,
+        location: null,
+      },
+      1,
+      20,
+    )
+
+    expect(query.city).toBe('广州市')
   })
 
   /*

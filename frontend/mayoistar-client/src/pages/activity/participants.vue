@@ -17,9 +17,12 @@
     >
       <view v-for="item in items" :key="item.registrationId" class="card">
         <view class="card-left" @tap="goToProfile(item)">
-          <view class="avatar-placeholder">
-            <text class="avatar-text">{{ item.nickname.charAt(0).toUpperCase() }}</text>
-          </view>
+          <UserAvatar
+            size="md"
+            :avatar="item.avatar"
+            :name="item.nickname"
+            :user-id="item.userId"
+          />
           <text class="nickname">{{ item.nickname }}</text>
         </view>
         <view class="card-right">
@@ -29,9 +32,7 @@
           <view
             v-if="getActionState(item.userId) !== 'self'"
             class="add-friend-btn"
-            :class="{
-              'add-friend-btn--muted': !canTapAction(item.userId),
-            }"
+            :class="'add-friend-btn--' + getActionState(item.userId)"
             @tap="onFriendActionTap(item)"
           >
             <text class="add-friend-text">{{ getActionLabel(item.userId) }}</text>
@@ -56,10 +57,13 @@ import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
-import { getParticipants } from '@/api/modules/activities'
+import { getActivityDetail, getParticipants, getParticipationState } from '@/api/modules/activities'
 import { sendFriendRequest } from '@/api/modules/social'
 import { useAuthStore } from '@/stores/auth'
+import { canViewActivityParticipants } from '@/utils/activity-participants'
+import type { components } from '@/api/types/schema'
 import { getErrorMessage } from '@/utils/error'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import {
   fetchBulkSocialRelationContext,
   resolveFriendListActionState,
@@ -68,7 +72,6 @@ import {
   type BulkSocialRelationContext,
   type FriendListActionState,
 } from '@/utils/social-relation'
-
 const { t } = useI18n()
 
 const activityId = ref('')
@@ -82,6 +85,7 @@ interface ParticipantItem {
   userId: string
   nickname: string
   registrationStatus: string
+  avatar?: components['schemas']['MediaFile']
 }
 
 const authStore = useAuthStore()
@@ -160,7 +164,8 @@ async function loadData(page: number, reset = false): Promise<void> {
     noMore.value = result.page >= result.totalPages
   } catch (error) {
     if (error instanceof BusinessError) {
-      errorMsg.value = getErrorMessage(error.code)
+      errorMsg.value =
+        error.code === 20003 ? '请先报名参与活动后查看参与者列表' : getErrorMessage(error.code)
     } else {
       errorMsg.value = getErrorMessage(0, '加载参与者列表失败')
     }
@@ -189,14 +194,44 @@ async function onLoadMore(): Promise<void> {
   loadingMore.value = false
 }
 
-onLoad((query) => {
+onLoad(async (query) => {
   activityId.value = (query?.activityId as string) ?? ''
   if (!activityId.value) {
     errorMsg.value = '缺少活动标识'
     loading.value = false
     return
   }
-  loadData(1, true)
+  if (!authStore.isLoggedIn) {
+    uni.redirectTo({ url: '/pages/login/index' })
+    return
+  }
+  try {
+    const [detail, participation] = await Promise.all([
+      getActivityDetail(activityId.value),
+      getParticipationState(activityId.value),
+    ])
+    if (
+      !canViewActivityParticipants({
+        isLoggedIn: true,
+        organizerId: detail.organizerId,
+        userId: authStore.userId,
+        participation,
+      })
+    ) {
+      errorMsg.value = '请先报名参与活动后查看参与者列表'
+      loading.value = false
+      return
+    }
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      errorMsg.value = getErrorMessage(error.code)
+    } else {
+      errorMsg.value = getErrorMessage(0, '加载活动信息失败')
+    }
+    loading.value = false
+    return
+  }
+  await loadData(1, true)
 })
 
 /** 跳转到用户资料 */
@@ -289,22 +324,6 @@ async function sendFriendRequest_(item: ParticipantItem) {
   gap: 20rpx;
 }
 
-.avatar-placeholder {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 50%;
-  background-color: var(--q-color-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.avatar-text {
-  font-size: 28rpx;
-  color: var(--q-color-bg-card);
-  font-weight: 600;
-}
-
 .nickname {
   font-size: 28rpx;
   color: var(--q-color-text);
@@ -338,22 +357,31 @@ async function sendFriendRequest_(item: ParticipantItem) {
 }
 
 .add-friend-btn {
-  background: var(--q-gradient-primary);
   padding: 6rpx 16rpx;
   border-radius: 6rpx;
 }
 
-.add-friend-btn--muted {
-  background-color: var(--q-color-bg-soft);
+.add-friend-btn--add,
+.add-friend-btn--pending_received {
+  background: var(--q-gradient-primary);
+}
+
+.add-friend-btn--friend {
+  background: var(--q-color-primary-dark);
+}
+
+.add-friend-btn--pending_sent {
+  background: var(--q-color-warning);
+}
+
+.add-friend-btn--blocked {
+  background: #6b7280;
 }
 
 .add-friend-text {
   font-size: 22rpx;
-  color: var(--q-color-bg-card);
-}
-
-.add-friend-btn--muted .add-friend-text {
-  color: var(--q-color-text-muted);
+  color: #ffffff;
+  font-weight: 500;
 }
 
 .load-more {

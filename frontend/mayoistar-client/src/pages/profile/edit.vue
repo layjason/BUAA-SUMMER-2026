@@ -165,7 +165,7 @@
         </view>
       </view>
     </scroll-view>
-    <BottomActionBar>
+    <BottomActionBar fixed>
       <button
         class="bar-btn bar-btn-primary"
         :disabled="saving || !hasProfileChanges"
@@ -791,7 +791,7 @@ async function handleSave(): Promise<void> {
 }
 
 .edit-container {
-  padding: 32rpx;
+  padding: 32rpx 32rpx calc(176rpx + env(safe-area-inset-bottom));
 }
 
 .avatar-section {

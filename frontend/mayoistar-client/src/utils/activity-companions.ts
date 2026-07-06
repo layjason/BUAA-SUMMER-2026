@@ -6,10 +6,14 @@
 import { getMyRegistrations } from '@/api/modules/registrations'
 import { getParticipants } from '@/api/modules/activities'
 import { getFriends } from '@/api/modules/social'
+import type { components } from '@/api/types/schema'
+
+type MediaFile = components['schemas']['MediaFile']
 
 export interface ActivityCompanionItem {
   userId: string
   nickname: string
+  avatar?: MediaFile
   activityTitle?: string
 }
 
@@ -33,9 +37,11 @@ export async function fetchActivityCompanions(
   for (const reg of regs) {
     if (!reg.activityId) continue
     try {
-      const participants = unwrapItems<{ userId: string; nickname: string }>(
-        await getParticipants(reg.activityId, 1, 50),
-      )
+      const participants = unwrapItems<{
+        userId: string
+        nickname: string
+        avatar?: MediaFile
+      }>(await getParticipants(reg.activityId, 1, 50))
       for (const p of participants) {
         if (!p.userId || p.userId === currentUserId) continue
         if (friendIds.has(p.userId) || seen.has(p.userId)) continue
@@ -43,6 +49,7 @@ export async function fetchActivityCompanions(
         companions.push({
           userId: p.userId,
           nickname: p.nickname,
+          avatar: p.avatar,
           activityTitle: reg.title,
         })
       }

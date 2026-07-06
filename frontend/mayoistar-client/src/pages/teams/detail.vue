@@ -83,7 +83,7 @@
             <view v-for="member in members.slice(0, 5)" :key="member.userId" class="member-item">
               <UserAvatar
                 size="md"
-                :avatar-url="member.avatar?.signedUrl || ''"
+                :avatar="getCachedAvatar(profileCache, member.userId)"
                 :name="member.nickname"
                 :user-id="member.userId"
               />
@@ -175,6 +175,11 @@ import {
 } from '@/api/modules/teams'
 import { BusinessError } from '@/api'
 import { getTeamErrorMessage } from '@/utils/team-error-message'
+import {
+  getCachedAvatar,
+  loadUserProfileCache,
+  type ProfileCacheEntry,
+} from '@/utils/profile-cache'
 import { useAuthStore } from '@/stores/auth'
 import type { components } from '@/api/types/schema'
 
@@ -184,6 +189,7 @@ type TeamMember = components['schemas']['Social.TeamMember']
 const teamId = ref('')
 const team = ref<TeamProfile | null>(null)
 const members = ref<TeamMember[]>([])
+const profileCache = ref<Record<string, ProfileCacheEntry>>({})
 const loading = ref(false)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const managePopup = ref<any>(null)
@@ -238,6 +244,7 @@ async function loadTeam() {
       ? membersResult
       : (((membersResult as Record<string, unknown>).items as TeamMember[]) ?? [])
     members.value = memberItems
+    profileCache.value = await loadUserProfileCache(memberItems.map((member) => member.userId))
   } catch (error) {
     console.error('Failed to load team:', error)
     uni.showToast({ title: '加载失败', icon: 'none' })

@@ -28,7 +28,7 @@ describe('活动页面底部操作栏', () => {
   it('模板选择页应使用固定底部操作栏，避免按钮被手机安全区遮挡', () => {
     const source = readActivityPage('templates.vue')
 
-    expect(source).toContain('<BottomActionBar>')
+    expect(source).toMatch(/<BottomActionBar\b[^>]*\bfixed\b[^>]*>/)
     expect(source).toMatch(/import\s+\{[^}]*BottomActionBar[^}]*}\s+from\s+['"]@\/components['"]/)
     expect(source).not.toContain('class="action-bar"')
   })
@@ -57,9 +57,10 @@ describe('活动页面底部操作栏', () => {
   it('detail page primary action should reuse fixed bottom action bar style', () => {
     const source = readActivityPage('detail.vue')
 
-    expect(source).toContain('<BottomActionBar v-if=')
+    expect(source).toMatch(/<BottomActionBar\b[^>]*\bfixed\b/)
     expect(source).toMatch(/import\s+\{[^}]*BottomActionBar[^}]*}\s+from\s+['"]@\/components['"]/)
     expect(source).toContain('class="bar-btn bar-btn-primary"')
+    expect(source).toContain('scroll-content--bottom-inset')
     expect(source).not.toContain('class="action-bar"')
     expect(source).not.toContain('class="action-btn"')
   })

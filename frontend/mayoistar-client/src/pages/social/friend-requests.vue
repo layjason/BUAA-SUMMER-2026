@@ -41,6 +41,7 @@
           <view @tap="goToProfile(getCounterpartId(req))">
             <UserAvatar
               size="md"
+              :avatar="getCounterpartAvatar(req)"
               :name="getCounterpartName(req)"
               :user-id="getCounterpartId(req)"
             />
@@ -91,9 +92,14 @@ import {
   getReceivedFriendRequests,
   getSentFriendRequests,
   handleFriendRequest,
-  getUserProfile,
 } from '@/api/modules/social'
 import { resolveFriendConversationId } from '@/utils/friend-chat'
+import {
+  getCachedAvatar,
+  getCachedNickname,
+  loadUserProfileCache,
+  type ProfileCacheEntry,
+} from '@/utils/profile-cache'
 import type { components } from '@/api/types/schema'
 
 type FriendRequest = components['schemas']['Social.FriendRequest']
@@ -102,7 +108,7 @@ const activeTab = ref<'received' | 'sent'>('received')
 const receivedRequests = ref<FriendRequest[]>([])
 const sentRequests = ref<FriendRequest[]>([])
 const loading = ref(false)
-const nicknameCache = ref<Record<string, string>>({})
+const profileCache = ref<Record<string, ProfileCacheEntry>>({})
 
 const items = computed(() =>
   activeTab.value === 'received' ? receivedRequests.value : sentRequests.value,
@@ -123,8 +129,11 @@ function getCounterpartId(req: FriendRequest): string {
 }
 
 function getCounterpartName(req: FriendRequest): string {
-  const id = getCounterpartId(req)
-  return nicknameCache.value[id] || `用户 ${id}`
+  return getCachedNickname(profileCache.value, getCounterpartId(req))
+}
+
+function getCounterpartAvatar(req: FriendRequest) {
+  return getCachedAvatar(profileCache.value, getCounterpartId(req))
 }
 
 function getSourceLabel(source: string): string {
@@ -237,21 +246,10 @@ async function loadData() {
       ? sent
       : (((sent as Record<string, unknown>).items as FriendRequest[]) ?? [])
 
-    // 加载所有申请人的昵称
     const allIds = new Set<string>()
     receivedRequests.value.forEach((r) => allIds.add(r.requesterId))
     sentRequests.value.forEach((r) => r.targetUserId && allIds.add(r.targetUserId))
-    await Promise.all(
-      [...allIds].map(async (id) => {
-        try {
-          const profile = await getUserProfile(id)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          nicknameCache.value[id] = (profile as any).nickname || `用户 ${id}`
-        } catch {
-          nicknameCache.value[id] = `用户 ${id}`
-        }
-      }),
-    )
+    profileCache.value = await loadUserProfileCache(allIds)
   } catch {
     uni.showToast({ title: '加载失败', icon: 'none' })
   } finally {

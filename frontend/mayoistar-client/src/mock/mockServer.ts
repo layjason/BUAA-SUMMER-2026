@@ -551,7 +551,9 @@ const routes: Route[] = [
     handler: (params, query) => {
       const page = parseInt(query.page ?? '1', 10)
       const pageSize = parseInt(query.pageSize ?? '10', 10)
-      return ok(getParticipants(parseInt(params.activityId, 10), page, pageSize))
+      return ok(
+        getParticipants(parseInt(params.activityId, 10), page, pageSize, getCurrentUserId()),
+      )
     },
   },
   {

@@ -30,6 +30,7 @@ import {
 import { checkIn, generateCheckInQrCode } from '@/api/modules/checkin'
 import { BottomActionBar } from '@/components'
 import { isActivityAtCapacity } from '@/utils/activity-capacity'
+import { canViewActivityParticipants } from '@/utils/activity-participants'
 import { formatDateTime, formatTimeRange } from '@/utils/date'
 import { getErrorMessage } from '@/utils/error'
 import { resolveMediaPreviewUrl } from '@/utils/media-preview'
@@ -53,6 +54,8 @@ const hasReviewed = ref(false)
 const checkInQrCode = ref<CheckInQrCode | null>(null)
 const generatingQrCode = ref(false)
 const savingQrCode = ref(false)
+/** 报名成功后是否自动进入参与者列表（由参与者入口触发报名时设置） */
+const navigateToParticipantsAfterRegister = ref(false)
 
 const runtimeStatusMap: Record<string, string> = {
   notStarted: '未开始',
@@ -79,7 +82,25 @@ const riskLevelMap: Record<string, string> = {
 }
 
 /** 当前用户是否是活动发起人 */
-const isOrganizer = computed(() => activity.value?.organizerId === authStore.userId)
+const isOrganizer = computed(() => {
+  const organizerId = activity.value?.organizerId
+  const userId = authStore.userId
+  if (organizerId == null || userId == null) return false
+  return String(organizerId) === String(userId)
+})
+
+/** 当前用户是否可查看参与者列表（发起人或已加入） */
+const canViewParticipants = computed(() =>
+  canViewActivityParticipants({
+    isLoggedIn: authStore.isLoggedIn,
+    organizerId: activity.value?.organizerId,
+    userId: authStore.userId,
+    participation: participation.value,
+  }),
+)
+
+/** 底部固定操作栏是否展示 */
+const hasBottomBar = computed(() => showPrimaryAction.value || hasSecondaryActions.value)
 
 /** 活动是否满员 */
 const isAtCapacity = computed(() => {
@@ -477,10 +498,12 @@ function showSafetyConfirm(): void {
       if (res.confirm) {
         void handleRegister()
       } else {
+        navigateToParticipantsAfterRegister.value = false
         actioning.value = false
       }
     },
     fail: () => {
+      navigateToParticipantsAfterRegister.value = false
       actioning.value = false
     },
   })
@@ -667,9 +690,25 @@ function goReviewDetail(reviewId: string): void {
   })
 }
 
-/** 跳转参与者列表页。 */
+/** 跳转参与者列表页；未加入时复用底部报名确认流程。 */
 function goParticipants(): void {
-  uni.navigateTo({ url: `/pages/activity/participants?activityId=${activityId.value}` })
+  if (!authStore.isLoggedIn) {
+    uni.navigateTo({ url: '/pages/login/index' })
+    return
+  }
+  if (canViewParticipants.value) {
+    uni.navigateTo({ url: `/pages/activity/participants?activityId=${activityId.value}` })
+    return
+  }
+  if (participation.value?.canRegister === true) {
+    navigateToParticipantsAfterRegister.value = true
+    showSafetyConfirm()
+    return
+  }
+  uni.showToast({
+    title: '仅活动发起人或已报名用户可查看参与者',
+    icon: 'none',
+  })
 }
 
 /** 跳转签到管理页。 */
@@ -707,7 +746,12 @@ async function handleRegister(): Promise<void> {
     const message = result.status === 'waiting' ? '已加入候补' : '报名成功'
     uni.showToast({ title: message, icon: 'success' })
     await loadData()
+    if (navigateToParticipantsAfterRegister.value) {
+      navigateToParticipantsAfterRegister.value = false
+      uni.navigateTo({ url: `/pages/activity/participants?activityId=${activityId.value}` })
+    }
   } catch (error) {
+    navigateToParticipantsAfterRegister.value = false
     if (error instanceof BusinessError) {
       uni.showToast({ title: getErrorMessage(error.code), icon: 'none' })
     } else {
@@ -868,247 +912,251 @@ onShow(() => {
 
     <template v-else-if="activity">
       <scroll-view class="scroll-area" scroll-y>
-        <view v-if="activityImagePreviews.length > 0" class="swiper-wrapper">
-          <swiper
-            v-if="activityImagePreviews.length > 1"
-            class="swiper"
-            indicator-dots
-            indicator-color="rgba(255,255,255,0.5)"
-            indicator-active-color="#ffffff"
-            autoplay
-            interval="4000"
-            circular
-          >
-            <swiper-item v-for="img in activityImagePreviews" :key="img">
-              <image class="swiper-image" :src="img" mode="aspectFill" />
-            </swiper-item>
-          </swiper>
-          <image v-else class="single-image" :src="activityImagePreviews[0]" mode="aspectFill" />
-        </view>
-        <view class="section card">
-          <view class="title-row">
-            <text class="title">{{ activity.title }}</text>
-            <text class="status-tag" :class="'status-' + activity.runtimeStatus">
-              {{ getRuntimeStatusText(activity.runtimeStatus) }}
-            </text>
+        <view class="scroll-content" :class="{ 'scroll-content--bottom-inset': hasBottomBar }">
+          <view v-if="activityImagePreviews.length > 0" class="swiper-wrapper">
+            <swiper
+              v-if="activityImagePreviews.length > 1"
+              class="swiper"
+              indicator-dots
+              indicator-color="rgba(255,255,255,0.5)"
+              indicator-active-color="#ffffff"
+              autoplay
+              interval="4000"
+              circular
+            >
+              <swiper-item v-for="img in activityImagePreviews" :key="img">
+                <image class="swiper-image" :src="img" mode="aspectFill" />
+              </swiper-item>
+            </swiper>
+            <image v-else class="single-image" :src="activityImagePreviews[0]" mode="aspectFill" />
           </view>
-        </view>
-
-        <view class="section card info-card">
-          <view v-if="activity.startAt && activity.endAt" class="info-row">
-            <text class="info-label">时间</text>
-            <text class="info-value">{{ formatTimeRange(activity.startAt, activity.endAt) }}</text>
-          </view>
-          <view
-            v-if="activity.location?.address"
-            class="info-row info-row--clickable"
-            hover-class="info-row--hover"
-            @tap="goActivityLocation"
-          >
-            <text class="info-label">地点</text>
-            <view class="info-value-row">
-              <text class="info-value">{{ activity.location.address }}</text>
-              <text class="info-arrow">&gt;</text>
-            </view>
-          </view>
-          <view v-if="activity.organizerName" class="info-row">
-            <text class="info-label">发起人</text>
-            <text class="info-value">{{ activity.organizerName }}</text>
-          </view>
-          <view v-if="feeText" class="info-row">
-            <text class="info-label">费用</text>
-            <text class="info-value">{{ feeText }}</text>
-          </view>
-          <view v-if="activity.registrationDeadline" class="info-row">
-            <text class="info-label">截止</text>
-            <text class="info-value">{{ formatDateTime(activity.registrationDeadline) }}</text>
-          </view>
-          <view v-if="activity.tags.length" class="info-row">
-            <text class="info-label">标签</text>
-            <view class="tag-row">
-              <text v-for="tag in activity.tags" :key="tag" class="tag-chip">{{ tag }}</text>
-            </view>
-          </view>
-        </view>
-
-        <view v-if="activity.introduction" class="section card">
-          <text class="section-title">活动简介</text>
-          <text class="section-body">{{ activity.introduction }}</text>
-        </view>
-
-        <view v-if="activity.safetyNotice" class="section card">
-          <text class="section-title">安全须知</text>
-          <text class="section-body">{{ activity.safetyNotice }}</text>
-        </view>
-
-        <view v-if="showReviewProgress" class="section card review-progress-card">
-          <text class="section-title">审核进度</text>
-          <view class="review-steps">
-            <view class="review-step">
-              <view class="step-dot step-dot-done">
-                <text class="step-dot-icon">✓</text>
-              </view>
-              <text class="step-label step-label-done">提交审核</text>
-            </view>
-            <view class="step-connector" :class="stepConnectorClass"></view>
-            <view class="review-step">
-              <view
-                class="step-dot"
-                :class="activity.reviewStatus === 'pending' ? 'step-dot-active' : 'step-dot-done'"
-              >
-                <text class="step-dot-icon">{{ step2Icon }}</text>
-              </view>
-              <text
-                class="step-label"
-                :class="
-                  activity.reviewStatus === 'pending' ? 'step-label-active' : 'step-label-done'
-                "
-              >
-                内容审核
-              </text>
-            </view>
-            <view class="step-connector" :class="stepConnectorClass"></view>
-            <view class="review-step">
-              <view class="step-dot" :class="step3DotClass">
-                <text class="step-dot-icon">{{ step3Icon }}</text>
-              </view>
-              <text class="step-label" :class="step3LabelClass">审核结果</text>
-            </view>
-          </view>
-
-          <view class="review-status-row">
-            <text class="review-status-badge" :class="'review-badge-' + activity.reviewStatus">
-              {{ getReviewStatusText(activity.reviewStatus) }}
-            </text>
-          </view>
-
-          <view v-if="activity.aiContentReview" class="ai-review-summary">
-            <view class="ai-review-header">
-              <text class="ai-review-section-title">AI 审核结果</text>
-              <text
-                class="review-risk-tag"
-                :class="'review-risk-' + activity.aiContentReview.riskLevel"
-              >
-                {{ riskLevelText(activity.aiContentReview.riskLevel) }}
-              </text>
-            </view>
-            <view v-if="activity.aiContentReview.reasons.length" class="ai-review-detail">
-              <text class="review-risk-reason">
-                {{ activity.aiContentReview.reasons.join('；') }}
+          <view class="section card">
+            <view class="title-row">
+              <text class="title">{{ activity.title }}</text>
+              <text class="status-tag" :class="'status-' + activity.runtimeStatus">
+                {{ getRuntimeStatusText(activity.runtimeStatus) }}
               </text>
             </view>
           </view>
 
-          <view v-if="showManualReviewTip" class="review-tip">
-            <text class="tip-icon">⏳</text>
-            <text class="tip-text">该活动需要人工审核，请等待处理结果</text>
-          </view>
-
-          <view v-if="showReviewReason" class="review-reason-card">
-            <text class="reason-label">{{ reasonLabel }}</text>
-            <text class="reason-text">{{ reviewReason }}</text>
-          </view>
-        </view>
-
-        <view v-if="publishedSummaries.length > 0" class="section card">
-          <text class="section-title">活动总结</text>
-          <view
-            v-for="item in publishedSummaries"
-            :key="item.summaryId"
-            class="published-block published-block--link"
-            hover-class="published-block--hover"
-            @click="goSummaryDetail(item.summaryId)"
-          >
-            <view class="published-title-row">
-              <text class="published-title">{{ item.title }}</text>
-              <text class="menu-arrow">&gt;</text>
+          <view class="section card info-card">
+            <view v-if="activity.startAt && activity.endAt" class="info-row">
+              <text class="info-label">时间</text>
+              <text class="info-value">{{
+                formatTimeRange(activity.startAt, activity.endAt)
+              }}</text>
             </view>
-            <text class="published-body">{{ item.content }}</text>
-          </view>
-        </view>
-
-        <view v-if="publishedReviews.length > 0" class="section card">
-          <text class="section-title">{{ reviewsSectionText }}</text>
-          <view
-            v-for="item in publishedReviews"
-            :key="item.reviewId"
-            class="published-block published-block--link"
-            hover-class="published-block--hover"
-            @click="goReviewDetail(item.reviewId)"
-          >
-            <view class="review-header">
-              <text class="published-title">{{ item.nickname }}</text>
-              <text class="review-rating">{{ formatReviewRating(item.rating) }}</text>
-            </view>
-            <view v-if="item.tags.length > 0" class="tag-row">
-              <text v-for="tag in item.tags" :key="tag" class="tag-chip">{{ tag }}</text>
-            </view>
-            <text v-if="item.content" class="published-body">{{ item.content }}</text>
-          </view>
-        </view>
-
-        <view class="section">
-          <view class="menu-card" hover-class="menu-hover" @click="goParticipants">
-            <text class="menu-text">参与者</text>
-            <view class="menu-right">
-              <text class="menu-count">{{ activity.occupiedCount }}/{{ activity.capacity }}</text>
-              <text class="menu-arrow">&gt;</text>
-            </view>
-          </view>
-        </view>
-
-        <view v-if="showCheckInCard" class="section card checkin-card">
-          <view class="checkin-card-header">
-            <view>
-              <text class="section-title">签到管理</text>
-              <text class="checkin-desc"> 生成现场签到二维码，并查看参与者签到情况 </text>
-            </view>
-            <text v-if="activity.requireLocationCheck" class="checkin-location-tag">
-              需位置校验
-            </text>
-          </view>
-
-          <view v-if="checkInQrImageUrl" class="qr-panel">
-            <image class="qr-image" :src="checkInQrImageUrl" mode="aspectFit" />
-            <view class="qr-info">
-              <text class="qr-title">签到二维码已生成</text>
-              <text class="qr-expire">有效期至 {{ checkInQrExpiresText }}</text>
-            </view>
-            <button
-              class="checkin-action checkin-action-ghost"
-              :loading="savingQrCode"
-              @click="saveCheckInQrCode"
+            <view
+              v-if="activity.location?.address"
+              class="info-row info-row--clickable"
+              hover-class="info-row--hover"
+              @tap="goActivityLocation"
             >
-              保存到相册
-            </button>
+              <text class="info-label">地点</text>
+              <view class="info-value-row">
+                <text class="info-value">{{ activity.location.address }}</text>
+                <text class="info-arrow">&gt;</text>
+              </view>
+            </view>
+            <view v-if="activity.organizerName" class="info-row">
+              <text class="info-label">发起人</text>
+              <text class="info-value">{{ activity.organizerName }}</text>
+            </view>
+            <view v-if="feeText" class="info-row">
+              <text class="info-label">费用</text>
+              <text class="info-value">{{ feeText }}</text>
+            </view>
+            <view v-if="activity.registrationDeadline" class="info-row">
+              <text class="info-label">截止</text>
+              <text class="info-value">{{ formatDateTime(activity.registrationDeadline) }}</text>
+            </view>
+            <view v-if="activity.tags.length" class="info-row">
+              <text class="info-label">标签</text>
+              <view class="tag-row">
+                <text v-for="tag in activity.tags" :key="tag" class="tag-chip">{{ tag }}</text>
+              </view>
+            </view>
           </view>
 
-          <view v-else class="qr-empty">
-            <text class="qr-empty-text">还没有生成签到二维码</text>
-            <text class="qr-empty-sub">二维码短期有效，建议活动开始前生成</text>
+          <view v-if="activity.introduction" class="section card">
+            <text class="section-title">活动简介</text>
+            <text class="section-body">{{ activity.introduction }}</text>
           </view>
 
-          <view class="checkin-action-row">
-            <button
-              class="checkin-action"
-              :disabled="!canGenerateQrCode"
-              :loading="generatingQrCode"
-              @click="handleGenerateQrCode"
+          <view v-if="activity.safetyNotice" class="section card">
+            <text class="section-title">安全须知</text>
+            <text class="section-body">{{ activity.safetyNotice }}</text>
+          </view>
+
+          <view v-if="showReviewProgress" class="section card review-progress-card">
+            <text class="section-title">审核进度</text>
+            <view class="review-steps">
+              <view class="review-step">
+                <view class="step-dot step-dot-done">
+                  <text class="step-dot-icon">✓</text>
+                </view>
+                <text class="step-label step-label-done">提交审核</text>
+              </view>
+              <view class="step-connector" :class="stepConnectorClass"></view>
+              <view class="review-step">
+                <view
+                  class="step-dot"
+                  :class="activity.reviewStatus === 'pending' ? 'step-dot-active' : 'step-dot-done'"
+                >
+                  <text class="step-dot-icon">{{ step2Icon }}</text>
+                </view>
+                <text
+                  class="step-label"
+                  :class="
+                    activity.reviewStatus === 'pending' ? 'step-label-active' : 'step-label-done'
+                  "
+                >
+                  内容审核
+                </text>
+              </view>
+              <view class="step-connector" :class="stepConnectorClass"></view>
+              <view class="review-step">
+                <view class="step-dot" :class="step3DotClass">
+                  <text class="step-dot-icon">{{ step3Icon }}</text>
+                </view>
+                <text class="step-label" :class="step3LabelClass">审核结果</text>
+              </view>
+            </view>
+
+            <view class="review-status-row">
+              <text class="review-status-badge" :class="'review-badge-' + activity.reviewStatus">
+                {{ getReviewStatusText(activity.reviewStatus) }}
+              </text>
+            </view>
+
+            <view v-if="activity.aiContentReview" class="ai-review-summary">
+              <view class="ai-review-header">
+                <text class="ai-review-section-title">AI 审核结果</text>
+                <text
+                  class="review-risk-tag"
+                  :class="'review-risk-' + activity.aiContentReview.riskLevel"
+                >
+                  {{ riskLevelText(activity.aiContentReview.riskLevel) }}
+                </text>
+              </view>
+              <view v-if="activity.aiContentReview.reasons.length" class="ai-review-detail">
+                <text class="review-risk-reason">
+                  {{ activity.aiContentReview.reasons.join('；') }}
+                </text>
+              </view>
+            </view>
+
+            <view v-if="showManualReviewTip" class="review-tip">
+              <text class="tip-icon">⏳</text>
+              <text class="tip-text">该活动需要人工审核，请等待处理结果</text>
+            </view>
+
+            <view v-if="showReviewReason" class="review-reason-card">
+              <text class="reason-label">{{ reasonLabel }}</text>
+              <text class="reason-text">{{ reviewReason }}</text>
+            </view>
+          </view>
+
+          <view v-if="publishedSummaries.length > 0" class="section card">
+            <text class="section-title">活动总结</text>
+            <view
+              v-for="item in publishedSummaries"
+              :key="item.summaryId"
+              class="published-block published-block--link"
+              hover-class="published-block--hover"
+              @click="goSummaryDetail(item.summaryId)"
             >
-              {{ checkInQrImageUrl ? '重新生成二维码' : '生成签到二维码' }}
-            </button>
-            <button
-              class="checkin-action checkin-action-ghost"
-              :disabled="!canViewCheckIns"
-              @click="goCheckIns"
+              <view class="published-title-row">
+                <text class="published-title">{{ item.title }}</text>
+                <text class="menu-arrow">&gt;</text>
+              </view>
+              <text class="published-body">{{ item.content }}</text>
+            </view>
+          </view>
+
+          <view v-if="publishedReviews.length > 0" class="section card">
+            <text class="section-title">{{ reviewsSectionText }}</text>
+            <view
+              v-for="item in publishedReviews"
+              :key="item.reviewId"
+              class="published-block published-block--link"
+              hover-class="published-block--hover"
+              @click="goReviewDetail(item.reviewId)"
             >
-              查看签到情况
-            </button>
+              <view class="review-header">
+                <text class="published-title">{{ item.nickname }}</text>
+                <text class="review-rating">{{ formatReviewRating(item.rating) }}</text>
+              </view>
+              <view v-if="item.tags.length > 0" class="tag-row">
+                <text v-for="tag in item.tags" :key="tag" class="tag-chip">{{ tag }}</text>
+              </view>
+              <text v-if="item.content" class="published-body">{{ item.content }}</text>
+            </view>
+          </view>
+
+          <view class="section">
+            <view class="menu-card" hover-class="menu-hover" @click="goParticipants">
+              <text class="menu-text">参与者</text>
+              <view class="menu-right">
+                <text class="menu-count">{{ activity.occupiedCount }}/{{ activity.capacity }}</text>
+                <text class="menu-arrow">&gt;</text>
+              </view>
+            </view>
+          </view>
+
+          <view v-if="showCheckInCard" class="section card checkin-card">
+            <view class="checkin-card-header">
+              <view>
+                <text class="section-title">签到管理</text>
+                <text class="checkin-desc"> 生成现场签到二维码，并查看参与者签到情况 </text>
+              </view>
+              <text v-if="activity.requireLocationCheck" class="checkin-location-tag">
+                需位置校验
+              </text>
+            </view>
+
+            <view v-if="checkInQrImageUrl" class="qr-panel">
+              <image class="qr-image" :src="checkInQrImageUrl" mode="aspectFit" />
+              <view class="qr-info">
+                <text class="qr-title">签到二维码已生成</text>
+                <text class="qr-expire">有效期至 {{ checkInQrExpiresText }}</text>
+              </view>
+              <button
+                class="checkin-action checkin-action-ghost"
+                :loading="savingQrCode"
+                @click="saveCheckInQrCode"
+              >
+                保存到相册
+              </button>
+            </view>
+
+            <view v-else class="qr-empty">
+              <text class="qr-empty-text">还没有生成签到二维码</text>
+              <text class="qr-empty-sub">二维码短期有效，建议活动开始前生成</text>
+            </view>
+
+            <view class="checkin-action-row">
+              <button
+                class="checkin-action"
+                :disabled="!canGenerateQrCode"
+                :loading="generatingQrCode"
+                @click="handleGenerateQrCode"
+              >
+                {{ checkInQrImageUrl ? '重新生成二维码' : '生成签到二维码' }}
+              </button>
+              <button
+                class="checkin-action checkin-action-ghost"
+                :disabled="!canViewCheckIns"
+                @click="goCheckIns"
+              >
+                查看签到情况
+              </button>
+            </view>
           </view>
         </view>
       </scroll-view>
 
-      <BottomActionBar v-if="showPrimaryAction || hasSecondaryActions">
+      <BottomActionBar v-if="hasBottomBar" fixed>
         <view class="detail-action-stack">
           <button
             v-if="showPrimaryAction"
@@ -1135,6 +1183,7 @@ onShow(() => {
 
 <style lang="scss" scoped>
 @import '@/styles/theme.scss';
+@import '@/styles/mixins.scss';
 
 .page {
   background-color: $color-bg;
@@ -1160,7 +1209,10 @@ onShow(() => {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
-  padding-bottom: 24rpx;
+}
+
+.scroll-content--bottom-inset {
+  @include scroll-bottom-inset(280rpx);
 }
 
 .swiper-wrapper,

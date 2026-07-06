@@ -67,7 +67,7 @@
       <view v-else-if="noMore" class="load-more">{{ t('已加载全部') }}</view>
     </scroll-view>
 
-    <BottomActionBar>
+    <BottomActionBar fixed>
       <button
         class="export-btn"
         :disabled="exporting || loading || Boolean(errorMsg)"
@@ -400,7 +400,7 @@ onLoad((query) => {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
-  padding-bottom: 24rpx;
+  padding-bottom: calc(176rpx + env(safe-area-inset-bottom));
 }
 
 .summary-card {

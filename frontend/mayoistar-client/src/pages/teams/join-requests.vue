@@ -18,7 +18,12 @@
       <view v-else class="request-list">
         <view v-for="req in requests" :key="req.requestId" class="request-card">
           <view @tap="goToProfile(req.userId)">
-            <UserAvatar size="md" :name="getNickname(req.userId)" :user-id="req.userId" />
+            <UserAvatar
+              size="md"
+              :avatar="getCachedAvatar(profileCache, req.userId)"
+              :name="getNickname(req.userId)"
+              :user-id="req.userId"
+            />
           </view>
 
           <view class="request-body" @tap="goToProfile(req.userId)">
@@ -54,7 +59,12 @@ import { onLoad } from '@dcloudio/uni-app'
 import { AppNavbar, EmptyState, UserAvatar } from '@/components'
 import { BusinessError } from '@/api'
 import { getTeamMembers, getTeamJoinRequests, handleJoinRequest } from '@/api/modules/teams'
-import { getUserProfile } from '@/api/modules/social'
+import {
+  getCachedAvatar,
+  getCachedNickname,
+  loadUserProfileCache,
+  type ProfileCacheEntry,
+} from '@/utils/profile-cache'
 import { extractPageItems } from '@/utils/page-result'
 import { getTeamErrorMessage } from '@/utils/team-error-message'
 import { useAuthStore } from '@/stores/auth'
@@ -67,7 +77,7 @@ const teamId = ref('')
 const requests = ref<TeamJoinRequest[]>([])
 const members = ref<TeamMember[]>([])
 const loading = ref(false)
-const nicknameCache = ref<Record<string, string>>({})
+const profileCache = ref<Record<string, ProfileCacheEntry>>({})
 
 const authStore = useAuthStore()
 const currentUserId = ref(authStore.userId || '10001')
@@ -79,7 +89,7 @@ const canManage = computed(() => {
 
 /** 获取申请人昵称 */
 function getNickname(userId: string): string {
-  return nicknameCache.value[userId] || `用户 ${userId}`
+  return getCachedNickname(profileCache.value, userId)
 }
 
 /** 格式化申请时间 */
@@ -121,28 +131,13 @@ async function loadData() {
       return
     }
 
-    await loadNicknames(requests.value.map((r) => r.userId))
+    profileCache.value = await loadUserProfileCache(requests.value.map((r) => r.userId))
   } catch (error) {
     console.error('Failed to load join requests:', error)
     showBusinessError(error, '加载失败')
   } finally {
     loading.value = false
   }
-}
-
-/** 批量加载申请人昵称 */
-async function loadNicknames(userIds: string[]) {
-  const uniqueIds = [...new Set(userIds)]
-  await Promise.all(
-    uniqueIds.map(async (id) => {
-      try {
-        const profile = await getUserProfile(id)
-        nicknameCache.value[id] = profile.nickname || `用户 ${id}`
-      } catch {
-        nicknameCache.value[id] = `用户 ${id}`
-      }
-    }),
-  )
 }
 
 /** 跳转用户主页 */

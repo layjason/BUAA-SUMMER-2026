@@ -3,8 +3,10 @@
  *
  * 将搜索页轻量筛选 UI 的选中项转换为 OpenAPI query 参数。
  */
+import { normalizeCityForSearch } from '@/utils/city-name'
 
-export type CityFilter = '北京' | '上海' | '广州'
+/** 搜索页手动选择的城市名（不含「市」后缀，发送请求前会规范化） */
+export type CityFilter = string
 export type FeeFilter = 'free' | 'paid'
 export type TimeFilter = 'today' | 'week' | 'month'
 export type DistanceFilter = 1000 | 3000 | 5000 | 10000
@@ -12,6 +14,8 @@ export type DistanceFilter = 1000 | 3000 | 5000 | 10000
 export interface SearchFilterSelection {
   activityTypes: string[]
   city: CityFilter | null
+  /** 高德定位解析的当前城市，作为未手动选城市时的默认 query.city */
+  detectedCity: string | null
   fee: FeeFilter | null
   time: TimeFilter | null
   distanceMeters: DistanceFilter | null
@@ -115,7 +119,8 @@ export function buildSearchActivitiesQuery(
   const trimmedKeyword = keyword.trim()
   if (trimmedKeyword) query.keyword = trimmedKeyword
   if (selection.activityTypes.length) query.activityTypes = [...selection.activityTypes]
-  if (selection.city) query.city = selection.city
+  const cityForQuery = selection.city ?? selection.detectedCity
+  if (cityForQuery) query.city = normalizeCityForSearch(cityForQuery)
   if (selection.fee === 'free') {
     query.minFee = 0
     query.maxFee = 0

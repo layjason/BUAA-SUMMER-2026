@@ -6,6 +6,7 @@
  * - 成功时返回业务数据（由 mockServer 包装为 MockApiResponse）
  * - 失败时抛出 MockBusinessError，由 mockServer 捕获并转为错误响应
  */
+import { normalizeCityForSearch } from '@/utils/city-name'
 import {
   deliverChatRealtimeEvent,
   deliverSocialRealtimeEvent,
@@ -2281,7 +2282,10 @@ function applyActivitySearchFilters(
     const types = filters.activityTypes.map((type) => type.toLowerCase())
     results = results.filter((a) => a.tags.some((tag) => types.includes(tag.toLowerCase())))
   }
-  if (filters.city) results = results.filter((a) => a.location.city === filters.city)
+  if (filters.city) {
+    const queryCity = normalizeCityForSearch(filters.city)
+    results = results.filter((a) => normalizeCityForSearch(a.location.city) === queryCity)
+  }
   if (filters.minFee !== undefined) results = results.filter((a) => a.fee >= filters.minFee!)
   if (filters.maxFee !== undefined) results = results.filter((a) => a.fee <= filters.maxFee!)
   if (filters.runtimeStatus)
@@ -2590,8 +2594,31 @@ export function getParticipants(
   activityId: number,
   page: number,
   pageSize: number,
+  callerUserId?: number | null,
 ): MockPageResult<ActivityParticipant> {
   const db = getMockDb()
+  const activity = db.activities.find((item) => item.id === activityId)
+  if (!activity) {
+    throw new MockBusinessError(20002, '活动不存在或已下架')
+  }
+
+  if (callerUserId != null) {
+    const isOrganizer = activity.creatorId === callerUserId
+    const hasJoined = db.registrations.some(
+      (registration) =>
+        registration.activityId === activityId &&
+        registration.userId === callerUserId &&
+        registration.status !== 'canceled' &&
+        (registration.status === 'registered' ||
+          registration.status === 'waiting' ||
+          registration.status === 'waitingConfirmation' ||
+          registration.status === 'checkedIn'),
+    )
+    if (!isOrganizer && !hasJoined) {
+      throw new MockBusinessError(20003, 'No permission to view participants')
+    }
+  }
+
   const regs = db.registrations.filter(
     (r) => r.activityId === activityId && r.status !== 'canceled',
   )

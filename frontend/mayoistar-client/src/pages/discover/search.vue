@@ -7,11 +7,18 @@
  * 前置条件：用户可未登录浏览
  * 后置条件：搜索结果展示为活动卡片列表，点击跳转详情
  */
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { searchActivities } from '@/api/modules/activities'
+import type { ActivitySummary } from '@/api/types/activity-schemas'
+import { enrichActivitiesWithCoverImages } from '@/utils/activity-cover-enrichment'
+import { toAbsoluteMediaUrl } from '@/utils/media-preview'
 import { getInterestTags } from '@/api/modules/profile'
+import { reverseGeocode } from '@/services/amap'
 import { formatDate } from '@/utils/date'
+import { resolveDetectedCity } from '@/utils/detected-city'
+import { normalizeCityForSearch } from '@/utils/city-name'
 import { getCurrentLocation } from '@/utils/location'
+import { SEARCH_CITY_GROUPS } from '@/config/search-cities'
 import {
   buildSearchActivitiesQuery,
   hasSearchFilters,
@@ -22,27 +29,6 @@ import {
   type TimeFilter,
 } from '@/utils/search-filters'
 
-/** 搜索结果条目接口 */
-interface SearchResultItem {
-  activityId: string
-  title: string
-  tags: string[]
-  startAt: string
-  endAt: string
-  location: {
-    city: string
-    address: string
-    placeName: string | null
-  }
-  coverImage: { signedUrl: string; mediaId: string } | null
-  feeAmount?: number | null
-  capacity: number
-  registeredCount: number
-  occupiedCount?: number
-  runtimeStatus: string
-}
-
-const CITY_OPTIONS: CityFilter[] = ['北京', '上海', '广州']
 const FEE_OPTIONS: { value: FeeFilter; label: string }[] = [
   { value: 'free', label: '免费' },
   { value: 'paid', label: '付费' },
@@ -61,7 +47,7 @@ const DISTANCE_OPTIONS: { value: DistanceFilter; label: string }[] = [
 
 const keyword = ref('')
 const typeOptions = ref<string[]>([])
-const searchResults = ref<SearchResultItem[]>([])
+const searchResults = ref<ActivitySummary[]>([])
 const isSearching = ref(false)
 const isLoadingTypes = ref(false)
 const loadingMore = ref(false)
@@ -77,6 +63,9 @@ const selectedFee = ref<FeeFilter | null>(null)
 const selectedTime = ref<TimeFilter | null>(null)
 const selectedDistance = ref<DistanceFilter | null>(null)
 const currentLocation = ref<{ longitude: number; latitude: number } | null>(null)
+const detectedCity = ref<string | null>(null)
+const isDetectingCity = ref(false)
+const isCityFilterExpanded = ref(false)
 
 /**
  * 获取当前筛选选择
@@ -85,10 +74,26 @@ function getFilterSelection(): SearchFilterSelection {
   return {
     activityTypes: selectedTypes.value,
     city: selectedCity.value,
+    detectedCity: detectedCity.value,
     fee: selectedFee.value,
     time: selectedTime.value,
     distanceMeters: selectedDistance.value,
     location: currentLocation.value,
+  }
+}
+
+/**
+ * 从高德定位解析当前城市，供搜索请求默认附带 city 参数
+ */
+async function loadDetectedCity(): Promise<void> {
+  if (isDetectingCity.value) return
+  isDetectingCity.value = true
+  try {
+    detectedCity.value = await resolveDetectedCity()
+  } catch {
+    detectedCity.value = null
+  } finally {
+    isDetectingCity.value = false
   }
 }
 
@@ -111,6 +116,29 @@ function toggleTypeFilter(type: string): void {
 function toggleCityFilter(city: CityFilter): void {
   selectedCity.value = selectedCity.value === city ? null : city
   refreshSearchIfNeeded()
+}
+
+/** 定位城市展示名（去掉末尾「市」） */
+function formatCityLabel(city: string): string {
+  return city.endsWith('市') ? city.slice(0, -1) : city
+}
+
+/** 活动封面展示 URL（搜索接口缺封面时由详情补全） */
+function getCoverDisplayUrl(item: ActivitySummary): string {
+  const signedUrl = item.coverImage?.signedUrl
+  return signedUrl ? toAbsoluteMediaUrl(signedUrl) : ''
+}
+
+function toggleCityFilterPanel(): void {
+  isCityFilterExpanded.value = !isCityFilterExpanded.value
+}
+
+/** 城市筛选折叠时的摘要文案 */
+function cityFilterSummary(): string {
+  if (selectedCity.value) return selectedCity.value
+  if (detectedCity.value) return `当前 ${formatCityLabel(detectedCity.value)}`
+  if (isDetectingCity.value) return '定位中...'
+  return '全部'
 }
 
 function toggleFeeFilter(fee: FeeFilter): void {
@@ -148,6 +176,13 @@ async function toggleDistanceFilter(distance: DistanceFilter): Promise<void> {
 
   currentLocation.value = location
   selectedDistance.value = distance
+  try {
+    const geo = await reverseGeocode(location.latitude, location.longitude)
+    const city = normalizeCityForSearch(geo.city)
+    if (city) detectedCity.value = city
+  } catch {
+    /* 距离筛选仍可用，城市沿用已有检测结果 */
+  }
   refreshSearchIfNeeded()
 }
 
@@ -175,7 +210,11 @@ async function loadTypeOptions(): Promise<void> {
  * 后置条件：searchResults 填充搜索结果
  */
 async function doSearch(): Promise<void> {
-  if (!keyword.value.trim() && !hasSearchFilters(getFilterSelection())) return
+  if (!detectedCity.value && !isDetectingCity.value) {
+    await loadDetectedCity()
+  }
+  const selection = getFilterSelection()
+  if (!keyword.value.trim() && !hasSearchFilters(selection) && !selection.detectedCity) return
   isSearching.value = true
   hasSearched.value = true
   currentPage.value = 1
@@ -184,7 +223,7 @@ async function doSearch(): Promise<void> {
     const result = await searchActivities(
       buildSearchActivitiesQuery(keyword.value, getFilterSelection(), currentPage.value, pageSize),
     )
-    searchResults.value = (result.items ?? []) as SearchResultItem[]
+    searchResults.value = await enrichActivitiesWithCoverImages(result.items ?? [])
     totalCount.value = result.total ?? 0
     noMoreData.value = result.page >= (result.totalPages ?? 1)
   } catch {
@@ -205,7 +244,8 @@ async function loadMoreSearchResults(): Promise<void> {
     const result = await searchActivities(
       buildSearchActivitiesQuery(keyword.value, getFilterSelection(), nextPage, pageSize),
     )
-    searchResults.value.push(...((result.items ?? []) as SearchResultItem[]))
+    const nextItems = await enrichActivitiesWithCoverImages(result.items ?? [])
+    searchResults.value.push(...nextItems)
     totalCount.value = result.total ?? totalCount.value
     currentPage.value = result.page ?? nextPage
     noMoreData.value = currentPage.value >= (result.totalPages ?? currentPage.value)
@@ -226,8 +266,6 @@ function goDetail(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
 }
 
-loadTypeOptions()
-
 /** 获取状态文本 */
 function getStatusText(status: string): string {
   const map: Record<string, string> = {
@@ -241,9 +279,14 @@ function getStatusText(status: string): string {
 }
 
 /** 展示已占名额 */
-function displayOccupiedCount(item: SearchResultItem): number {
+function displayOccupiedCount(item: ActivitySummary): number {
   return item.occupiedCount ?? item.registeredCount
 }
+
+onMounted(() => {
+  void loadTypeOptions()
+  void loadDetectedCity()
+})
 </script>
 
 <template>
@@ -264,163 +307,195 @@ function displayOccupiedCount(item: SearchResultItem): number {
       <text class="map-link" @tap="goToMap">地图模式</text>
     </view>
 
-    <!-- 轻量筛选 -->
-    <view class="filter-panel">
-      <view class="filter-group">
-        <text class="filter-label">类型</text>
-        <view class="filter-chips">
-          <text v-if="isLoadingTypes" class="filter-chip">加载中...</text>
-          <text
-            v-for="type in typeOptions"
-            :key="type"
-            class="filter-chip"
-            :class="{ active: selectedTypes.includes(type) }"
-            @tap="toggleTypeFilter(type)"
-          >
-            {{ type }}
-          </text>
-        </view>
-      </view>
-
-      <view class="filter-group">
-        <text class="filter-label">城市</text>
-        <view class="filter-chips">
-          <text
-            v-for="city in CITY_OPTIONS"
-            :key="city"
-            class="filter-chip"
-            :class="{ active: selectedCity === city }"
-            @tap="toggleCityFilter(city)"
-          >
-            {{ city }}
-          </text>
-        </view>
-      </view>
-
-      <view class="filter-group">
-        <text class="filter-label">费用</text>
-        <view class="filter-chips">
-          <text
-            v-for="fee in FEE_OPTIONS"
-            :key="fee.value"
-            class="filter-chip"
-            :class="{ active: selectedFee === fee.value }"
-            @tap="toggleFeeFilter(fee.value)"
-          >
-            {{ fee.label }}
-          </text>
-        </view>
-      </view>
-
-      <view class="filter-group">
-        <text class="filter-label">时间</text>
-        <view class="filter-chips">
-          <text
-            v-for="time in TIME_OPTIONS"
-            :key="time.value"
-            class="filter-chip"
-            :class="{ active: selectedTime === time.value }"
-            @tap="toggleTimeFilter(time.value)"
-          >
-            {{ time.label }}
-          </text>
-        </view>
-      </view>
-
-      <view class="filter-group">
-        <text class="filter-label">距离</text>
-        <view class="filter-chips">
-          <text
-            v-for="distance in DISTANCE_OPTIONS"
-            :key="distance.value"
-            class="filter-chip"
-            :class="{ active: selectedDistance === distance.value }"
-            @tap="toggleDistanceFilter(distance.value)"
-          >
-            {{ distance.label }}
-          </text>
-        </view>
-      </view>
-    </view>
-
-    <!-- 搜索提示（未搜索时） -->
-    <view v-if="!hasSearched && !isSearching" class="empty-hint">
-      <text class="hint-icon">🔍</text>
-      <text class="hint-title">搜索你感兴趣的活动</text>
-      <text class="hint-desc">输入关键词，或直接使用上方筛选条件</text>
-    </view>
-
-    <!-- 搜索中 -->
-    <view v-if="isSearching" class="loading-state">
-      <text>搜索中...</text>
-    </view>
-
-    <!-- 无结果 -->
-    <view v-if="!isSearching && hasSearched && searchResults.length === 0" class="empty-hint">
-      <text class="hint-icon">😔</text>
-      <text class="hint-title">未找到相关活动</text>
-      <text class="hint-desc">换个关键词或筛选条件试试吧</text>
-    </view>
-
-    <!-- 搜索结果列表 -->
-    <scroll-view
-      v-if="!isSearching && searchResults.length > 0"
-      class="results"
-      scroll-y
-      @scrolltolower="loadMoreSearchResults"
-    >
-      <text class="results-count">共 {{ totalCount }} 个结果</text>
-
-      <view
-        v-for="item in searchResults"
-        :key="item.activityId"
-        class="result-card"
-        @tap="goDetail(item.activityId)"
-      >
-        <view class="result-card-inner">
-          <view v-if="item.coverImage?.signedUrl" class="result-cover">
-            <image :src="item.coverImage.signedUrl" mode="aspectFill" class="cover-img" />
+    <!-- 轻量筛选（独立滚动，避免挤压结果列表） -->
+    <scroll-view class="filter-panel" scroll-y :show-scrollbar="false">
+      <view class="filter-panel-inner">
+        <view class="filter-group">
+          <text class="filter-label">类型</text>
+          <view class="filter-chip-grid filter-chip-grid--types">
+            <text v-if="isLoadingTypes" class="filter-chip">加载中...</text>
+            <text
+              v-for="type in typeOptions"
+              :key="type"
+              class="filter-chip"
+              :class="{ active: selectedTypes.includes(type) }"
+              @tap="toggleTypeFilter(type)"
+            >
+              {{ type }}
+            </text>
           </view>
-          <view v-else class="result-cover result-cover-placeholder">
-            <text class="placeholder-icon">📌</text>
+        </view>
+
+        <view class="filter-group filter-group--city">
+          <view class="filter-label-row city-filter-header" @tap="toggleCityFilterPanel">
+            <view class="city-filter-header-main">
+              <text class="filter-label">城市</text>
+              <text v-if="!isCityFilterExpanded" class="filter-hint city-filter-summary">
+                {{ cityFilterSummary() }}
+              </text>
+            </view>
+            <view class="city-filter-header-actions">
+              <text
+                v-if="isCityFilterExpanded && detectedCity"
+                class="filter-hint city-filter-detected"
+              >
+                当前 {{ formatCityLabel(detectedCity) }}
+              </text>
+              <text
+                v-else-if="isCityFilterExpanded && isDetectingCity"
+                class="filter-hint city-filter-detected"
+              >
+                定位中...
+              </text>
+              <text class="city-filter-arrow" :class="{ expanded: isCityFilterExpanded }"> › </text>
+            </view>
           </view>
-
-          <view class="result-body">
-            <view class="result-header-row">
-              <text class="result-title">{{ item.title }}</text>
-              <text class="status-tag" :class="'status-' + item.runtimeStatus">{{
-                getStatusText(item.runtimeStatus)
-              }}</text>
-            </view>
-
-            <view v-if="item.tags.length > 0" class="result-tags">
-              <text v-for="tag in item.tags.slice(0, 3)" :key="tag" class="tag">{{ tag }}</text>
-            </view>
-
-            <view class="result-meta">
-              <text class="meta-item">{{ formatDate(item.startAt) }}</text>
-              <text class="meta-sep">|</text>
-              <text class="meta-item">{{ item.location.city }}</text>
-            </view>
-
-            <view class="result-bottom">
-              <text class="fee" :class="{ free: !item.feeAmount }">{{
-                item.feeAmount ? '¥' + item.feeAmount : '免费'
-              }}</text>
-              <text class="registered">{{
-                displayOccupiedCount(item) >= item.capacity
-                  ? '已满员'
-                  : `${displayOccupiedCount(item)}/${item.capacity}人`
-              }}</text>
+          <view v-show="isCityFilterExpanded" class="city-filter-body">
+            <view v-for="group in SEARCH_CITY_GROUPS" :key="group.label" class="city-tier">
+              <text class="city-tier-label">{{ group.label }}</text>
+              <view class="city-chip-grid">
+                <text
+                  v-for="city in group.cities"
+                  :key="city"
+                  class="filter-chip city-chip"
+                  :class="{ active: selectedCity === city }"
+                  @tap="toggleCityFilter(city)"
+                >
+                  {{ city }}
+                </text>
+              </view>
             </view>
           </view>
         </view>
-      </view>
-      <view class="load-more-state">
-        <text v-if="loadingMore">加载更多...</text>
-        <text v-else-if="noMoreData">已加载全部</text>
+
+        <view class="filter-group">
+          <text class="filter-label">费用</text>
+          <view class="filter-chip-grid filter-chip-grid--compact">
+            <text
+              v-for="fee in FEE_OPTIONS"
+              :key="fee.value"
+              class="filter-chip"
+              :class="{ active: selectedFee === fee.value }"
+              @tap="toggleFeeFilter(fee.value)"
+            >
+              {{ fee.label }}
+            </text>
+          </view>
+        </view>
+
+        <view class="filter-group">
+          <text class="filter-label">时间</text>
+          <view class="filter-chip-grid filter-chip-grid--compact">
+            <text
+              v-for="time in TIME_OPTIONS"
+              :key="time.value"
+              class="filter-chip"
+              :class="{ active: selectedTime === time.value }"
+              @tap="toggleTimeFilter(time.value)"
+            >
+              {{ time.label }}
+            </text>
+          </view>
+        </view>
+
+        <view class="filter-group">
+          <text class="filter-label">距离</text>
+          <view class="filter-chip-grid filter-chip-grid--compact">
+            <text
+              v-for="distance in DISTANCE_OPTIONS"
+              :key="distance.value"
+              class="filter-chip"
+              :class="{ active: selectedDistance === distance.value }"
+              @tap="toggleDistanceFilter(distance.value)"
+            >
+              {{ distance.label }}
+            </text>
+          </view>
+        </view>
       </view>
     </scroll-view>
+
+    <view class="search-content">
+      <!-- 搜索提示（未搜索时） -->
+      <view v-if="!hasSearched && !isSearching" class="empty-hint">
+        <text class="hint-icon">🔍</text>
+        <text class="hint-title">搜索你感兴趣的活动</text>
+        <text class="hint-desc">输入关键词，或直接使用上方筛选条件</text>
+      </view>
+
+      <!-- 搜索中 -->
+      <view v-if="isSearching" class="loading-state">
+        <text>搜索中...</text>
+      </view>
+
+      <!-- 无结果 -->
+      <view v-if="!isSearching && hasSearched && searchResults.length === 0" class="empty-hint">
+        <text class="hint-icon">😔</text>
+        <text class="hint-title">未找到相关活动</text>
+        <text class="hint-desc">换个关键词或筛选条件试试吧</text>
+      </view>
+
+      <!-- 搜索结果列表 -->
+      <scroll-view
+        v-if="!isSearching && searchResults.length > 0"
+        class="results"
+        scroll-y
+        :show-scrollbar="false"
+        @scrolltolower="loadMoreSearchResults"
+      >
+        <text class="results-count">共 {{ totalCount }} 个结果</text>
+
+        <view
+          v-for="item in searchResults"
+          :key="item.activityId"
+          class="result-card"
+          @tap="goDetail(item.activityId)"
+        >
+          <view class="result-card-inner">
+            <view v-if="getCoverDisplayUrl(item)" class="result-cover">
+              <image :src="getCoverDisplayUrl(item)" mode="aspectFill" class="cover-img" />
+            </view>
+            <view v-else class="result-cover result-cover-placeholder">
+              <text class="placeholder-icon">📌</text>
+            </view>
+
+            <view class="result-body">
+              <view class="result-header-row">
+                <text class="result-title">{{ item.title }}</text>
+                <text class="status-tag" :class="'status-' + item.runtimeStatus">{{
+                  getStatusText(item.runtimeStatus)
+                }}</text>
+              </view>
+
+              <view v-if="item.tags.length > 0" class="result-tags">
+                <text v-for="tag in item.tags.slice(0, 3)" :key="tag" class="tag">{{ tag }}</text>
+              </view>
+
+              <view class="result-meta">
+                <text class="meta-item">{{ formatDate(item.startAt) }}</text>
+                <text class="meta-sep">|</text>
+                <text class="meta-item">{{ item.location.city }}</text>
+              </view>
+
+              <view class="result-bottom">
+                <text class="fee" :class="{ free: !item.feeAmount }">{{
+                  item.feeAmount ? '¥' + item.feeAmount : '免费'
+                }}</text>
+                <text class="registered">{{
+                  displayOccupiedCount(item) >= item.capacity
+                    ? '已满员'
+                    : `${displayOccupiedCount(item)}/${item.capacity}人`
+                }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view class="load-more-state">
+          <text v-if="loadingMore">加载更多...</text>
+          <text v-else-if="noMoreData">已加载全部</text>
+        </view>
+      </scroll-view>
+    </view>
   </view>
 </template>
 
@@ -428,13 +503,18 @@ function displayOccupiedCount(item: SearchResultItem): number {
 @import '@/styles/theme.scss';
 
 .search-page {
-  min-height: 100vh;
-  padding-bottom: calc(#{$safe-bottom} + #{$spacing-xl});
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding-bottom: $safe-bottom;
 }
 
 .search-bar {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   padding: $spacing-lg;
   gap: $spacing-md;
 }
@@ -479,33 +559,149 @@ function displayOccupiedCount(item: SearchResultItem): number {
 }
 
 .filter-panel {
+  flex-shrink: 0;
+  max-height: 42vh;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.filter-panel-inner {
   padding: 0 $spacing-lg $spacing-md;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.search-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .filter-group {
   margin-bottom: $spacing-md;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.filter-label {
-  display: block;
-  font-size: $font-xs;
+.filter-group--city {
+  margin-bottom: $spacing-sm;
+}
+
+.city-filter-header {
+  cursor: pointer;
+}
+
+.city-filter-header-main {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  min-width: 0;
+  flex: 1;
+}
+
+.city-filter-header-actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  flex-shrink: 0;
+}
+
+.city-filter-summary,
+.city-filter-detected {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.city-filter-arrow {
+  display: inline-block;
+  font-size: 16px;
+  line-height: 1;
   color: $color-text-sub;
+  transition: transform 0.2s ease;
+  transform: rotate(90deg);
+}
+
+.city-filter-arrow.expanded {
+  transform: rotate(-90deg);
+}
+
+.city-filter-body {
+  margin-top: $spacing-xs;
+}
+
+.filter-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-sm;
   margin-bottom: $spacing-xs;
 }
 
-.filter-chips {
-  display: flex;
-  flex-wrap: wrap;
+.filter-label {
+  font-size: $font-xs;
+  color: $color-text-sub;
+}
+
+.filter-hint {
+  font-size: $font-xs;
+  color: $color-primary;
+}
+
+.filter-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: $spacing-xs;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.filter-chip-grid--types {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.filter-chip-grid--compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.city-tier {
+  margin-bottom: $spacing-sm;
+}
+
+.city-tier-label {
+  display: block;
+  font-size: 10px;
+  color: $color-text-muted;
+  margin-bottom: 4px;
+}
+
+.city-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: $spacing-xs;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .filter-chip {
-  padding: 6px 12px;
+  box-sizing: border-box;
+  padding: 6px 4px;
   border-radius: $radius-full;
-  font-size: $font-sm;
+  font-size: $font-xs;
   color: $color-text-sub;
   background: rgba(123, 129, 144, 0.08);
   border: 1px solid transparent;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.city-chip {
+  padding: 6px 2px;
 }
 
 .filter-chip.active {
@@ -518,7 +714,10 @@ function displayOccupiedCount(item: SearchResultItem): number {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 80px $spacing-xl;
+  justify-content: center;
+  flex: 1;
+  padding: $spacing-xl;
+  box-sizing: border-box;
 }
 
 .hint-icon {
@@ -540,8 +739,11 @@ function displayOccupiedCount(item: SearchResultItem): number {
 }
 
 .results {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
   padding: 0 $spacing-lg;
-  height: 52vh;
+  box-sizing: border-box;
 }
 
 .results-count {
@@ -653,6 +855,8 @@ function displayOccupiedCount(item: SearchResultItem): number {
   gap: $spacing-xs;
   flex-wrap: wrap;
   margin-top: $spacing-xs;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .tag {
@@ -668,11 +872,18 @@ function displayOccupiedCount(item: SearchResultItem): number {
   align-items: center;
   gap: $spacing-xs;
   margin-top: $spacing-xs;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .meta-item {
   font-size: $font-xs;
   color: $color-text-muted;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .meta-sep {
@@ -718,6 +929,8 @@ function displayOccupiedCount(item: SearchResultItem): number {
 .loading-state {
   display: flex;
   justify-content: center;
+  align-items: center;
+  flex: 1;
   padding: 40px;
 
   text {

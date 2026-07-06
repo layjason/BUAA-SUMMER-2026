@@ -255,10 +255,6 @@
       }
     },
     {
-      "path": "pages/profile/settings",
-      "style": { "navigationBarTitleText": "设置", "disableScroll": true }
-    },
-    {
       "path": "pages/activity/detail",
       "style": { "navigationBarTitleText": "活动详情", "disableScroll": true }
     },

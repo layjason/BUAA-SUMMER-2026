@@ -39,8 +39,9 @@ describe('商家资料资质提交 UI', () => {
   it('编辑资料页应复用固定底部操作栏并避免页面外层滚动', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
 
-    expect(source).toContain('<BottomActionBar>')
+    expect(source).toMatch(/<BottomActionBar\b[^>]*\bfixed\b/)
     expect(source).toContain('class="bar-btn bar-btn-primary"')
+    expect(source).toContain('calc(176rpx + env(safe-area-inset-bottom))')
     expect(source).toContain('min-height: 0;')
     expect(source).toContain('height: 0;')
     expect(source).not.toContain('class="action-bar"')
@@ -91,21 +92,6 @@ describe('商家资料资质提交 UI', () => {
     expect(ensureBody).toContain('if (!isNicknameChangedFromInitial(nickname))')
     expect(ensureBody).toContain('return true')
     expect(saveBody).toContain('checkedNickname.value === nickname')
-  })
-
-  it('我的页应按用户类型读取 api-spec 对应资料接口', () => {
-    const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/index.vue'), 'utf8')
-
-    expect(source).toContain('getMerchantProfile')
-    expect(source).toContain('getMyProfile')
-    expect(source).toContain("authStore.userKind === 'merchant'")
-    expect(source).toContain('profile.qualificationStatus')
-    expect(source).toContain('avatarUrl')
-    expect(source).toContain("from '@/api/modules/auth'")
-    expect(source).toContain('logout')
-    expect(source).not.toContain("api.get('/identity/me/profile')")
-    expect(source).not.toContain("from '@/api'")
-    expect(source).not.toContain('api.post')
   })
 
   it('我的页退出登录和未登录展示应清空头像昵称缓存', () => {

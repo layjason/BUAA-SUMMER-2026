@@ -17,12 +17,14 @@ describe('媒体预览 URL 工具', () => {
   it('应识别经浏览器解析后的同源绝对媒体地址', () => {
     expect(
       isBackendMediaSignedUrl(
-        'http://localhost:3000/media/86af0132-5eb1-414c-abad-93b204c339af?v=2&policy=conversationMember',
+        'http://localhost:3000/media/' +
+          '86af0132-5eb1-414c-abad-93b204c339af?v=2&policy=conversationMember',
       ),
     ).toBe(true)
     expect(
       requiresAuthenticatedMediaDownload(
-        'http://localhost:3000/media/86af0132-5eb1-414c-abad-93b204c339af?v=2&policy=conversationMember',
+        'http://localhost:3000/media/' +
+          '86af0132-5eb1-414c-abad-93b204c339af?v=2&policy=conversationMember',
       ),
     ).toBe(true)
   })

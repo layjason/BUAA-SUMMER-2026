@@ -45,7 +45,7 @@
           v-for="conv in conversations"
           :key="conv.conversationId"
           :avatar="avatarSignedUrl(conv.avatar)"
-          :name="conv.title"
+          :name="conversationDisplayTitle(conv)"
           :tag="conv.kind === 'team' ? '小队' : '好友'"
           :tag-type="conv.kind"
           :last-message="conv.lastMessagePreview || ''"
@@ -220,20 +220,20 @@
               class="search-dropdown__item"
               @tap="openFriendSearchResult(item)"
             >
-              <UserAvatar size="sm" :avatar-url="item.avatarUrl" :name="item.title" />
+              <UserAvatar size="sm" :avatar="item.avatar" :name="item.title" />
               <text class="search-dropdown__name">{{ item.title }}</text>
             </view>
           </view>
 
           <view v-if="nonFriendSearchResults.length > 0" class="search-dropdown__group">
-            <text class="search-dropdown__group-title">非好友</text>
+            <text class="search-dropdown__group-title">用户</text>
             <view
               v-for="item in nonFriendSearchResults"
               :key="item.key"
               class="search-dropdown__item"
               @tap="openNonFriendSearchResult(item)"
             >
-              <UserAvatar size="sm" :avatar-url="item.avatarUrl" :name="item.title" />
+              <UserAvatar size="sm" :avatar="item.avatar" :name="item.title" />
               <text class="search-dropdown__name">{{ item.title }}</text>
             </view>
           </view>
@@ -246,7 +246,7 @@
               class="search-dropdown__item"
               @tap="openTeamSearchResult(item)"
             >
-              <UserAvatar size="sm" :avatar-url="item.avatarUrl" :name="item.title" />
+              <UserAvatar size="sm" :avatar="item.avatar" :name="item.title" />
               <view class="search-dropdown__meta">
                 <text class="search-dropdown__name">{{ item.title }}</text>
                 <text class="search-dropdown__subtitle">{{ teamSearchSubtitle(item) }}</text>
@@ -266,7 +266,7 @@
  *
  * 承载：好友单聊、小队群聊、好友申请、活动同伴推荐、小队入口
  */
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { useChatRealtime, type ChatRealtimeEvent } from '@/composables/useChatRealtime'
 import SocialTopBar from '@/components/social/SocialTopBar.vue'
@@ -285,7 +285,18 @@ import { fetchActivityCompanions } from '@/utils/activity-companions'
 import { ensureAuthenticatedAccess } from '@/utils/auth-guard'
 import { scanPersonalQrAndAddFriend } from '@/utils/personal-qr'
 import { loadCurrentUserProfileDisplay } from '@/utils/current-user-profile'
-import { enrichConversationSummaries, avatarSignedUrl } from '@/utils/conversation-display'
+import { getCachedAvatar } from '@/utils/profile-cache'
+import {
+  collectUsersFromTeams,
+  matchTeamMemberKeyword,
+  type TeamMemberSearchUser,
+} from '@/utils/team-member-search-pool'
+import type { ProfileCacheEntry } from '@/utils/profile-cache'
+import {
+  enrichConversationSummaries,
+  avatarSignedUrl,
+  conversationDisplayTitle,
+} from '@/utils/conversation-display'
 import type { components } from '@/api/types/schema'
 
 type FriendRequest = components['schemas']['Social.FriendRequest']
@@ -297,16 +308,10 @@ type FriendItem = components['schemas']['Social.FriendItem']
 type MessageCreatedPayload = components['schemas']['Chat.MessageCreatedPayload']
 type MessageForwardedPayload = components['schemas']['Chat.MessageForwardedPayload']
 
-type TeamMemberUser = {
-  userId: string
-  nickname: string
-  avatarUrl: string
-}
-
 type HubUserSearchResult = {
   key: string
   title: string
-  avatarUrl: string
+  avatar?: components['schemas']['MediaFile']
   userId: string
   conversationId?: string
 }
@@ -314,7 +319,7 @@ type HubUserSearchResult = {
 type HubTeamSearchResult = {
   key: string
   title: string
-  avatarUrl: string
+  avatar?: components['schemas']['MediaFile']
   teamId: string
   conversationId?: string
   isMember: boolean
@@ -330,7 +335,9 @@ const loading = ref(false)
 
 // Real data from API
 const friends = ref<FriendItem[]>([])
-const teamMemberUsers = ref<TeamMemberUser[]>([])
+const searchableUsers = ref<TeamMemberSearchUser[]>([])
+const searchProfileCache = ref<Record<string, ProfileCacheEntry>>({})
+const keywordMatchedTeams = ref<TeamProfile[]>([])
 const discoverTeams = ref<TeamProfile[]>([])
 const teams = ref<TeamProfile[]>([])
 const pendingRequestsCount = ref(0)
@@ -375,7 +382,7 @@ const friendSearchResults = computed<HubUserSearchResult[]>(() => {
       return {
         key: `friend-${friend.userId}`,
         title: displayName,
-        avatarUrl: friend.avatar?.signedUrl ?? '',
+        avatar: friend.avatar,
         userId: friend.userId,
         conversationId: conv?.conversationId,
       }
@@ -386,15 +393,16 @@ const nonFriendSearchResults = computed<HubUserSearchResult[]>(() => {
   const keyword = searchKeyword.value.trim().toLowerCase()
   if (!keyword) return []
 
-  return teamMemberUsers.value
+  return searchableUsers.value
     .filter(
       (user) =>
-        !friendIdSet.value.has(user.userId) && user.nickname.toLowerCase().includes(keyword),
+        !friendIdSet.value.has(user.userId) &&
+        matchTeamMemberKeyword(user, searchProfileCache.value, keyword),
     )
     .map((user) => ({
       key: `user-${user.userId}`,
-      title: user.nickname,
-      avatarUrl: user.avatarUrl,
+      title: searchProfileCache.value[user.userId]?.nickname || user.nickname,
+      avatar: getCachedAvatar(searchProfileCache.value, user.userId),
       userId: user.userId,
     }))
 })
@@ -406,7 +414,7 @@ const teamSearchResults = computed<HubTeamSearchResult[]>(() => {
   const seen = new Set<string>()
   const results: HubTeamSearchResult[] = []
 
-  for (const team of [...teams.value, ...discoverTeams.value]) {
+  for (const team of [...teams.value, ...keywordMatchedTeams.value, ...discoverTeams.value]) {
     if (seen.has(team.teamId)) continue
     seen.add(team.teamId)
 
@@ -419,7 +427,7 @@ const teamSearchResults = computed<HubTeamSearchResult[]>(() => {
     results.push({
       key: `team-${team.teamId}`,
       title: team.name,
-      avatarUrl: team.avatar?.signedUrl ?? '',
+      avatar: team.avatar,
       teamId: team.teamId,
       conversationId: isMember ? team.chatId : undefined,
       isMember,
@@ -460,6 +468,7 @@ async function onSearchTap() {
   searchKeyword.value = ''
   searchActive.value = true
   searchFocused.value = false
+  await refreshSearchCandidates('')
   await nextTick()
   searchFocused.value = true
 }
@@ -468,7 +477,53 @@ function closeSearch() {
   searchFocused.value = false
   searchActive.value = false
   searchKeyword.value = ''
+  keywordMatchedTeams.value = []
 }
+
+let searchRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
+/** 按关键词刷新发现小队及其成员，供好友/非好友搜索使用 */
+async function refreshSearchCandidates(keyword: string) {
+  const authStore = useAuthStore()
+  const currentUserId = authStore.userId ?? ''
+  if (!currentUserId) return
+
+  const trimmed = keyword.trim()
+  if (!trimmed) {
+    keywordMatchedTeams.value = []
+    const base = await collectUsersFromTeams(
+      [...teams.value, ...discoverTeams.value],
+      currentUserId,
+    )
+    searchableUsers.value = base.users
+    searchProfileCache.value = base.profileCache
+    return
+  }
+
+  try {
+    const teamResult = await searchTeams({ keyword: trimmed, page: 1, pageSize: 50 })
+    keywordMatchedTeams.value = extractPageItems<TeamProfile>(teamResult)
+  } catch {
+    keywordMatchedTeams.value = []
+  }
+
+  const teamPool = new Map<string, TeamProfile>()
+  for (const team of [...teams.value, ...keywordMatchedTeams.value, ...discoverTeams.value]) {
+    teamPool.set(team.teamId, team)
+  }
+
+  const matched = await collectUsersFromTeams([...teamPool.values()], currentUserId)
+  searchableUsers.value = matched.users
+  searchProfileCache.value = matched.profileCache
+}
+
+watch(searchKeyword, (keyword) => {
+  if (!searchActive.value) return
+  if (searchRefreshTimer) clearTimeout(searchRefreshTimer)
+  searchRefreshTimer = setTimeout(() => {
+    void refreshSearchCandidates(keyword)
+  }, 300)
+})
 
 function openFriendSearchResult(item: HubUserSearchResult) {
   closeSearch()
@@ -493,7 +548,9 @@ function openTeamSearchResult(item: HubTeamSearchResult) {
 
   if (item.isMember && item.conversationId) {
     uni.navigateTo({
-      url: `/pages/messages/chat?conversationId=${item.conversationId}&kind=team&teamId=${item.teamId}`,
+      url:
+        `/pages/messages/chat?conversationId=${item.conversationId}` +
+        `&kind=team&teamId=${item.teamId}`,
     })
     return
   }
@@ -509,7 +566,9 @@ async function resolveAndOpenFriendChat(userId: string) {
       return
     }
     uni.navigateTo({
-      url: `/pages/messages/chat?conversationId=${conversationId}&kind=friend&targetUserId=${userId}`,
+      url:
+        `/pages/messages/chat?conversationId=${conversationId}` +
+        `&kind=friend&targetUserId=${userId}`,
     })
   } catch {
     uni.showToast({ title: '打开会话失败', icon: 'none' })
@@ -662,37 +721,6 @@ function formatTime(isoTime: string): string {
   return `${month}月${day}日`
 }
 
-/** 从「我的小队 + 发现小队」聚合全部成员，作为非好友搜索候选 */
-async function loadTeamMemberUsers(
-  myTeams: TeamProfile[],
-  discoverTeamItems: TeamProfile[],
-  currentUserId: string,
-): Promise<TeamMemberUser[]> {
-  const teamMap = new Map<string, TeamProfile>()
-  for (const team of [...myTeams, ...discoverTeamItems]) {
-    teamMap.set(team.teamId, team)
-  }
-
-  const pool = new Map<string, TeamMemberUser>()
-  const memberResults = await Promise.all(
-    [...teamMap.values()].map((team) => getTeamMembers(team.teamId, 1, 100).catch(() => null)),
-  )
-
-  for (const result of memberResults) {
-    if (!result) continue
-    for (const member of extractPageItems<TeamMember>(result)) {
-      if (!member.userId || member.userId === currentUserId || pool.has(member.userId)) continue
-      pool.set(member.userId, {
-        userId: member.userId,
-        nickname: member.nickname,
-        avatarUrl: member.avatar?.signedUrl ?? '',
-      })
-    }
-  }
-
-  return Array.from(pool.values())
-}
-
 /** 统计当前用户可审核的待处理入队申请数，并记录有待审的小队列表 */
 async function countPendingTeamJoinRequests(
   myTeams: TeamProfile[],
@@ -788,15 +816,21 @@ async function loadSocialData() {
         allTeamsForConv.push(team)
       }
     }
-    conversations.value = enrichConversationSummaries(convItems, allTeamsForConv, friendItems)
+    conversations.value = await enrichConversationSummaries(
+      convItems,
+      allTeamsForConv,
+      friendItems,
+      currentUserId,
+    )
 
-    const [pendingStats, memberUsers] = await Promise.all([
+    const [pendingStats, searchPool] = await Promise.all([
       countPendingTeamJoinRequests(teamItems, currentUserId),
-      loadTeamMemberUsers(teamItems, discoverTeams.value, currentUserId),
+      collectUsersFromTeams([...teamItems, ...discoverTeamItems], currentUserId),
     ])
     pendingTeamRequests.value = pendingStats.total
     pendingTeamRequestTargets.value = pendingStats.targets
-    teamMemberUsers.value = memberUsers
+    searchableUsers.value = searchPool.users
+    searchProfileCache.value = searchPool.profileCache
   } catch (error) {
     console.error('Failed to load social data:', error)
     uni.showToast({ title: '加载失败', icon: 'none' })
