@@ -95,6 +95,22 @@ public final class SocialDtos {
     }
 
     @Data
+    public static class TeamUpdateRequest {
+        @Size(max = 100)
+        private String name;
+
+        private List<String> tags;
+
+        private TeamJoinMode joinMode;
+
+        @Min(1)
+        private Integer capacity;
+
+        private String description;
+        private UUID avatarMediaId;
+    }
+
+    @Data
     public static class JoinTeamRequest {
         private String message;
     }

@@ -54,8 +54,8 @@ class PermissionControlTests extends AbstractIntegrationTest {
         @DisplayName("错误端点无认证不应被安全链二次改写为 401")
         void errorEndpointWithoutAuth_shouldNotBeInterceptedBySecurity() throws Exception {
             mockMvc.perform(get("/error"))
-                    .andExpect(result -> assertThat(result.getResponse().getStatus())
-                            .isNotEqualTo(401));
+                    .andExpect(result ->
+                            assertThat(result.getResponse().getStatus()).isNotEqualTo(401));
         }
     }
 
