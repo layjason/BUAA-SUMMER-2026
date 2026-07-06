@@ -4,6 +4,8 @@
 
 - Version: 1 20260704 120000
   - 初始版本：确立 Kafka 异步任务架构，替代同步 HTTP 调用 CLIP 服务的方案
+- Version: 2 20260706 154940
+  - 同步部署指南更新：环境变量模板统一为 .env.example
 
 ---
 
@@ -442,6 +444,6 @@ interface AiTaskEvent {
 - [ ] GPU 机器已安装 NVIDIA Container Toolkit (`nvidia-smi` 可用)
 - [ ] GPU 机器可访问 `VPN_IP:9092` (Kafka) 和 `VPN_IP:9000` (RustFS)
 - [ ] 模型缓存卷 `clip_model_cache` 已在 GPU 机器上创建
-- [ ] 环境变量文件 `.env.gpu` 已按模板填写
+- [ ] 环境变量文件 `.env` 已按模板 `.env.example` 填写
 - [ ] Prometheus + Grafana 已部署（可选，建议在 Java 服务器上）
 - [ ] Kafka 外部监听地址 `ADVERTISED_LISTENERS` 已设置为 VPN IP
