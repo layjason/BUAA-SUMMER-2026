@@ -27,3 +27,5 @@ unpackage
 .eslintcache
 *.tsbuildinfo
 .vite
+
+.pnpm-store
