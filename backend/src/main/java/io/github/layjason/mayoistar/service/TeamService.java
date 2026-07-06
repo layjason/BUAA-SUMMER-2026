@@ -318,6 +318,88 @@ public class TeamService {
         return toTeamProfile(team, memberCount);
     }
 
+    /**
+     * 更新小队资料，并同步小队群聊标题与头像。
+     *
+     * <p>前置条件：{@code operatorId} 是小队队长，目标小队未解散。
+     *
+     * <p>后置条件：小队资料已更新；若关联群聊存在，群聊标题和头像保持一致。
+     *
+     * <p>不变量：小队名称全局唯一，容量不得低于当前成员数。
+     */
+    public SocialDtos.TeamProfile updateTeam(String teamId, String operatorId, SocialDtos.TeamUpdateRequest request) {
+        Team team = findVisibleTeam(teamId);
+        TeamMember member = teamMemberRepository
+                .findByTeamIdAndUserId(teamId, operatorId)
+                .orElseThrow(() -> new BusinessException(TEAM_PERMISSION_DENIED, "Team operation is not allowed"));
+
+        if (member.getRole() != TeamMemberRole.leader) {
+            log.warn("非队长尝试修改小队资料: teamId={}, userId={}", teamId, operatorId);
+            throw new BusinessException(TEAM_PERMISSION_DENIED, "Only the team leader can update team profile");
+        }
+
+        long memberCount = teamMemberRepository.countByTeamId(teamId);
+        String nextName = request.getName() != null ? request.getName().trim() : null;
+        if (nextName != null) {
+            if (nextName.isBlank()) {
+                throw new BusinessException(TEAM_NAME_UNAVAILABLE, "Team name must not be blank");
+            }
+            if (!nextName.equals(team.getName()) && teamRepository.existsByName(nextName)) {
+                log.warn("小队名称已被占用: teamId={}, name={}", teamId, nextName);
+                throw new BusinessException(TEAM_NAME_UNAVAILABLE, "Team name is already taken");
+            }
+            team.setName(nextName);
+        }
+
+        if (request.getTags() != null) {
+            List<String> tags = request.getTags().stream()
+                    .filter(tag -> tag != null)
+                    .map(String::trim)
+                    .filter(tag -> !tag.isBlank())
+                    .distinct()
+                    .toList();
+            if (tags.isEmpty()) {
+                throw new BusinessException(TEAM_NAME_UNAVAILABLE, "Team tags must not be empty");
+            }
+            team.setTags(tags);
+        }
+
+        if (request.getJoinMode() != null) {
+            team.setJoinMode(request.getJoinMode());
+        }
+
+        if (request.getCapacity() != null) {
+            if (request.getCapacity() < memberCount) {
+                throw new BusinessException(TEAM_FULL, "Team capacity cannot be less than current members");
+            }
+            team.setCapacity(request.getCapacity());
+        }
+
+        if (request.getDescription() != null) {
+            team.setDescription(request.getDescription().trim());
+        }
+
+        if (request.getAvatarMediaId() != null) {
+            team.setAvatarMediaId(request.getAvatarMediaId());
+        }
+
+        Instant now = Instant.now();
+        team.setUpdatedAt(now);
+        teamRepository.save(team);
+
+        if (team.getChatId() != null) {
+            conversationRepository.findById(team.getChatId()).ifPresent(conversation -> {
+                conversation.setTitle(team.getName());
+                conversation.setAvatarMediaId(team.getAvatarMediaId());
+                conversation.setUpdatedAt(now);
+                conversationRepository.save(conversation);
+            });
+        }
+
+        log.info("小队资料已更新: teamId={}, operatorId={}", teamId, operatorId);
+        return toTeamProfile(team, (int) memberCount);
+    }
+
     // ========================================
     // 加入与退出
     // ========================================
@@ -1222,6 +1304,10 @@ public class TeamService {
 
         if (team.getAvatar() != null) {
             dto.setAvatar(toMediaFileDto(team.getAvatar()));
+        } else if (team.getAvatarMediaId() != null) {
+            mediaFileRepository
+                    .findById(team.getAvatarMediaId())
+                    .ifPresent(file -> dto.setAvatar(toMediaFileDto(file)));
         }
         return dto;
     }

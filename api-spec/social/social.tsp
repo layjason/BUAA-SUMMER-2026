@@ -291,6 +291,27 @@ model TeamCreateRequest {
   avatarMediaId?: EntityId;
 }
 
+@doc("小队资料更新请求，调用方为队长，允许更新名称、标签、加入方式、容量、简介与头像。")
+model TeamUpdateRequest {
+  @doc("小队名称。")
+  name?: string;
+
+  @doc("小队兴趣标签。")
+  tags?: string[];
+
+  @doc("小队加入方式。")
+  joinMode?: TeamJoinMode;
+
+  @doc("小队人数上限。")
+  capacity?: int32;
+
+  @doc("小队简介。")
+  description?: string;
+
+  @doc("小队头像媒体文件标识。")
+  avatarMediaId?: EntityId;
+}
+
 @doc("小队资料。")
 model TeamProfile {
   @doc("小队标识。")
@@ -620,6 +641,18 @@ interface SocialOperations {
   @route("/teams/{teamId}")
   @doc("获取兴趣小队详情，用户可查看未解散且可见的小队资料，小队成员可据此进入群聊、活动、文件、相册和积分榜。")
   getTeam(@path teamId: EntityId): APIResponse<TeamProfile>;
+
+  @patch
+  @route("/teams/{teamId}")
+  @doc("更新兴趣小队资料，调用方必须为队长。名称变更需保持全局唯一，容量不得低于当前成员数，群聊标题与头像随小队资料同步。")
+  updateTeam(@path teamId: EntityId, @body body: TeamUpdateRequest): APIResult<
+    TeamProfile,
+
+      | QujuApi.Errors.Social.TeamNotVisible
+      | QujuApi.Errors.Social.TeamPermissionDenied
+      | QujuApi.Errors.Social.TeamNameUnavailable
+      | QujuApi.Errors.Social.TeamFull
+  >;
 
   @post
   @route("/teams/{teamId}/join")

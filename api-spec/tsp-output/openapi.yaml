@@ -6916,6 +6916,59 @@ paths:
                 description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
       tags:
         - 好友社群
+    patch:
+      operationId: SocialOperations_updateTeam
+      description: 更新兴趣小队资料，调用方必须为队长。名称变更需保持全局唯一，容量不得低于当前成员数，群聊标题与头像随小队资料同步。
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityId'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    required:
+                      - code
+                      - message
+                      - data
+                    properties:
+                      code:
+                        type: number
+                        enum:
+                          - 200
+                        description: 平台响应代码，成功响应固定为 200。
+                      message:
+                        type: string
+                        enum:
+                          - For Super Earth!
+                        description: 平台响应消息，成功响应固定为 For Super Earth!。
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Social.TeamProfile'
+                        description: 响应数据。
+                    description: 平台统一 JSON 成功响应，code 固定为 200，data 承载强类型业务数据。
+                  - $ref: '#/components/schemas/BadRequestResponse'
+                  - $ref: '#/components/schemas/UnauthorizedResponse'
+                  - $ref: '#/components/schemas/ForbiddenResponse'
+                  - $ref: '#/components/schemas/InternalServerErrorResponse'
+                  - $ref: '#/components/schemas/Errors.Social.TeamNotVisible'
+                  - $ref: '#/components/schemas/Errors.Social.TeamPermissionDenied'
+                  - $ref: '#/components/schemas/Errors.Social.TeamNameUnavailable'
+                  - $ref: '#/components/schemas/Errors.Social.TeamFull'
+      tags:
+        - 好友社群
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Social.TeamUpdateRequest'
     delete:
       operationId: SocialOperations_dissolveTeam
       description: 解散小队，调用方为队长，小队解散，群聊和队内活动停止使用，解散后不再显示于发现列表。
@@ -13774,6 +13827,33 @@ components:
         - dissolved
         - disabled
       description: 小队状态。
+    Social.TeamUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 小队名称。
+        tags:
+          type: array
+          items:
+            type: string
+          description: 小队兴趣标签。
+        joinMode:
+          allOf:
+            - $ref: '#/components/schemas/Social.TeamJoinMode'
+          description: 小队加入方式。
+        capacity:
+          type: integer
+          format: int32
+          description: 小队人数上限。
+        description:
+          type: string
+          description: 小队简介。
+        avatarMediaId:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          description: 小队头像媒体文件标识。
+      description: 小队资料更新请求，调用方为队长，允许更新名称、标签、加入方式、容量、简介与头像。
     TimeOfDaySeconds:
       type: integer
       format: int32
