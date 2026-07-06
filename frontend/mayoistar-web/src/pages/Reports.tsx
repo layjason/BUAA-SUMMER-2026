@@ -239,7 +239,7 @@ export const Reports: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="space-y-0.5 text-left">
                         <StatusBadge type="reportTargetType" value={rpt.targetType} />
-                        <p className="font-mono font-bold text-red-600 text-[10px]">
+                        <p className="font-mono font-bold text-slate-600 text-[10px]">
                           {rpt.targetId}
                         </p>
                       </div>

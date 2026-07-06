@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAccessToken, setAccessToken, registerToastHandler } from './api/client';
+import { getAccessToken, registerToastHandler, registerUnauthorizedHandler } from './api/client';
 import { logout } from './api/adminAuth';
 import { SidebarNav } from './components/SidebarNav';
 import { TopBar } from './components/TopBar';
@@ -7,6 +7,7 @@ import { ToastContainer, ToastItem } from './components/Toast';
 
 // Pages
 import { Login } from './pages/Login';
+import { ActivationLanding } from './pages/ActivationLanding';
 import { Workbench } from './pages/Workbench';
 import { Activities } from './pages/Activities';
 import { Users } from './pages/Users';
@@ -14,6 +15,8 @@ import { Merchants } from './pages/Merchants';
 import { Teams } from './pages/Teams';
 import { Reports } from './pages/Reports';
 import { SettingsPassword } from './pages/SettingsPassword';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!getAccessToken());
@@ -21,16 +24,19 @@ export default function App() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
 
-  // Setup global toast notifications
   useEffect(() => {
     registerToastHandler((message, type) => {
       const id = Date.now().toString() + Math.random().toString().slice(2, 6);
       setToasts((prev) => [...prev, { id, message, type }]);
 
-      // Auto-dismiss after 4 seconds
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
       }, 4000);
+    });
+
+    registerUnauthorizedHandler(() => {
+      setIsAuthenticated(false);
+      setCurrentRoute('workbench');
     });
   }, []);
 
@@ -38,16 +44,10 @@ export default function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (e) {
-      console.error('Logout request failed, fallback to state clearing:', e);
-    } finally {
-      setAccessToken('');
-      setIsAuthenticated(false);
-      setCurrentRoute('workbench');
-    }
+  const handleLogout = () => {
+    logout();
+    setIsAuthenticated(false);
+    setCurrentRoute('workbench');
   };
 
   const renderPage = () => {
@@ -70,6 +70,19 @@ export default function App() {
         return <Workbench onNavigate={setCurrentRoute} />;
     }
   };
+
+  // 激活落地页：绕过管理员认证门禁，允许未登录用户直接访问
+  if (window.location.pathname === '/activate') {
+    return <ActivationLanding />;
+  }
+
+  // 忘记密码与重置密码页：无需认证即可访问
+  if (window.location.pathname === '/forgot-password') {
+    return <ForgotPassword />;
+  }
+  if (window.location.pathname === '/reset-password') {
+    return <ResetPassword />;
+  }
 
   if (!isAuthenticated) {
     return (

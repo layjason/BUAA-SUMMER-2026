@@ -79,4 +79,95 @@ describe('API 请求客户端', () => {
 
     await expect(request('/admin/users')).rejects.toThrow('Legacy success code is invalid');
   });
+
+  it('业务错误抛出 BusinessError 并保留 code 和 message', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(businessErrorResponse(10006, 'Activation token is invalid'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { request, BusinessError } = await import('./client');
+
+    try {
+      await request('/identity/auth/activate');
+      expect.fail('Expected BusinessError to be thrown');
+    } catch (error: unknown) {
+      expect(error).toBeInstanceOf(BusinessError);
+      const bizError = error as InstanceType<typeof BusinessError>;
+      expect(bizError.code).toBe(10006);
+      expect(bizError.message).toBe('Activation token is invalid');
+    }
+  });
+
+  it('已登录时 HTTP 401 清除 token 并触发未授权回调', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ code: 401, message: 'Authentication is required', data: {} }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 401,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const unauthorized = vi.fn();
+    const { request, setAccessToken, registerUnauthorizedHandler } = await import('./client');
+    registerUnauthorizedHandler(unauthorized);
+    setAccessToken('expired-token');
+
+    await expect(request('/admin/users')).rejects.toThrow('登录已过期，请重新登录');
+    expect(unauthorized).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('mayoistar_admin_access_token')).toBeNull();
+  });
+
+  it('后台业务错误 toast 使用中文映射', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(businessErrorResponse(60006, 'Review reason is required'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { request, BusinessError } = await import('./client');
+
+    try {
+      await request('/admin/activities/act_1/review');
+      expect.unreachable('should have thrown');
+    } catch (error: unknown) {
+      expect(error).toBeInstanceOf(BusinessError);
+      const bizErr = error as InstanceType<typeof BusinessError>;
+      expect(bizErr.code).toBe(60006);
+      expect(bizErr.message).toBe('请填写审核、下架或停用原因');
+    }
+  });
+
+  it('未登录时 HTTP 401 不触发未授权回调', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ code: 401, message: 'Authentication is required', data: {} }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 401,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const unauthorized = vi.fn();
+    const { request, registerUnauthorizedHandler } = await import('./client');
+    registerUnauthorizedHandler(unauthorized);
+
+    await expect(request('/admin/auth/login')).rejects.toThrow('Authentication is required');
+    expect(unauthorized).not.toHaveBeenCalled();
+  });
+
+  it('业务错误携带 BusinessError 类型并保留 code 和 message', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(businessErrorResponse(10018, '发送过于频繁'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { request, BusinessError } = await import('./client');
+
+    try {
+      await request('/identity/auth/password-reset-email');
+      expect.unreachable('should have thrown');
+    } catch (error: unknown) {
+      expect(error).toBeInstanceOf(BusinessError);
+      const bizErr = error as InstanceType<typeof BusinessError>;
+      expect(bizErr.code).toBe(10018);
+      expect(bizErr.message).toBe('发送过于频繁');
+    }
+  });
 });

@@ -10,6 +10,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { listUsers } from '../api/adminUsers';
 import { getMerchant, reviewMerchant } from '../api/adminMerchants';
 import { AdminUserSummary, MerchantProfile, QualificationStatus } from '../types';
+import { AuthImage } from '../components/AuthImage';
 import { Search, FileText, XCircle, ShieldAlert } from 'lucide-react';
 
 export const Merchants: React.FC = () => {
@@ -330,9 +331,8 @@ export const Merchants: React.FC = () => {
             {/* Header branding */}
             <div className="space-y-3 pb-5 border-b border-slate-100 text-left">
               {profile.avatar?.signedUrl && (
-                <img
-                  src={profile.avatar.signedUrl}
-                  referrerPolicy="no-referrer"
+                <AuthImage
+                  signedUrl={profile.avatar.signedUrl}
                   className="h-12 w-12 rounded-2xl object-cover border border-slate-200"
                   alt="商家头像"
                 />

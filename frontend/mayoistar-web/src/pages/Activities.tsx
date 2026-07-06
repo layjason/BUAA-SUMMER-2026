@@ -22,6 +22,7 @@ import {
   ActivityReviewStatus,
   ActivityRuntimeStatus,
 } from '../types';
+import { AuthImage } from '../components/AuthImage';
 import { Search, Eye, AlertTriangle, User, MapPin, Sparkles, HelpCircle } from 'lucide-react';
 
 export const Activities: React.FC = () => {
@@ -453,10 +454,9 @@ export const Activities: React.FC = () => {
             <div className="space-y-3 pb-5 border-b border-slate-100 text-left">
               {detail.coverImage?.signedUrl && (
                 <div className="aspect-16/9 rounded-2xl overflow-hidden border border-slate-200/80 mb-3 bg-slate-100 shadow-inner">
-                  <img
-                    src={detail.coverImage.signedUrl}
+                  <AuthImage
+                    signedUrl={detail.coverImage.signedUrl}
                     alt="活动封面"
-                    referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
                   />
                 </div>

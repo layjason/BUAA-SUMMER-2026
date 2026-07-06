@@ -920,8 +920,42 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description 分类活动或总结图片，图片已上传，返回建议标签，标签需由人工确认后才成为最终标签。 */
+    /** @description 提交图片分类任务（异步）。已上传的图片通过后台 GPU 集群分类，返回 taskId 供轮询 GET /ai/image-classifications/{taskId} 获取结果。已分类过的图片直接命中缓存无需重复推理。 */
     post: operations['AiOperations_classifyImages'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/ai/image-classifications/media/{mediaId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 按媒体 ID 查询单张图片的分类缓存。命中缓存时返回包括 classifiedAt 的完整分类结果，未命中时返回 30004。 */
+    get: operations['AiOperations_getClassificationByMediaId'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/ai/image-classifications/{taskId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 查询图片分类任务结果。pending 时仅返回状态，succeeded 时返回所有 media（含缓存命中）的分类结果，failed/timeout 时包含错误信息。任务超时时间为 30 秒。 */
+    get: operations['AiOperations_getClassifyTaskResult'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1724,6 +1758,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/social/qr-code': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 生成当前用户的个人二维码，返回 PNG 格式的二维码图片，含 5 分钟有效期 JWT token。 */
+    get: operations['SocialOperations_getMyQrCode'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/social/qr-code/scan': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description 扫描他人二维码添加好友，解码 token 后自动创建好友申请。 */
+    post: operations['SocialOperations_scanQrCode'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/social/reports': {
     parameters: {
       query?: never;
@@ -1754,6 +1822,23 @@ export interface paths {
     put?: never;
     /** @description 创建兴趣小队，调用方已登录且名称合法，创建小队、队长成员和群聊，创建者自动为队长。 */
     post: operations['SocialOperations_createTeam'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/social/teams/mine': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description 获取当前用户加入的小队列表，含已解散/已停用的历史小队，按加入时间倒序。 */
+    get: operations['SocialOperations_listMyTeams'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -2798,6 +2883,11 @@ export interface components {
      * @enum {string}
      */
     'Ai.AiRiskLevel': 'low' | 'medium' | 'high' | 'uncertain';
+    /**
+     * @description 分类任务状态。
+     * @enum {string}
+     */
+    'Ai.ClassifyTaskStatus': 'pending' | 'succeeded' | 'failed' | 'timeout';
     /** @description 单张图片 AI 分类结果。 */
     'Ai.ImageClassificationItem': {
       /** @description 图片媒体文件标识。 */
@@ -2810,19 +2900,40 @@ export interface components {
        */
       confidence: number;
     };
-    /** @description AI 图片分类请求，mediaIds 指向已上传图片，返回建议标签供人工确认，最终标签以人工确认结果为准。 */
+    /** @description AI 图片分类请求，mediaIds 指向已上传图片，任务异步提交，通过返回的 taskId 轮询结果。 */
     'Ai.ImageClassificationRequest': {
       /** @description 需要进行图片分类的媒体文件标识列表。 */
       mediaIds: components['schemas']['EntityId'][];
     };
-    /** @description AI 图片分类响应。 */
-    'Ai.ImageClassificationResult': {
-      /** @description AI 调用状态。 */
-      status: components['schemas']['Ai.AiCallStatus'];
-      /** @description 逐图片分类结果。 */
-      items: components['schemas']['Ai.ImageClassificationItem'][];
-      /** @description AI 调用失败时可展示给用户的友好错误信息。 */
-      friendlyErrorMessage?: string;
+    /** @description 图片分类任务提交响应，包含 taskId 供后续轮询。 */
+    'Ai.ImageClassificationSubmitResponse': {
+      /** @description 任务唯一标识，用于轮询 GET /ai/image-classifications/{taskId} 获取结果。 */
+      taskId: components['schemas']['EntityId'];
+      /** @description 任务初始状态：若全部图片已有缓存则为 succeeded，否则为 pending。 */
+      status: components['schemas']['Ai.ClassifyTaskStatus'];
+    };
+    /** @description 图片分类任务查询响应。 */
+    'Ai.ImageClassificationTaskQueryResponse': {
+      /** @description 任务状态：pending 时仅返回状态，succeeded 时包含全部结果，failed/timeout 时包含 errorMessage。 */
+      status: components['schemas']['Ai.ClassifyTaskStatus'];
+      /** @description 逐图片分类结果（仅 succeeded 时非空）。 */
+      items?: components['schemas']['Ai.ImageClassificationItem'][];
+      /** @description 失败或超时时的错误信息。 */
+      errorMessage?: string;
+    };
+    /** @description 按 mediaId 查询单张图片的分类缓存。 */
+    'Ai.MediaClassificationResponse': {
+      /** @description 图片媒体文件标识。 */
+      mediaId: components['schemas']['EntityId'];
+      /** @description AI 建议的图片标签。 */
+      suggestedTags: string[];
+      /**
+       * Format: double
+       * @description AI 对分类结果的置信度。
+       */
+      confidence: number;
+      /** @description 分类完成时间（ISO-8601）。 */
+      classifiedAt: components['schemas']['DateTimeString'];
     };
     /** @description 请求体或 URL 参数无法解析，或不符合 TypeSpec Schema。 */
     BadRequestResponse: {
@@ -3632,6 +3743,36 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
+    /** @description 30004：分类任务不存在或已过期（含 mediaId 未分类时）。 */
+    'Errors.Ai.AiTaskNotFound': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 30004;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'Classification task not found';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
+    /** @description 30005：分类任务超时，GPU 服务在 30 秒内未响应。 */
+    'Errors.Ai.AiTaskTimeout': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 30005;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'Classification task timed out';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
     /** @description 30003：图片媒体文件不存在或不支持 AI 分类。 */
     'Errors.Ai.ImageMediaUnavailable': {
       /**
@@ -4367,6 +4508,21 @@ export interface components {
       /** @description 错误上下文，默认无额外业务数据。 */
       data: components['schemas']['EmptyData'];
     };
+    /** @description 40021：二维码 token 无效或已过期。 */
+    'Errors.Social.QrCodeTokenInvalid': {
+      /**
+       * @description 平台错误代码，小于 1000 为通用错误代码，大于等于 10000 为业务错误代码。
+       * @enum {number}
+       */
+      code: 40021;
+      /**
+       * @description 平台错误消息，业务错误使用英文模板文案。
+       * @enum {string}
+       */
+      message: 'QR code token is invalid';
+      /** @description 错误上下文，默认无额外业务数据。 */
+      data: components['schemas']['EmptyData'];
+    };
     /** @description 40007：举报目标或举报内容不合法。 */
     'Errors.Social.ReportInvalid': {
       /**
@@ -5003,6 +5159,13 @@ export interface components {
       pointChange: number;
       /** @description 调整原因。 */
       reason: string;
+    };
+    /** @description 扫码添加好友请求，调用方通过扫描二维码获取 token 并提交，系统解码 token 后自动创建好友申请。 */
+    'Social.QrCodeScanRequest': {
+      /** @description 从二维码中解码得到的 token。 */
+      token: string;
+      /** @description 附加的好友申请附言。 */
+      message?: string;
     };
     /** @description 举报记录。 */
     'Social.Report': {
@@ -8417,7 +8580,7 @@ export interface operations {
                  */
                 message: 'For Super Earth!';
                 /** @description 响应数据。 */
-                data: components['schemas']['Ai.ImageClassificationResult'];
+                data: components['schemas']['Ai.ImageClassificationSubmitResponse'];
               }
             | components['schemas']['BadRequestResponse']
             | components['schemas']['UnauthorizedResponse']
@@ -8425,8 +8588,92 @@ export interface operations {
             | components['schemas']['InternalServerErrorResponse']
             | components['schemas']['Errors.Ai.AiRateLimited']
             | components['schemas']['Errors.Ai.AiServiceUnavailable']
-            | components['schemas']['Errors.Ai.AiOutputUnavailable']
             | components['schemas']['Errors.Ai.ImageMediaUnavailable'];
+        };
+      };
+    };
+  };
+  AiOperations_getClassificationByMediaId: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 媒体文件 ID。 */
+        mediaId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Ai.MediaClassificationResponse'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Ai.AiTaskNotFound'];
+        };
+      };
+    };
+  };
+  AiOperations_getClassifyTaskResult: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 图片分类任务 ID，由 POST /ai/image-classifications 返回。 */
+        taskId: components['schemas']['EntityId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Ai.ImageClassificationTaskQueryResponse'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Ai.AiTaskNotFound']
+            | components['schemas']['Errors.Ai.AiTaskTimeout'];
         };
       };
     };
@@ -11054,6 +11301,8 @@ export interface operations {
   SocialOperations_listFriends: {
     parameters: {
       query?: {
+        /** @description 好友昵称或备注筛选关键字。 */
+        keyword?: string;
         /** @description 页码，从 1 开始。 */
         page?: components['parameters']['PageQuery.page'];
         /** @description 每页数量。 */
@@ -11241,6 +11490,73 @@ export interface operations {
             | components['schemas']['InternalServerErrorResponse']
             | components['schemas']['Errors.Social.UserNotVisible']
             | components['schemas']['Errors.Social.BlacklistRelationExists'];
+        };
+      };
+    };
+  };
+  SocialOperations_getMyQrCode: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'image/png': string;
+        };
+      };
+    };
+  };
+  SocialOperations_scanQrCode: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Social.QrCodeScanRequest'];
+      };
+    };
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: components['schemas']['Social.FriendRequest'];
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse']
+            | components['schemas']['Errors.Social.UserNotVisible']
+            | components['schemas']['Errors.Social.BlacklistRelationExists']
+            | components['schemas']['Errors.Social.FriendshipStateInvalid']
+            | components['schemas']['Errors.Social.DuplicateFriendRequest']
+            | components['schemas']['Errors.Social.QrCodeTokenInvalid'];
         };
       };
     };
@@ -11464,6 +11780,72 @@ export interface operations {
             | components['schemas']['ForbiddenResponse']
             | components['schemas']['InternalServerErrorResponse']
             | components['schemas']['Errors.Social.TeamNameUnavailable'];
+        };
+      };
+    };
+  };
+  SocialOperations_listMyTeams: {
+    parameters: {
+      query?: {
+        /** @description 页码，从 1 开始。 */
+        page?: components['parameters']['PageQuery.page'];
+        /** @description 每页数量。 */
+        pageSize?: components['parameters']['PageQuery.pageSize'];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The request has succeeded. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | {
+                /**
+                 * @description 平台响应代码，成功响应固定为 200。
+                 * @enum {number}
+                 */
+                code: 200;
+                /**
+                 * @description 平台响应消息，成功响应固定为 For Super Earth!。
+                 * @enum {string}
+                 */
+                message: 'For Super Earth!';
+                /** @description 响应数据。 */
+                data: {
+                  /** @description 当前页数据。 */
+                  items: components['schemas']['Social.TeamProfile'][];
+                  /**
+                   * Format: int64
+                   * @description 匹配总数。
+                   */
+                  total: number;
+                  /**
+                   * Format: int32
+                   * @description 当前页码。
+                   */
+                  page: number;
+                  /**
+                   * Format: int32
+                   * @description 每页数量。
+                   */
+                  pageSize: number;
+                  /**
+                   * Format: int32
+                   * @description 匹配总页数。
+                   */
+                  totalPages: number;
+                };
+              }
+            | components['schemas']['BadRequestResponse']
+            | components['schemas']['UnauthorizedResponse']
+            | components['schemas']['ForbiddenResponse']
+            | components['schemas']['InternalServerErrorResponse'];
         };
       };
     };
