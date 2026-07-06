@@ -25,9 +25,7 @@
           class="list-item"
           @tap="goToProfile(item.userId)"
         >
-          <view class="item-avatar">
-            <text class="item-avatar-placeholder">{{ item.nickname.charAt(0) }}</text>
-          </view>
+          <UserAvatar size="md" :name="item.nickname" :user-id="item.userId" />
 
           <view class="item-info">
             <text class="item-name">{{ item.nickname }}</text>
@@ -60,6 +58,7 @@
 import { ref, onMounted } from 'vue'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import { sendFriendRequest } from '@/api/modules/social'
 import { resolveApiError } from '@/utils/error'
 import { useAuthStore } from '@/stores/auth'

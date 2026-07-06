@@ -38,10 +38,12 @@
       <!-- Request List -->
       <view v-else class="request-list">
         <view v-for="req in items" :key="req.requestId" class="request-item">
-          <view class="request-avatar-wrapper" @tap="goToProfile(getCounterpartId(req))">
-            <view class="request-avatar-placeholder">
-              <text class="request-avatar-text">{{ getCounterpartName(req).charAt(0) }}</text>
-            </view>
+          <view @tap="goToProfile(getCounterpartId(req))">
+            <UserAvatar
+              size="md"
+              :name="getCounterpartName(req)"
+              :user-id="getCounterpartId(req)"
+            />
           </view>
 
           <view class="request-info" @tap="goToProfile(getCounterpartId(req))">
@@ -84,6 +86,7 @@
 import { ref, computed, onMounted } from 'vue'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import {
   getReceivedFriendRequests,
   getSentFriendRequests,
@@ -350,6 +353,7 @@ onMounted(() => {
 .request-item {
   display: flex;
   align-items: flex-start;
+  gap: $spacing-lg;
   padding: $spacing-lg $spacing-xl;
   background: var(--q-color-bg-card);
   margin: 0 $spacing-lg $spacing-sm;

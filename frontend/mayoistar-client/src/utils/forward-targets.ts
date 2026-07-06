@@ -5,6 +5,8 @@
  */
 import { getConversations } from '@/api/modules/chat'
 import { listMyTeams } from '@/api/modules/teams'
+import { getFriends } from '@/api/modules/social'
+import { enrichConversationSummaries, avatarSignedUrl } from '@/utils/conversation-display'
 import { extractPageItems } from '@/utils/page-result'
 import type { components } from '@/api/types/schema'
 
@@ -29,13 +31,19 @@ export interface ForwardTargetItem {
 export async function fetchForwardTargets(
   excludeConversationId: string,
 ): Promise<ForwardTargetItem[]> {
-  const [convResult, teamsResult] = await Promise.all([
+  const [convResult, teamsResult, friendsResult] = await Promise.all([
     getConversations(),
     listMyTeams(1, 100).catch(() => []),
+    getFriends(1, 100).catch(() => []),
   ])
 
-  const conversations = extractPageItems<ConversationSummary>(convResult)
   const teams = extractPageItems<TeamProfile>(teamsResult)
+  const friends = extractPageItems<components['schemas']['Social.FriendItem']>(friendsResult)
+  const conversations = enrichConversationSummaries(
+    extractPageItems<ConversationSummary>(convResult),
+    teams,
+    friends,
+  )
   const memberCountByChatId = new Map(teams.map((team) => [team.chatId, team.memberCount] as const))
 
   return conversations
@@ -44,7 +52,7 @@ export async function fetchForwardTargets(
       conversationId: conv.conversationId,
       kind: conv.kind,
       title: conv.title || (conv.kind === 'team' ? '小队群聊' : '好友'),
-      avatarUrl: conv.avatar?.signedUrl,
+      avatarUrl: avatarSignedUrl(conv.avatar),
       memberCount: conv.kind === 'team' ? memberCountByChatId.get(conv.conversationId) : undefined,
     }))
 }

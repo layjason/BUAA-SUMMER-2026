@@ -2,10 +2,7 @@
   <view class="conversation-card" @tap="onTap">
     <!-- Avatar -->
     <view class="conversation-card__avatar-wrapper">
-      <image v-if="avatar" class="conversation-card__avatar" :src="avatar" mode="aspectFill" />
-      <view v-else class="conversation-card__avatar-placeholder">
-        <text class="conversation-card__avatar-icon">{{ avatarIcon }}</text>
-      </view>
+      <UserAvatar size="lg" :avatar-url="avatar" :name="name" />
       <view v-if="isOnline" class="conversation-card__online-dot"></view>
     </view>
 
@@ -32,15 +29,12 @@
     <view v-if="unreadCount > 0" class="conversation-card__badge">
       {{ unreadCount > 99 ? '99+' : unreadCount }}
     </view>
-
-    <!-- Right Icon -->
-    <view v-if="showRightIcon" class="conversation-card__right-icon">
-      <text class="conversation-card__right-icon-text">📷</text>
-    </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import UserAvatar from '@/components/base/UserAvatar.vue'
+
 /**
  * 会话列表卡片组件
  *
@@ -49,8 +43,6 @@
 interface Props {
   /** 头像 URL */
   avatar?: string
-  /** 头像图标（无图片时） */
-  avatarIcon?: string
   /** 会话名称 */
   name: string
   /** 关系标签 */
@@ -65,20 +57,16 @@ interface Props {
   unreadCount?: number
   /** 是否在线 */
   isOnline?: boolean
-  /** 显示右侧图标 */
-  showRightIcon?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   avatar: '',
-  avatarIcon: '',
   tag: '',
   tagType: 'friend',
   lastMessage: '',
   time: '',
   unreadCount: 0,
   isOnline: false,
-  showRightIcon: true,
 })
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -119,30 +107,6 @@ function onTap() {
     height: 56px;
     flex-shrink: 0;
     margin-right: $spacing-md;
-  }
-
-  &__avatar {
-    width: 100%;
-    height: 100%;
-    border-radius: $radius-full;
-    border: 2px solid var(--q-color-bg-card);
-    box-shadow: $shadow-sm;
-  }
-
-  &__avatar-placeholder {
-    width: 100%;
-    height: 100%;
-    border-radius: $radius-full;
-    background: $gradient-primary-soft;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid var(--q-color-bg-card);
-    box-shadow: $shadow-sm;
-  }
-
-  &__avatar-icon {
-    font-size: 28px;
   }
 
   &__online-dot {
@@ -239,21 +203,6 @@ function onTap() {
     padding: 0 6px;
     margin-left: $spacing-sm;
     flex-shrink: 0;
-  }
-
-  /* ===== 右侧图标 ===== */
-  &__right-icon {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: $spacing-sm;
-    flex-shrink: 0;
-  }
-
-  &__right-icon-text {
-    font-size: 20px;
   }
 }
 </style>

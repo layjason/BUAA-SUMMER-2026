@@ -23,17 +23,12 @@
           class="friend-item"
           @tap="goToProfile(friend.userId)"
         >
-          <view class="friend-avatar-wrapper">
-            <image
-              v-if="friend.avatar?.signedUrl"
-              class="friend-avatar"
-              :src="friend.avatar.signedUrl"
-              mode="aspectFill"
-            />
-            <view v-else class="friend-avatar-placeholder">
-              <text class="friend-avatar-text">{{ friend.nickname.charAt(0) }}</text>
-            </view>
-          </view>
+          <UserAvatar
+            size="md"
+            :avatar-url="friend.avatar?.signedUrl || ''"
+            :name="friend.remark || friend.nickname"
+            :user-id="friend.userId"
+          />
 
           <view class="friend-info">
             <text class="friend-name">{{ friend.remark || friend.nickname }}</text>
@@ -155,6 +150,7 @@ import { ref, onMounted, nextTick } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import { getFriends, removeFriend, updateFriendRemark, blockUser } from '@/api/modules/social'
 import { resolveFriendConversationId } from '@/utils/friend-chat'
 import type { components } from '@/api/types/schema'

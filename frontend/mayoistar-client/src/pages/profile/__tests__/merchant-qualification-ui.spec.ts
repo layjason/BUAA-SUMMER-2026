@@ -2,7 +2,16 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
+function normalizeFormText(value: string | null | undefined): string {
+  return (value ?? '').trim()
+}
+
 describe('商家资料资质提交 UI', () => {
+  it('空商家名称不应在生成资料快照时抛错', () => {
+    expect(normalizeFormText(null)).toBe('')
+    expect(normalizeFormText(undefined)).toBe('')
+    expect(normalizeFormText('  测试商家  ')).toBe('测试商家')
+  })
   it('应通过 API modules 提交营业凭证并展示审核状态', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/pages/profile/edit.vue'), 'utf8')
 
@@ -17,7 +26,13 @@ describe('商家资料资质提交 UI', () => {
     expect(source).not.toContain('licensePreviewUrls.value.push(result.signedUrl || filePath)')
     expect(source).toContain('qualificationSubmittedAt')
     expect(source).toContain('qualificationReviewedAt')
-    expect(source).toContain('submittedLicenseUrls')
+    expect(source).toContain('submittedLicensePreviewUrls')
+    expect(source).toContain('resolveMediaPreviewUrl')
+    expect(source).toContain('resolveSubmittedLicensePreviews')
+    expect(source).toContain("formError.value = ''")
+    expect(source).toContain('profile.merchantName ??')
+    expect(source).toContain('normalizeFormText')
+    expect(source).toContain('loadProfileGeneration')
     expect(source).not.toContain('v-if="isMerchant && qualification"')
   })
 

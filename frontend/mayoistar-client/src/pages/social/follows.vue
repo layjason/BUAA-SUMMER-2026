@@ -41,15 +41,12 @@
           class="list-item"
           @tap="goToProfile(item.userId)"
         >
-          <view class="item-avatar">
-            <image
-              v-if="item.avatar?.signedUrl"
-              :src="item.avatar.signedUrl"
-              class="item-avatar-image"
-              mode="aspectFill"
-            />
-            <text v-else class="item-avatar-placeholder">👤</text>
-          </view>
+          <UserAvatar
+            size="md"
+            :avatar-url="item.avatar?.signedUrl || ''"
+            :name="item.nickname"
+            :user-id="item.userId"
+          />
 
           <view class="item-info">
             <view class="item-name-row">
@@ -88,6 +85,7 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import { getFollows, getFollowers, getFriends, unfollowUser } from '@/api/modules/social'
 import type { components } from '@/api/types/schema'
 

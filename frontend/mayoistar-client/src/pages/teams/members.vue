@@ -18,15 +18,12 @@
           class="member-item"
           @tap="onMemberTap(member)"
         >
-          <view class="member-avatar">
-            <image
-              v-if="member.avatar?.signedUrl"
-              :src="member.avatar.signedUrl"
-              class="member-avatar-image"
-              mode="aspectFill"
-            />
-            <text v-else class="member-avatar-placeholder">👤</text>
-          </view>
+          <UserAvatar
+            size="md"
+            :avatar-url="member.avatar?.signedUrl || ''"
+            :name="member.nickname"
+            :user-id="member.userId"
+          />
 
           <view class="member-info">
             <view class="member-name-row">
@@ -96,6 +93,7 @@ import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import { getTeamMembers, updateMemberRole } from '@/api/modules/teams'
 import { useAuthStore } from '@/stores/auth'
 import type { components } from '@/api/types/schema'

@@ -3,7 +3,7 @@
  *
  * OpenAPI 暂无「按好友 userId 查询会话」接口，客户端通过会话列表 + 好友资料组合定位。
  */
-import { getConversations } from '@/api/modules/chat'
+import { getConversations, getMessages } from '@/api/modules/chat'
 import { getFriends, getUserProfile } from '@/api/modules/social'
 import type { components } from '@/api/types/schema'
 
@@ -32,6 +32,22 @@ export async function resolveFriendConversationId(targetUserId: string): Promise
   if (friend?.remark?.trim()) titles.add(friend.remark.trim())
   if (profile.nickname) titles.add(profile.nickname)
 
-  const match = conversations.find((c) => c.kind === 'friend' && titles.has(c.title))
-  return match?.conversationId ?? null
+  const friendConvs = conversations.filter((c) => c.kind === 'friend')
+  const titleMatch = friendConvs.find((c) => c.title && titles.has(c.title))
+  if (titleMatch) return titleMatch.conversationId
+
+  // 后端好友会话可能未持久化 title，通过消息发送者回查会话
+  for (const conv of friendConvs) {
+    try {
+      const msgResult = await getMessages(conv.conversationId, 1, 30)
+      const items = unwrapItems<{ senderId: string }>(msgResult)
+      if (items.some((m) => m.senderId === targetUserId)) {
+        return conv.conversationId
+      }
+    } catch {
+      /* 跳过不可访问会话 */
+    }
+  }
+
+  return null
 }

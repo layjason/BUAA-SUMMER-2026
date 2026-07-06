@@ -8,15 +8,12 @@
 
       <scroll-view class="panel__scroll" scroll-y>
         <view v-if="team" class="info-card">
-          <view class="info-card__avatar">
-            <image
-              v-if="team.avatar?.signedUrl"
-              :src="team.avatar.signedUrl"
-              class="info-card__avatar-img"
-              mode="aspectFill"
-            />
-            <text v-else class="info-card__avatar-placeholder">👥</text>
-          </view>
+          <UserAvatar
+            class="info-card__avatar"
+            size="lg"
+            :avatar-url="team.avatar?.signedUrl || ''"
+            :name="team.name"
+          />
           <view class="info-card__body">
             <view class="info-card__title-row">
               <text class="info-card__name">{{ team.name }}</text>
@@ -82,6 +79,7 @@
  * 3 行 × 2 列功能入口；队长可解散，普通成员底部显示积分榜。
  */
 import { ref, computed } from 'vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import { BusinessError } from '@/api'
 import { dissolveTeam } from '@/api/modules/teams'
 import { getTeamErrorMessage } from '@/utils/team-error-message'
@@ -253,7 +251,7 @@ defineExpose({ open, close })
   border-radius: $radius-lg;
   padding: $spacing-md;
   display: flex;
-  gap: $spacing-md;
+  gap: $spacing-lg;
   margin-bottom: $spacing-md;
 }
 

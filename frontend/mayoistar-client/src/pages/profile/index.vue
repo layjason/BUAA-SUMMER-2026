@@ -5,10 +5,14 @@
         <!-- 用户卡片：未登录/已登录共用布局 -->
         <view class="user-card">
           <view class="user-card-main" @click="onCardClick">
-            <image v-if="avatarUrl" class="avatar-image" :src="avatarUrl" mode="aspectFill" />
-            <view v-else class="avatar-placeholder">
-              <text class="avatar-text">{{ initialChar }}</text>
-            </view>
+            <UserAvatar
+              class="profile-avatar"
+              size="lg"
+              :avatar-url="avatarUrl"
+              :name="nickname"
+              :user-id="authStore.userId || ''"
+              :initial="initialChar"
+            />
             <view class="user-info">
               <view class="user-name-row">
                 <text class="user-id">{{ displayName }}</text>
@@ -66,7 +70,9 @@ import { useI18n } from 'vue-i18n'
 import { onShow } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/auth'
 import { logout } from '@/api/modules/auth'
-import { getMerchantProfile, getMyProfile } from '@/api/modules/profile'
+import { getMerchantProfile } from '@/api/modules/profile'
+import { UserAvatar } from '@/components'
+import { loadCurrentUserProfileDisplay } from '@/utils/current-user-profile'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -171,20 +177,16 @@ const qualificationStatusMap: Record<string, string> = {
 async function loadNickname(): Promise<void> {
   if (!authStore.isLoggedIn) return
   try {
+    const profile = await loadCurrentUserProfileDisplay()
+    nickname.value = profile.nickname
+    avatarUrl.value = profile.avatarUrl
     if (authStore.userKind === 'merchant') {
-      const profile = await getMerchantProfile()
-      nickname.value = profile.nickname
-      avatarUrl.value = profile.avatar?.signedUrl ?? ''
-      merchantQualificationStatus.value = profile.qualificationStatus
+      const merchantProfile = await getMerchantProfile()
+      merchantQualificationStatus.value = merchantProfile.qualificationStatus
       return
     }
-
-    const profile = await getMyProfile()
-    nickname.value = profile.nickname
-    avatarUrl.value = profile.avatar?.signedUrl ?? ''
     merchantQualificationStatus.value = ''
   } catch {
-    /* 加载失败使用 userId 兜底 */
     avatarUrl.value = ''
     merchantQualificationStatus.value = ''
   }
@@ -311,6 +313,11 @@ async function handleLogout(): Promise<void> {
   align-items: center;
   flex: 1;
   min-width: 0;
+}
+
+.profile-avatar {
+  margin-right: 24rpx;
+  flex-shrink: 0;
 }
 
 .avatar-placeholder {

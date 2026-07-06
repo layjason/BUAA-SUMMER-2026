@@ -6,5 +6,7 @@ export { default as CooldownButton } from './CooldownButton.vue'
 export { default as BottomActionBar } from './base/BottomActionBar.vue'
 export { default as AppNavbar } from './base/AppNavbar.vue'
 export { default as EmptyState } from './base/EmptyState.vue'
+export { default as ImagePreviewOverlay } from './base/ImagePreviewOverlay.vue'
+export { default as UserAvatar } from './base/UserAvatar.vue'
 
 export { useCooldown } from '@/composables/useCooldown'

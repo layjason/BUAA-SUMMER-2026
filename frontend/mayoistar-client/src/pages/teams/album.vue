@@ -3,15 +3,18 @@
     <AppNavbar title="小队相册" />
 
     <view class="toolbar">
-      <view class="toolbar-btn" @tap="onUpload">
+      <template v-if="inSelectionMode">
+        <view class="toolbar-btn" @tap="onSaveSelected">
+          <text class="toolbar-btn-text">
+            {{ savingSelected ? '保存中...' : `保存 (${selectedIds.length})` }}
+          </text>
+        </view>
+        <view v-if="canManage" class="toolbar-btn toolbar-btn--danger" @tap="onDeleteSelected">
+          <text class="toolbar-btn-text">删除 ({{ selectedIds.length }})</text>
+        </view>
+      </template>
+      <view v-else class="toolbar-btn" @tap="onUpload">
         <text class="toolbar-btn-text">上传图片</text>
-      </view>
-      <view
-        v-if="canManage && selectedIds.length > 0"
-        class="toolbar-btn toolbar-btn--danger"
-        @tap="onDeleteSelected"
-      >
-        <text class="toolbar-btn-text">删除 ({{ selectedIds.length }})</text>
       </view>
     </view>
 
@@ -31,11 +34,11 @@
           class="album-item"
           :class="{ 'album-item--selected': isSelected(image.mediaId) }"
           @tap="onImageTap(image)"
-          @longpress="canManage ? toggleSelect(image.mediaId) : undefined"
+          @longpress="toggleSelect(image.mediaId)"
         >
           <image
-            v-if="image.signedUrl"
-            :src="image.signedUrl"
+            v-if="getImagePreviewUrl(image.mediaId)"
+            :src="getImagePreviewUrl(image.mediaId)"
             class="album-image"
             mode="aspectFill"
           />
@@ -43,7 +46,7 @@
             <text>🖼️</text>
           </view>
           <view
-            v-if="canManage"
+            v-if="inSelectionMode"
             class="album-check"
             :class="{ 'album-check--active': isSelected(image.mediaId) }"
           >
@@ -54,6 +57,14 @@
 
       <view class="bottom-padding"></view>
     </scroll-view>
+
+    <ImagePreviewOverlay
+      :visible="previewVisible"
+      :urls="previewUrls"
+      :current="previewCurrent"
+      :show-save="true"
+      @close="closeImagePreview"
+    />
   </view>
 </template>
 
@@ -61,11 +72,11 @@
 /**
  * 小队相册页
  *
- * 网格展示相册图片，支持上传；队长/管理员可删除选中图片。
+ * 网格展示相册图片，支持上传；点击预览/保存，长按多选后批量保存或删除。
  */
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { AppNavbar, EmptyState } from '@/components'
+import { AppNavbar, EmptyState, ImagePreviewOverlay } from '@/components'
 import { BusinessError } from '@/api'
 import { getTeamMembers } from '@/api/modules/teams'
 import {
@@ -75,6 +86,8 @@ import {
 } from '@/api/modules/teamChat'
 import { extractPageItems } from '@/utils/page-result'
 import { getTeamErrorMessage } from '@/utils/team-error-message'
+import { resolveMediaPreviewUrlMap } from '@/utils/media-preview'
+import { saveImageToDevice } from '@/utils/save-image'
 import { useAuthStore } from '@/stores/auth'
 import type { components } from '@/api/types/schema'
 
@@ -83,10 +96,16 @@ type TeamMember = components['schemas']['Social.TeamMember']
 
 const teamId = ref('')
 const images = ref<MediaFile[]>([])
+/** 小队相册图片鉴权下载后的本地预览地址（mediaId -> previewUrl） */
+const imagePreviewUrls = ref<Record<string, string>>({})
 const members = ref<TeamMember[]>([])
 const loading = ref(false)
 const uploading = ref(false)
+const savingSelected = ref(false)
 const selectedIds = ref<string[]>([])
+const previewVisible = ref(false)
+const previewUrls = ref<string[]>([])
+const previewCurrent = ref('')
 
 const authStore = useAuthStore()
 const currentUserId = ref(authStore.userId || '10001')
@@ -96,9 +115,25 @@ const canManage = computed(() => {
   return me?.role === 'leader' || me?.role === 'admin'
 })
 
+/** 是否处于多选模式（有选中项时切换工具栏与点击行为） */
+const inSelectionMode = computed(() => selectedIds.value.length > 0)
+
 /** 判断是否已选中 */
 function isSelected(mediaId: string): boolean {
   return selectedIds.value.includes(mediaId)
+}
+
+/** 获取相册图片可展示地址（teamMember 私有媒体需鉴权下载） */
+function getImagePreviewUrl(mediaId: string): string {
+  return imagePreviewUrls.value[mediaId] || ''
+}
+
+/** 批量解析相册图片预览 */
+async function resolveAlbumImagePreviews(items: MediaFile[]): Promise<void> {
+  imagePreviewUrls.value = await resolveMediaPreviewUrlMap(
+    items.map((image) => ({ id: image.mediaId, signedUrl: image.signedUrl })),
+    authStore.getAccessToken(),
+  )
 }
 
 /** 展示业务错误提示 */
@@ -122,6 +157,7 @@ async function loadData() {
     ])
     members.value = extractPageItems<TeamMember>(membersResult)
     images.value = extractPageItems<MediaFile>(imagesResult)
+    await resolveAlbumImagePreviews(images.value)
   } catch (error) {
     console.error('Failed to load album:', error)
     showBusinessError(error, '加载失败')
@@ -159,16 +195,34 @@ async function onUpload() {
   }
 }
 
-/** 点击图片：管理模式下切换选中，否则预览 */
+/** 打开全屏图片预览 */
+function openImagePreview(image: MediaFile) {
+  const current = getImagePreviewUrl(image.mediaId)
+  if (!current) {
+    uni.showToast({ title: '图片加载中，请稍后重试', icon: 'none' })
+    return
+  }
+  previewUrls.value = images.value
+    .map((item) => getImagePreviewUrl(item.mediaId))
+    .filter((url) => Boolean(url))
+  previewCurrent.value = current
+  previewVisible.value = true
+}
+
+/** 关闭全屏图片预览 */
+function closeImagePreview() {
+  previewVisible.value = false
+  previewUrls.value = []
+  previewCurrent.value = ''
+}
+
+/** 点击图片：多选模式下切换选中，否则打开预览 */
 function onImageTap(image: MediaFile) {
-  if (canManage.value) {
+  if (inSelectionMode.value) {
     toggleSelect(image.mediaId)
     return
   }
-  if (image.signedUrl) {
-    const urls = images.value.filter((i) => i.signedUrl).map((i) => i.signedUrl!)
-    uni.previewImage({ urls, current: image.signedUrl })
-  }
+  openImagePreview(image)
 }
 
 /** 切换选中状态 */
@@ -178,6 +232,38 @@ function toggleSelect(mediaId: string) {
     selectedIds.value.splice(idx, 1)
   } else {
     selectedIds.value.push(mediaId)
+  }
+}
+
+/** 批量保存已选图片到本地 */
+async function onSaveSelected() {
+  if (savingSelected.value || selectedIds.value.length === 0) return
+
+  savingSelected.value = true
+  uni.showLoading({ title: '保存中...' })
+  let savedCount = 0
+
+  try {
+    for (const [index, mediaId] of selectedIds.value.entries()) {
+      const preview = getImagePreviewUrl(mediaId)
+      if (!preview) continue
+      try {
+        await saveImageToDevice(preview, `album-${index + 1}.jpg`)
+        savedCount++
+      } catch {
+        /* 单张失败时继续保存其余图片 */
+      }
+    }
+
+    if (savedCount > 0) {
+      uni.showToast({ title: `已保存 ${savedCount} 张`, icon: 'success' })
+      selectedIds.value = []
+    } else {
+      uni.showToast({ title: '保存失败', icon: 'none' })
+    }
+  } finally {
+    savingSelected.value = false
+    uni.hideLoading()
   }
 }
 

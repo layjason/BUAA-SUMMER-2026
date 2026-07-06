@@ -1,7 +1,7 @@
 {
   "name": "迷星群聚",
   /* uni-app 应用 ID，用于唯一标识应用，必须在 uni-app 平台注册 */
-  "appid": "EXAMPLE_CODE",
+  "appid": "__UNI__A6BEED6",
   "description": "",
   "versionName": "0.0.0.1",
   "versionCode": "0001",
@@ -64,18 +64,18 @@
         "geolocation": {
           "amap": {
             /* 高德定位 SDK 配置，请替换为正式值。Web 端 Key 在 VITE_AMAP_WEB_API_KEY 环境变量中配置 */
-            "name": "your_amap_sdk_name",
-            "__platform__": ["android"],
-            "appkey_ios": "",
-            "appkey_android": "your_android_appkey"
+            "name": "amapbL0GPTou",
+            "__platform__": ["ios", "android"],
+            "appkey_ios": "9a686e65598eb79b671d058efda4f034",
+            "appkey_android": "4bcfa1bb25daef59dd106e0c5c61181f"
           }
         },
         "maps": {
           "amap": {
             /* 高德地图 SDK 配置，请替换为正式值 */
-            "name": "your_amap_sdk_name",
-            "appkey_ios": "your_ios_key",
-            "appkey_android": "your_android_appkey"
+            "name": "amapbL0GPTou",
+            "appkey_ios": "9a686e65598eb79b671d058efda4f034",
+            "appkey_android": "4bcfa1bb25daef59dd106e0c5c61181f"
           }
         }
       }
@@ -108,8 +108,8 @@
     "sdkConfigs": {
       "maps": {
         "amap": {
-          "key": "your_amap_key",
-          "securityJsCode": "your_security_js_code",
+          "key": "9766ce879d20c60f022e3635b58a29bc",
+          "securityJsCode": "457cde1e63fbb72549b43622bd2e5ec3",
           "serviceHost": ""
         }
       }

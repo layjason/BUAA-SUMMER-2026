@@ -99,15 +99,7 @@
           @tap="goToTeamDetail(team)"
         >
           <!-- Avatar -->
-          <view class="team-avatar">
-            <image
-              v-if="team.avatar?.signedUrl"
-              :src="team.avatar.signedUrl"
-              class="team-avatar-image"
-              mode="aspectFill"
-            />
-            <text v-else class="team-avatar-placeholder">👥</text>
-          </view>
+          <UserAvatar size="md" :avatar-url="team.avatar?.signedUrl || ''" :name="team.name" />
 
           <!-- Content -->
           <view class="team-content">
@@ -166,6 +158,7 @@ import { ref, watch, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import { listMyTeams, searchTeams } from '@/api/modules/teams'
 import { getInterestTags } from '@/api/modules/profile'
 import { extractPageItems } from '@/utils/page-result'

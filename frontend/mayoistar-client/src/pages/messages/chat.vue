@@ -68,9 +68,14 @@
           }"
         >
           <!-- Avatar -->
-          <view v-if="!isMyMessage(msg)" class="message-avatar">
-            <text class="avatar-placeholder">👤</text>
-          </view>
+          <UserAvatar
+            v-if="!isMyMessage(msg)"
+            class="message-avatar-slot"
+            size="sm"
+            :avatar-url="getSenderAvatar(msg.senderId)"
+            :name="getSenderName(msg.senderId)"
+            :user-id="msg.senderId"
+          />
 
           <!-- Message Content -->
           <view class="message-body">
@@ -86,6 +91,22 @@
               @longpress="onMessageLongPress(msg)"
             >
               <LocationMessageCard :location="msg.location" />
+            </view>
+
+            <!-- Image message (standalone preview card, no text bubble background) -->
+            <view
+              v-else-if="!msg.recalled && msg.kind === 'image'"
+              class="message-image-wrap"
+              @tap="onImageMessageTap(msg)"
+              @longpress="onMessageLongPress(msg)"
+            >
+              <image
+                v-if="getImageUrl(msg)"
+                :src="getImageUrl(msg)"
+                class="message-image"
+                mode="widthFix"
+              />
+              <text v-else class="message-image-placeholder">[图片]</text>
             </view>
 
             <!-- Message bubble -->
@@ -106,13 +127,6 @@
                 </text>
                 <text class="message-text">{{ msg.text }}</text>
               </view>
-              <image
-                v-else-if="msg.kind === 'image' && getImageUrl(msg)"
-                :src="getImageUrl(msg)"
-                class="message-image"
-                mode="widthFix"
-              />
-              <text v-else-if="msg.kind === 'image'" class="message-text">[图片]</text>
               <text v-else-if="msg.kind === 'location'" class="message-text">[位置]</text>
             </view>
 
@@ -141,9 +155,14 @@
           </view>
 
           <!-- My avatar -->
-          <view v-if="isMyMessage(msg)" class="message-avatar">
-            <text class="avatar-placeholder">🙂</text>
-          </view>
+          <UserAvatar
+            v-if="isMyMessage(msg)"
+            class="message-avatar-slot"
+            size="sm"
+            :avatar-url="myAvatarUrl"
+            :name="myNickname"
+            :user-id="currentUserId"
+          />
         </view>
       </view>
 
@@ -168,7 +187,7 @@
       </view>
     </view>
 
-    <view v-if="conversationKind === 'team' && !teamWritable" class="readonly-hint">
+    <view v-if="showReadonlyHint" class="readonly-hint">
       <text class="readonly-hint-text">小队已解散或停用，仅可查看历史消息</text>
     </view>
 
@@ -261,6 +280,14 @@
         </scroll-view>
       </view>
     </uni-popup>
+
+    <ImagePreviewOverlay
+      :visible="chatPreviewVisible"
+      :urls="chatPreviewUrls"
+      :current="chatPreviewCurrent"
+      :show-save="true"
+      @close="closeChatImagePreview"
+    />
   </view>
 </template>
 
@@ -274,6 +301,8 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { pickChatLocation } from '@/services/chat-send'
 import { onShow } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/base/AppNavbar.vue'
+import ImagePreviewOverlay from '@/components/base/ImagePreviewOverlay.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import ForwardTargetPicker from '@/components/social/ForwardTargetPicker.vue'
 import LocationMessageCard from '@/components/social/LocationMessageCard.vue'
 import TeamChatPanel from '@/components/social/TeamChatPanel.vue'
@@ -296,10 +325,14 @@ import {
   uploadChatImage,
 } from '@/api/modules/chat'
 import type { ChatRealtimeEvent } from '@/api/modules/chatRealtime'
-import { getUserProfile } from '@/api/modules/social'
+import { getFriends, getUserProfile } from '@/api/modules/social'
 import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 import { useChatRealtime } from '@/composables/useChatRealtime'
 import { resolveFriendConversationId } from '@/utils/friend-chat'
+import { resolveMediaPreviewUrl } from '@/utils/media-preview'
+import { loadCurrentUserProfileDisplay } from '@/utils/current-user-profile'
 import type { components } from '@/api/types/schema'
 
 type ChatMessage = components['schemas']['Chat.ChatMessage']
@@ -338,6 +371,15 @@ const messages = ref<ChatMessage[]>([])
 const inputText = ref('')
 const scrollTarget = ref('')
 const memberNames = ref<Map<string, string>>(new Map())
+const memberAvatars = ref<Map<string, string>>(new Map())
+const myAvatarUrl = ref('')
+const myNickname = ref('')
+/** 图片消息鉴权下载后的本地预览地址（messageId -> previewUrl） */
+const imagePreviewUrls = ref<Record<string, string>>({})
+const chatPreviewVisible = ref(false)
+const chatPreviewUrls = ref<string[]>([])
+const chatPreviewCurrent = ref('')
+const friendPeerUserId = ref('')
 const showAttachmentPanel = ref(false)
 const forwardPickerVisible = ref(false)
 const forwardingMessage = ref<ChatMessage | null>(null)
@@ -363,8 +405,19 @@ const pendingMentionLabels = computed(() => {
   return labels
 })
 
-const teamWritable = computed(
-  () => teamProfile.value?.status === 'active' || conversationKind.value !== 'team',
+const teamContextReady = computed(
+  () => conversationKind.value !== 'team' || teamProfile.value !== null,
+)
+
+const teamWritable = computed(() => {
+  if (conversationKind.value !== 'team') return true
+  if (!teamProfile.value) return false
+  return teamProfile.value.status === 'active'
+})
+
+/** 小队资料加载完成且非活跃时才展示只读提示，避免进入时闪一下 */
+const showReadonlyHint = computed(
+  () => conversationKind.value === 'team' && teamContextReady.value && !teamWritable.value,
 )
 
 const canSend = computed(
@@ -378,14 +431,94 @@ function isMyMessage(msg: ChatMessage): boolean {
   return msg.senderId === currentUserId.value
 }
 
-/** 图片消息展示地址 */
+/** 图片消息展示地址（私有媒体需先经鉴权下载） */
 function getImageUrl(msg: ChatMessage): string {
-  return msg.image?.signedUrl || ''
+  return imagePreviewUrls.value[msg.messageId] || ''
+}
+
+/** 为单条图片消息解析可展示的本地/公开 URL */
+async function resolveImagePreviewForMessage(msg: ChatMessage): Promise<void> {
+  if (msg.kind !== 'image' || !msg.image?.signedUrl) return
+  const preview = await resolveMediaPreviewUrl(msg.image.signedUrl, authStore.getAccessToken())
+  if (preview) {
+    imagePreviewUrls.value = { ...imagePreviewUrls.value, [msg.messageId]: preview }
+  }
+}
+
+/** 批量解析当前消息列表中的图片预览 */
+async function resolveAllImagePreviews(): Promise<void> {
+  await Promise.all(messages.value.map((msg) => resolveImagePreviewForMessage(msg)))
+}
+
+/** 打开聊天图片全屏预览 */
+function onImageMessageTap(msg: ChatMessage) {
+  const current = getImageUrl(msg)
+  if (!current) {
+    uni.showToast({ title: '图片加载中，请稍后重试', icon: 'none' })
+    return
+  }
+  chatPreviewUrls.value = messages.value
+    .filter((item) => item.kind === 'image' && !item.recalled && getImageUrl(item))
+    .map((item) => getImageUrl(item))
+  chatPreviewCurrent.value = current
+  chatPreviewVisible.value = true
+}
+
+/** 关闭聊天图片全屏预览 */
+function closeChatImagePreview() {
+  chatPreviewVisible.value = false
+  chatPreviewUrls.value = []
+  chatPreviewCurrent.value = ''
+}
+
+/** 解析好友单聊标题：优先会话列表标题，否则拉取对方昵称 */
+async function loadFriendChatTitle(): Promise<void> {
+  if (conversationKind.value !== 'friend') return
+
+  let peerId = friendPeerUserId.value
+  if (!peerId) {
+    const otherSender = messages.value.find((m) => m.senderId !== currentUserId.value)
+    if (otherSender) peerId = otherSender.senderId
+  }
+  if (!peerId) return
+
+  try {
+    const [profile, friendsResult] = await Promise.all([
+      getUserProfile(peerId),
+      getFriends().catch(() => []),
+    ])
+    const friends = Array.isArray(friendsResult)
+      ? friendsResult
+      : (((friendsResult as Record<string, unknown>).items as {
+          userId: string
+          remark?: string
+        }[]) ?? [])
+    const friend = friends.find((f) => f.userId === peerId)
+    chatTitle.value = friend?.remark?.trim() || profile.nickname || chatTitle.value
+    memberNames.value.set(peerId, profile.nickname || '用户')
+    if (profile.avatar?.signedUrl) {
+      memberAvatars.value.set(peerId, profile.avatar.signedUrl)
+    }
+  } catch {
+    /* 保留会话列表已有标题 */
+  }
 }
 
 /** 获取发送者名称 (群聊用) */
 function getSenderName(senderId: string): string {
   return memberNames.value.get(senderId) ?? '用户'
+}
+
+/** 获取发送者头像 URL */
+function getSenderAvatar(senderId: string): string {
+  return memberAvatars.value.get(senderId) ?? ''
+}
+
+/** 加载当前用户统一头像资料 */
+async function loadCurrentUserAvatar(): Promise<void> {
+  const profile = await loadCurrentUserProfileDisplay()
+  myAvatarUrl.value = profile.avatarUrl
+  myNickname.value = profile.nickname
 }
 
 /** 格式化时间 */
@@ -424,7 +557,11 @@ async function loadMessages() {
     // 加载成员名称 (群聊)
     if (conversationKind.value === 'team') {
       await loadMemberNames()
+    } else {
+      await loadFriendChatTitle()
     }
+
+    await resolveAllImagePreviews()
 
     // 滚动到底部
     await scrollToBottom()
@@ -472,6 +609,9 @@ async function loadTeamContext() {
     }))
     for (const member of memberItems) {
       memberNames.value.set(member.userId, member.nickname)
+      if (member.avatar?.signedUrl) {
+        memberAvatars.value.set(member.userId, member.avatar.signedUrl)
+      }
     }
     const isManager = myTeamRole.value === 'leader' || myTeamRole.value === 'admin'
     if (isManager && requestsResult) {
@@ -523,6 +663,9 @@ async function loadMemberNames() {
       try {
         const profile = await getUserProfile(senderId)
         memberNames.value.set(senderId, profile.nickname || '用户')
+        if (profile.avatar?.signedUrl) {
+          memberAvatars.value.set(senderId, profile.avatar.signedUrl)
+        }
       } catch {
         memberNames.value.set(senderId, '用户')
       }
@@ -677,6 +820,7 @@ function upsertMessage(msg: ChatMessage) {
   } else {
     messages.value.push(msg)
   }
+  void resolveImagePreviewForMessage(msg)
 }
 
 function handleChatRealtimeEvent(event: ChatRealtimeEvent) {
@@ -761,7 +905,9 @@ async function pickAndSendImage() {
           kind: 'image',
           imageMediaId: media.mediaId,
         })
-        messages.value.push(result as ChatMessage)
+        const sent = result as ChatMessage
+        messages.value.push(sent)
+        await resolveImagePreviewForMessage(sent)
         showAttachmentPanel.value = false
         await scrollToBottom()
       } catch {
@@ -779,11 +925,12 @@ onMounted(async () => {
   const currentPage = pages[pages.length - 1] as any
   const options = currentPage.options || {}
 
-  const authStore = useAuthStore()
   currentUserId.value = authStore.userId ?? ''
+  await loadCurrentUserAvatar()
 
   conversationKind.value = options.kind === 'team' ? 'team' : 'friend'
   teamId.value = options.teamId || ''
+  friendPeerUserId.value = options.targetUserId || ''
 
   if (options.conversationId) {
     // 直接通过 conversationId 进入
@@ -822,6 +969,10 @@ onMounted(async () => {
     chatTitle.value = conversationKind.value === 'team' ? '小队群聊' : '好友聊天'
   }
 
+  if (conversationKind.value === 'friend') {
+    await loadFriendChatTitle()
+  }
+
   if (conversationKind.value === 'team') {
     if (!teamId.value && conversationId.value) {
       const mine = extractPageItems<TeamProfile>(await listMyTeams(1, 100))
@@ -847,6 +998,7 @@ onMounted(async () => {
 })
 
 onShow(() => {
+  void loadCurrentUserAvatar()
   if (conversationId.value) {
     loadMessages()
     connectChatRealtime()
@@ -990,7 +1142,7 @@ onShow(() => {
   box-sizing: border-box;
 
   &--mine {
-    flex-direction: row-reverse;
+    justify-content: flex-end;
 
     .message-body {
       align-items: flex-end;
@@ -1008,26 +1160,15 @@ onShow(() => {
   }
 }
 
-.message-avatar {
+.message-avatar-slot {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: $radius-full;
-  background: var(--q-color-bg-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  .avatar-placeholder {
-    font-size: 20px;
-  }
 }
 
 .message-body {
   display: flex;
   flex-direction: column;
   max-width: 72%;
-  min-width: 0;
+  flex-shrink: 0;
   gap: $spacing-xs;
 }
 
@@ -1089,8 +1230,31 @@ onShow(() => {
   font-style: italic;
 }
 
+.message-image-wrap {
+  width: 200px;
+  max-width: 100%;
+  border-radius: $radius-md;
+  overflow: hidden;
+  background: var(--q-color-bg-card);
+  box-shadow: $shadow-xs;
+  flex-shrink: 0;
+}
+
 .message-image {
-  max-width: 200px;
+  width: 200px;
+  max-width: 100%;
+  min-height: 80px;
+  display: block;
+  border-radius: $radius-md;
+  vertical-align: top;
+}
+
+.message-image-placeholder {
+  display: block;
+  font-size: $font-sm;
+  color: $color-text-sub;
+  padding: $spacing-sm $spacing-md;
+  background: var(--q-color-bg-card);
   border-radius: $radius-md;
 }
 
