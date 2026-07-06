@@ -118,6 +118,7 @@ async function handleAddImage(): Promise<void> {
     const res = await uni.chooseImage({
       count: 9 - imagePreviews.value.length,
       sizeType: ['compressed'],
+      extension: ['jpg', 'jpeg', 'png'],
     })
     try {
       const results = await uploadActivityImages(res.tempFilePaths as string[])
