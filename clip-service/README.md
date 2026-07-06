@@ -4,22 +4,24 @@
 
 ## 快速开始
 
-### 环境配置
+### 生产部署（GPU + Docker，Kafka Consumer 模式）
+
+确保已安装 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)。
 
 ```bash
 cp .env.example .env
-# 按需编辑 .env 中的配置项
+# 编辑 .env，填入 Java 服务器的 VPN/公网 IP
+vim .env
+# 启动 5 个消费者实例
+docker compose up -d --scale clip-classifier=5
 ```
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `CLIP_HOST` | `0.0.0.0` | 服务监听地址 |
-| `CLIP_PORT` | `8000` | 服务监听端口 |
-| `HF_HOME` | 系统默认 | Hugging Face 模型缓存目录 |
+模型权重约 600MB，首次启动时自动下载，通过 `clip_model_cache` volume 持久化。
 
-### CPU 运行
+### 本地开发（CPU，HTTP API 模式）
 
 ```bash
+cp .env.example .env
 pip install -r requirements.txt
 python main.py
 ```
@@ -30,15 +32,13 @@ python main.py
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-### GPU 运行（Docker）
-
-确保已安装 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)。
-
-```bash
-docker compose up -d
-```
-
-模型权重约 600MB，首次启动时自动下载，通过 `clip_model_cache` volume 持久化。
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `MODE` | `fastapi` | 运行模式：`kafka`（生产）或 `fastapi`（调试） |
+| `CLIP_HOST` | `0.0.0.0` | 服务监听地址 |
+| `CLIP_PORT` | `8000` | 服务监听端口 |
+| `KAFKA_BOOTSTRAP_SERVERS` | — | **必填**，Kafka broker 地址 |
+| `RUSTFS_ENDPOINT` | — | **必填**，S3 兼容存储端点 |
 
 ### 手动构建
 

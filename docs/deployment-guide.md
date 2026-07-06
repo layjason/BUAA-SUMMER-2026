@@ -4,6 +4,8 @@
 
 - Version: 1 20260704 152641
   - 初始版本：确立 Java + Kafka + GPU 集群部署拓扑和步骤
+- Version: 2 20260706 154940
+  - 简化 GPU 部署流程：合并 .env.gpu.example 到 .env.example，改用 docker compose --scale 一键启动
 
 ---
 
@@ -134,44 +136,27 @@ docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
 在 `clip-service/` 目录下复制并编辑环境变量文件：
 
 ```bash
-cp .env.gpu.example .env
+cp .env.example .env
 ```
 
-编辑 `.env` 文件，填入实际值：
+编辑 `.env` 文件，填入 Java 服务器的 VPN/专线 IP：
 
 ```bash
-MODE=kafka
-CLIP_PORT=8000
-
-# 替换 <VPN_IP> 为 Java 服务器在 VPN/专线中的 IP 地址
+# 仅需修改这两个必填项
 KAFKA_BOOTSTRAP_SERVERS=<VPN_IP>:9092
-KAFKA_GROUP_ID=mayoistar-clip-gpu
-KAFKA_REQUEST_TOPIC=clip-classify-request
-KAFKA_RESPONSE_TOPIC=clip-classify-response
-CONSUMER_MAX_RETRIES=3
-
 RUSTFS_ENDPOINT=http://<VPN_IP>:9000
-RUSTFS_ACCESS_KEY=<同 Java 服务器的 RUSTFS_ACCESS_KEY>
-RUSTFS_SECRET_KEY=<同 Java 服务器的 RUSTFS_SECRET_KEY>
-RUSTFS_BUCKET=mayoistar-media
 ```
 
-### 4.2 启动 5 个 Consumer 进程
+其余配置（凭证、topic 名称等）有默认值，通常无需修改。如 RustFS 凭证与默认值不同，请同步修改。
 
-每台 GPU 机器启动 5 个 Docker 容器（共享同一 `group.id`，Kafka 自动负载均衡）：
+### 4.2 启动 Consumer 进程
+
+每台 GPU 机器通过 `--scale` 启动多个容器实例（共享同一 `group.id`，Kafka 自动负载均衡）：
 
 ```bash
 cd clip-service
-
-# 启动 5 个实例，各占用不同端口
-for i in $(seq 1 5); do
-  CLIP_PORT=$((8000 + i)) \
-  CONTAINER_NAME="mayoistar-clip-$i" \
-  docker compose -p mayoistar-clip-$i up -d
-done
+docker compose up -d --scale clip-classifier=5
 ```
-
-或者使用 `docker compose up --scale clip-classifier=5 -d`（需确认卷冲突）。
 
 ### 4.3 验证
 
