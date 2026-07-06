@@ -5,6 +5,8 @@
  */
 import { StompSocketState, type IStompSocket, type IStompSocketMessageEvent } from '@stomp/stompjs'
 
+export type StompWebSocketHeaders = Record<string, string>
+
 /**
  * 将 HTTP API 根地址转为 STOMP WebSocket 端点 URL。
  */
@@ -16,12 +18,27 @@ export function toStompWebSocketUrl(baseUrl: string): string {
 
 /**
  * 创建 STOMP 可用的 WebSocket 实例。
+ *
+ * 前置条件：H5 环境存在原生 WebSocket；非 H5 环境存在 uni.connectSocket。
+ * 后置条件：H5 使用原生 WebSocket，APP/小程序优先使用 uni SocketTask。
+ * 不变量：非 H5 不因 WebView 暴露 WebSocket 构造器而绕过 uni.connectSocket。
  */
-export function createStompWebSocket(url: string): IStompSocket {
+export function createStompWebSocket(url: string, headers?: StompWebSocketHeaders): IStompSocket {
+  // #ifndef H5
+  if (typeof uni !== 'undefined' && typeof uni.connectSocket === 'function') {
+    return new UniStompSocket(url, headers)
+  }
+  // #endif
+
   if (typeof WebSocket !== 'undefined') {
     return new WebSocket(url) as unknown as IStompSocket
   }
-  return new UniStompSocket(url)
+
+  if (typeof uni !== 'undefined' && typeof uni.connectSocket === 'function') {
+    return new UniStompSocket(url, headers)
+  }
+
+  throw new Error('当前环境不支持 WebSocket')
 }
 
 /**
@@ -38,9 +55,9 @@ class UniStompSocket implements IStompSocket {
   private _readyState = StompSocketState.CONNECTING
   private task: UniApp.SocketTask
 
-  constructor(url: string) {
+  constructor(url: string, headers?: StompWebSocketHeaders) {
     this.url = url
-    this.task = uni.connectSocket({ url, complete: () => {} })
+    this.task = uni.connectSocket({ url, header: headers, complete: () => {} })
 
     this.task.onOpen(() => {
       this._readyState = StompSocketState.OPEN
