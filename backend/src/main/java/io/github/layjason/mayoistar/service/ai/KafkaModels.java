@@ -35,8 +35,27 @@ public final class KafkaModels {
         /** 待分类的媒体文件 ID 列表（已剔除缓存命中的） */
         private List<UUID> mediaIds;
 
+        /** 待分类媒体文件的下载信息（已剔除缓存命中的） */
+        private List<ClipTaskMedia> mediaFiles;
+
         /** 任务创建时间 ISO-8601 字符串 */
         private String timestamp;
+    }
+
+    /**
+     * 单张待分类媒体文件的下载信息。
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ClipTaskMedia {
+
+        /** 图片媒体文件 ID */
+        private UUID mediaId;
+
+        /** S3 / RustFS 对象 key，对应 media_files.storage_path */
+        private String storagePath;
     }
 
     /**

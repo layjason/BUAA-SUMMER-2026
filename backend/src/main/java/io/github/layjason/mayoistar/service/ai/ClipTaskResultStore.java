@@ -6,11 +6,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
@@ -26,7 +28,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnBean(StringRedisTemplate.class)
+@Profile("!test")
 public class ClipTaskResultStore {
 
     private static final String KEY_PREFIX = "clip:task:";
@@ -136,6 +138,8 @@ public class ClipTaskResultStore {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class TaskStatus {
 
         private String status;

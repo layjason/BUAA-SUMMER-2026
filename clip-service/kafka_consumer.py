@@ -95,7 +95,7 @@ def process_message(producer: Producer, s3_client: boto3.client, msg_value: dict
     """
     处理单条分类请求消息。
 
-    前置条件：msg_value 包含 taskId 和 mediaIds 字段。
+    前置条件：msg_value 包含 taskId 和 mediaFiles 或 mediaIds 字段。
     后置条件：分类结果已回写到 response topic。返回 True 表示成功。
     不变量：单张图片下载/分类失败不影响其他图片。
 
@@ -106,21 +106,22 @@ def process_message(producer: Producer, s3_client: boto3.client, msg_value: dict
     """
     task_id = msg_value.get("taskId")
     media_ids = msg_value.get("mediaIds", [])
+    media_files = msg_value.get("mediaFiles") or [str(mid) for mid in media_ids]
 
     if not task_id:
         logger.error("消息缺少 taskId，跳过")
         return True
 
-    if not media_ids:
+    if not media_files:
         logger.warning("任务无待分类图片: taskId=%s", task_id)
         _send_response(producer, task_id, "succeeded", [])
         return True
 
-    record_batch_size(len(media_ids))
-    logger.info("开始处理分类任务: taskId=%s, mediaCount=%d", task_id, len(media_ids))
+    record_batch_size(len(media_files))
+    logger.info("开始处理分类任务: taskId=%s, mediaCount=%d", task_id, len(media_files))
 
     # 下载图片
-    downloads = download_images(s3_client, [str(mid) for mid in media_ids])
+    downloads = download_images(s3_client, media_files)
 
     # 逐张分类
     items = []
