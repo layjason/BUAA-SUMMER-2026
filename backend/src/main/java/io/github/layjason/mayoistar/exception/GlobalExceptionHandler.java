@@ -2,8 +2,12 @@ package io.github.layjason.mayoistar.exception;
 
 import io.github.layjason.mayoistar.api.common.ApiErrorResponse;
 import io.github.layjason.mayoistar.api.common.EmptyData;
+import io.github.layjason.mayoistar.api.common.ValidationError;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Path;
+import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -55,7 +59,7 @@ public class GlobalExceptionHandler {
      *
      * <p>前置条件：Controller 的 @Valid 触发 Jakarta Bean Validation 失败。
      *
-     * <p>后置条件：返回 code=400，message 为第一条校验失败信息的 API 错误响应，HTTP 200。
+     * <p>后置条件：返回 code=400、message 为所有校验错误汇总（含字段名）的 API 错误响应，HTTP 200。
      *
      * @param ex 校验异常
      * @return 错误响应
@@ -63,8 +67,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse<EmptyData>> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex) {
-        var fieldError = ex.getBindingResult().getFieldError();
-        String message = fieldError != null ? fieldError.getDefaultMessage() : "请求参数校验失败";
+        List<ValidationError> errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> new ValidationError(e.getField(), e.getDefaultMessage()))
+                .toList();
+        String message = errors.isEmpty()
+                ? "请求参数校验失败"
+                : errors.stream().map(e -> e.getField() + "：" + e.getMessage()).collect(Collectors.joining("；"));
         log.warn("参数校验失败: {}", message);
         ApiErrorResponse<EmptyData> body = new ApiErrorResponse<>();
         body.setCode(400);
@@ -78,15 +86,25 @@ public class GlobalExceptionHandler {
      *
      * <p>前置条件：@Validated 触发方法级参数校验失败。
      *
-     * <p>后置条件：返回 code=400，message 为第一条校验失败信息的 API 错误响应，HTTP 200。
+     * <p>后置条件：返回 code=400、message 为所有校验错误汇总（含字段名）的 API 错误响应，HTTP 200。
      *
      * @param ex 校验异常
      * @return 错误响应
      */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiErrorResponse<EmptyData>> handleConstraintViolation(ConstraintViolationException ex) {
-        var violation = ex.getConstraintViolations().iterator().next();
-        String message = violation != null ? violation.getMessage() : "请求参数校验失败";
+        List<ValidationError> errors = ex.getConstraintViolations().stream()
+                .map(v -> {
+                    String field = StreamSupport.stream(v.getPropertyPath().spliterator(), false)
+                            .reduce((first, second) -> second)
+                            .map(Path.Node::getName)
+                            .orElse("unknown");
+                    return new ValidationError(field, v.getMessage());
+                })
+                .toList();
+        String message = errors.isEmpty()
+                ? "请求参数校验失败"
+                : errors.stream().map(e -> e.getField() + "：" + e.getMessage()).collect(Collectors.joining("；"));
         log.warn("参数校验失败: {}", message);
         ApiErrorResponse<EmptyData> body = new ApiErrorResponse<>();
         body.setCode(400);

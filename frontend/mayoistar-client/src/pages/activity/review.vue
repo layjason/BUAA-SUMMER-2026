@@ -161,6 +161,7 @@ async function handleAddReviewImage(): Promise<void> {
       count: 9 - imageUrls.value.length,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
+      extension: ['jpg', 'jpeg', 'png'],
     })
     uploadingImage.value = true
     try {

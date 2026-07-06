@@ -1,7 +1,6 @@
 package io.github.layjason.mayoistar.api.common;
 
 import io.github.layjason.mayoistar.api.activities.ActivityDtos;
-import io.github.layjason.mayoistar.api.ai.AiDtos;
 import io.github.layjason.mayoistar.entity.activities.ActivityReviewStatus;
 import io.github.layjason.mayoistar.entity.activities.ActivityRuntimeStatus;
 import io.github.layjason.mayoistar.entity.activities.RegistrationStatus;
@@ -179,49 +178,6 @@ public class DefaultApiResponseFactory {
         dto.setRating(5);
         dto.setTags(List.of());
         dto.setCreatedAt(NOW);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    /* ========== AI ========== */
-
-    /**
-     * 创建活动策划结果占位响应。
-     *
-     * <p>前置条件：尚未接入真实 AI 活动策划服务。
-     *
-     * <p>后置条件：返回成功状态的占位策划结果。
-     *
-     * <p>不变量：不调用 LLM API。
-     *
-     * @return 活动策划结果响应
-     */
-    public ResponseEntity<ApiResponse<AiDtos.ActivityPlanningResult>> activityPlanningResult() {
-        AiDtos.ActivityPlanningResult dto = new AiDtos.ActivityPlanningResult();
-        dto.setStatus("succeeded");
-        dto.setTags(List.of());
-        dto.setTitle("默认活动策划");
-        dto.setIntroduction("契约占位活动简介");
-        dto.setSafetyNotice("契约占位安全须知");
-        dto.setSuggestedCapacity(20);
-        dto.setSuggestedRegistrationDeadline(NOW);
-        return ResponseEntity.ok(ApiResponse.success(dto));
-    }
-
-    /**
-     * 创建图片分类结果占位响应。
-     *
-     * <p>前置条件：尚未接入真实 AI 图片分类服务。
-     *
-     * <p>后置条件：返回成功状态、无分类项的占位结果。
-     *
-     * <p>不变量：不调用 LLM API。
-     *
-     * @return 图片分类结果响应
-     */
-    public ResponseEntity<ApiResponse<AiDtos.ImageClassificationResult>> imageClassificationResult() {
-        AiDtos.ImageClassificationResult dto = new AiDtos.ImageClassificationResult();
-        dto.setStatus("succeeded");
-        dto.setItems(List.of());
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 

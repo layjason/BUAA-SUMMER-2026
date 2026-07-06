@@ -11,6 +11,7 @@ import logging
 import os
 import signal
 import sys
+import threading
 import uuid
 from typing import List
 
@@ -233,8 +234,11 @@ def run_consumer():
     后置条件：持续 poll 和处理消息，直到收到退出信号。
     不变量：消息处理成功后才 commit offset。
     """
-    signal.signal(signal.SIGINT, _handle_signal)
-    signal.signal(signal.SIGTERM, _handle_signal)
+    if threading.current_thread() is threading.main_thread():
+        signal.signal(signal.SIGINT, _handle_signal)
+        signal.signal(signal.SIGTERM, _handle_signal)
+    else:
+        logger.info("Kafka Consumer 在线程中运行，跳过进程信号注册")
 
     consumer = create_consumer()
     producer = create_producer()

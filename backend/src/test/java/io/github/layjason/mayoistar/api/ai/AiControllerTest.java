@@ -3,10 +3,11 @@ package io.github.layjason.mayoistar.api.ai;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
-import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.common.SecurityUtils;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.exception.ErrorCodes;
+import io.github.layjason.mayoistar.service.ai.ActivityPlanningService;
+import io.github.layjason.mayoistar.service.ai.AiRateLimiter;
 import io.github.layjason.mayoistar.service.ai.ImageClassificationService;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,10 @@ class AiControllerTest {
             }
         };
         AiController controller = new AiController(
-                new DefaultApiResponseFactory(), imageClassificationServiceProvider, mock(SecurityUtils.class));
+                mock(ActivityPlanningService.class),
+                imageClassificationServiceProvider,
+                mock(AiRateLimiter.class),
+                mock(SecurityUtils.class));
 
         assertThatThrownBy(() -> controller.getClassifyTaskResult(UUID.randomUUID()))
                 .isInstanceOf(BusinessException.class)

@@ -1,10 +1,11 @@
 package io.github.layjason.mayoistar.api.ai;
 
 import io.github.layjason.mayoistar.api.common.ApiResponse;
-import io.github.layjason.mayoistar.api.common.DefaultApiResponseFactory;
 import io.github.layjason.mayoistar.common.SecurityUtils;
 import io.github.layjason.mayoistar.exception.BusinessException;
 import io.github.layjason.mayoistar.exception.ErrorCodes;
+import io.github.layjason.mayoistar.service.ai.ActivityPlanningService;
+import io.github.layjason.mayoistar.service.ai.AiRateLimiter;
 import io.github.layjason.mayoistar.service.ai.ImageClassificationService;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -23,14 +24,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/ai")
 public class AiController {
 
-    private final DefaultApiResponseFactory responseFactory;
+    private static final String OPERATION_ACTIVITY_PLANNING = "activity-planning";
+    private static final String OPERATION_IMAGE_CLASSIFICATION = "image-classification";
+
+    private final ActivityPlanningService activityPlanningService;
     private final ObjectProvider<ImageClassificationService> imageClassificationServiceProvider;
+    private final AiRateLimiter aiRateLimiter;
     private final SecurityUtils securityUtils;
 
     @PostMapping("/activity-plans")
     public ResponseEntity<ApiResponse<AiDtos.ActivityPlanningResult>> generateActivityPlan(
             @Valid @RequestBody AiDtos.ActivityPlanningRequest request) {
-        return responseFactory.activityPlanningResult();
+        checkRateLimit(OPERATION_ACTIVITY_PLANNING);
+        AiDtos.ActivityPlanningResult result = activityPlanningService.generateActivityPlan(request);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     /**
@@ -43,6 +50,7 @@ public class AiController {
     @PostMapping("/image-classifications")
     public ResponseEntity<ApiResponse<AiDtos.ClassifyTaskSubmitResponse>> submitClassifyTask(
             @Valid @RequestBody AiDtos.ImageClassificationRequest request) {
+        checkRateLimit(OPERATION_IMAGE_CLASSIFICATION);
         String userId = securityUtils.getCurrentUserId();
         AiDtos.ClassifyTaskSubmitResponse result =
                 getImageClassificationService().submitClassifyTask(request.getMediaIds(), userId);
@@ -90,5 +98,12 @@ public class AiController {
                     ErrorCodes.AI_SERVICE_UNAVAILABLE, "AI image classification service is unavailable");
         }
         return service;
+    }
+
+    private void checkRateLimit(String operation) {
+        String userId = securityUtils.getCurrentUserId();
+        if (!aiRateLimiter.tryAcquire(userId, operation)) {
+            throw new BusinessException(ErrorCodes.AI_RATE_LIMITED, "AI rate limit has been exceeded");
+        }
     }
 }

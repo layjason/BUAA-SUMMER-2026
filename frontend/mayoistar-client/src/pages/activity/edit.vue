@@ -526,6 +526,7 @@ async function handleAddImage(): Promise<void> {
       count: 9 - imagePreviews.value.length,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
+      extension: ['jpg', 'jpeg', 'png'],
     })
     for (const tempPath of res.tempFilePaths) {
       try {
