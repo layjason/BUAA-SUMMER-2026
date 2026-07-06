@@ -282,6 +282,7 @@ async function handleAvatarClick(): Promise<void> {
       count: 1,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
+      extension: ['jpg', 'jpeg', 'png'],
     })
     const tempPath = res.tempFilePaths[0]
     if (!tempPath) return

@@ -43,9 +43,9 @@ public class MediaFileUploadService {
     private static final Map<MediaUsage, Set<String>> ALLOWED_TYPES = Map.ofEntries(
             Map.entry(MediaUsage.avatar, Set.of("image/jpeg", "image/png")),
             Map.entry(MediaUsage.merchantLicense, Set.of("image/jpeg", "image/png")),
-            Map.entry(MediaUsage.chatImage, Set.of("image/jpeg", "image/png", "image/gif", "image/webp")),
+            Map.entry(MediaUsage.chatImage, Set.of("image/jpeg", "image/png")),
             Map.entry(MediaUsage.teamFile, Set.of()), // 允许所有类型
-            Map.entry(MediaUsage.teamAlbum, Set.of("image/jpeg", "image/png", "image/gif", "image/webp")),
+            Map.entry(MediaUsage.teamAlbum, Set.of("image/jpeg", "image/png")),
             Map.entry(MediaUsage.activityImage, Set.of("image/jpeg", "image/png")),
             Map.entry(MediaUsage.activityReviewImage, Set.of("image/jpeg", "image/png")),
             Map.entry(MediaUsage.summaryImage, Set.of("image/jpeg", "image/png")));
