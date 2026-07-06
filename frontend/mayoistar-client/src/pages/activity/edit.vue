@@ -37,18 +37,25 @@
         <!-- 活动标签 -->
         <view class="form-item">
           <text class="label"> <text class="req">* </text>{{ t('activityEdit.tags') }} </text>
-          <view v-if="availableTags.length" class="tags-row">
-            <view
-              v-for="tag in availableTags"
-              :key="tag.name"
-              class="tag-chip"
-              :class="{ active: selectedTags.has(tag.name) }"
-              @click="toggleTag(tag.name)"
-            >
-              <text>{{ tag.name }}</text>
+          <view class="tag-create-row">
+            <input
+              v-model="tagInput"
+              class="tag-input"
+              type="text"
+              maxlength="20"
+              placeholder="输入标签后添加"
+              confirm-type="done"
+              @confirm="addTag"
+            />
+            <button class="tag-add-button" @click="addTag">添加</button>
+          </view>
+          <view v-if="activityTags.length" class="tags-row">
+            <view v-for="tag in activityTags" :key="tag" class="tag-chip" @click="removeTag(tag)">
+              <text>{{ tag }}</text>
+              <text class="tag-remove">×</text>
             </view>
           </view>
-          <text v-else class="hint">{{ t('editProfile.loadingTags') }}</text>
+          <text v-else class="hint">至少添加 1 个标签，便于用户了解活动类型</text>
           <text v-if="errors.tags" class="field-error">{{ errors.tags }}</text>
         </view>
 
@@ -249,7 +256,6 @@ import {
   submitDraft,
   uploadActivityImages,
 } from '@/api/modules/activities'
-import { getInterestTags } from '@/api/modules/profile'
 import { AMAP_WEB_API_KEY } from '@/services/amap'
 import { getErrorMessage } from '@/utils/error'
 import { normalizeGeoPoint } from '@/utils/map-move'
@@ -284,8 +290,8 @@ const endAtTime = ref('')
 const deadlineDate = ref('')
 const deadlineTime = ref('')
 
-const selectedTags = ref(new Set<string>())
-const availableTags = ref<{ name: string }[]>([])
+const activityTags = ref<string[]>([])
+const tagInput = ref('')
 
 const imagePreviews = ref<string[]>([])
 const imageIds = ref<string[]>([])
@@ -454,28 +460,39 @@ function handleGlobalLocationPicked(loc: PickedLocation): void {
 }
 
 /**
- * 加载系统可用标签
+ * 添加用户手动输入的活动标签。
+ *
+ * 前置条件：用户在标签输入框中输入文本后点击添加或键盘完成。
+ * 后置条件：非空且未重复的标签会加入活动标签列表，并清空输入与标签校验错误。
+ * 不变量：标签只保存在当前活动表单中，不读取或写入后端标签字典。
  */
-async function loadTags(): Promise<void> {
-  try {
-    const tags = await getInterestTags()
-    availableTags.value = tags as { name: string }[]
-  } catch {
-    /* 标签加载失败不影响编辑 */
+function addTag(): void {
+  const normalizedTag = tagInput.value.trim()
+  if (!normalizedTag) return
+  if (activityTags.value.includes(normalizedTag)) {
+    tagInput.value = ''
+    return
+  }
+  activityTags.value = [...activityTags.value, normalizedTag]
+  tagInput.value = ''
+  if (errors.value.tags) {
+    const next = { ...errors.value }
+    delete next.tags
+    errors.value = next
   }
 }
 
 /**
- * 切换标签选中状态
+ * 删除活动表单中的一个手动标签。
+ *
+ * 前置条件：tag 来自当前 activityTags 列表。
+ * 后置条件：对应标签从活动表单中移除。
+ * 不变量：只修改当前草稿表单状态，不请求后端标签接口。
+ *
+ * @param tag 要删除的标签文本
  */
-function toggleTag(name: string): void {
-  const next = new Set(selectedTags.value)
-  if (next.has(name)) {
-    next.delete(name)
-  } else {
-    next.add(name)
-  }
-  selectedTags.value = next
+function removeTag(tag: string): void {
+  activityTags.value = activityTags.value.filter((item) => item !== tag)
 }
 
 // ================= 时间处理 =================
@@ -604,7 +621,7 @@ function buildPayload(): Record<string, unknown> {
   const payload: Record<string, unknown> = {}
 
   if (formTitle.value.trim()) payload.title = formTitle.value.trim()
-  if (selectedTags.value.size) payload.tags = [...selectedTags.value]
+  if (activityTags.value.length) payload.tags = [...activityTags.value]
   if (formIntroduction.value.trim()) payload.introduction = formIntroduction.value.trim()
   if (formSafetyNotice.value.trim()) payload.safetyNotice = formSafetyNotice.value.trim()
   payload.requireLocationCheck = formRequireLocationCheck.value
@@ -660,7 +677,7 @@ function validate(): boolean {
   const e: Record<string, string> = {}
 
   if (!formTitle.value.trim()) e.title = t('activityEdit.titleRequired')
-  if (!selectedTags.value.size) e.tags = t('activityEdit.tagsRequired')
+  if (!activityTags.value.length) e.tags = t('activityEdit.tagsRequired')
   if (!startAtDate.value || !startAtTime.value) e.startAt = t('activityEdit.startAtRequired')
   if (!endAtDate.value || !endAtTime.value) e.endAt = t('activityEdit.endAtRequired')
   if (!deadlineDate.value || !deadlineTime.value)
@@ -808,7 +825,7 @@ async function loadDraft(): Promise<void> {
     formFeeDescription.value = draft.feeDescription ?? ''
     formMinAge.value = draft.minAge != null ? String(draft.minAge) : ''
 
-    selectedTags.value = new Set(draft.tags ?? [])
+    activityTags.value = draft.tags ?? []
 
     const startParsed = parseISO(draft.startAt ?? '')
     if (startParsed) {
@@ -842,7 +859,6 @@ onLoad((query) => {
   uni.$off('activityLocationPicked', handleGlobalLocationPicked)
   uni.$on('activityLocationPicked', handleGlobalLocationPicked)
   activityId.value = (query?.activityId as string) ?? ''
-  loadTags()
   void loadCurrentLocationMarker()
   if (isEdit.value) loadDraft()
 })
@@ -970,6 +986,41 @@ onUnload(() => {
 }
 
 /* ---- 标签 ---- */
+.tag-create-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.tag-input {
+  flex: 1;
+  height: 80rpx;
+  min-width: 0;
+  padding: 0 24rpx;
+  background-color: var(--q-color-bg-card);
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  color: var(--q-color-text);
+  box-sizing: border-box;
+}
+
+.tag-add-button {
+  flex-shrink: 0;
+  height: 80rpx;
+  line-height: 80rpx;
+  margin: 0;
+  padding: 0 28rpx;
+  border-radius: 8rpx;
+  background-color: var(--q-color-primary);
+  color: var(--q-color-bg-card);
+  font-size: 26rpx;
+}
+
+.tag-add-button::after {
+  border: 0;
+}
+
 .tags-row {
   display: flex;
   flex-wrap: wrap;
@@ -977,18 +1028,20 @@ onUnload(() => {
 }
 
 .tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
   padding: 12rpx 24rpx;
-  background-color: var(--q-color-bg-card);
+  background-color: var(--q-color-primary-light);
   border-radius: 8rpx;
-  border: 2rpx solid var(--q-color-bg-soft);
+  border: 2rpx solid var(--q-color-primary);
   font-size: 26rpx;
-  color: var(--q-color-text-sub);
+  color: var(--q-color-primary);
 }
 
-.tag-chip.active {
-  border-color: var(--q-color-primary);
-  color: var(--q-color-primary);
-  background-color: var(--q-color-primary-light);
+.tag-remove {
+  font-size: 28rpx;
+  line-height: 1;
 }
 
 .hint {
