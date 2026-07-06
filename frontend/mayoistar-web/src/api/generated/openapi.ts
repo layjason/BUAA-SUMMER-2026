@@ -5160,6 +5160,13 @@ export interface components {
       /** @description 调整原因。 */
       reason: string;
     };
+    /** @description 扫码添加好友请求，调用方通过扫描二维码获取 token 并提交，系统解码 token 后自动创建好友申请。 */
+    'Social.QrCodeScanRequest': {
+      /** @description 从二维码中解码得到的 token。 */
+      token: string;
+      /** @description 附加的好友申请附言。 */
+      message?: string;
+    };
     /** @description 举报记录。 */
     'Social.Report': {
       /** @description 举报记录标识。 */
