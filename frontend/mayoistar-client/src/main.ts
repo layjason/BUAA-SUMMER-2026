@@ -9,12 +9,14 @@ import {
   setOnTokenExpired,
   setRefreshTokenGetter,
   setMockHandler,
+  setBinaryHandler,
 } from '@/api/client'
 import { USE_MOCK, API_BASE_URL } from '@/api/config'
 import { initMockDb } from '@/mock/database'
-import { handleMockRequest } from '@/mock/mockServer'
+import { handleMockRequest, handleMockBinaryRequest } from '@/mock/mockServer'
 import { setCurrentUserId } from '@/mock/workflow'
 import { useAuthStore } from '@/stores/auth'
+import { installAuthGuard } from '@/utils/auth-guard'
 import zhCN from './locales/zh-CN.json'
 
 const i18n = createI18n({
@@ -32,6 +34,7 @@ export function createApp() {
 
   const authStore = useAuthStore()
   authStore.initFromStorage()
+  installAuthGuard(() => authStore.isLoggedIn)
 
   // ===== 有状态 Mock Server =====
   // USE_MOCK 为 true 时，所有 API 请求走内存态 mockDb（有状态 workflow）
@@ -47,6 +50,11 @@ export function createApp() {
 
     // 将 mockServer 的路由处理函数注入 client.ts 的 mockHandler
     setMockHandler((method, path, body) => handleMockRequest(method, path, body))
+    setBinaryHandler((path) => {
+      const result = handleMockBinaryRequest(path)
+      if (result) return result
+      return Promise.reject(new Error(`Mock 未实现二进制路由: ${path}`))
+    })
   }
 
   // ===== Token 与 API 基础配置 =====

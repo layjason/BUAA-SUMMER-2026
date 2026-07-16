@@ -17,11 +17,16 @@ import type {
   MockFriend,
   MockFriendRequest,
   MockFollow,
+  MockBlacklist,
+  MockReport,
   MockConversation,
   MockMessage,
   MockTeam,
   MockTeamMember,
   MockTeamJoinRequest,
+  MockTeamAnnouncement,
+  MockTeamPoll,
+  MockTeamMedia,
   MockInterestTag,
   MockTemplate,
 } from './types'
@@ -41,11 +46,16 @@ export interface MockDatabase {
   friends: MockFriend[]
   friendRequests: MockFriendRequest[]
   follows: MockFollow[]
+  blacklist: MockBlacklist[]
+  reports: MockReport[]
   conversations: MockConversation[]
   messages: MockMessage[]
   teams: MockTeam[]
   teamMembers: MockTeamMember[]
   teamJoinRequests: MockTeamJoinRequest[]
+  teamAnnouncements: MockTeamAnnouncement[]
+  teamPolls: MockTeamPoll[]
+  teamMedia: MockTeamMedia[]
   interestTags: MockInterestTag[]
   templates: MockTemplate[]
   /** 各实体的自增 ID 生成器 */
@@ -53,6 +63,77 @@ export interface MockDatabase {
 }
 
 let db: MockDatabase
+
+/** 合并缺失的 mock 演示数据
+ *
+ * 前置条件：target 和 seed 均为完整 MockDatabase。
+ * 后置条件：target 补齐 seed 中新增的演示活动、报名和签到记录。
+ * 不变量：不覆盖用户已产生的同 ID 数据，仅追加缺失记录并提升 nextId 下限。
+ */
+function mergeMissingDemoData(target: MockDatabase, seed: MockDatabase): boolean {
+  let changed = false
+
+  const demoActivityIds = new Set(
+    seed.activities.filter((item) => item.id >= 13).map((item) => item.id),
+  )
+
+  const activityIds = new Set(target.activities.map((item) => item.id))
+  for (const activity of seed.activities.filter((item) => demoActivityIds.has(item.id))) {
+    if (!activityIds.has(activity.id)) {
+      target.activities.push(activity)
+      changed = true
+    }
+  }
+
+  const registrationKeys = new Set(
+    target.registrations.map((item) => `${item.activityId}:${item.userId}:${item.status}`),
+  )
+  for (const registration of seed.registrations.filter((item) =>
+    demoActivityIds.has(item.activityId),
+  )) {
+    const key = `${registration.activityId}:${registration.userId}:${registration.status}`
+    if (!registrationKeys.has(key)) {
+      target.registrations.push(registration)
+      changed = true
+    }
+  }
+
+  const checkInKeys = new Set(target.checkins.map((item) => `${item.activityId}:${item.userId}`))
+  for (const checkIn of seed.checkins.filter((item) => demoActivityIds.has(item.activityId))) {
+    const key = `${checkIn.activityId}:${checkIn.userId}`
+    if (!checkInKeys.has(key)) {
+      target.checkins.push(checkIn)
+      changed = true
+    }
+  }
+
+  const reviewKeys = new Set(target.reviews.map((item) => `${item.activityId}:${item.userId}`))
+  for (const review of seed.reviews.filter((item) => demoActivityIds.has(item.activityId))) {
+    const key = `${review.activityId}:${review.userId}`
+    if (!reviewKeys.has(key)) {
+      target.reviews.push(review)
+      changed = true
+    }
+  }
+
+  const summaryKeys = new Set(target.summaries.map((item) => `${item.activityId}:${item.userId}`))
+  for (const summary of seed.summaries.filter((item) => demoActivityIds.has(item.activityId))) {
+    const key = `${summary.activityId}:${summary.userId}`
+    if (!summaryKeys.has(key)) {
+      target.summaries.push(summary)
+      changed = true
+    }
+  }
+
+  for (const [entity, nextValue] of Object.entries(seed.nextId)) {
+    if ((target.nextId[entity] ?? 0) < nextValue) {
+      target.nextId[entity] = nextValue
+      changed = true
+    }
+  }
+
+  return changed
+}
 
 /**
  * 初始化数据库（从 storage 恢复或使用种子数据）
@@ -67,6 +148,11 @@ export function initMockDb(): MockDatabase {
       db = JSON.parse(raw as string) as MockDatabase
       // 基本完整性校验：确保关键数组存在
       if (db.users && db.activities && db.nextId) {
+        repairMockDbShape(db)
+        const seed = createSeedData()
+        mergeMissingDemoData(db, seed)
+        repairConversationStore()
+        persistMockDb()
         return db
       }
     }
@@ -129,4 +215,149 @@ export function nextId(entity: string): number {
   const id = db.nextId[entity]
   db.nextId[entity] = id + 1
   return id
+}
+
+/** 补齐持久化数据中可能缺失的数组字段，避免 workflow 运行时异常 */
+export function repairMockDbShape(database: MockDatabase): void {
+  const arrayKeys: (keyof MockDatabase)[] = [
+    'users',
+    'activities',
+    'drafts',
+    'registrations',
+    'waitlist',
+    'checkins',
+    'reviews',
+    'summaries',
+    'friends',
+    'friendRequests',
+    'follows',
+    'blacklist',
+    'reports',
+    'conversations',
+    'messages',
+    'teams',
+    'teamMembers',
+    'teamJoinRequests',
+    'teamAnnouncements',
+    'teamPolls',
+    'teamMedia',
+    'interestTags',
+    'templates',
+  ]
+  for (const key of arrayKeys) {
+    if (!Array.isArray(database[key])) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(database as any)[key] = []
+    }
+  }
+  if (!database.nextId || typeof database.nextId !== 'object') {
+    database.nextId = {}
+  }
+  repairAcceptedFriendships(database)
+}
+
+/** 将已接受但未落库的好友申请同步为双向好友关系 */
+function repairAcceptedFriendships(database: MockDatabase): void {
+  for (const req of database.friendRequests) {
+    if (req.status !== 'accepted') continue
+    const { fromUserId: a, toUserId: b, source, createdAt } = req
+    const hasAB = database.friends.some((f) => f.userId === a && f.friendId === b)
+    const hasBA = database.friends.some((f) => f.userId === b && f.friendId === a)
+    if (!hasAB) {
+      database.friends.push({
+        userId: a,
+        friendId: b,
+        remark: '',
+        groupTags: [],
+        source,
+        createdAt,
+      })
+    }
+    if (!hasBA) {
+      database.friends.push({
+        userId: b,
+        friendId: a,
+        remark: '',
+        groupTags: [],
+        source,
+        createdAt,
+      })
+    }
+  }
+}
+
+/** 好友会话参与者对唯一键 */
+function friendPairKey(userA: number, userB: number): string {
+  return userA < userB ? `${userA}:${userB}` : `${userB}:${userA}`
+}
+
+/**
+ * 修复会话存储：同步 nextId、消除重复 ID、合并重复好友会话
+ *
+ * 根因：历史种子 nextId.conversations 与已有会话 ID 不一致，会生成重复会话并污染消息列表。
+ */
+export function repairConversationStore(): void {
+  if (!db?.conversations || !db.messages || !db.nextId) return
+
+  const maxConvId = db.conversations.reduce((max, c) => Math.max(max, c.id), 0)
+  const maxMsgId = db.messages.reduce((max, m) => Math.max(max, m.id), 0)
+  if (!db.nextId.conversations || db.nextId.conversations <= maxConvId) {
+    db.nextId.conversations = maxConvId + 1
+  }
+  if (!db.nextId.messages || db.nextId.messages <= maxMsgId) {
+    db.nextId.messages = maxMsgId + 1
+  }
+
+  // 相同 numeric id 的会话：保留先出现的记录，后者换新 id
+  const seenConvIds = new Set<number>()
+  for (const conv of db.conversations) {
+    if (!seenConvIds.has(conv.id)) {
+      seenConvIds.add(conv.id)
+      continue
+    }
+
+    const newId = nextId('conversations')
+    if (conv.kind === 'friend' && conv.participantIds.length === 2) {
+      const participants = new Set(conv.participantIds)
+      db.messages.forEach((msg) => {
+        if (msg.conversationId === conv.id && participants.has(msg.senderId)) {
+          msg.conversationId = newId
+        }
+      })
+    }
+    conv.id = newId
+    seenConvIds.add(newId)
+  }
+
+  // 相同好友对的重复会话：保留消息更多的那条
+  const pairKeep = new Map<string, MockConversation>()
+  const removeConvIds = new Set<number>()
+
+  for (const conv of db.conversations) {
+    if (conv.kind !== 'friend' || conv.participantIds.length !== 2) continue
+
+    const key = friendPairKey(conv.participantIds[0], conv.participantIds[1])
+    const kept = pairKeep.get(key)
+    if (!kept) {
+      pairKeep.set(key, conv)
+      continue
+    }
+
+    const keptCount = db.messages.filter((m) => m.conversationId === kept.id).length
+    const currentCount = db.messages.filter((m) => m.conversationId === conv.id).length
+    const remove = currentCount > keptCount ? kept : conv
+    const keep = remove === kept ? conv : kept
+
+    db.messages.forEach((msg) => {
+      if (msg.conversationId === remove.id) {
+        msg.conversationId = keep.id
+      }
+    })
+    removeConvIds.add(remove.id)
+    pairKeep.set(key, keep)
+  }
+
+  if (removeConvIds.size > 0) {
+    db.conversations = db.conversations.filter((c) => !removeConvIds.has(c.id))
+  }
 }

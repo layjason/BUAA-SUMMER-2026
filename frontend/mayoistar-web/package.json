@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=5173 --host=0.0.0.0",
+    "dev": "vite --port=3005 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
     "api:generate": "openapi-typescript ../../api-spec/tsp-output/openapi.yaml -o src/api/generated/openapi.ts && prettier src/api/generated/openapi.ts --write",

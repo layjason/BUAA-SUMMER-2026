@@ -61,7 +61,7 @@
       </view>
     </scroll-view>
 
-    <BottomActionBar>
+    <BottomActionBar fixed>
       <button
         class="bar-btn bar-btn-primary"
         :disabled="!topic.trim() || generating"
@@ -162,7 +162,7 @@ async function handleGenerate(): Promise<void> {
 
 <style scoped>
 .page {
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -176,14 +176,14 @@ async function handleGenerate(): Promise<void> {
 }
 
 .form-container {
-  padding: 32rpx 32rpx calc(240rpx + env(safe-area-inset-bottom));
+  padding: 32rpx 32rpx calc(176rpx + env(safe-area-inset-bottom));
 }
 
 .title {
   display: block;
   font-size: 32rpx;
   font-weight: 700;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 40rpx;
 }
 
@@ -194,22 +194,22 @@ async function handleGenerate(): Promise<void> {
 .label {
   display: block;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 12rpx;
 }
 
 .req {
-  color: #ee0a24;
+  color: var(--q-color-danger);
 }
 
 .input {
   width: 100%;
   height: 88rpx;
   padding: 0 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   box-sizing: border-box;
 }
 
@@ -217,15 +217,15 @@ async function handleGenerate(): Promise<void> {
   width: 100%;
   min-height: 200rpx;
   padding: 20rpx 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   box-sizing: border-box;
 }
 
 .error-banner {
-  background-color: #fff2f0;
+  background-color: var(--q-color-danger-light);
   border-radius: 8rpx;
   padding: 20rpx 24rpx;
   margin-bottom: 32rpx;
@@ -233,11 +233,11 @@ async function handleGenerate(): Promise<void> {
 
 .error-text {
   font-size: 26rpx;
-  color: #ee0a24;
+  color: var(--q-color-danger);
 }
 
 .loading-section {
-  background-color: #e8f7f0;
+  background-color: var(--q-color-primary-light);
   border-radius: 8rpx;
   padding: 24rpx;
   text-align: center;
@@ -245,7 +245,7 @@ async function handleGenerate(): Promise<void> {
 
 .loading-text {
   font-size: 28rpx;
-  color: #5ec8a7;
+  color: var(--q-color-primary);
 }
 </style>
 

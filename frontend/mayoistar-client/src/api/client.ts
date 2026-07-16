@@ -13,7 +13,7 @@ import { BusinessError, TokenExpiredError } from './types'
 
 /* ---- 配置 ---- */
 
-let baseUrl = 'http://localhost:4010'
+let baseUrl = ''
 
 export function setBaseUrl(url: string): void {
   baseUrl = url.replace(/\/+$/, '')
@@ -320,6 +320,42 @@ async function extractData<T>(
 /**
  * GET 请求
  */
+type BinaryHandler = (path: string) => Promise<ArrayBuffer>
+let binaryHandler: BinaryHandler | null = null
+
+export function setBinaryHandler(handler: BinaryHandler | null | undefined): void {
+  binaryHandler = handler ?? null
+}
+
+/**
+ * GET 二进制响应（如 image/png），不走 APIResponse 包装。
+ */
+export function getBinary(path: string): Promise<ArrayBuffer> {
+  if (binaryHandler) {
+    return binaryHandler(path)
+  }
+  return new Promise((resolve, reject) => {
+    const token = tokenGetter()
+    const headers: Record<string, string> = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    uni.request({
+      url: `${baseUrl}${path}`,
+      method: 'GET',
+      header: headers,
+      responseType: 'arraybuffer',
+      success: (res) => {
+        if (res.statusCode === 200) {
+          resolve(res.data as ArrayBuffer)
+          return
+        }
+        reject(new BusinessError(res.statusCode, '下载失败'))
+      },
+      fail: (err) => reject(new Error(`网络请求失败: ${err.errMsg}`)),
+    })
+  })
+}
+
 export function get<P extends keyof paths>(
   path: P,
   options?: { path?: OpPath<GetOpType<P>>; query?: OpQuery<GetOpType<P>> },
@@ -383,9 +419,11 @@ export function patch<P extends keyof paths>(
  */
 export function del<P extends keyof paths>(
   path: P,
-  options?: { path?: OpPath<DeleteOpType<P>> },
+  options?: { path?: OpPath<DeleteOpType<P>>; body?: OpBody<DeleteOpType<P>> },
 ): Promise<OpData<DeleteOpType<P>>> {
-  return extractData(rawRequest('DELETE', resolvePath(path as string, options?.path)))
+  return extractData(
+    rawRequest('DELETE', resolvePath(path as string, options?.path), options?.body),
+  )
 }
 
 /**

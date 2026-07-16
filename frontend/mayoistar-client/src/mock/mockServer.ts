@@ -17,11 +17,16 @@ import type {
   ActivitySummaryPostRequest,
   CheckInRequest,
   FriendRequestCreate,
+  ReportCreateRequest,
+  ReportStatus,
   JoinTeamRequestBody,
   MockDraftUpsertInput,
+  QualificationSubmitRequest,
   RegisterActivityRequest,
   SendMessageRequest,
   TeamCreateRequest,
+  TeamMemberRole,
+  UpdateMerchantProfileRequest,
 } from './schema-types'
 import { persistMockDb, resetMockDb } from './database'
 import { MockBusinessError } from './workflow'
@@ -53,6 +58,7 @@ import {
   getMyRegistrations,
   getParticipants,
   getCheckIns,
+  exportCheckInsCsv,
   createReview,
   createSummary,
   listActivityReviews,
@@ -67,15 +73,61 @@ import {
   getFriends,
   getReceivedFriendRequests,
   getSentFriendRequests,
-  getConversations,
+  removeFriend,
+  updateFriendRemark,
+  followUser,
+  unfollowUser,
+  getFollows,
+  getFollowers,
+  blockUser,
+  unblockUser,
+  getBlacklist,
+  createReport,
+  listMyReports,
+  getPersonalQrCodePng,
+  scanPersonalQrCode,
+  listConversations,
   getMessages,
-  getTeams,
+  listMyTeams,
   getTeamDetail,
+  searchTeams,
+  leaveTeam,
+  dissolveTeam,
+  getTeamMembers,
+  getTeamJoinRequests,
+  handleJoinRequest,
+  updateMemberRole,
+  markMessagesRead,
+  forwardMessage,
   getInterestTags,
   getTemplates,
   getMerchantProfile,
+  updateMerchantProfile,
+  submitMerchantQualification,
   getCurrentUserId,
+  listTeamActivities,
+  createTeamActivity,
+  getTeamActivity,
 } from './workflow'
+import {
+  publishAnnouncement,
+  listAnnouncements,
+  updateAnnouncement,
+  deleteAnnouncement,
+  markAnnouncementRead,
+  createPoll,
+  listPolls,
+  getPoll,
+  votePoll,
+  uploadTeamFile,
+  listTeamFiles,
+  deleteTeamFiles,
+  uploadTeamAlbumImage,
+  listTeamAlbumImages,
+  deleteTeamAlbumImages,
+  getTeamPointRanks,
+} from './teamFeatures'
+import { MOCK_IMAGE_BASE_URL } from '@/config/env'
 
 /* ---- 辅助函数 ---- */
 
@@ -127,13 +179,14 @@ function err(code: number, message: string): MockApiResponse<null> {
 function mockUploadResponse(usage: string = 'activityImage'): Record<string, unknown> {
   const now = new Date().toISOString()
   const mediaId = `media_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  const accessUrl = `${MOCK_IMAGE_BASE_URL}/seed/${encodeURIComponent(mediaId)}/400/300`
   return {
     mediaId,
     fileName: `${mediaId}.jpg`,
     contentType: 'image/jpeg',
     sizeBytes: 50000,
     usage,
-    signedUrl: `https://picsum.photos/seed/${encodeURIComponent(mediaId)}/400/300`,
+    signedUrl: accessUrl,
     uploadedAt: now,
   }
 }
@@ -241,6 +294,18 @@ const routes: Route[] = [
     handler: () => ok(getMerchantProfile(getCurrentUserId())),
   },
   {
+    method: 'PATCH',
+    pattern: '/identity/me/merchant-profile',
+    handler: (_p, _q, body) =>
+      ok(updateMerchantProfile(getCurrentUserId(), body as UpdateMerchantProfileRequest)),
+  },
+  {
+    method: 'POST',
+    pattern: '/identity/me/merchant-qualification',
+    handler: (_p, _q, body) =>
+      ok(submitMerchantQualification(getCurrentUserId(), body as QualificationSubmitRequest)),
+  },
+  {
     method: 'GET',
     pattern: '/identity/interest-tags',
     handler: () => ok(getInterestTags()),
@@ -259,7 +324,25 @@ const routes: Route[] = [
       const tab = (query.tab ?? 'recommended') as ActivityFeedTab
       const page = parseInt(query.page ?? '1', 10)
       const pageSize = parseInt(query.pageSize ?? '10', 10)
-      return ok(getFeed(tab, page, pageSize))
+      const filters: ActivitySearchQuery = {}
+      if (query.keyword) filters.keyword = query.keyword
+      if (query.city) filters.city = query.city
+      if (query.startAtFrom) filters.startAtFrom = query.startAtFrom
+      if (query.startAtTo) filters.startAtTo = query.startAtTo
+      if (query.minFee !== undefined) filters.minFee = parseFloat(query.minFee)
+      if (query.maxFee !== undefined) filters.maxFee = parseFloat(query.maxFee)
+      if (query.longitude !== undefined) filters.longitude = parseFloat(query.longitude)
+      if (query.latitude !== undefined) filters.latitude = parseFloat(query.latitude)
+      if (query.distanceMeters !== undefined) {
+        filters.distanceMeters = parseFloat(query.distanceMeters)
+      }
+      if (query.activityTypes) {
+        filters.activityTypes = query.activityTypes
+          .split(',')
+          .map((type) => type.trim())
+          .filter(Boolean)
+      }
+      return ok(getFeed(tab, page, pageSize, filters))
     },
   },
   {
@@ -299,7 +382,20 @@ const routes: Route[] = [
       const lng = parseFloat(query.longitude ?? '116.4')
       const lat = parseFloat(query.latitude ?? '39.9')
       const dist = parseFloat(query.distanceMeters ?? '10000')
-      return ok(getMapActivities(lng, lat, dist))
+      const filters: ActivitySearchQuery = {}
+      if (query.keyword) filters.keyword = query.keyword
+      if (query.city) filters.city = query.city
+      if (query.startAtFrom) filters.startAtFrom = query.startAtFrom
+      if (query.startAtTo) filters.startAtTo = query.startAtTo
+      if (query.minFee !== undefined) filters.minFee = parseFloat(query.minFee)
+      if (query.maxFee !== undefined) filters.maxFee = parseFloat(query.maxFee)
+      if (query.activityTypes) {
+        filters.activityTypes = query.activityTypes
+          .split(',')
+          .map((type) => type.trim())
+          .filter(Boolean)
+      }
+      return ok(getMapActivities(lng, lat, dist, filters))
     },
   },
 
@@ -343,7 +439,11 @@ const routes: Route[] = [
   {
     method: 'GET',
     pattern: '/activities/templates',
-    handler: () => ok(getTemplates()),
+    handler: (_p, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '100', 10)
+      return ok(getTemplates(page, pageSize))
+    },
   },
   {
     method: 'POST',
@@ -374,6 +474,11 @@ const routes: Route[] = [
     method: 'POST',
     pattern: '/identity/media/avatar',
     handler: () => ok(mockUploadResponse('avatar')),
+  },
+  {
+    method: 'POST',
+    pattern: '/identity/media/license',
+    handler: () => ok(mockUploadResponse('merchantLicense')),
   },
 
   /* ===== 活动详情 / 提交 / 参与状态 ===== */
@@ -446,7 +551,9 @@ const routes: Route[] = [
     handler: (params, query) => {
       const page = parseInt(query.page ?? '1', 10)
       const pageSize = parseInt(query.pageSize ?? '10', 10)
-      return ok(getParticipants(parseInt(params.activityId, 10), page, pageSize))
+      return ok(
+        getParticipants(parseInt(params.activityId, 10), page, pageSize, getCurrentUserId()),
+      )
     },
   },
   {
@@ -473,6 +580,11 @@ const routes: Route[] = [
       const pageSize = parseInt(query.pageSize ?? '100', 10)
       return ok(getCheckIns(parseInt(params.activityId, 10), page, pageSize))
     },
+  },
+  {
+    method: 'GET',
+    pattern: '/activities/{activityId}/check-ins/export',
+    handler: (params) => ok(exportCheckInsCsv(parseInt(params.activityId, 10))),
   },
 
   /* ===== 评价 / 总结 ===== */
@@ -535,7 +647,19 @@ const routes: Route[] = [
   {
     method: 'GET',
     pattern: '/social/friends',
-    handler: () => ok(getFriends(getCurrentUserId())),
+    handler: (_p, query) => {
+      const keyword = query.keyword as string | undefined
+      return ok(getFriends(getCurrentUserId(), keyword))
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/social/qr-code/scan',
+    handler: (_p, _q, body) => {
+      const token = (body.token as string) ?? ''
+      const message = body.message as string | undefined
+      return ok(scanPersonalQrCode(getCurrentUserId(), token, message))
+    },
   },
   {
     method: 'GET',
@@ -563,12 +687,118 @@ const routes: Route[] = [
       return ok(result)
     },
   },
+  {
+    method: 'DELETE',
+    pattern: '/social/friends/{userId}',
+    handler: (params) => {
+      removeFriend(getCurrentUserId(), parseInt(params.userId, 10))
+      return ok(null)
+    },
+  },
+  {
+    method: 'PATCH',
+    pattern: '/social/friends/{userId}',
+    handler: (params, _q, body) => {
+      const result = updateFriendRemark(
+        getCurrentUserId(),
+        parseInt(params.userId, 10),
+        body.remark as string | undefined,
+        body.groupTags as string[] | undefined,
+      )
+      return ok(result)
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/follows',
+    handler: () => ok(getFollows(getCurrentUserId())),
+  },
+  {
+    method: 'GET',
+    pattern: '/social/followers',
+    handler: () => ok(getFollowers(getCurrentUserId())),
+  },
+  {
+    method: 'POST',
+    pattern: '/social/follows/{targetUserId}',
+    handler: (params) => {
+      return ok(followUser(getCurrentUserId(), parseInt(params.targetUserId, 10)))
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: '/social/follows/{targetUserId}',
+    handler: (params) => {
+      return ok(unfollowUser(getCurrentUserId(), parseInt(params.targetUserId, 10)))
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/blacklist',
+    handler: () => ok(getBlacklist(getCurrentUserId())),
+  },
+  {
+    method: 'POST',
+    pattern: '/social/blacklist/{targetUserId}',
+    handler: (params) => {
+      blockUser(getCurrentUserId(), parseInt(params.targetUserId, 10))
+      return ok(null)
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: '/social/blacklist/{targetUserId}',
+    handler: (params) => {
+      unblockUser(getCurrentUserId(), parseInt(params.targetUserId, 10))
+      return ok(null)
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/profiles/{userId}',
+    handler: (params) => ok(getUserProfile(parseInt(params.userId, 10))),
+  },
+  {
+    method: 'POST',
+    pattern: '/social/reports',
+    handler: (_p, _q, body) => {
+      return ok(createReport(getCurrentUserId(), body as ReportCreateRequest))
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/reports',
+    handler: (_p, query) => {
+      const status = query.status as ReportStatus | undefined
+      const page = parseInt((query.page as string) ?? '1', 10)
+      const pageSize = parseInt((query.pageSize as string) ?? '20', 10)
+      return ok(listMyReports(getCurrentUserId(), status, page, pageSize))
+    },
+  },
 
   /* ===== 小队 ===== */
   {
     method: 'GET',
+    pattern: '/social/teams/mine',
+    handler: (_p, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(listMyTeams(getCurrentUserId(), page, pageSize))
+    },
+  },
+  {
+    method: 'GET',
     pattern: '/social/teams',
-    handler: () => ok(getTeams(getCurrentUserId())),
+    handler: (_p, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      const tags = query.tags
+        ? Array.isArray(query.tags)
+          ? query.tags
+          : String(query.tags).split(',')
+        : undefined
+      return ok(searchTeams(query.keyword as string | undefined, tags, page, pageSize))
+    },
   },
   {
     method: 'POST',
@@ -592,12 +822,274 @@ const routes: Route[] = [
       return ok(result)
     },
   },
+  {
+    method: 'DELETE',
+    pattern: '/social/teams/{teamId}',
+    handler: (params) => {
+      dissolveTeam(parseInt(params.teamId, 10), getCurrentUserId())
+      return ok(null)
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/social/teams/{teamId}/leave',
+    handler: (params) => {
+      leaveTeam(parseInt(params.teamId, 10), getCurrentUserId())
+      return ok(null)
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/teams/{teamId}/members',
+    handler: (params, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(getTeamMembers(parseInt(params.teamId, 10), page, pageSize))
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/teams/{teamId}/join-requests',
+    handler: (params, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(getTeamJoinRequests(parseInt(params.teamId, 10), page, pageSize))
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/social/teams/{teamId}/join-requests/{requestId}/decision',
+    handler: (params, _q, body) => {
+      const result = handleJoinRequest(parseInt(params.requestId, 10), body.accepted as boolean)
+      return ok(result)
+    },
+  },
+  {
+    method: 'PATCH',
+    pattern: '/social/teams/{teamId}/members/{memberId}/role',
+    handler: (params, _q, body) => {
+      const result = updateMemberRole(
+        parseInt(params.teamId, 10),
+        getCurrentUserId(),
+        parseInt(params.memberId, 10),
+        body.role as TeamMemberRole,
+      )
+      return ok(result)
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/teams/{teamId}/points',
+    handler: (params, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(getTeamPointRanks(parseInt(params.teamId, 10), getCurrentUserId(), page, pageSize))
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/social/teams/{teamId}/activities',
+    handler: (params, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(listTeamActivities(parseInt(params.teamId, 10), getCurrentUserId(), page, pageSize))
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/social/teams/{teamId}/activities',
+    handler: (params, _q, body) =>
+      ok(
+        createTeamActivity(
+          parseInt(params.teamId, 10),
+          getCurrentUserId(),
+          body as import('./schema-types').ActivityUpsertRequest,
+        ),
+      ),
+  },
+  {
+    method: 'GET',
+    pattern: '/social/teams/{teamId}/activities/{activityId}',
+    handler: (params) =>
+      ok(
+        getTeamActivity(
+          parseInt(params.teamId, 10),
+          parseInt(params.activityId, 10),
+          getCurrentUserId(),
+        ),
+      ),
+  },
+  {
+    method: 'POST',
+    pattern: '/chat/teams/{teamId}/announcements',
+    handler: (params, _q, body) =>
+      ok(
+        publishAnnouncement(
+          parseInt(params.teamId, 10),
+          getCurrentUserId(),
+          (body as { content: string }).content,
+        ),
+      ),
+  },
+  {
+    method: 'GET',
+    pattern: '/chat/teams/{teamId}/announcements',
+    handler: (params, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(listAnnouncements(parseInt(params.teamId, 10), getCurrentUserId(), page, pageSize))
+    },
+  },
+  {
+    method: 'PUT',
+    pattern: '/chat/teams/{teamId}/announcements/{announcementId}',
+    handler: (params, _q, body) =>
+      ok(
+        updateAnnouncement(
+          parseInt(params.teamId, 10),
+          parseInt(params.announcementId, 10),
+          getCurrentUserId(),
+          (body as { content: string }).content,
+        ),
+      ),
+  },
+  {
+    method: 'DELETE',
+    pattern: '/chat/teams/{teamId}/announcements/{announcementId}',
+    handler: (params) => {
+      deleteAnnouncement(
+        parseInt(params.teamId, 10),
+        parseInt(params.announcementId, 10),
+        getCurrentUserId(),
+      )
+      return ok(null)
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/chat/teams/{teamId}/announcements/{announcementId}/read',
+    handler: (params) =>
+      ok(
+        markAnnouncementRead(
+          parseInt(params.teamId, 10),
+          parseInt(params.announcementId, 10),
+          getCurrentUserId(),
+        ),
+      ),
+  },
+  {
+    method: 'POST',
+    pattern: '/chat/teams/{teamId}/polls',
+    handler: (params, _q, body) => {
+      const payload = body as { title: string; options: string[]; deadline?: string }
+      return ok(
+        createPoll(
+          parseInt(params.teamId, 10),
+          getCurrentUserId(),
+          payload.title,
+          payload.options,
+          payload.deadline,
+        ),
+      )
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/chat/teams/{teamId}/polls',
+    handler: (params, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(listPolls(parseInt(params.teamId, 10), getCurrentUserId(), page, pageSize))
+    },
+  },
+  {
+    method: 'GET',
+    pattern: '/chat/teams/{teamId}/polls/{pollId}',
+    handler: (params) =>
+      ok(getPoll(parseInt(params.teamId, 10), parseInt(params.pollId, 10), getCurrentUserId())),
+  },
+  {
+    method: 'POST',
+    pattern: '/chat/teams/{teamId}/polls/{pollId}/votes',
+    handler: (params, _q, body) =>
+      ok(
+        votePoll(
+          parseInt(params.teamId, 10),
+          parseInt(params.pollId, 10),
+          getCurrentUserId(),
+          parseInt((body as { optionId: string }).optionId, 10),
+        ),
+      ),
+  },
+  {
+    method: 'POST',
+    pattern: '/chat/teams/{teamId}/files',
+    handler: (params) => ok(uploadTeamFile(parseInt(params.teamId, 10), getCurrentUserId())),
+  },
+  {
+    method: 'GET',
+    pattern: '/chat/teams/{teamId}/files',
+    handler: (params, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(listTeamFiles(parseInt(params.teamId, 10), getCurrentUserId(), page, pageSize))
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: '/chat/teams/{teamId}/files',
+    handler: (params, _q, body) => {
+      deleteTeamFiles(
+        parseInt(params.teamId, 10),
+        getCurrentUserId(),
+        (body as { mediaIds: string[] }).mediaIds,
+      )
+      return ok(null)
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/chat/teams/{teamId}/album-images',
+    handler: (params) => ok(uploadTeamAlbumImage(parseInt(params.teamId, 10), getCurrentUserId())),
+  },
+  {
+    method: 'GET',
+    pattern: '/chat/teams/{teamId}/album-images',
+    handler: (params, query) => {
+      const page = parseInt(query.page ?? '1', 10)
+      const pageSize = parseInt(query.pageSize ?? '20', 10)
+      return ok(
+        listTeamAlbumImages(parseInt(params.teamId, 10), getCurrentUserId(), page, pageSize),
+      )
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: '/chat/teams/{teamId}/album-images',
+    handler: (params, _q, body) => {
+      deleteTeamAlbumImages(
+        parseInt(params.teamId, 10),
+        getCurrentUserId(),
+        (body as { mediaIds: string[] }).mediaIds,
+      )
+      return ok(null)
+    },
+  },
 
   /* ===== 聊天 ===== */
   {
+    method: 'POST',
+    pattern: '/chat/media/images',
+    handler: () => ok(mockUploadResponse('chatImage')),
+  },
+  {
     method: 'GET',
     pattern: '/chat/conversations',
-    handler: () => ok(getConversations(getCurrentUserId())),
+    handler: (_p, query) => {
+      const page = parseInt((query.page as string) ?? '1', 10)
+      const pageSize = parseInt((query.pageSize as string) ?? '20', 10)
+      return ok(listConversations(getCurrentUserId(), page, pageSize))
+    },
   },
   {
     method: 'GET',
@@ -605,7 +1097,9 @@ const routes: Route[] = [
     handler: (params, query) => {
       const page = parseInt(query.page ?? '1', 10)
       const pageSize = parseInt(query.pageSize ?? '20', 10)
-      return ok(getMessages(parseInt(params.conversationId, 10), page, pageSize))
+      return ok(
+        getMessages(parseInt(params.conversationId, 10), getCurrentUserId(), page, pageSize),
+      )
     },
   },
   {
@@ -626,6 +1120,27 @@ const routes: Route[] = [
     handler: (params) => {
       const result = recallMessage(parseInt(params.messageId, 10), getCurrentUserId())
       return ok(result)
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/chat/messages/read',
+    handler: (_p, _q, body) => {
+      const messageIds = (body.messageIds as string[]).map((id) => parseInt(id, 10))
+      return ok(markMessagesRead(messageIds, getCurrentUserId()))
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/chat/messages/{messageId}/forward',
+    handler: (params, _q, body) => {
+      const targetIds = (body.targetConversationIds as string[]).map((id) => parseInt(id, 10))
+      const forwarded = forwardMessage(
+        parseInt(params.messageId, 10),
+        getCurrentUserId(),
+        targetIds,
+      )
+      return ok(forwarded)
     },
   },
 
@@ -685,6 +1200,15 @@ const routes: Route[] = [
  * @param body 请求体（POST/PUT/PATCH）
  * @returns Mock 响应 Promise，或 null 表示未匹配
  */
+/** Mock 二进制 GET（如个人二维码 PNG） */
+export function handleMockBinaryRequest(path: string): Promise<ArrayBuffer> | null {
+  const basePath = path.split('?')[0]
+  if (basePath === '/social/qr-code') {
+    return Promise.resolve(getPersonalQrCodePng(getCurrentUserId()))
+  }
+  return null
+}
+
 export function handleMockRequest(
   method: string,
   fullPath: string,
@@ -713,7 +1237,7 @@ export function handleMockRequest(
           return Promise.resolve(err(e.code, e.message))
         }
         const message = e instanceof Error ? e.message : 'Mock 处理异常'
-        return Promise.resolve(err(50000, message))
+        return Promise.resolve(err(90000, message))
       }
     }
   }

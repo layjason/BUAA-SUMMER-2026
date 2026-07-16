@@ -1,14 +1,19 @@
 <template>
   <view class="page">
-    <view class="tab-bar">
-      <view
-        v-for="tab in tabs"
-        :key="tab.key"
-        class="tab"
-        :class="{ active: activeTab === tab.key }"
-        @click="switchTab(tab.key)"
-      >
-        <text>{{ tab.label }}</text>
+    <view class="top-bar">
+      <view class="tab-bar">
+        <view
+          v-for="tab in tabs"
+          :key="tab.key"
+          class="tab"
+          :class="{ active: activeTab === tab.key }"
+          @click="switchTab(tab.key)"
+        >
+          <text>{{ tab.label }}</text>
+        </view>
+      </view>
+      <view class="filter-entry" @click="goSearch">
+        <text>高级筛选</text>
       </view>
     </view>
 
@@ -20,6 +25,25 @@
       @refresherrefresh="onRefresh"
       @scrolltolower="loadMore"
     >
+      <view class="discover-entry-panel">
+        <view class="home-search-entry" @click="goSearch">
+          <text class="home-search-icon">🔍</text>
+          <text class="home-search-placeholder">搜索活动名称、标签...</text>
+          <text class="home-search-action">搜索</text>
+        </view>
+
+        <view class="advanced-actions">
+          <view class="advanced-action" @click="goSearch">
+            <text class="advanced-action-title">高级筛选</text>
+            <text class="advanced-action-desc">类型、时间、城市、费用、距离</text>
+          </view>
+          <view v-if="activeTab === 'nearby'" class="advanced-action map-action" @click="goMap">
+            <text class="advanced-action-title">地图模式</text>
+            <text class="advanced-action-desc">查看当前位置周边活动</text>
+          </view>
+        </view>
+      </view>
+
       <view v-if="loading && items.length === 0" class="loading-text">{{ t('home.loading') }}</view>
 
       <view v-else-if="errorMsg && items.length === 0" class="error-box">
@@ -89,10 +113,6 @@
         </view>
       </view>
     </scroll-view>
-
-    <view class="fab" @click="goCreate">
-      <text class="fab-icon">+</text>
-    </view>
   </view>
 </template>
 
@@ -108,9 +128,10 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
-import { getFeed } from '@/api/modules/activities'
+import { getFeed, type FeedActivitiesParams } from '@/api/modules/activities'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
+import { getCurrentLocation } from '@/utils/location'
 import { runtimeStatusText } from '@/utils/status'
 
 const { t } = useI18n()
@@ -133,6 +154,8 @@ const loadError = ref(false)
 const noMoreData = ref(false)
 const currentPage = ref(1)
 const pageSize = 10
+const nearbyFallbackLocation = { longitude: 116.46, latitude: 39.908, distanceMeters: 10000 }
+const nearbyLocation = ref<typeof nearbyFallbackLocation | null>(null)
 
 interface ActivityItem {
   activityId: string
@@ -158,13 +181,46 @@ function getStatusText(status: string): string {
   return runtimeStatusText(status, t)
 }
 
+/** 确保附近 Tab 使用真实定位参数
+ *
+ * 前置条件：用户正在请求附近信息流。
+ * 后置条件：nearbyLocation 保存真实定位；定位失败时保存演示 fallback 坐标。
+ * 副作用：可能触发定位授权弹窗，失败时展示轻提示。
+ */
+async function ensureNearbyLocation(): Promise<void> {
+  if (nearbyLocation.value) return
+  const location = await getCurrentLocation()
+  if (location) {
+    nearbyLocation.value = { ...location, distanceMeters: 10000 }
+    return
+  }
+  nearbyLocation.value = nearbyFallbackLocation
+  uni.showToast({ title: '无法获取当前位置，已使用默认位置展示附近活动', icon: 'none' })
+}
+
+/** 构建信息流查询参数
+ *
+ * 前置条件：activeTab 已表示当前首页 Tab。
+ * 后置条件：返回 OpenAPI 允许的 Feed 查询字段；附近 Tab 附带默认位置与距离。
+ * 不变量：不向 query 添加 OpenAPI 未定义字段。
+ *
+ * @param page 要加载的页码
+ * @returns 首页 Feed 查询参数
+ */
+function buildFeedParams(page: number): FeedActivitiesParams {
+  const base = { page, pageSize }
+  if (activeTab.value !== 'nearby') return base
+  return { ...base, ...(nearbyLocation.value ?? nearbyFallbackLocation) }
+}
+
 async function loadFeed(): Promise<void> {
   loading.value = true
   errorMsg.value = ''
   noMoreData.value = false
   currentPage.value = 1
   try {
-    const result = await getFeed(activeTab.value, 1, pageSize)
+    if (activeTab.value === 'nearby') await ensureNearbyLocation()
+    const result = await getFeed(activeTab.value, buildFeedParams(1))
     items.value = (result.items ?? []) as ActivityItem[]
     noMoreData.value = (result.totalPages ?? 1) <= 1
   } catch (error) {
@@ -184,7 +240,8 @@ async function onRefresh(): Promise<void> {
   noMoreData.value = false
   currentPage.value = 1
   try {
-    const result = await getFeed(activeTab.value, 1, pageSize)
+    if (activeTab.value === 'nearby') await ensureNearbyLocation()
+    const result = await getFeed(activeTab.value, buildFeedParams(1))
     items.value = (result.items ?? []) as ActivityItem[]
     noMoreData.value = (result.totalPages ?? 1) <= 1
   } catch {
@@ -200,7 +257,8 @@ async function loadMore(): Promise<void> {
   loadError.value = false
   const nextPage = currentPage.value + 1
   try {
-    const result = await getFeed(activeTab.value, nextPage, pageSize)
+    if (activeTab.value === 'nearby') await ensureNearbyLocation()
+    const result = await getFeed(activeTab.value, buildFeedParams(nextPage))
     const newItems = (result.items ?? []) as ActivityItem[]
     if (newItems.length === 0) {
       noMoreData.value = true
@@ -231,26 +289,38 @@ function goDetail(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
 }
 
-function goCreate(): void {
-  uni.navigateTo({ url: '/pages/activity/templates' })
+function goSearch(): void {
+  uni.navigateTo({ url: '/pages/discover/search' })
+}
+
+function goMap(): void {
+  uni.navigateTo({ url: '/pages/discover/map' })
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@import '@/styles/theme.scss';
+
 .page {
-  background-color: #f7f8fa;
+  background-color: $color-bg;
   height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.tab-bar {
+.top-bar {
   display: flex;
-  background-color: #fff;
-  padding: 0 32rpx;
-  border-bottom: 1rpx solid #ebedf0;
+  background-color: $color-bg-card;
+  border-bottom: 1rpx solid $color-border-light;
   flex-shrink: 0;
+  align-items: center;
+}
+
+.tab-bar {
+  flex: 1;
+  display: flex;
+  padding-left: 32rpx;
 }
 
 .tab {
@@ -258,14 +328,21 @@ function goCreate(): void {
   text-align: center;
   padding: 24rpx 0;
   font-size: 28rpx;
-  color: #646566;
+  color: var(--q-color-text-sub);
   border-bottom: 4rpx solid transparent;
 }
 
 .tab.active {
-  color: #5ec8a7;
-  border-bottom-color: #5ec8a7;
+  color: var(--q-color-primary);
+  border-bottom-color: var(--q-color-primary);
   font-weight: 600;
+}
+
+.filter-entry {
+  padding: 0 32rpx;
+  font-size: 26rpx;
+  color: var(--q-color-primary);
+  white-space: nowrap;
 }
 
 .scroll-area {
@@ -274,11 +351,80 @@ function goCreate(): void {
   -webkit-overflow-scrolling: touch;
 }
 
+.discover-entry-panel {
+  padding: 24rpx 32rpx 16rpx;
+}
+
+.home-search-entry {
+  display: flex;
+  align-items: center;
+  background-color: var(--q-color-bg-card);
+  border: 1rpx solid var(--q-color-bg-soft);
+  border-radius: 999rpx;
+  padding: 20rpx 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(50, 50, 51, 0.06);
+}
+
+.home-search-icon {
+  font-size: 28rpx;
+  margin-right: 12rpx;
+}
+
+.home-search-placeholder {
+  flex: 1;
+  font-size: 28rpx;
+  color: var(--q-color-text-muted);
+}
+
+.home-search-action {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  padding-left: 16rpx;
+  border-left: 1rpx solid var(--q-color-bg-soft);
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--q-color-primary);
+}
+
+.advanced-actions {
+  display: flex;
+  flex-direction: row;
+  margin: 16rpx -8rpx 0;
+}
+
+.advanced-action {
+  flex: 1;
+  margin: 0 8rpx;
+  padding: 18rpx 20rpx;
+  background-color: var(--q-color-bg-card);
+  border-radius: 16rpx;
+  border-left: 6rpx solid var(--q-color-primary);
+  box-shadow: 0 8rpx 24rpx rgba(50, 50, 51, 0.05);
+}
+
+.map-action {
+  border-left-color: var(--q-color-info);
+}
+
+.advanced-action-title {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--q-color-text);
+}
+
+.advanced-action-desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: var(--q-color-text-muted);
+}
+
 .loading-text,
 .empty-text {
   text-align: center;
   font-size: 28rpx;
-  color: #969799;
+  color: $color-text-muted;
   padding-top: 120rpx;
 }
 
@@ -291,23 +437,25 @@ function goCreate(): void {
 
 .error-text {
   font-size: 28rpx;
-  color: #ee0a24;
+  color: $color-danger;
 }
 
 .retry-btn {
   margin-top: 24rpx;
   padding: 16rpx 48rpx;
   font-size: 26rpx;
-  color: #5ec8a7;
-  border: 2rpx solid #5ec8a7;
-  border-radius: 8rpx;
+  color: $color-primary;
+  border: 2rpx solid rgba(22, 160, 133, 0.35);
+  border-radius: 20rpx;
 }
 
 .card {
-  background-color: #fff;
+  background-color: $color-bg-card;
   margin: 16rpx 32rpx;
-  border-radius: 12rpx;
+  border: 1rpx solid $color-border-light;
+  border-radius: 24rpx;
   overflow: hidden;
+  box-shadow: $shadow-sm;
 }
 
 .card-hover {
@@ -329,7 +477,7 @@ function goCreate(): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f2f3f5;
+  background-color: var(--q-color-bg-soft);
 }
 
 .placeholder-icon {
@@ -354,7 +502,7 @@ function goCreate(): void {
 
 .card-title {
   font-size: 28rpx;
-  color: #323233;
+  color: $color-text;
   font-weight: 600;
   flex: 1;
   overflow: hidden;
@@ -365,38 +513,38 @@ function goCreate(): void {
 .status-tag {
   font-size: 20rpx;
   padding: 2rpx 10rpx;
-  border-radius: 4rpx;
+  border-radius: 999rpx;
   flex-shrink: 0;
 }
 
 .status-registering {
-  background-color: rgba(94, 200, 167, 0.1);
-  color: #5ec8a7;
+  background-color: $color-primary-light;
+  color: $color-primary-dark;
 }
 
 .status-registrationClosed {
-  background-color: #fff7e6;
-  color: #ed6a0c;
+  background-color: var(--q-color-accent-light);
+  color: var(--q-color-warning);
 }
 
 .status-ongoing {
-  background-color: #ebf9e9;
-  color: #07c160;
+  background-color: $color-primary-light;
+  color: $color-primary;
 }
 
 .status-ended {
-  background-color: #f2f3f5;
-  color: #c8c9cc;
+  background-color: $color-bg-soft;
+  color: $color-text-muted;
 }
 
 .status-notStarted {
-  background-color: #ebedf0;
-  color: #969799;
+  background-color: $color-bg-soft;
+  color: $color-text-sub;
 }
 
 .status-takenDown {
-  background-color: #fff2f0;
-  color: #ee0a24;
+  background-color: rgba(220, 38, 38, 0.08);
+  color: $color-danger;
 }
 
 .card-tags {
@@ -408,10 +556,10 @@ function goCreate(): void {
 
 .tag {
   font-size: 22rpx;
-  color: #5ec8a7;
-  background-color: rgba(94, 200, 167, 0.08);
+  color: $color-primary-dark;
+  background-color: $color-primary-light;
   padding: 2rpx 12rpx;
-  border-radius: 4rpx;
+  border-radius: 999rpx;
 }
 
 .card-meta {
@@ -423,12 +571,12 @@ function goCreate(): void {
 
 .meta-item {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .meta-sep {
   font-size: 20rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
 }
 
 .card-bottom {
@@ -440,49 +588,28 @@ function goCreate(): void {
 
 .fee {
   font-size: 26rpx;
-  color: #ee0a24;
+  color: var(--q-color-danger);
   font-weight: 600;
 }
 
 .fee.free {
-  color: #07c160;
+  color: var(--q-color-success);
 }
 
 .registered {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .footer-text {
   text-align: center;
   font-size: 24rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   padding: 32rpx 0;
 }
 
 .load-error {
-  color: #ee0a24;
-}
-
-.fab {
-  position: fixed;
-  right: 32rpx;
-  bottom: calc(32rpx + env(safe-area-inset-bottom) + 120rpx);
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 50%;
-  background-color: #5ec8a7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4rpx 16rpx rgba(94, 200, 167, 0.4);
-}
-
-.fab-icon {
-  font-size: 56rpx;
-  color: #fff;
-  line-height: 1;
-  margin-top: -4rpx;
+  color: var(--q-color-danger);
 }
 </style>
 

@@ -35,8 +35,30 @@
               mediaId ? mediaId.slice(0, 8) + '...' : '—'
             }}</text>
             <view class="classification-tags">
-              <text v-for="tag in tags" :key="tag" class="tag-chip">{{ tag }}</text>
+              <text
+                v-for="tag in tags"
+                :key="tag"
+                class="tag-chip"
+                :class="{ 'tag-chip--active': isImageTagConfirmed(mediaId, tag) }"
+                @click="toggleConfirmedImageTag(mediaId, tag)"
+              >
+                {{ tag }}
+              </text>
             </view>
+          </view>
+        </view>
+
+        <view v-if="unclassifiedImageIds.length > 0" class="form-item">
+          <text class="label">未识别图片确认</text>
+          <view v-for="mediaId in unclassifiedImageIds" :key="mediaId" class="classification-row">
+            <text class="classification-media">{{ mediaId.slice(0, 8) + '...' }}</text>
+            <text
+              class="tag-chip"
+              :class="{ 'tag-chip--active': isImageConfirmedAsEmpty(mediaId) }"
+              @click="confirmImageAsEmpty(mediaId)"
+            >
+              确认为无标签
+            </text>
           </view>
         </view>
 
@@ -66,7 +88,7 @@
       </view>
     </scroll-view>
 
-    <BottomActionBar>
+    <BottomActionBar fixed>
       <button class="bar-btn bar-btn-primary" :loading="submitting" @click="handleSubmit">
         {{ t('activitySummary.submit') }}
       </button>
@@ -82,7 +104,7 @@
  * 前置条件：用户已登录且为活动发起人，activityId 通过 query 传入
  * 后置条件：提交成功后返回上一页
  */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
@@ -107,6 +129,13 @@ const submitting = ref(false)
 const formError = ref('')
 // AI 图片分类结果：mediaId -> tags
 const imageClassifications = ref<Map<string, string[]>>(new Map())
+const confirmedImageTagMap = ref<Map<string, Set<string>>>(new Map())
+const confirmedEmptyImageIds = ref<Set<string>>(new Set())
+
+/** 尚未获得 AI 标签的图片标识 */
+const unclassifiedImageIds = computed(() =>
+  imageIds.value.filter((id) => !imageClassifications.value.has(id)),
+)
 
 /**
  * 添加图片并调用 AI 分类
@@ -121,14 +150,15 @@ async function handleAddImage(): Promise<void> {
       extension: ['jpg', 'jpeg', 'png'],
     })
     try {
-      const results = await uploadActivityImages(res.tempFilePaths as string[])
+      const selectedPaths = res.tempFilePaths as string[]
+      const results = await uploadActivityImages(selectedPaths)
       const newMediaIds: string[] = []
-      for (const r of results) {
+      for (const [index, r] of results.entries()) {
         const mediaId = r.mediaId
-        const url = r.signedUrl
+        const previewUrl = selectedPaths[index]
         if (!mediaId) continue
         imageIds.value.push(mediaId)
-        imagePreviews.value.push(url || '')
+        if (previewUrl) imagePreviews.value.push(previewUrl)
         newMediaIds.push(mediaId)
       }
       // 调用 AI 图片分类
@@ -137,6 +167,7 @@ async function handleAddImage(): Promise<void> {
         if (classification.status === 'succeeded' && classification.items) {
           for (const item of classification.items) {
             imageClassifications.value.set(item.mediaId, item.suggestedTags)
+            confirmedImageTagMap.value.set(item.mediaId, new Set(item.suggestedTags))
           }
         }
       } catch {
@@ -160,6 +191,73 @@ function removeImage(index: number): void {
   imageIds.value.splice(index, 1)
   imagePreviews.value.splice(index, 1)
   imageClassifications.value.delete(removedId)
+  confirmedImageTagMap.value.delete(removedId)
+  const nextEmpty = new Set(confirmedEmptyImageIds.value)
+  nextEmpty.delete(removedId)
+  confirmedEmptyImageIds.value = nextEmpty
+}
+
+/** 判断图片标签是否已被人工确认
+ *
+ * @param mediaId 图片媒体文件标识
+ * @param tag 待判断标签
+ * @returns true 表示提交时会包含该标签
+ */
+function isImageTagConfirmed(mediaId: string, tag: string): boolean {
+  return confirmedImageTagMap.value.get(mediaId)?.has(tag) ?? false
+}
+
+/** 切换图片标签确认状态
+ *
+ * 前置条件：mediaId 和 tag 来自 AI 分类结果。
+ * 后置条件：confirmedImageTagMap 反映用户人工确认后的标签集合。
+ * 副作用：仅更新本地提交状态，不立即调用 API。
+ *
+ * @param mediaId 图片媒体文件标识
+ * @param tag 被确认或取消的标签
+ */
+function toggleConfirmedImageTag(mediaId: string, tag: string): void {
+  const next = new Map(confirmedImageTagMap.value)
+  const tags = new Set(next.get(mediaId) ?? [])
+  if (tags.has(tag)) {
+    tags.delete(tag)
+  } else {
+    tags.add(tag)
+  }
+  next.set(mediaId, tags)
+  confirmedImageTagMap.value = next
+
+  const nextEmpty = new Set(confirmedEmptyImageIds.value)
+  nextEmpty.delete(mediaId)
+  confirmedEmptyImageIds.value = nextEmpty
+}
+
+/** 判断图片是否已人工确认为无标签 */
+function isImageConfirmedAsEmpty(mediaId: string): boolean {
+  return confirmedEmptyImageIds.value.has(mediaId)
+}
+
+/** 将未识别图片确认为无标签
+ *
+ * 前置条件：mediaId 属于当前已上传图片，且未获得 AI 分类标签。
+ * 后置条件：该图片提交时会携带空标签，并被视为已人工确认。
+ * 副作用：更新本地 confirmedEmptyImageIds。
+ *
+ * @param mediaId 图片媒体文件标识
+ */
+function confirmImageAsEmpty(mediaId: string): void {
+  const next = new Set(confirmedEmptyImageIds.value)
+  if (next.has(mediaId)) {
+    next.delete(mediaId)
+  } else {
+    next.add(mediaId)
+  }
+  confirmedEmptyImageIds.value = next
+}
+
+/** 判断图片标签是否已完成人工确认 */
+function isImageTagSelectionConfirmed(mediaId: string): boolean {
+  return confirmedImageTagMap.value.has(mediaId) || confirmedEmptyImageIds.value.has(mediaId)
 }
 
 /**
@@ -177,6 +275,10 @@ async function handleSubmit(): Promise<void> {
     formError.value = t('activitySummary.contentRequired')
     return
   }
+  if (imageIds.value.some((id) => !isImageTagSelectionConfirmed(id))) {
+    formError.value = '请先确认每张图片的 AI 分类标签'
+    return
+  }
   formError.value = ''
   submitting.value = true
 
@@ -184,7 +286,7 @@ async function handleSubmit(): Promise<void> {
     // 构建 confirmedImageTags：优先使用 AI 分类结果，否则空标签
     const confirmedImageTags = imageIds.value.map((id) => ({
       mediaId: id,
-      tags: imageClassifications.value.get(id) ?? [],
+      tags: [...(confirmedImageTagMap.value.get(id) ?? new Set<string>())],
     }))
 
     await createActivitySummary(activityId.value, {
@@ -229,7 +331,7 @@ onLoad((query) => {
 
 <style scoped>
 .page {
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -243,14 +345,14 @@ onLoad((query) => {
 }
 
 .form-container {
-  padding: 32rpx 32rpx calc(240rpx + env(safe-area-inset-bottom));
+  padding: 32rpx 32rpx calc(176rpx + env(safe-area-inset-bottom));
 }
 
 .title {
   display: block;
   font-size: 32rpx;
   font-weight: 700;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 40rpx;
 }
 
@@ -261,7 +363,7 @@ onLoad((query) => {
 .label {
   display: block;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 12rpx;
 }
 
@@ -269,10 +371,10 @@ onLoad((query) => {
   width: 100%;
   height: 88rpx;
   padding: 0 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   box-sizing: border-box;
 }
 
@@ -280,10 +382,10 @@ onLoad((query) => {
   width: 100%;
   min-height: 300rpx;
   padding: 20rpx 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   box-sizing: border-box;
 }
 
@@ -315,7 +417,7 @@ onLoad((query) => {
   line-height: 32rpx;
   text-align: center;
   background-color: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  color: var(--q-color-bg-card);
   border-radius: 50%;
   font-size: 24rpx;
 }
@@ -323,17 +425,17 @@ onLoad((query) => {
 .image-add-btn {
   width: 180rpx;
   height: 180rpx;
-  border: 2rpx dashed #c8c9cc;
+  border: 2rpx dashed var(--q-color-text-muted);
   border-radius: 8rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
 }
 
 .add-icon {
   font-size: 48rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
   line-height: 1;
 }
 
@@ -341,7 +443,7 @@ onLoad((query) => {
 .classification-row {
   display: flex;
   align-items: center;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   padding: 16rpx 20rpx;
   margin-bottom: 12rpx;
@@ -349,7 +451,7 @@ onLoad((query) => {
 
 .classification-media {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   margin-right: 16rpx;
   flex-shrink: 0;
 }
@@ -362,8 +464,8 @@ onLoad((query) => {
 
 .tag-chip {
   font-size: 22rpx;
-  color: #5ec8a7;
-  background-color: #e8f7f0;
+  color: var(--q-color-primary);
+  background-color: var(--q-color-primary-light);
   padding: 4rpx 12rpx;
   border-radius: 4rpx;
 }

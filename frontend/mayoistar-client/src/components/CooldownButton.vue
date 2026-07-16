@@ -7,7 +7,7 @@
     @click="$emit('click')"
   >
     <template v-if="cooldown > 0">
-      {{ cooldownText.replace('{seconds}', String(cooldown)) }}
+      {{ cooldownText }}
     </template>
     <template v-else-if="!loading">
       {{ text }}
@@ -19,10 +19,10 @@
 /**
  * 冷却倒计时按钮组件
  *
- * 展示冷却倒计时文本，冷却期间自动禁用。
+ * 展示由父组件完成国际化插值的冷却倒计时文本，冷却期间自动禁用。
  * 与 useCooldown composable 配合使用，cooldown 由父组件通过 composable 管理。
  *
- * 前置条件：cooldown 为当前剩余秒数，由 useCooldown 提供
+ * 前置条件：cooldown 为当前剩余秒数，由 useCooldown 提供；cooldownText 已完成秒数插值
  * 后置条件：冷却期间显示倒计时文本并禁用点击
  */
 defineProps<{
@@ -39,17 +39,21 @@ defineEmits<{
 }>()
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@import '@/styles/theme.scss';
+
 .cooldown-btn {
   width: 100%;
   height: 88rpx;
   line-height: 88rpx;
-  background-color: #1989fa;
-  color: #fff;
+  background: $gradient-primary;
+  color: $color-text-inverse;
   font-size: 32rpx;
-  border-radius: 8rpx;
+  font-weight: $weight-semibold;
+  border-radius: 24rpx;
   border: none;
   margin-top: 16rpx;
+  box-shadow: 0 10rpx 24rpx rgba(22, 160, 133, 0.2);
 }
 
 .cooldown-btn[disabled] {
@@ -57,8 +61,9 @@ defineEmits<{
 }
 
 .cooldown-btn--secondary {
-  background-color: #fff;
-  color: #1989fa;
-  border: 1rpx solid #1989fa;
+  background: $color-bg-card;
+  color: $color-primary;
+  border: 1rpx solid rgba(22, 160, 133, 0.35);
+  box-shadow: none;
 }
 </style>

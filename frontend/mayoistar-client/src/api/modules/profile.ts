@@ -1,7 +1,7 @@
 /**
  * 用户资料 API 模块
  *
- * 封装个人资料查看与编辑、商户资料、头像上传、昵称检查等接口。
+ * 封装个人资料查看与编辑、商户资料、头像与资质材料上传、昵称检查等接口。
  */
 import { get, patch, post, upload } from '@/api/request'
 import type { components } from '@/api/types/schema'
@@ -50,6 +50,11 @@ export function checkNicknameAvailability(nickname: string) {
 /** 上传用户头像 */
 export function uploadAvatar(filePath: string): Promise<MediaFile> {
   return upload<MediaFile>('/identity/media/avatar', filePath)
+}
+
+/** 上传商家营业执照或营业凭证 */
+export function uploadMerchantLicense(filePath: string): Promise<MediaFile> {
+  return upload<MediaFile>('/identity/media/license', filePath)
 }
 
 /** 提交商户资质（营业执照） */

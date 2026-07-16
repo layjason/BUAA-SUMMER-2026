@@ -11,7 +11,7 @@
           <text class="success-hint">{{ t('forgotPassword.emailSentHint') }}</text>
           <CooldownButton
             :text="t('forgotPassword.resendButton')"
-            :cooldown-text="t('forgotPassword.resendCooldown')"
+            :cooldown-text="cooldownText"
             :cooldown="cooldown"
             :loading="loading"
             @click="handleResend"
@@ -52,10 +52,11 @@
  * 前置条件：用户未登录
  * 后置条件：发送成功后提示用户前往邮件链接，密码重置由网页端处理
  */
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, BusinessError } from '@/api'
 import { getErrorMessage } from '@/utils/error'
+import { formatI18nTemplate } from '@/utils/i18n-template'
 import {
   PageHeader,
   FormInput,
@@ -65,7 +66,7 @@ import {
   useCooldown,
 } from '@/components'
 
-const { t } = useI18n()
+const { t, tm } = useI18n()
 
 const email = ref('')
 const loading = ref(false)
@@ -76,6 +77,18 @@ const emailError = ref('')
 const formError = ref('')
 
 const { cooldown, startCooldown } = useCooldown(60)
+
+/** 用 watch 显式监听 cooldown 变化后格式化原始模板，避免 uni-app 原生端显示 `{seconds}` 占位符 */
+const cooldownText = ref('')
+watch(
+  cooldown,
+  (val) => {
+    cooldownText.value = formatI18nTemplate(String(tm('forgotPassword.resendCooldown')), {
+      seconds: val,
+    })
+  },
+  { immediate: true },
+)
 
 function validateEmail(): boolean {
   emailError.value = ''
@@ -168,7 +181,7 @@ function goLogin(): void {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #f7f8fa;
+  background-color: var(--q-color-bg);
 }
 
 .container {
@@ -179,7 +192,7 @@ function goLogin(): void {
   display: block;
   text-align: center;
   font-size: 24rpx;
-  color: #07c160;
+  color: var(--q-color-success);
   margin-bottom: 16rpx;
 }
 
@@ -191,11 +204,11 @@ function goLogin(): void {
 
 .link {
   font-size: 28rpx;
-  color: #1989fa;
+  color: var(--q-color-primary);
 }
 
 .success-box {
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 12rpx;
   padding: 56rpx 32rpx;
   text-align: center;
@@ -211,14 +224,14 @@ function goLogin(): void {
 .success-text {
   display: block;
   font-size: 30rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 12rpx;
 }
 
 .success-email {
   display: block;
   font-size: 32rpx;
-  color: #1989fa;
+  color: var(--q-color-primary);
   font-weight: 600;
   margin-bottom: 12rpx;
   word-break: break-all;
@@ -227,7 +240,7 @@ function goLogin(): void {
 .success-hint {
   display: block;
   font-size: 26rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   line-height: 1.6;
   margin-bottom: 32rpx;
 }

@@ -42,6 +42,7 @@ import io.github.layjason.mayoistar.repository.TeamAnnouncementRepository;
 import io.github.layjason.mayoistar.repository.TeamMemberRepository;
 import io.github.layjason.mayoistar.repository.TeamPollRepository;
 import io.github.layjason.mayoistar.repository.TeamRepository;
+import io.github.layjason.mayoistar.repository.UserRepository;
 import io.github.layjason.mayoistar.service.media.MediaAccessService;
 import java.time.Duration;
 import java.time.Instant;
@@ -87,6 +88,7 @@ public class ChatService {
     private final PollOptionRepository pollOptionRepository;
     private final PollVoteRepository pollVoteRepository;
     private final MediaAccessService mediaAccessService;
+    private final UserRepository userRepository;
 
     // ========================================
     // Send Message
@@ -305,7 +307,17 @@ public class ChatService {
         ChatDtos.ConversationSummary summary = new ChatDtos.ConversationSummary();
         summary.setConversationId(conv.getConversationId());
         summary.setKind(conv.getKind());
-        summary.setTitle(conv.getTitle());
+        if (conv.getKind() == ConversationKind.friend) {
+            String peerId = getPeerUserId(conv.getConversationId(), userId);
+            if (peerId != null) {
+                userRepository.findById(peerId).ifPresent(peer -> summary.setTitle(peer.getNickname()));
+            }
+            if (summary.getTitle() == null) {
+                summary.setTitle(conv.getTitle());
+            }
+        } else {
+            summary.setTitle(conv.getTitle());
+        }
         summary.setUpdatedAt(conv.getUpdatedAt().toString());
 
         var lastMessagePage = chatMessageRepository.findByConversationIdOrderBySentAtDesc(

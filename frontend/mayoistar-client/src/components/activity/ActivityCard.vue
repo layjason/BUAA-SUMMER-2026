@@ -112,14 +112,14 @@ function handleClick() {
 @import '@/styles/theme.scss';
 
 .activity-card {
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $gradient-card;
   border: 1px solid $color-border-light;
   border-radius: $radius-xl;
   overflow: hidden;
-  box-shadow: $shadow-sm;
-  transition: transform 0.15s ease;
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 
   &:active {
     transform: scale(0.98);
@@ -132,6 +132,7 @@ function handleClick() {
     /* 16:9 比例 */
     padding-top: 56.25%;
     overflow: hidden;
+    background: $gradient-primary-soft;
   }
 
   &__cover {
@@ -213,7 +214,7 @@ function handleClick() {
       color: $color-primary;
       font-size: $font-base;
       font-weight: $weight-semibold;
-      background: $color-primary-light;
+      background: $gradient-primary-soft;
       padding: 1px 8px;
       border-radius: $radius-full;
     }
@@ -237,7 +238,7 @@ function handleClick() {
   }
 
   &__tag {
-    background: rgba(94, 200, 167, 0.08);
+    background: $gradient-primary-soft;
     border-radius: $radius-full;
     padding: 2px 8px;
   }

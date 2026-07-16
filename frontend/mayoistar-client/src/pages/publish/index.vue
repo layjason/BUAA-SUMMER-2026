@@ -1,32 +1,79 @@
 <script setup lang="ts">
 /**
- * 发布入口页
+ * 发布入口页。
  *
- * TabBar 第三个 tab，提供活动创建的多种入口：
- * 手动创建、模板创建、AI 生成、克隆已有活动。
+ * 前置条件：用户已登录并进入发布 Tab。
+ * 后置条件：根据用户选择跳转到对应创建流程。
+ * 不变量：入口页不直接创建、提交或克隆活动。
  */
+import { onShow } from '@dcloudio/uni-app'
+import { useAuthStore } from '@/stores/auth'
+import { ensureAuthenticatedAccess } from '@/utils/auth-guard'
 
-/** 跳转到空白创建活动 */
+const authStore = useAuthStore()
+
+/**
+ * 检查发布 Tab 登录态。
+ *
+ * 前置条件：页面进入显示阶段。
+ * 后置条件：未登录用户被引导到登录页。
+ * 不变量：已登录用户不受影响。
+ */
+onShow(() => {
+  ensureAuthenticatedAccess('/pages/publish/index', () => authStore.isLoggedIn)
+})
+
+/**
+ * 跳转到空白活动创建页。
+ *
+ * 前置条件：无。
+ * 后置条件：打开活动编辑页。
+ * 不变量：不携带活动标识。
+ */
 function goToCreate(): void {
   uni.navigateTo({ url: '/pages/activity/edit' })
 }
 
-/** 跳转到模板选择页 */
+/**
+ * 跳转到模板选择页。
+ *
+ * 前置条件：无。
+ * 后置条件：打开单独的模板创建页。
+ * 不变量：不混入克隆流程。
+ */
 function goToTemplates(): void {
   uni.navigateTo({ url: '/pages/activity/templates' })
 }
 
-/** 跳转到草稿列表页 */
+/**
+ * 跳转到草稿列表页。
+ *
+ * 前置条件：无。
+ * 后置条件：打开仅展示草稿状态的列表。
+ * 不变量：不展示审核中活动。
+ */
 function goToDrafts(): void {
   uni.navigateTo({ url: '/pages/activity/drafts' })
 }
 
-/** 跳转到我的活动（可从中克隆） */
-function goToMyActivities(): void {
-  uni.navigateTo({ url: '/pages/profile/my-activities' })
+/**
+ * 跳转到克隆已有活动页。
+ *
+ * 前置条件：无。
+ * 后置条件：打开独立克隆页。
+ * 不变量：不跳转到我创建的活动页复用流程。
+ */
+function goToClone(): void {
+  uni.navigateTo({ url: '/pages/activity/clone' })
 }
 
-/** 跳转到 AI 生成页 */
+/**
+ * 跳转到 AI 活动生成页。
+ *
+ * 前置条件：无。
+ * 后置条件：打开 AI 生成流程。
+ * 不变量：不修改现有草稿。
+ */
 function goToAiDraft(): void {
   uni.navigateTo({ url: '/pages/activity/ai-draft' })
 }
@@ -36,52 +83,47 @@ function goToAiDraft(): void {
   <view class="publish-page">
     <view class="header">
       <text class="header-title">发布活动</text>
-      <text class="header-sub">选择你喜欢的创建方式</text>
+      <text class="header-sub">选择一种方式开始创建，之后都可以继续编辑</text>
     </view>
 
     <view class="options">
-      <!-- 手动创建 -->
       <view class="option-card main-option" @tap="goToCreate">
         <view class="option-icon">✏️</view>
         <view class="option-content">
           <text class="option-title">手动创建</text>
-          <text class="option-desc">从零开始，自由填写活动信息</text>
+          <text class="option-desc">从空白表单开始，完整填写活动信息</text>
         </view>
         <text class="option-arrow">›</text>
       </view>
 
-      <!-- 模板创建 -->
       <view class="option-card" @tap="goToTemplates">
         <view class="option-icon">📋</view>
         <view class="option-content">
           <text class="option-title">模板创建</text>
-          <text class="option-desc">选择活动模板，快速生成草稿</text>
+          <text class="option-desc">选择活动模板，快速生成可编辑草稿</text>
         </view>
         <text class="option-arrow">›</text>
       </view>
 
-      <!-- AI 生成 -->
       <view class="option-card" @tap="goToAiDraft">
         <view class="option-icon">🤖</view>
         <view class="option-content">
           <text class="option-title">AI 智能生成</text>
-          <text class="option-desc">输入主题，AI 为你规划活动方案</text>
+          <text class="option-desc">输入主题，让 AI 先规划一版活动方案</text>
         </view>
         <text class="option-arrow">›</text>
       </view>
 
-      <!-- 克隆活动 -->
-      <view class="option-card" @tap="goToMyActivities">
+      <view class="option-card" @tap="goToClone">
         <view class="option-icon">🔄</view>
         <view class="option-content">
           <text class="option-title">克隆已有活动</text>
-          <text class="option-desc">从历史活动复制，修改后发布</text>
+          <text class="option-desc">复用已发布活动信息，生成新草稿</text>
         </view>
         <text class="option-arrow">›</text>
       </view>
     </view>
 
-    <!-- 草稿入口 -->
     <view class="draft-section" @tap="goToDrafts">
       <view class="draft-card">
         <text class="draft-icon">📝</text>
@@ -129,9 +171,7 @@ function goToAiDraft(): void {
   display: flex;
   align-items: center;
   padding: $spacing-lg;
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: $color-bg-card;
   border: 1px solid $color-border-light;
   border-radius: $radius-xl;
   box-shadow: $shadow-sm;
@@ -143,8 +183,8 @@ function goToAiDraft(): void {
 }
 
 .main-option {
-  background: linear-gradient(135deg, $color-primary-light 0%, $color-bg-glass 100%);
-  border-color: rgba(94, 200, 167, 0.15);
+  background: $color-primary-light;
+  border-color: rgba(22, 160, 133, 0.18);
 }
 
 .option-icon {
@@ -154,6 +194,7 @@ function goToAiDraft(): void {
 
 .option-content {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -183,10 +224,8 @@ function goToAiDraft(): void {
   display: flex;
   align-items: center;
   padding: $spacing-lg;
-  background: $color-bg-glass;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px dashed rgba(94, 200, 167, 0.3);
+  background: $color-bg-card;
+  border: 1px dashed rgba(22, 160, 133, 0.3);
   border-radius: $radius-xl;
 
   &:active {

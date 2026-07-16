@@ -25,3 +25,23 @@ export function runtimeStatusText(status: string, t: (key: string) => string): s
   const key = RUNTIME_STATUS_KEYS[status]
   return key ? t(key) : status
 }
+/** 审核状态 i18n key 映射 */
+export const REVIEW_STATUS_KEYS: Record<string, string> = {
+  draft: 'myActivities.statusDraft',
+  pending: 'myActivities.statusPending',
+  approved: 'myActivities.statusApproved',
+  rejected: 'myActivities.statusRejected',
+  changeRequired: 'myActivities.statusChangeRequired',
+}
+
+/**
+ * 获取审核状态的展示文本
+ *
+ * @param status 审核状态值
+ * @param t i18n 翻译函数
+ * @returns 本地化展示文本
+ */
+export function reviewStatusText(status: string, t: (key: string) => string): string {
+  const key = REVIEW_STATUS_KEYS[status]
+  return key ? t(key) : status
+}

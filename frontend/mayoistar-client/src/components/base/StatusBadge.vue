@@ -70,19 +70,19 @@ withDefaults(defineProps<Props>(), {
   /* 警告：暖黄 */
   &--warning {
     background: rgba(246, 197, 111, 0.12);
-    color: #c49a2a;
+    color: var(--q-color-warning);
   }
 
   /* 危险：柔粉 */
   &--danger {
-    background: rgba(242, 156, 163, 0.1);
-    color: #d4707a;
+    background: rgba(220, 38, 38, 0.08);
+    color: var(--q-color-danger);
   }
 
   /* 信息：柔蓝 */
   &--info {
     background: $color-secondary-light;
-    color: #5a9ec9;
+    color: var(--q-color-info);
   }
 
   /* 弱化：灰色 */

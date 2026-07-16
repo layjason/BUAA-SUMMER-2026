@@ -12,7 +12,10 @@
               class="image-preview-item"
               @click="removeImage(idx)"
             >
-              <image class="preview-image" :src="img" mode="aspectFill" />
+              <image v-if="img" class="preview-image" :src="img" mode="aspectFill" />
+              <view v-else class="preview-image preview-image--failed">
+                <text class="preview-failed-text">加载失败</text>
+              </view>
               <text class="image-remove">×</text>
             </view>
             <view class="image-add-btn" @click="handleAddImage">
@@ -34,18 +37,25 @@
         <!-- 活动标签 -->
         <view class="form-item">
           <text class="label"> <text class="req">* </text>{{ t('activityEdit.tags') }} </text>
-          <view v-if="availableTags.length" class="tags-row">
-            <view
-              v-for="tag in availableTags"
-              :key="tag.name"
-              class="tag-chip"
-              :class="{ active: selectedTags.has(tag.name) }"
-              @click="toggleTag(tag.name)"
-            >
-              <text>{{ tag.name }}</text>
+          <view class="tag-create-row">
+            <input
+              v-model="tagInput"
+              class="tag-input"
+              type="text"
+              maxlength="20"
+              placeholder="输入标签后添加"
+              confirm-type="done"
+              @confirm="addTag"
+            />
+            <button class="tag-add-button" @click="addTag">添加</button>
+          </view>
+          <view v-if="activityTags.length" class="tags-row">
+            <view v-for="tag in activityTags" :key="tag" class="tag-chip" @click="removeTag(tag)">
+              <text>{{ tag }}</text>
+              <text class="tag-remove">×</text>
             </view>
           </view>
-          <text v-else class="hint">{{ t('editProfile.loadingTags') }}</text>
+          <text v-else class="hint">至少添加 1 个标签，便于用户了解活动类型</text>
           <text v-if="errors.tags" class="field-error">{{ errors.tags }}</text>
         </view>
 
@@ -119,34 +129,30 @@
 
         <!-- 地点 -->
         <view class="form-item">
-          <text class="label"><text class="req">* </text>选择地点</text>
-          <view class="location-picker" @click="showLocationPicker">
-            <text :class="selectedLocationLabel ? 'location-text' : 'location-placeholder'">
-              {{ selectedLocationLabel || '点击选择活动地点' }}
-            </text>
-            <text class="location-arrow">&gt;</text>
+          <text class="label"><text class="req">* </text>{{ t('activityEdit.location') }}</text>
+          <view class="location-map-preview" @click="goToMapPicker">
+            <view v-if="hasLocation" class="preview-card">
+              <image
+                v-if="staticMapUrl"
+                class="preview-static-map"
+                :src="staticMapUrl"
+                mode="aspectFill"
+              />
+              <view class="preview-footer">
+                <text class="preview-address-text">{{ selectedLocationLabel }}</text>
+                <text class="preview-arrow">&gt;</text>
+              </view>
+            </view>
+            <view v-else class="preview-placeholder">
+              <view class="placeholder-icon-row">
+                <text class="placeholder-location-icon">📍</text>
+              </view>
+              <text class="placeholder-main">{{ t('activityEdit.selectLocation') }}</text>
+              <text class="placeholder-sub">{{ t('activityEdit.selectLocationHint') }}</text>
+            </view>
           </view>
           <text v-if="errors.location" class="field-error">{{ errors.location }}</text>
         </view>
-        <FormInput
-          v-model="formAddress"
-          :label="t('activityEdit.locationAddress')"
-          :placeholder="t('activityEdit.locationAddressPlaceholder')"
-          :error="errors.address"
-          required
-        />
-        <FormInput
-          v-model="formCity"
-          :label="t('activityEdit.locationCity')"
-          :placeholder="t('activityEdit.locationCityPlaceholder')"
-          :error="errors.city"
-          required
-        />
-        <FormInput
-          v-model="formPlaceName"
-          :label="t('activityEdit.locationPlaceName')"
-          :placeholder="t('activityEdit.locationPlaceNamePlaceholder')"
-        />
 
         <!-- 人数上限 -->
         <FormInput
@@ -205,10 +211,18 @@
           <text v-if="errors.safetyNotice" class="field-error">{{ errors.safetyNotice }}</text>
         </view>
 
-        <FormError :message="formError" />
+        <view class="form-item">
+          <view class="switch-row">
+            <view class="switch-copy">
+              <text class="label">签到位置校验</text>
+              <text class="switch-hint">开启后，参与者签到时需要位于活动地点附近</text>
+            </view>
+            <switch :checked="formRequireLocationCheck" @change="onRequireLocationCheckChange" />
+          </view>
+        </view>
       </view>
     </scroll-view>
-    <BottomActionBar>
+    <BottomActionBar fixed>
       <button class="bar-btn bar-btn-secondary" :disabled="savingDraft" @click="handleSaveDraft">
         {{ savingDraft ? '保存中...' : t('activityEdit.saveDraft') }}
       </button>
@@ -228,9 +242,10 @@
  * 后置条件：保存草稿后留在当前页；提交审核后返回上一页
  */
 import { computed, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { BusinessError } from '@/api'
+import { useAuthStore } from '@/stores/auth'
 import {
   createDraft,
   updateDraft,
@@ -238,12 +253,14 @@ import {
   submitDraft,
   uploadActivityImages,
 } from '@/api/modules/activities'
-import { getInterestTags } from '@/api/modules/profile'
-import { MOCK_ACTIVITY_LOCATIONS } from '@/config/mock-locations'
+import { AMAP_WEB_API_KEY } from '@/services/amap'
 import { getErrorMessage } from '@/utils/error'
-import { BottomActionBar, FormInput, FormError } from '@/components'
+import { normalizeGeoPoint } from '@/utils/map-move'
+import { resolveMediaPreviewUrl } from '@/utils/media-preview'
+import { BottomActionBar, FormInput } from '@/components'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 const activityId = ref('')
 const isEdit = computed(() => !!activityId.value)
@@ -260,6 +277,9 @@ const formFeeDescription = ref('')
 const formMinAge = ref('')
 const formIntroduction = ref('')
 const formSafetyNotice = ref('')
+const formRequireLocationCheck = ref(false)
+const currentLongitude = ref<number | null>(null)
+const currentLatitude = ref<number | null>(null)
 
 const startAtDate = ref('')
 const startAtTime = ref('')
@@ -268,73 +288,208 @@ const endAtTime = ref('')
 const deadlineDate = ref('')
 const deadlineTime = ref('')
 
-const selectedTags = ref(new Set<string>())
-const availableTags = ref<{ name: string }[]>([])
+const activityTags = ref<string[]>([])
+const tagInput = ref('')
 
 const imagePreviews = ref<string[]>([])
 const imageIds = ref<string[]>([])
 
 const savingDraft = ref(false)
 const submitting = ref(false)
-const formError = ref('')
 const errors = ref<Record<string, string>>({})
+
+interface PickedLocation {
+  name: string
+  address: string
+  latitude: number
+  longitude: number
+  city: string
+}
+
+/** 是否已选择地点 */
+const hasLocation = computed(() => {
+  return locationLongitude.value != null && locationLatitude.value != null
+})
 
 /** 已选地点展示文案 */
 const selectedLocationLabel = computed(() => {
-  if (!formPlaceName.value && !formAddress.value) return ''
-  if (formPlaceName.value) return `${formPlaceName.value} · ${formCity.value}`
-  return `${formAddress.value} · ${formCity.value}`
+  if (!hasLocation.value) return ''
+  const name = formPlaceName.value || formAddress.value
+  return formCity.value ? `${name} · ${formCity.value}` : name
+})
+
+/** 高德静态地图预览图地址 */
+const staticMapUrl = computed(() => {
+  if (!hasLocation.value || locationLongitude.value == null || locationLatitude.value == null) {
+    return ''
+  }
+  return buildAmapStaticMapUrl({
+    longitude: locationLongitude.value,
+    latitude: locationLatitude.value,
+    currentLongitude: currentLongitude.value,
+    currentLatitude: currentLatitude.value,
+  })
 })
 
 /**
- * 打开 mock 地点选择器
+ * 构造高德静态地图 URL。
  *
- * 前置条件：MOCK_ACTIVITY_LOCATIONS 已配置
- * 后置条件：回填 LocationInfo 各字段与坐标
+ * 前置条件：活动地点坐标已经通过 normalizeGeoPoint 校验为 GCJ-02 坐标。
+ * 后置条件：返回可直接用于 image 组件的静态地图地址，包含活动地点 marker；当前位置可用时额外标记“我”。
+ * 不变量：仅生成展示 URL，不修改活动表单状态，也不新增业务字段。
+ *
+ * @param input 静态地图所需坐标
  */
-function showLocationPicker(): void {
-  uni.showActionSheet({
-    itemList: MOCK_ACTIVITY_LOCATIONS.map((item) => item.placeName),
-    success: (res) => {
-      const location = MOCK_ACTIVITY_LOCATIONS[res.tapIndex]
-      if (!location) return
-      formCity.value = location.city
-      formAddress.value = location.address
-      formPlaceName.value = location.placeName
-      locationLongitude.value = location.point.longitude
-      locationLatitude.value = location.point.latitude
-      if (errors.value.location) {
-        const next = { ...errors.value }
-        delete next.location
-        errors.value = next
-      }
-    },
+function buildAmapStaticMapUrl(input: {
+  longitude: number
+  latitude: number
+  currentLongitude: number | null
+  currentLatitude: number | null
+}): string {
+  const markers = [`mid,0x5EC8A7,A:${input.longitude},${input.latitude}`]
+  if (input.currentLongitude != null && input.currentLatitude != null) {
+    markers.push(`mid,0x2F80ED,我:${input.currentLongitude},${input.currentLatitude}`)
+  }
+  const params = [
+    `location=${encodeURIComponent(`${input.longitude},${input.latitude}`)}`,
+    'zoom=15',
+    'size=750*300',
+    `markers=${encodeURIComponent(markers.join('|'))}`,
+    `key=${encodeURIComponent(AMAP_WEB_API_KEY)}`,
+  ]
+  return `https://restapi.amap.com/v3/staticmap?${params.join('&')}`
+}
+
+/**
+ * 打开地图选点页
+ *
+ * 通过 uni.navigateTo 跳转到 map-picker 页面，
+ * 用户确认选点后通过 EventChannel 回传地点数据。
+ *
+ * 前置条件：无
+ * 后置条件：回填 location 各字段，清除 location 错误
+ */
+function goToMapPicker(): void {
+  const query = buildMapPickerQuery()
+  uni.navigateTo({
+    url: `/pages/activity/map-picker${query}`,
+    events: {
+      onLocationPicked: (loc: PickedLocation) => {
+        applyPickedLocation(loc)
+      },
+    } as Record<string, (data: unknown) => void>,
   })
 }
 
 /**
- * 加载系统可用标签
+ * 构造跳转至地图选点页的查询字符串
+ * 前置条件：地点坐标与文本可能为空
+ * 返回值：以 `?` 开头的查询字符串或空字符串
  */
-async function loadTags(): Promise<void> {
-  try {
-    const tags = await getInterestTags()
-    availableTags.value = tags as { name: string }[]
-  } catch {
-    /* 标签加载失败不影响编辑 */
+function buildMapPickerQuery(): string {
+  if (!hasLocation.value || locationLongitude.value == null || locationLatitude.value == null)
+    return ''
+  const parts: string[] = []
+  parts.push(`longitude=${encodeURIComponent(String(locationLongitude.value))}`)
+  parts.push(`latitude=${encodeURIComponent(String(locationLatitude.value))}`)
+  parts.push(`name=${encodeURIComponent(String(formPlaceName.value || formAddress.value || ''))}`)
+  parts.push(`address=${encodeURIComponent(String(formAddress.value || ''))}`)
+  parts.push(`city=${encodeURIComponent(String(formCity.value || ''))}`)
+  return `?${parts.join('&')}`
+}
+
+/**
+ * 回填地图选点结果。
+ *
+ * 前置条件：loc 来自地图选点页，包含 OpenAPI LocationInfo 所需坐标与地址信息。
+ * 后置条件：活动编辑表单中的地点字段、经纬度和地点校验错误被同步更新。
+ * 不变量：只更新地点相关字段，不修改活动标题、时间、人数等其它表单状态。
+ *
+ * @param loc 地图选点页返回的位置
+ */
+function applyPickedLocation(loc: PickedLocation): void {
+  const point = normalizeGeoPoint(loc.longitude, loc.latitude)
+  if (!point) {
+    errors.value = { ...errors.value, location: '地点坐标格式异常，请重新选择' }
+    return
+  }
+  formPlaceName.value = loc.name
+  formAddress.value = loc.address || loc.name
+  formCity.value = loc.city || ''
+  locationLatitude.value = point.latitude
+  locationLongitude.value = point.longitude
+  if (errors.value.location) {
+    const next = { ...errors.value }
+    delete next.location
+    errors.value = next
   }
 }
 
 /**
- * 切换标签选中状态
+ * 加载用户当前位置辅助标记。
+ *
+ * 前置条件：页面已经进入活动编辑流程，定位权限可能已授权或未授权。
+ * 后置条件：定位成功时预览地图会展示“我的位置”；定位失败时不影响活动表单。
+ * 不变量：当前位置只用于地图辅助展示，不写入活动地点字段。
  */
-function toggleTag(name: string): void {
-  const next = new Set(selectedTags.value)
-  if (next.has(name)) {
-    next.delete(name)
-  } else {
-    next.add(name)
+async function loadCurrentLocationMarker(): Promise<void> {
+  try {
+    const location = await uni.getLocation({ type: 'gcj02' })
+    currentLongitude.value = location.longitude
+    currentLatitude.value = location.latitude
+  } catch {
+    /* 定位失败不影响活动编辑 */
   }
-  selectedTags.value = next
+}
+
+/**
+ * 处理地图选点页的全局回传事件。
+ *
+ * 前置条件：Android App 端 EventChannel 可能不可用或回调时机不稳定。
+ * 后置条件：收到 uni.$emit('activityLocationPicked') 后回填地点。
+ * 不变量：事件载荷不符合地点结构时不写入表单。
+ *
+ * @param loc 全局事件载荷
+ */
+function handleGlobalLocationPicked(loc: PickedLocation): void {
+  if (!loc || typeof loc.latitude !== 'number' || typeof loc.longitude !== 'number') return
+  applyPickedLocation(loc)
+}
+
+/**
+ * 添加用户手动输入的活动标签。
+ *
+ * 前置条件：用户在标签输入框中输入文本后点击添加或键盘完成。
+ * 后置条件：非空且未重复的标签会加入活动标签列表，并清空输入与标签校验错误。
+ * 不变量：标签只保存在当前活动表单中，不读取或写入后端标签字典。
+ */
+function addTag(): void {
+  const normalizedTag = tagInput.value.trim()
+  if (!normalizedTag) return
+  if (activityTags.value.includes(normalizedTag)) {
+    tagInput.value = ''
+    return
+  }
+  activityTags.value = [...activityTags.value, normalizedTag]
+  tagInput.value = ''
+  if (errors.value.tags) {
+    const next = { ...errors.value }
+    delete next.tags
+    errors.value = next
+  }
+}
+
+/**
+ * 删除活动表单中的一个手动标签。
+ *
+ * 前置条件：tag 来自当前 activityTags 列表。
+ * 后置条件：对应标签从活动表单中移除。
+ * 不变量：只修改当前草稿表单状态，不请求后端标签接口。
+ *
+ * @param tag 要删除的标签文本
+ */
+function removeTag(tag: string): void {
+  activityTags.value = activityTags.value.filter((item) => item !== tag)
 }
 
 // ================= 时间处理 =================
@@ -378,9 +533,9 @@ async function handleAddImage(): Promise<void> {
         const results = await uploadActivityImages([tempPath])
         const result = results[0] as { mediaId: string; signedUrl?: string }
         imageIds.value.push(result.mediaId)
-        imagePreviews.value.push(result.signedUrl || tempPath)
+        imagePreviews.value.push(tempPath)
       } catch {
-        formError.value = '图片上传失败'
+        showActivityEditErrorToast('图片上传失败')
       }
     }
   } catch {
@@ -393,15 +548,41 @@ function removeImage(index: number): void {
   imagePreviews.value.splice(index, 1)
 }
 
+/**
+ * 将草稿接口返回的媒体文件转换为 image 组件可展示的预览路径。
+ *
+ * 前置条件：media.signedUrl 可能是后端相对私有 URL，也可能是 mock/public 绝对 URL。
+ * 后置条件：后端私有 URL 会被下载为本地临时路径；其它 URL 原样返回。
+ *
+ * @param media 草稿图片媒体文件
+ */
+async function resolveDraftImagePreview(media: { signedUrl?: string | null }): Promise<string> {
+  return resolveMediaPreviewUrl(media.signedUrl, authStore.getAccessToken())
+}
+
+/**
+ * 展示活动编辑页的页面级错误。
+ *
+ * 前置条件：message 来自本地校验或 API 错误映射。
+ * 后置条件：用户通过 toast 获得显著反馈。
+ * 不变量：不修改字段级 errors，避免覆盖具体表单项提示。
+ *
+ * @param message 要展示的错误文案
+ */
+function showActivityEditErrorToast(message: string): void {
+  uni.showToast({ title: message, icon: 'none', duration: 2500 })
+}
+
 // ================= 表单数据组装 =================
 
 function buildPayload(): Record<string, unknown> {
   const payload: Record<string, unknown> = {}
 
   if (formTitle.value.trim()) payload.title = formTitle.value.trim()
-  if (selectedTags.value.size) payload.tags = [...selectedTags.value]
+  if (activityTags.value.length) payload.tags = [...activityTags.value]
   if (formIntroduction.value.trim()) payload.introduction = formIntroduction.value.trim()
   if (formSafetyNotice.value.trim()) payload.safetyNotice = formSafetyNotice.value.trim()
+  payload.requireLocationCheck = formRequireLocationCheck.value
 
   const startISO = toISO(startAtDate.value, startAtTime.value)
   const endISO = toISO(endAtDate.value, endAtTime.value)
@@ -454,7 +635,7 @@ function validate(): boolean {
   const e: Record<string, string> = {}
 
   if (!formTitle.value.trim()) e.title = t('activityEdit.titleRequired')
-  if (!selectedTags.value.size) e.tags = t('activityEdit.tagsRequired')
+  if (!activityTags.value.length) e.tags = t('activityEdit.tagsRequired')
   if (!startAtDate.value || !startAtTime.value) e.startAt = t('activityEdit.startAtRequired')
   if (!endAtDate.value || !endAtTime.value) e.endAt = t('activityEdit.endAtRequired')
   if (!deadlineDate.value || !deadlineTime.value)
@@ -488,7 +669,12 @@ function validate(): boolean {
   if (!formSafetyNotice.value.trim()) e.safetyNotice = t('activityEdit.safetyNoticeRequired')
 
   errors.value = e
-  return Object.keys(e).length === 0
+  const firstError = Object.values(e)[0]
+  if (firstError) {
+    showActivityEditErrorToast(firstError)
+    return false
+  }
+  return true
 }
 
 // ================= 保存草稿 =================
@@ -496,7 +682,6 @@ function validate(): boolean {
 async function handleSaveDraft(): Promise<void> {
   if (savingDraft.value) return
   savingDraft.value = true
-  formError.value = ''
 
   try {
     const payload = buildPayload()
@@ -511,20 +696,30 @@ async function handleSaveDraft(): Promise<void> {
     uni.showToast({ title: t('activityEdit.saveSuccess'), icon: 'success' })
   } catch (error) {
     if (error instanceof BusinessError) {
-      formError.value = getErrorMessage(error.code)
+      showActivityEditErrorToast(getErrorMessage(error.code))
     } else {
-      formError.value = getErrorMessage(0, '保存失败')
+      showActivityEditErrorToast(getErrorMessage(0, '保存失败'))
     }
   } finally {
     savingDraft.value = false
   }
 }
 
+/**
+ * 切换签到位置校验
+ *
+ * 前置条件：用户点击 uni-app switch 组件。
+ * 后置条件：formRequireLocationCheck 与开关状态一致。
+ * 不变量：仅写入 OpenAPI 已定义的 requireLocationCheck 字段。
+ */
+function onRequireLocationCheckChange(event: Event): void {
+  formRequireLocationCheck.value = (event as CustomEvent<{ value: boolean }>).detail.value
+}
+
 // ================= 提交审核 =================
 
 async function handleSubmit(): Promise<void> {
   if (submitting.value) return
-  formError.value = ''
 
   if (!validate()) return
 
@@ -548,9 +743,9 @@ async function handleSubmit(): Promise<void> {
     setTimeout(() => uni.navigateBack(), 1500)
   } catch (error) {
     if (error instanceof BusinessError) {
-      formError.value = getErrorMessage(error.code)
+      showActivityEditErrorToast(getErrorMessage(error.code))
     } else {
-      formError.value = getErrorMessage(0, '提交失败')
+      showActivityEditErrorToast(getErrorMessage(0, '提交失败'))
     }
   } finally {
     submitting.value = false
@@ -576,17 +771,22 @@ async function loadDraft(): Promise<void> {
     formTitle.value = draft.title ?? ''
     formIntroduction.value = draft.introduction ?? ''
     formSafetyNotice.value = draft.safetyNotice ?? ''
+    formRequireLocationCheck.value = draft.requireLocationCheck ?? false
     formAddress.value = draft.location?.address ?? ''
     formCity.value = draft.location?.city ?? ''
     formPlaceName.value = draft.location?.placeName ?? ''
-    locationLongitude.value = draft.location?.point?.longitude ?? null
-    locationLatitude.value = draft.location?.point?.latitude ?? null
+    const draftPoint =
+      draft.location?.point != null
+        ? normalizeGeoPoint(draft.location.point.longitude, draft.location.point.latitude)
+        : null
+    locationLongitude.value = draftPoint?.longitude ?? null
+    locationLatitude.value = draftPoint?.latitude ?? null
     formCapacity.value = draft.capacity != null ? String(draft.capacity) : ''
     formFeeAmount.value = draft.feeAmount != null ? String(draft.feeAmount) : ''
     formFeeDescription.value = draft.feeDescription ?? ''
     formMinAge.value = draft.minAge != null ? String(draft.minAge) : ''
 
-    if (draft.tags.length) selectedTags.value = new Set(draft.tags)
+    activityTags.value = draft.tags ?? []
 
     const startParsed = parseISO(draft.startAt ?? '')
     if (startParsed) {
@@ -604,29 +804,34 @@ async function loadDraft(): Promise<void> {
       deadlineTime.value = deadlineParsed.time
     }
 
-    if (draft.images.length) {
-      imagePreviews.value = draft.images.map((i) => i.signedUrl ?? '')
-      imageIds.value = draft.images.map((i) => i.mediaId)
-    }
+    const draftImages = draft.images ?? []
+    imageIds.value = draftImages.map((i) => i.mediaId)
+    imagePreviews.value = await Promise.all(draftImages.map(resolveDraftImagePreview))
   } catch (error) {
     if (error instanceof BusinessError) {
-      formError.value = getErrorMessage(error.code)
+      showActivityEditErrorToast(getErrorMessage(error.code))
     } else {
-      formError.value = getErrorMessage(0, t('activityEdit.loadFailed'))
+      showActivityEditErrorToast(getErrorMessage(0, t('activityEdit.loadFailed')))
     }
   }
 }
 
 onLoad((query) => {
+  uni.$off('activityLocationPicked', handleGlobalLocationPicked)
+  uni.$on('activityLocationPicked', handleGlobalLocationPicked)
   activityId.value = (query?.activityId as string) ?? ''
-  loadTags()
+  void loadCurrentLocationMarker()
   if (isEdit.value) loadDraft()
+})
+
+onUnload(() => {
+  uni.$off('activityLocationPicked', handleGlobalLocationPicked)
 })
 </script>
 
 <style scoped>
 .page {
-  background: linear-gradient(160deg, #f8fafc 0%, #fff9f5 100%);
+  background: var(--q-color-bg);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -640,7 +845,7 @@ onLoad((query) => {
 }
 
 .edit-container {
-  padding: 32rpx 32rpx calc(200rpx + env(safe-area-inset-bottom));
+  padding: 32rpx 32rpx calc(176rpx + env(safe-area-inset-bottom));
 }
 
 .section {
@@ -650,7 +855,7 @@ onLoad((query) => {
 .section-title {
   display: block;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 12rpx;
   font-weight: 600;
 }
@@ -675,6 +880,18 @@ onLoad((query) => {
   height: 100%;
 }
 
+.preview-image--failed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--q-color-bg-soft);
+}
+
+.preview-failed-text {
+  font-size: 22rpx;
+  color: var(--q-color-text-muted);
+}
+
 .image-remove {
   position: absolute;
   top: 4rpx;
@@ -684,7 +901,7 @@ onLoad((query) => {
   line-height: 36rpx;
   text-align: center;
   background-color: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  color: var(--q-color-bg-card);
   border-radius: 50%;
   font-size: 28rpx;
 }
@@ -692,24 +909,24 @@ onLoad((query) => {
 .image-add-btn {
   width: 200rpx;
   height: 200rpx;
-  border: 2rpx dashed #c8c9cc;
+  border: 2rpx dashed var(--q-color-text-muted);
   border-radius: 8rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
 }
 
 .add-icon {
   font-size: 48rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
   line-height: 1;
 }
 
 .add-text {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   margin-top: 8rpx;
 }
 
@@ -721,15 +938,50 @@ onLoad((query) => {
 .label {
   display: block;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   margin-bottom: 12rpx;
 }
 
 .req {
-  color: #ee0a24;
+  color: var(--q-color-danger);
 }
 
 /* ---- 标签 ---- */
+.tag-create-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.tag-input {
+  flex: 1;
+  height: 80rpx;
+  min-width: 0;
+  padding: 0 24rpx;
+  background-color: var(--q-color-bg-card);
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  color: var(--q-color-text);
+  box-sizing: border-box;
+}
+
+.tag-add-button {
+  flex-shrink: 0;
+  height: 80rpx;
+  line-height: 80rpx;
+  margin: 0;
+  padding: 0 28rpx;
+  border-radius: 8rpx;
+  background-color: var(--q-color-primary);
+  color: var(--q-color-bg-card);
+  font-size: 26rpx;
+}
+
+.tag-add-button::after {
+  border: 0;
+}
+
 .tags-row {
   display: flex;
   flex-wrap: wrap;
@@ -737,23 +989,25 @@ onLoad((query) => {
 }
 
 .tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
   padding: 12rpx 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-primary-light);
   border-radius: 8rpx;
-  border: 2rpx solid #ebedf0;
+  border: 2rpx solid var(--q-color-primary);
   font-size: 26rpx;
-  color: #646566;
+  color: var(--q-color-primary);
 }
 
-.tag-chip.active {
-  border-color: #5ec8a7;
-  color: #5ec8a7;
-  background-color: #e8f7f0;
+.tag-remove {
+  font-size: 28rpx;
+  line-height: 1;
 }
 
 .hint {
   font-size: 26rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 /* ---- 日期时间 ---- */
@@ -766,7 +1020,7 @@ onLoad((query) => {
   flex: 1;
   height: 88rpx;
   padding: 0 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   display: flex;
   align-items: center;
@@ -775,56 +1029,130 @@ onLoad((query) => {
 
 .datetime-row .picker-value text {
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
 }
 
 .datetime-row .picker-value text.placeholder {
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
 }
 
-/* ---- 文本域 ---- */
+/* ---- 文本框 ---- */
 .textarea {
   width: 100%;
   min-height: 160rpx;
   padding: 20rpx 24rpx;
-  background-color: #fff;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
   font-size: 28rpx;
-  color: #323233;
+  color: var(--q-color-text);
   box-sizing: border-box;
 }
 
-/* ---- 地点选择 ---- */
-.location-picker {
+.switch-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 88rpx;
-  padding: 0 24rpx;
-  background-color: #fff;
+  gap: 24rpx;
+  padding: 24rpx;
+  background-color: var(--q-color-bg-card);
   border-radius: 8rpx;
 }
 
-.location-text {
-  font-size: 28rpx;
-  color: #323233;
+.switch-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  min-width: 0;
 }
 
-.location-placeholder {
-  font-size: 28rpx;
-  color: #c8c9cc;
+.switch-hint {
+  font-size: 24rpx;
+  color: var(--q-color-text-muted);
+  line-height: 1.4;
 }
 
-.location-arrow {
+/* ---- 地点选择（地图选点） ---- */
+.location-map-preview {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--q-color-bg-card);
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.preview-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.preview-static-map {
+  width: 100%;
+  height: 240rpx;
+  display: block;
+  background-color: var(--q-color-primary-light);
+}
+
+.preview-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx;
+  background-color: var(--q-color-bg-card);
+  border-top: 2rpx solid var(--q-color-border);
+}
+
+.preview-address-text {
+  flex: 1;
+  font-size: 26rpx;
+  color: var(--q-color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-arrow {
   font-size: 28rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
+  margin-left: 12rpx;
+  flex-shrink: 0;
+}
+
+.preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40rpx 24rpx;
+  background-color: var(--q-color-bg-soft);
+  min-height: 160rpx;
+  justify-content: center;
+}
+
+.placeholder-icon-row {
+  margin-bottom: 12rpx;
+}
+
+.placeholder-location-icon {
+  font-size: 48rpx;
+}
+
+.placeholder-main {
+  font-size: 28rpx;
+  color: var(--q-color-text);
+  font-weight: 500;
+  margin-bottom: 8rpx;
+}
+
+.placeholder-sub {
+  font-size: 24rpx;
+  color: var(--q-color-text-muted);
 }
 
 /* ---- 字段错误 ---- */
 .field-error {
   display: block;
   font-size: 24rpx;
-  color: #ee0a24;
+  color: var(--q-color-danger);
   margin-top: 8rpx;
 }
 

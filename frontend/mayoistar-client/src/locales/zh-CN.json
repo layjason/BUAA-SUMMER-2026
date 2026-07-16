@@ -21,7 +21,6 @@
   "发现": "发现",
   "消息": "消息",
   "我的": "我的",
-
   "login": {
     "title": "欢迎回来",
     "subtitle": "登录您的趣聚账号",
@@ -36,7 +35,6 @@
     "passwordRequired": "密码不能为空",
     "success": "登录成功"
   },
-
   "register": {
     "title": "创建账号",
     "subtitle": "加入趣聚，发现精彩活动",
@@ -62,7 +60,6 @@
     "nicknameAvailable": "昵称可用",
     "success": "注册成功，请激活账号"
   },
-
   "profile": {
     "notLoggedInTip": "登录后查看个人信息和活动",
     "sectionActivities": "活动",
@@ -81,22 +78,27 @@
     "userPrefix": "用户",
     "tapToLogin": "点我登录/注册"
   },
-
   "activate": {
     "title": "激活账号",
     "activating": "正在激活...",
+    "activatingHint": "正在确认邮件链接，请稍候",
     "success": "激活成功！您现在可以登录了",
+    "successHint": "账号状态已更新，重新登录后即可继续使用迷星群聚。",
+    "successAutoLoginHint": "账号状态已更新，正在为您自动登录。",
     "failed": "激活失败",
     "goLogin": "前往登录",
     "noToken": "缺少激活码，请从邮件链接打开本页",
     "emailSent": "激活邮件已发送至",
-    "emailSentHint": "请查收邮件并点击激活链接完成激活。若未收到，可点击下方按钮重发。",
+    "emailSentHint": "请查收邮件并点击激活链接完成激活。完成后可返回本页查询状态。",
+    "checkStatusButton": "查询激活状态",
+    "checkStatusHint": "若已在邮件中完成激活，可点击查询状态继续。",
+    "autoLoginHint": "正在进入首页...",
+    "missingCredential": "缺少登录凭据，请返回登录页重新输入",
     "resendButton": "重发激活邮件",
     "resendCooldown": "重发激活邮件（{seconds}秒）",
     "resendSent": "激活邮件已发送，请查收",
     "emailWrong": "邮箱不对？重新注册"
   },
-
   "forgotPassword": {
     "title": "忘记密码",
     "subtitle": "输入注册邮箱，我们将发送密码重置链接",
@@ -112,23 +114,24 @@
     "resendCooldown": "重发重置邮件（{seconds}秒）",
     "resendSent": "重置邮件已发送，请查收"
   },
-
   "resetPassword": {
     "title": "密码重置成功",
     "success": "密码重置成功！",
     "successHint": "请使用新密码登录",
     "goLogin": "返回登录"
   },
-
   "editProfile": {
     "title": "编辑资料",
     "nickname": "昵称",
+    "merchantNickname": "商家昵称",
     "nicknamePlaceholder": "请输入昵称",
     "nicknameRequired": "昵称不能为空",
     "nicknameUnavailable": "该昵称已被占用",
     "merchantName": "商家名称",
     "merchantNamePlaceholder": "请输入商家主体名称",
+    "merchantNameRequired": "商家名称不能为空",
     "gender": "性别",
+    "unspecified": "不透露",
     "male": "男",
     "female": "女",
     "other": "其他",
@@ -146,12 +149,22 @@
     "qualStatusApproved": "已通过",
     "qualStatusRejected": "已驳回",
     "rejectReason": "驳回原因",
+    "qualificationSubmittedAt": "提交时间",
+    "qualificationReviewedAt": "审核时间",
+    "qualificationImages": "已提交凭证",
+    "userKind": "用户类型",
+    "userKindPersonal": "个人用户",
+    "userKindMerchant": "商家用户",
+    "reputationScore": "信誉分",
+    "accountStatus": "账号状态",
+    "accountStatusActive": "正常",
+    "accountStatusInactive": "未激活",
+    "accountStatusBanned": "已封禁",
     "changeAvatar": "点击更换头像",
     "avatarUploadFailed": "头像上传失败",
     "save": "保存",
     "saveSuccess": "保存成功"
   },
-
   "myActivities": {
     "title": "我创建的活动",
     "tabPublished": "已发布",
@@ -170,7 +183,6 @@
     "statusDraft": "草稿",
     "statusChangeRequired": "需修改"
   },
-
   "myRegistrations": {
     "title": "我的报名",
     "statusRegistered": "已报名",
@@ -180,7 +192,6 @@
     "statusWaitingConfirmation": "待确认",
     "registrationTime": "报名时间"
   },
-
   "activityDetail": {
     "title": "活动详情",
     "time": "活动时间",
@@ -207,6 +218,7 @@
     "loading": "加载中...",
     "viewParticipants": "参与者列表",
     "writeReview": "评价活动",
+    "reviewDeadline": "评价截止：{time}",
     "writeSummary": "发布总结",
     "reviewSubmitted": "已评价",
     "summarySubmitted": "已发布总结",
@@ -222,7 +234,20 @@
     "qrCodeExpires": "过期时间",
     "enterQrCode": "请输入签到码"
   },
-
+  "reviewProgress": {
+    "title": "审核进度",
+    "aiReviewResult": "AI 审核结果",
+    "pending": "审核中",
+    "approved": "已通过",
+    "rejected": "已驳回",
+    "changeRequired": "需修改",
+    "rejectReason": "驳回原因",
+    "changeReason": "修改意见",
+    "manualReviewNote": "该活动需人工审核，请耐心等待",
+    "stepSubmit": "提交审核",
+    "stepReview": "内容审核",
+    "stepResult": "审核结果"
+  },
   "activityEdit": {
     "titleCreate": "创建活动",
     "titleEdit": "编辑活动",
@@ -272,9 +297,11 @@
     "safetyNoticeRequired": "请输入安全须知",
     "timeRangeInvalid": "结束时间不能早于开始时间",
     "deadlineInvalid": "报名截止时间不能晚于活动开始时间",
-    "loadFailed": "加载活动信息失败"
+    "loadFailed": "加载活动信息失败",
+    "location": "活动地点",
+    "selectLocation": "点击选择活动地点",
+    "selectLocationHint": "点击使用地图选择位置"
   },
-
   "activityReview": {
     "title": "评价活动",
     "rating": "评分",
@@ -282,9 +309,11 @@
     "contentPlaceholder": "分享你的活动体验...",
     "submit": "提交评价",
     "success": "评价提交成功",
-    "failed": "评价提交失败"
+    "failed": "评价提交失败",
+    "deadline": "请在 {time} 前完成评价",
+    "windowClosed": "评价入口已关闭",
+    "windowExpired": "评价时间已过期，请返回活动详情刷新状态"
   },
-
   "activitySummary": {
     "title": "发布活动图文总结",
     "images": "总结图片",
@@ -298,7 +327,6 @@
     "titleRequired": "请输入总结标题",
     "contentRequired": "请输入总结正文"
   },
-
   "home": {
     "tabRecommended": "推荐",
     "tabLatest": "最新",
@@ -317,7 +345,6 @@
     "refreshSuccess": "刷新成功",
     "nearbyDev": "附近活动开发中，敬请期待"
   },
-
   "activityClone": {
     "clone": "克隆",
     "title": "克隆活动",
@@ -327,7 +354,6 @@
     "cloneSuccess": "已克隆为草稿，可继续编辑",
     "cloning": "克隆中..."
   },
-
   "activityTemplates": {
     "title": "创建活动",
     "subtitle": "从模板快速开始或从已有活动克隆",
@@ -338,19 +364,16 @@
     "useTemplate": "使用模板",
     "creating": "创建中..."
   },
-
   "checkInExport": {
     "export": "导出签到数据",
     "exporting": "导出中...",
     "exportSuccess": "签到数据已导出",
     "exportFailed": "导出失败"
   },
-
   "reviewImages": {
     "addImage": "添加图片",
     "uploading": "上传中..."
   },
-
   "aiDraft": {
     "title": "AI 智能生成活动",
     "topic": "活动主题",
@@ -368,7 +391,6 @@
     "topicRequired": "请输入活动主题",
     "failed": "AI 生成失败，请稍后重试"
   },
-
   "aiReview": {
     "title": "AI 内容审核",
     "riskLevel": "风险等级",
@@ -378,7 +400,13 @@
     "riskHigh": "高",
     "riskUncertain": "不确定"
   },
-
+  "mapPicker": {
+    "searchPlaceholder": "搜索地点",
+    "dragHint": "拖动地图选择位置",
+    "confirm": "确认选点",
+    "candidates": "候选地点",
+    "collapse": "收起"
+  },
   "reviewTags": {
     "organized": "组织有序",
     "goodAtmosphere": "氛围很好",
@@ -386,5 +414,22 @@
     "goodVenue": "场地不错",
     "reasonableTime": "时间合理",
     "worthIt": "物超所值"
+  },
+  "reviewStatus": {
+    "title": "审核进度",
+    "pending": "审核中",
+    "approved": "已通过",
+    "rejected": "已驳回",
+    "changeRequired": "需修改",
+    "stepSubmit": "提交审核",
+    "stepReview": "AI/人工审核",
+    "stepResult": "审核结果",
+    "rejectReason": "驳回原因",
+    "changeReason": "修改意见",
+    "manualReviewNote": "该活动已转入人工审核，请耐心等待",
+    "tipsApproved": "活动已通过审核，现在参与用户可以查看",
+    "tipsPending": "您的活动正在审核中，预计很快会有结果",
+    "tipsRejected": "活动审核未通过，请根据驳回原因修改后重新提交",
+    "tipsChangeRequired": "活动需修改后方可继续审核，请根据修改意见调整"
   }
 }

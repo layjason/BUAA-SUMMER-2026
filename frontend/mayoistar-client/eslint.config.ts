@@ -13,6 +13,7 @@ export default defineConfigWithVueTs(
     '**/dist/**',
     '**/dist-ssr/**',
     '**/coverage/**',
+    '**/unpackage/**',
     '.vite/**',
     'src/api/types/**',
     '*.d.ts',

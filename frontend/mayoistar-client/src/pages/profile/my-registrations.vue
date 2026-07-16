@@ -82,7 +82,8 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
-import { api, BusinessError } from '@/api'
+import { BusinessError } from '@/api'
+import { getMyRegistrations } from '@/api/modules/registrations'
 import { getErrorMessage } from '@/utils/error'
 import { formatDate } from '@/utils/date'
 
@@ -121,11 +122,18 @@ interface RegistrationItem {
 
 const items = ref<RegistrationItem[]>([])
 
+/**
+ * 加载当前用户报名记录
+ *
+ * 前置条件：用户已登录，mock/真实请求层已初始化。
+ * 后置条件：items 更新为 OpenAPI RegisteredActivitySummary 分页结果。
+ * 不变量：页面只通过 registrations API 模块访问业务接口。
+ */
 async function loadData(): Promise<void> {
   loading.value = true
   errorMsg.value = ''
   try {
-    const result = await api.get('/activities/registrations/mine')
+    const result = await getMyRegistrations(1, 100)
     items.value = (result.items ?? []) as RegistrationItem[]
   } catch (error) {
     if (error instanceof BusinessError) {
@@ -138,11 +146,18 @@ async function loadData(): Promise<void> {
   }
 }
 
+/**
+ * 下拉刷新报名记录
+ *
+ * 前置条件：用户触发 scroll-view refresher。
+ * 后置条件：刷新成功时替换 items，失败时保留现有列表。
+ * 不变量：刷新过程不改变当前页面路由。
+ */
 async function onRefresh(): Promise<void> {
   refreshing.value = true
   errorMsg.value = ''
   try {
-    const result = await api.get('/activities/registrations/mine')
+    const result = await getMyRegistrations(1, 100)
     items.value = (result.items ?? []) as RegistrationItem[]
   } catch {
     /* 静默 */
@@ -155,18 +170,34 @@ onShow(() => {
   loadData()
 })
 
+/**
+ * 获取报名状态展示文本
+ *
+ * 前置条件：status 来自 OpenAPI RegistrationStatus。
+ * 后置条件：返回本地化展示文本或原始状态值。
+ * 不变量：不修改报名状态。
+ */
 function statusText(status: string): string {
   return statusMap[status] ?? status
 }
 
+/**
+ * 跳转活动详情页
+ *
+ * 前置条件：activityId 非空。
+ * 后置条件：通过 uni.navigateTo 进入活动详情。
+ * 不变量：不直接读取活动详情数据。
+ */
 function goDetail(activityId: string): void {
   uni.navigateTo({ url: `/pages/activity/detail?activityId=${activityId}` })
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@import '@/styles/theme.scss';
+
 .page {
-  background-color: #f7f8fa;
+  background-color: $color-bg;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -184,19 +215,21 @@ function goDetail(activityId: string): void {
 .empty-text {
   text-align: center;
   font-size: 28rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
   padding-top: 120rpx;
 }
 
 .error-text {
-  color: #ee0a24;
+  color: $color-danger;
 }
 
 .card {
-  background-color: #fff;
+  background-color: $color-bg-card;
   margin: 16rpx 32rpx;
-  border-radius: 12rpx;
+  border: 1rpx solid $color-border-light;
+  border-radius: 24rpx;
   overflow: hidden;
+  box-shadow: $shadow-sm;
 }
 
 .card-hover {
@@ -208,7 +241,7 @@ function goDetail(activityId: string): void {
 }
 
 .card-checkedIn {
-  border-left: 6rpx solid #07c160;
+  border-left: 6rpx solid $color-primary;
 }
 
 .card-inner {
@@ -226,7 +259,7 @@ function goDetail(activityId: string): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f2f3f5;
+  background-color: $color-bg-soft;
 }
 
 .placeholder-icon {
@@ -251,7 +284,7 @@ function goDetail(activityId: string): void {
 
 .card-title {
   font-size: 28rpx;
-  color: #323233;
+  color: $color-text;
   font-weight: 600;
   flex: 1;
   overflow: hidden;
@@ -262,29 +295,29 @@ function goDetail(activityId: string): void {
 .status-tag {
   font-size: 20rpx;
   padding: 2rpx 10rpx;
-  border-radius: 4rpx;
+  border-radius: 999rpx;
   flex-shrink: 0;
 }
 
 .status-registered {
-  background-color: #e6f0fe;
-  color: #1989fa;
+  background-color: $color-secondary-light;
+  color: $color-info;
 }
 
 .status-checkedIn {
-  background-color: #ebf9e9;
-  color: #07c160;
+  background-color: $color-primary-light;
+  color: $color-primary;
 }
 
 .status-canceled {
-  background-color: #ebedf0;
-  color: #969799;
+  background-color: $color-bg-soft;
+  color: $color-text-muted;
 }
 
 .status-waiting,
 .status-waitingConfirmation {
-  background-color: #fff7e6;
-  color: #ed6a0c;
+  background-color: var(--q-color-accent-light);
+  color: var(--q-color-warning);
 }
 
 .card-tags {
@@ -296,8 +329,8 @@ function goDetail(activityId: string): void {
 
 .tag {
   font-size: 20rpx;
-  color: #1989fa;
-  background-color: #e6f0fe;
+  color: $color-primary-dark;
+  background-color: $color-primary-light;
   padding: 2rpx 10rpx;
   border-radius: 4rpx;
 }
@@ -311,12 +344,12 @@ function goDetail(activityId: string): void {
 
 .meta-item {
   font-size: 22rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 
 .meta-sep {
   font-size: 18rpx;
-  color: #c8c9cc;
+  color: var(--q-color-text-muted);
 }
 
 .card-bottom {
@@ -334,17 +367,17 @@ function goDetail(activityId: string): void {
 
 .fee {
   font-size: 24rpx;
-  color: #ee0a24;
+  color: var(--q-color-danger);
   font-weight: 600;
 }
 
 .fee.free {
-  color: #07c160;
+  color: var(--q-color-success);
 }
 
 .registered {
   font-size: 20rpx;
-  color: #969799;
+  color: var(--q-color-text-muted);
 }
 </style>
 

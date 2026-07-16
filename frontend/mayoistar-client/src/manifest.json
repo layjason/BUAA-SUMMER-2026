@@ -1,5 +1,6 @@
 {
   "name": "迷星群聚",
+  /* uni-app 应用 ID，用于唯一标识应用，必须在 uni-app 平台注册 */
   "appid": "__UNI__A6BEED6",
   "description": "",
   "versionName": "0.0.0.1",
@@ -17,7 +18,12 @@
       "delay": 0
     },
     /* 模块配置 */
-    "modules": {},
+    "modules": {
+      "Barcode": {},
+      "Camera": {},
+      "Geolocation": {},
+      "Maps": {}
+    },
     /* 应用发布信息 */
     "distribute": {
       /* android打包配置 */
@@ -28,6 +34,8 @@
           "<uses-permission android:name=\"android.permission.VIBRATE\"/>",
           "<uses-permission android:name=\"android.permission.READ_LOGS\"/>",
           "<uses-permission android:name=\"android.permission.ACCESS_WIFI_STATE\"/>",
+          "<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>",
+          "<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\"/>",
           "<uses-feature android:name=\"android.hardware.camera.autofocus\"/>",
           "<uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\"/>",
           "<uses-permission android:name=\"android.permission.CAMERA\"/>",
@@ -37,6 +45,9 @@
           "<uses-permission android:name=\"android.permission.WAKE_LOCK\"/>",
           "<uses-permission android:name=\"android.permission.FLASHLIGHT\"/>",
           "<uses-feature android:name=\"android.hardware.camera\"/>",
+          "<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>",
+          "<uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>",
+          "<uses-permission android:name=\"android.permission.READ_MEDIA_IMAGES\"/>",
           "<uses-permission android:name=\"android.permission.WRITE_SETTINGS\"/>"
         ],
         "schemes": ["mayoistar"]
@@ -49,7 +60,25 @@
         ]
       },
       /* SDK配置 */
-      "sdkConfigs": {}
+      "sdkConfigs": {
+        "geolocation": {
+          "amap": {
+            /* 高德定位 SDK 配置，请替换为正式值。Web 端 Key 在 VITE_AMAP_WEB_API_KEY 环境变量中配置 */
+            "name": "amapbL0GPTou",
+            "__platform__": ["ios", "android"],
+            "appkey_ios": "9a686e65598eb79b671d058efda4f034",
+            "appkey_android": "4bcfa1bb25daef59dd106e0c5c61181f"
+          }
+        },
+        "maps": {
+          "amap": {
+            /* 高德地图 SDK 配置，请替换为正式值 */
+            "name": "amapbL0GPTou",
+            "appkey_ios": "9a686e65598eb79b671d058efda4f034",
+            "appkey_android": "4bcfa1bb25daef59dd106e0c5c61181f"
+          }
+        }
+      }
     }
   },
   /* 快应用特有相关 */
@@ -74,5 +103,18 @@
   "uniStatistics": {
     "enable": false
   },
-  "vueVersion": "3"
+  "vueVersion": "3",
+  "h5": {
+    "sdkConfigs": {
+      "maps": {
+        "amap": {
+          "key": "9766ce879d20c60f022e3635b58a29bc",
+          "securityJsCode": "457cde1e63fbb72549b43622bd2e5ec3",
+          "serviceHost": ""
+        }
+      }
+    }
+  },
+  "locale": "zh-Hans",
+  "fallbackLocale": "zh-Hans"
 }

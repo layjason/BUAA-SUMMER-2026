@@ -43,6 +43,7 @@ public class SecurityConfiguration {
         "/identity/nicknames/availability",
         "/identity/interest-tags",
         "/admin/auth/login",
+        "/error",
         "/media/**",
         "/activities/feed",
         "/activities/search",

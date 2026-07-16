@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 64" width="48" height="64">
+  <!-- 尾部三角 -->
+  <path d="M24 48 L14 34 L34 34 Z" fill="#5ec8a7"/>
+  <!-- 头部圆形 -->
+  <circle cx="24" cy="20" r="16" fill="#5ec8a7" opacity="0.95"/>
+  <!-- 内圈阴影高光 -->
+  <circle cx="24" cy="20" r="16" fill="none" stroke="#4db892" stroke-width="1"/>
+  <!-- 内部白点 -->
+  <circle cx="24" cy="20" r="6" fill="#ffffff"/>
+  <!-- 高光 -->
+  <ellipse cx="20" cy="15" rx="5" ry="3.5" fill="#ffffff" opacity="0.3"/>
+</svg>

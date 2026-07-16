@@ -110,7 +110,7 @@ function avatarItemStyle(index: number) {
     top: 0;
     border-radius: $radius-full;
     overflow: hidden;
-    border: 2px solid #ffffff;
+    border: 2px solid var(--q-color-bg-card);
     box-sizing: border-box;
     background: $color-bg;
   }
@@ -143,7 +143,7 @@ function avatarItemStyle(index: number) {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(94, 200, 167, 0.12);
+    background: $gradient-primary-soft;
     border-radius: $radius-full;
   }
 

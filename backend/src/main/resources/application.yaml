@@ -63,8 +63,8 @@ mayoistar:
     access-token-expire: 3600
     refresh-token-expire: 2592000
   mail:
-    activation-link-base: ${MAYOISTAR_ACTIVATION_BASE_URL:http://localhost:5173/activate}
-    password-reset-link-base: ${MAYOISTAR_PASSWORD_RESET_BASE_URL:http://localhost:5173/reset-password}
+    activation-link-base: ${MAYOISTAR_ACTIVATION_BASE_URL:http://localhost:3005/activate}
+    password-reset-link-base: ${MAYOISTAR_PASSWORD_RESET_BASE_URL:http://localhost:3005/reset-password}
     sender: ${MAYOISTAR_MAIL_SENDER:admin@example.com}
   storage:
     s3:

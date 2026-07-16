@@ -10,6 +10,7 @@
  * value 为完整的 API 响应 { code=200, message, data }
  */
 import type { MockResponse } from './dev'
+import { MOCK_IMAGE_BASE_URL } from '@/config/env'
 
 export const mockData: Record<string, MockResponse> = {
   /* ===================== 身份与资料 ===================== */
@@ -30,7 +31,7 @@ export const mockData: Record<string, MockResponse> = {
     },
   },
 
-  'PUT /identity/me/profile': {
+  'PATCH /identity/me/profile': {
     code: 200,
     message: 'For Super Earth!',
     data: {
@@ -53,7 +54,7 @@ export const mockData: Record<string, MockResponse> = {
     data: {
       userId: '10001',
       avatar: null,
-      merchantNickname: '趣聚咖啡',
+      nickname: '趣聚咖啡',
       merchantName: '趣聚咖啡（北京）有限公司',
       interestedActivityFields: ['美食餐饮', '城市探索'],
       accountStatus: 'active',
@@ -63,18 +64,18 @@ export const mockData: Record<string, MockResponse> = {
         submittedAt: '2026-01-10T08:00:00Z',
         reviewedAt: '2026-01-12T10:30:00Z',
         rejectReason: null,
-        licenseImageUrls: ['https://picsum.photos/400/300?random=1'],
+        licenseImageUrls: [MOCK_IMAGE_BASE_URL + '/400/300?random=1'],
       },
     },
   },
 
-  'PUT /identity/me/merchant-profile': {
+  'PATCH /identity/me/merchant-profile': {
     code: 200,
     message: 'For Super Earth!',
     data: {
       userId: '10001',
       avatar: null,
-      merchantNickname: '趣聚咖啡',
+      nickname: '趣聚咖啡',
       merchantName: '趣聚咖啡（北京）有限公司',
       interestedActivityFields: ['美食餐饮', '城市探索'],
       accountStatus: 'active',
@@ -84,7 +85,7 @@ export const mockData: Record<string, MockResponse> = {
         submittedAt: '2026-01-10T08:00:00Z',
         reviewedAt: '2026-01-12T10:30:00Z',
         rejectReason: null,
-        licenseImageUrls: ['https://picsum.photos/400/300?random=1'],
+        licenseImageUrls: [MOCK_IMAGE_BASE_URL + '/400/300?random=1'],
       },
     },
   },
@@ -121,12 +122,26 @@ export const mockData: Record<string, MockResponse> = {
     message: 'For Super Earth!',
     data: {
       mediaId: '9001',
-      signedUrl: 'https://picsum.photos/200',
+      signedUrl: MOCK_IMAGE_BASE_URL + '/200',
       contentType: 'image/jpeg',
       fileName: 'avatar.jpg',
       sizeBytes: 102400,
       uploadedAt: '2026-07-01T12:00:00Z',
       usage: 'avatar',
+    },
+  },
+
+  'POST /identity/media/license': {
+    code: 200,
+    message: 'For Super Earth!',
+    data: {
+      mediaId: 'license-9001',
+      signedUrl: MOCK_IMAGE_BASE_URL + '/400/300?random=license',
+      contentType: 'image/jpeg',
+      fileName: 'merchant-license.jpg',
+      sizeBytes: 204800,
+      uploadedAt: '2026-07-01T12:00:00Z',
+      usage: 'merchantLicense',
     },
   },
 
@@ -179,7 +194,7 @@ export const mockData: Record<string, MockResponse> = {
           tags: ['桌游聚会'],
           reviewStatus: 'approved',
           runtimeStatus: 'registrationClosed',
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=2', mediaId: 'img2002' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=2', mediaId: 'img2002' },
           feeAmount: 50.0,
         },
         {
@@ -236,7 +251,7 @@ export const mockData: Record<string, MockResponse> = {
           tags: ['户外徒步', '运动健身'],
           reviewStatus: 'approved',
           runtimeStatus: 'ongoing',
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=5', mediaId: 'img2005' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=5', mediaId: 'img2005' },
           feeAmount: 20.0,
         },
         {
@@ -255,7 +270,7 @@ export const mockData: Record<string, MockResponse> = {
           tags: ['学习交流', '公益活动'],
           reviewStatus: 'approved',
           runtimeStatus: 'ended',
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=6', mediaId: 'img2006' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=6', mediaId: 'img2006' },
           feeAmount: 0.0,
         },
         {
@@ -367,7 +382,10 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '南锣鼓巷地铁站',
             point: { longitude: 116.403, latitude: 39.937 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=101', mediaId: 'img2010' },
+          coverImage: {
+            signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=101',
+            mediaId: 'img2010',
+          },
           feeAmount: 0,
           capacity: 20,
           registeredCount: 8,
@@ -433,7 +451,10 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '海坨山谷',
             point: { longitude: 115.815, latitude: 40.573 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=202', mediaId: 'img2025' },
+          coverImage: {
+            signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=202',
+            mediaId: 'img2025',
+          },
           feeAmount: 299.0,
           capacity: 20,
           registeredCount: 20,
@@ -480,7 +501,7 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '南锣鼓巷地铁站',
             point: { longitude: 116.403, latitude: 39.937 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=5', mediaId: 'img2005' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=5', mediaId: 'img2005' },
           feeAmount: 20.0,
           capacity: 10,
           registeredCount: 10,
@@ -502,7 +523,7 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '五道口桌游吧',
             point: { longitude: 116.337, latitude: 39.982 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=2', mediaId: 'img2002' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=2', mediaId: 'img2002' },
           feeAmount: 50.0,
           capacity: 8,
           registeredCount: 8,
@@ -543,7 +564,7 @@ export const mockData: Record<string, MockResponse> = {
         {
           userId: '10003',
           nickname: '小红',
-          avatar: { signedUrl: 'https://picsum.photos/100?random=3', mediaId: 'img1002' },
+          avatar: { signedUrl: MOCK_IMAGE_BASE_URL + '/100?random=3', mediaId: 'img1002' },
           remark: '',
           groupTags: [],
           source: 'manualRequest',
@@ -683,7 +704,7 @@ export const mockData: Record<string, MockResponse> = {
         {
           userId: '10100',
           nickname: '广告推广号',
-          avatar: { signedUrl: 'https://picsum.photos/100?random=9', mediaId: 'img9901' },
+          avatar: { signedUrl: MOCK_IMAGE_BASE_URL + '/100?random=9', mediaId: 'img9901' },
           blockedAt: '2026-07-01T09:00:00Z',
         },
       ],
@@ -719,7 +740,7 @@ export const mockData: Record<string, MockResponse> = {
           chatId: '7001',
           joinMode: 'publicJoin',
           status: 'active',
-          avatar: { signedUrl: 'https://picsum.photos/100?random=6', mediaId: 'img6001' },
+          avatar: { signedUrl: MOCK_IMAGE_BASE_URL + '/100?random=6', mediaId: 'img6001' },
         },
         {
           teamId: '6002',
@@ -777,7 +798,7 @@ export const mockData: Record<string, MockResponse> = {
     data: {
       userId: '10002',
       nickname: '小明',
-      avatar: { signedUrl: 'https://picsum.photos/100?random=3', mediaId: 'img1002' },
+      avatar: { signedUrl: MOCK_IMAGE_BASE_URL + '/100?random=3', mediaId: 'img1002' },
       signature: '爱运动爱生活',
       interestTags: ['运动健身', '户外徒步'],
       gender: 'male',
@@ -848,7 +869,7 @@ export const mockData: Record<string, MockResponse> = {
           contentType: 'image/jpeg',
           sizeBytes: 204800,
           usage: 'activity',
-          signedUrl: 'https://picsum.photos/800/400?random=10',
+          signedUrl: MOCK_IMAGE_BASE_URL + '/800/400?random=10',
           uploadedAt: '2026-07-01T08:00:00Z',
         },
         {
@@ -857,7 +878,7 @@ export const mockData: Record<string, MockResponse> = {
           contentType: 'image/jpeg',
           sizeBytes: 153600,
           usage: 'activity',
-          signedUrl: 'https://picsum.photos/800/400?random=11',
+          signedUrl: MOCK_IMAGE_BASE_URL + '/800/400?random=11',
           uploadedAt: '2026-07-01T08:00:00Z',
         },
         {
@@ -866,7 +887,7 @@ export const mockData: Record<string, MockResponse> = {
           contentType: 'image/jpeg',
           sizeBytes: 184320,
           usage: 'activity',
-          signedUrl: 'https://picsum.photos/800/400?random=12',
+          signedUrl: MOCK_IMAGE_BASE_URL + '/800/400?random=12',
           uploadedAt: '2026-07-01T08:00:00Z',
         },
       ],
@@ -910,6 +931,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: true,
       canConfirmWaitingSeat: false,
       canCheckIn: true,
+      canReview: false,
     },
   },
 
@@ -931,7 +953,7 @@ export const mockData: Record<string, MockResponse> = {
         placeName: '五道口桌游吧',
         point: { longitude: 116.337, latitude: 39.982 },
       },
-      coverImage: { signedUrl: 'https://picsum.photos/400/200?random=2', mediaId: 'img2002' },
+      coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=2', mediaId: 'img2002' },
       images: [
         {
           mediaId: 'act_img_21',
@@ -939,7 +961,7 @@ export const mockData: Record<string, MockResponse> = {
           contentType: 'image/jpeg',
           sizeBytes: 184320,
           usage: 'activity',
-          signedUrl: 'https://picsum.photos/800/400?random=21',
+          signedUrl: MOCK_IMAGE_BASE_URL + '/800/400?random=21',
           uploadedAt: '2026-07-01T09:00:00Z',
         },
         {
@@ -948,7 +970,7 @@ export const mockData: Record<string, MockResponse> = {
           contentType: 'image/jpeg',
           sizeBytes: 204800,
           usage: 'activity',
-          signedUrl: 'https://picsum.photos/800/400?random=22',
+          signedUrl: MOCK_IMAGE_BASE_URL + '/800/400?random=22',
           uploadedAt: '2026-07-01T09:00:00Z',
         },
       ],
@@ -984,6 +1006,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: true,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1005,7 +1028,7 @@ export const mockData: Record<string, MockResponse> = {
         placeName: '南锣鼓巷地铁站',
         point: { longitude: 116.403, latitude: 39.937 },
       },
-      coverImage: { signedUrl: 'https://picsum.photos/800/400?random=5', mediaId: 'img2005' },
+      coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/800/400?random=5', mediaId: 'img2005' },
       images: [
         {
           mediaId: 'act_img_51',
@@ -1013,7 +1036,7 @@ export const mockData: Record<string, MockResponse> = {
           contentType: 'image/jpeg',
           sizeBytes: 256000,
           usage: 'activity',
-          signedUrl: 'https://picsum.photos/800/400?random=51',
+          signedUrl: MOCK_IMAGE_BASE_URL + '/800/400?random=51',
           uploadedAt: '2026-07-01T10:00:00Z',
         },
       ],
@@ -1043,6 +1066,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1065,7 +1089,7 @@ export const mockData: Record<string, MockResponse> = {
         placeName: '南锣鼓巷地铁站',
         point: { longitude: 116.403, latitude: 39.937 },
       },
-      coverImage: { signedUrl: 'https://picsum.photos/800/400?random=101', mediaId: 'img2010' },
+      coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/800/400?random=101', mediaId: 'img2010' },
       images: [],
       feeAmount: 0,
       capacity: 20,
@@ -1093,6 +1117,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: true,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1143,6 +1168,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1193,6 +1219,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1217,7 +1244,7 @@ export const mockData: Record<string, MockResponse> = {
         placeName: '海坨山谷',
         point: { longitude: 115.815, latitude: 40.573 },
       },
-      coverImage: { signedUrl: 'https://picsum.photos/800/400?random=202', mediaId: 'img2025' },
+      coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/800/400?random=202', mediaId: 'img2025' },
       images: [],
       feeAmount: 299.0,
       capacity: 20,
@@ -1245,6 +1272,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: true,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1296,6 +1324,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: true,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1732,7 +1761,7 @@ export const mockData: Record<string, MockResponse> = {
       contentType: 'image/jpeg',
       sizeBytes: 204800,
       usage: 'activityImage',
-      signedUrl: 'https://picsum.photos/800/400?random=upload',
+      signedUrl: MOCK_IMAGE_BASE_URL + '/800/400?random=upload',
       uploadedAt: new Date().toISOString(),
     },
   },
@@ -1791,6 +1820,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1841,6 +1871,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1864,7 +1895,7 @@ export const mockData: Record<string, MockResponse> = {
         placeName: '滨海公园',
         point: { longitude: 121.606, latitude: 31.187 },
       },
-      coverImage: { signedUrl: 'https://picsum.photos/800/400?random=6', mediaId: 'img2006' },
+      coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/800/400?random=6', mediaId: 'img2006' },
       images: [],
       feeAmount: 0,
       capacity: 25,
@@ -1892,6 +1923,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -1940,6 +1972,7 @@ export const mockData: Record<string, MockResponse> = {
       canCancelRegistration: false,
       canConfirmWaitingSeat: false,
       canCheckIn: false,
+      canReview: false,
     },
   },
 
@@ -2185,7 +2218,7 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '五道口桌游吧',
             point: { longitude: 116.337, latitude: 39.982 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=2', mediaId: 'img2002' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=2', mediaId: 'img2002' },
           feeAmount: 50.0,
           capacity: 8,
           registeredCount: 8,
@@ -2223,7 +2256,10 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '南锣鼓巷地铁站',
             point: { longitude: 116.403, latitude: 39.937 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=101', mediaId: 'img2010' },
+          coverImage: {
+            signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=101',
+            mediaId: 'img2010',
+          },
           feeAmount: 0,
           capacity: 20,
           registeredCount: 8,
@@ -2261,7 +2297,7 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '南锣鼓巷地铁站',
             point: { longitude: 116.403, latitude: 39.937 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=5', mediaId: 'img2005' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=5', mediaId: 'img2005' },
           feeAmount: 20.0,
           capacity: 10,
           registeredCount: 10,
@@ -2299,7 +2335,10 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '海坨山谷',
             point: { longitude: 115.815, latitude: 40.573 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=202', mediaId: 'img2025' },
+          coverImage: {
+            signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=202',
+            mediaId: 'img2025',
+          },
           feeAmount: 299.0,
           capacity: 20,
           registeredCount: 20,
@@ -2369,7 +2408,7 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '滨海公园',
             point: { longitude: 121.606, latitude: 31.187 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=6', mediaId: 'img2006' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=6', mediaId: 'img2006' },
           feeAmount: 0.0,
           capacity: 25,
           registeredCount: 25,
@@ -2471,7 +2510,10 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '南锣鼓巷地铁站',
             point: { longitude: 116.403, latitude: 39.937 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=101', mediaId: 'img2010' },
+          coverImage: {
+            signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=101',
+            mediaId: 'img2010',
+          },
           feeAmount: 0,
           capacity: 20,
           registeredCount: 8,
@@ -2566,7 +2608,7 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '南锣鼓巷地铁站',
             point: { longitude: 116.403, latitude: 39.937 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=5', mediaId: 'img2005' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=5', mediaId: 'img2005' },
           feeAmount: 20.0,
           capacity: 10,
           registeredCount: 10,
@@ -2604,7 +2646,10 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '海坨山谷',
             point: { longitude: 115.815, latitude: 40.573 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=202', mediaId: 'img2025' },
+          coverImage: {
+            signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=202',
+            mediaId: 'img2025',
+          },
           feeAmount: 299.0,
           capacity: 20,
           registeredCount: 20,
@@ -2623,7 +2668,7 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '五道口桌游吧',
             point: { longitude: 116.337, latitude: 39.982 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=2', mediaId: 'img2002' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=2', mediaId: 'img2002' },
           feeAmount: 50.0,
           capacity: 8,
           registeredCount: 8,
@@ -2674,7 +2719,7 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '滨海公园',
             point: { longitude: 121.606, latitude: 31.187 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=6', mediaId: 'img2006' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=6', mediaId: 'img2006' },
           feeAmount: 0.0,
           capacity: 25,
           registeredCount: 25,
@@ -2795,7 +2840,10 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '南锣鼓巷地铁站',
             point: { longitude: 116.403, latitude: 39.937 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=101', mediaId: 'img2010' },
+          coverImage: {
+            signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=101',
+            mediaId: 'img2010',
+          },
           feeAmount: 0,
           capacity: 20,
           registeredCount: 8,
@@ -2833,7 +2881,7 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '南锣鼓巷地铁站',
             point: { longitude: 116.403, latitude: 39.937 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=5', mediaId: 'img2005' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=5', mediaId: 'img2005' },
           feeAmount: 20.0,
           capacity: 10,
           registeredCount: 10,
@@ -2852,7 +2900,7 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '五道口桌游吧',
             point: { longitude: 116.337, latitude: 39.982 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=2', mediaId: 'img2002' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=2', mediaId: 'img2002' },
           feeAmount: 50.0,
           capacity: 8,
           registeredCount: 8,
@@ -2928,7 +2976,10 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '海坨山谷',
             point: { longitude: 115.815, latitude: 40.573 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=202', mediaId: 'img2025' },
+          coverImage: {
+            signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=202',
+            mediaId: 'img2025',
+          },
           feeAmount: 299.0,
           capacity: 20,
           registeredCount: 20,
@@ -2979,7 +3030,7 @@ export const mockData: Record<string, MockResponse> = {
             placeName: '滨海公园',
             point: { longitude: 121.606, latitude: 31.187 },
           },
-          coverImage: { signedUrl: 'https://picsum.photos/400/200?random=6', mediaId: 'img2006' },
+          coverImage: { signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=6', mediaId: 'img2006' },
           feeAmount: 0.0,
           capacity: 25,
           registeredCount: 25,
@@ -3228,7 +3279,7 @@ export const mockData: Record<string, MockResponse> = {
             '运动前请充分热身，避免受伤。如有心脏病、高血压等不宜剧烈运动的疾病，请提前告知组织者。活动期间请保管好个人财物。',
           defaultCapacity: 20,
           defaultCoverImage: {
-            signedUrl: 'https://picsum.photos/400/200?random=tpl1',
+            signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=tpl1',
             mediaId: 'tpl-img-01',
           },
         },
@@ -3243,7 +3294,7 @@ export const mockData: Record<string, MockResponse> = {
             '请在公共场所注意个人物品安全。玩桌游时保持友好氛围，不要过度激动。未成年人请在监护人陪同下参加。',
           defaultCapacity: 8,
           defaultCoverImage: {
-            signedUrl: 'https://picsum.photos/400/200?random=tpl2',
+            signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=tpl2',
             mediaId: 'tpl-img-02',
           },
         },
@@ -3258,7 +3309,7 @@ export const mockData: Record<string, MockResponse> = {
             '请穿着适合徒步的鞋子，自备饮用水和防晒用品。注意防蚊虫。听从领队安排，不要擅自离队。',
           defaultCapacity: 15,
           defaultCoverImage: {
-            signedUrl: 'https://picsum.photos/400/200?random=tpl3',
+            signedUrl: MOCK_IMAGE_BASE_URL + '/400/200?random=tpl3',
             mediaId: 'tpl-img-03',
           },
         },
@@ -3352,7 +3403,7 @@ export const mockData: Record<string, MockResponse> = {
     code: 200,
     message: 'For Super Earth!',
     data: {
-      url: 'https://picsum.photos/400/300?random=export',
+      url: MOCK_IMAGE_BASE_URL + '/400/300?random=export',
     },
   },
 
@@ -3367,7 +3418,7 @@ export const mockData: Record<string, MockResponse> = {
       contentType: 'image/jpeg',
       sizeBytes: 204800,
       usage: 'activityReviewImage',
-      signedUrl: 'https://picsum.photos/800/400?random=' + Math.floor(Math.random() * 1000),
+      signedUrl: MOCK_IMAGE_BASE_URL + '/800/400?random=' + Math.floor(Math.random() * 1000),
       uploadedAt: new Date().toISOString(),
     },
   },

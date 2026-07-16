@@ -11,6 +11,7 @@ node_modules
 .DS_Store
 dist
 *.local
+.env
 unpackage
 .hbuilderx
 
@@ -26,3 +27,5 @@ unpackage
 .eslintcache
 *.tsbuildinfo
 .vite
+
+.pnpm-store

@@ -1,6 +1,9 @@
 {
   "easycom": {
-    "autoscan": true
+    "autoscan": true,
+    "custom": {
+      "^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue"
+    }
   },
   "pages": [
     {
@@ -17,7 +20,11 @@
     },
     {
       "path": "pages/messages/index",
-      "style": { "navigationBarTitleText": "消息", "disableScroll": true }
+      "style": {
+        "navigationBarTitleText": "消息",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
     },
     {
       "path": "pages/profile/index",
@@ -72,12 +79,192 @@
       "style": { "navigationBarTitleText": "黑名单", "disableScroll": true }
     },
     {
-      "path": "pages/profile/settings",
-      "style": { "navigationBarTitleText": "设置", "disableScroll": true }
+      "path": "pages/social/friends",
+      "style": {
+        "navigationBarTitleText": "好友列表",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/friend-requests",
+      "style": {
+        "navigationBarTitleText": "好友申请",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/add-friend",
+      "style": {
+        "navigationBarTitleText": "添加好友",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/scan-qr",
+      "style": {
+        "navigationBarTitleText": "扫码加好友",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/user-profile",
+      "style": {
+        "navigationBarTitleText": "用户主页",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/activity-companions",
+      "style": {
+        "navigationBarTitleText": "活动同伴",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/blacklist",
+      "style": {
+        "navigationBarTitleText": "黑名单",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/social/follows",
+      "style": {
+        "navigationBarTitleText": "关注与粉丝",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/messages/chat",
+      "style": {
+        "navigationBarTitleText": "聊天",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/messages/location-map",
+      "style": {
+        "navigationBarTitleText": "位置",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/index",
+      "style": {
+        "navigationBarTitleText": "小队",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/create",
+      "style": {
+        "navigationBarTitleText": "创建小队",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/detail",
+      "style": {
+        "navigationBarTitleText": "小队详情",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/edit",
+      "style": {
+        "navigationBarTitleText": "编辑小队",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/members",
+      "style": {
+        "navigationBarTitleText": "小队成员",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/join-requests",
+      "style": {
+        "navigationBarTitleText": "入队申请",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/points",
+      "style": {
+        "navigationBarTitleText": "积分榜",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/announcements",
+      "style": {
+        "navigationBarTitleText": "群公告",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/polls",
+      "style": {
+        "navigationBarTitleText": "群投票",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/files",
+      "style": {
+        "navigationBarTitleText": "群文件",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/album",
+      "style": {
+        "navigationBarTitleText": "小队相册",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/teams/activities",
+      "style": {
+        "navigationBarTitleText": "队内活动",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
     },
     {
       "path": "pages/activity/detail",
       "style": { "navigationBarTitleText": "活动详情", "disableScroll": true }
+    },
+    {
+      "path": "pages/activity/location-map",
+      "style": {
+        "navigationBarTitleText": "活动地点",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
     },
     {
       "path": "pages/activity/edit",
@@ -96,6 +283,14 @@
       "style": { "navigationBarTitleText": "发布活动总结", "disableScroll": true }
     },
     {
+      "path": "pages/activity/summary-detail",
+      "style": { "navigationBarTitleText": "活动总结详情", "disableScroll": true }
+    },
+    {
+      "path": "pages/activity/review-detail",
+      "style": { "navigationBarTitleText": "评价详情", "disableScroll": true }
+    },
+    {
       "path": "pages/activity/participants",
       "style": { "navigationBarTitleText": "参与者列表", "disableScroll": true }
     },
@@ -108,8 +303,20 @@
       "style": { "navigationBarTitleText": "选择模板", "disableScroll": true }
     },
     {
+      "path": "pages/activity/clone",
+      "style": { "navigationBarTitleText": "克隆已有活动", "disableScroll": true }
+    },
+    {
       "path": "pages/activity/ai-draft",
       "style": { "navigationBarTitleText": "AI 生成活动", "disableScroll": true }
+    },
+    {
+      "path": "pages/activity/map-picker",
+      "style": {
+        "navigationBarTitleText": "选择地点",
+        "disableScroll": true,
+        "navigationStyle": "custom"
+      }
     },
     {
       "path": "pages/discover/search",
@@ -117,13 +324,17 @@
     },
     {
       "path": "pages/discover/map",
-      "style": { "navigationBarTitleText": "地图发现", "disableScroll": true }
+      "style": {
+        "navigationBarTitleText": "地图发现",
+        "disableScroll": true,
+        "navigationStyle": "custom"
+      }
     }
   ],
   "tabBar": {
-    "color": "#A0A6B2",
-    "selectedColor": "#5EC8A7",
-    "backgroundColor": "rgba(255,255,255,0.92)",
+    "color": "#9CA3AF",
+    "selectedColor": "#16A085",
+    "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "list": [
       {
@@ -161,7 +372,7 @@
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "趣聚",
-    "navigationBarBackgroundColor": "#F8FAFC",
-    "backgroundColor": "#F8FAFC"
+    "navigationBarBackgroundColor": "#F5F7FA",
+    "backgroundColor": "#F5F7FA"
   }
 }

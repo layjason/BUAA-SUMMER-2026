@@ -220,3 +220,11 @@
   background: $color-border;
   margin: $spacing-md 0;
 }
+
+/**
+ * 为固定底部操作栏预留滚动区内边距，避免 H5 端内容被遮挡。
+ * @param $height 底部栏预估高度（含按钮与内边距），默认 176rpx
+ */
+@mixin scroll-bottom-inset($height: 176rpx) {
+  padding-bottom: calc(#{$height} + env(safe-area-inset-bottom));
+}

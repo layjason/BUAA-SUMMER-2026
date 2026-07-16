@@ -40,7 +40,7 @@ VITE_USE_MOCK=false
 VITE_API_BASE_URL=
 ```
 
-3. `pnpm dev` → 访问 `http://localhost:5173`
+3. `pnpm dev` → 访问 `http://localhost:3005`
 
 `vite.config.ts` 中的 `server.proxy` 将 `/admin`、`/identity`、`/media` 转发到 `:8080`，浏览器请求同源，无需后端 CORS。
 

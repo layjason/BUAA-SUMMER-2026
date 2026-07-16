@@ -1,0 +1,230 @@
+<template>
+  <view class="page">
+    <scroll-view class="scroll-area" scroll-y>
+      <view v-if="loading" class="state-text">{{ t('activityDetail.loading') }}</view>
+      <view v-else-if="errorMsg" class="state-text state-text--error">{{ errorMsg }}</view>
+      <view v-else-if="summary" class="detail-container">
+        <view class="card">
+          <text class="title">{{ summary.title }}</text>
+          <text class="meta">{{ formatDateTime(summary.createdAt) }}</text>
+          <text class="content">{{ summary.content }}</text>
+        </view>
+
+        <view v-if="summaryImagePreviews.length > 0" class="card">
+          <text class="section-title">{{ t('activitySummary.images') }}</text>
+          <view class="image-grid">
+            <image
+              v-for="imageUrl in summaryImagePreviews"
+              :key="imageUrl"
+              class="summary-image"
+              :src="imageUrl"
+              mode="aspectFill"
+            />
+          </view>
+        </view>
+
+        <view v-if="summary.imageTags.length > 0" class="card">
+          <text class="section-title">图片分类确认结果</text>
+          <view v-for="item in summary.imageTags" :key="item.mediaId" class="tag-block">
+            <text class="media-id">{{ item.mediaId }}</text>
+            <view class="tag-row">
+              <text v-for="tag in item.tags" :key="tag" class="tag-chip">{{ tag }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="ts">
+/**
+ * 活动总结详情页
+ *
+ * 通过活动总结列表接口按 summaryId 回查单条总结详情。
+ * 前置条件：activityId 和 summaryId 通过 query 传入。
+ * 后置条件：成功时展示总结正文、图片和人工确认后的图片标签。
+ */
+import { ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
+import { useI18n } from 'vue-i18n'
+import { getActivitySummaries, type ActivitySummaryPost } from '@/api/modules/activities'
+import { formatDateTime } from '@/utils/date'
+import { resolveMediaPreviewUrl } from '@/utils/media-preview'
+import { useAuthStore } from '@/stores/auth'
+
+const { t } = useI18n()
+const authStore = useAuthStore()
+
+const loading = ref(true)
+const errorMsg = ref('')
+const activityId = ref('')
+const summaryId = ref('')
+const summary = ref<ActivitySummaryPost | null>(null)
+const summaryImagePreviews = ref<string[]>([])
+
+/**
+ * 解析总结图片为 image 组件可展示地址。
+ *
+ * 前置条件：currentSummary 来自活动总结接口。
+ * 后置条件：summaryImagePreviews 按接口图片顺序保存可展示地址。
+ * 不变量：不修改总结正文或远端媒体数据。
+ *
+ * @param currentSummary 活动总结详情
+ */
+async function loadSummaryImagePreviews(currentSummary: ActivitySummaryPost): Promise<void> {
+  const accessToken = authStore.getAccessToken()
+  const resolvedUrls = await Promise.all(
+    currentSummary.images.map((image) => resolveMediaPreviewUrl(image.signedUrl, accessToken)),
+  )
+  summaryImagePreviews.value = resolvedUrls.filter(Boolean)
+}
+
+/** 加载活动总结详情
+ *
+ * 前置条件：activityId 和 summaryId 不为空。
+ * 后置条件：summary 指向匹配的活动总结；未找到时写入 errorMsg。
+ * 不变量：不修改远端数据，仅执行只读查询。
+ */
+async function loadSummaryDetail(): Promise<void> {
+  loading.value = true
+  errorMsg.value = ''
+  try {
+    const result = await getActivitySummaries(activityId.value, 1, 50)
+    summary.value = (result.items ?? []).find((item) => item.summaryId === summaryId.value) ?? null
+    if (!summary.value) {
+      summaryImagePreviews.value = []
+      errorMsg.value = '未找到活动总结'
+      return
+    }
+    await loadSummaryImagePreviews(summary.value)
+  } catch {
+    summaryImagePreviews.value = []
+    errorMsg.value = '加载活动总结失败'
+  } finally {
+    loading.value = false
+  }
+}
+
+onLoad((query) => {
+  activityId.value = (query?.activityId as string) ?? ''
+  summaryId.value = (query?.summaryId as string) ?? ''
+  if (!activityId.value || !summaryId.value) {
+    errorMsg.value = '缺少活动总结标识'
+    loading.value = false
+    return
+  }
+  void loadSummaryDetail()
+})
+</script>
+
+<style scoped>
+.page {
+  height: 100%;
+  background-color: var(--q-color-bg);
+  overflow: hidden;
+}
+
+.scroll-area {
+  height: 100%;
+}
+
+.detail-container {
+  padding: 24rpx 24rpx 48rpx;
+}
+
+.card {
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+  border-radius: 16rpx;
+  background-color: var(--q-color-bg-card);
+}
+
+.title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: var(--q-color-text);
+  line-height: 1.4;
+}
+
+.meta {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: var(--q-color-text-muted);
+}
+
+.content {
+  display: block;
+  margin-top: 28rpx;
+  font-size: 28rpx;
+  line-height: 1.7;
+  color: var(--q-color-text);
+  white-space: pre-wrap;
+}
+
+.section-title {
+  display: block;
+  margin-bottom: 20rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--q-color-text);
+}
+
+.image-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.summary-image {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 12rpx;
+  background-color: var(--q-color-bg-soft);
+}
+
+.tag-block + .tag-block {
+  margin-top: 20rpx;
+}
+
+.media-id {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 24rpx;
+  color: var(--q-color-text-muted);
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.tag-chip {
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background-color: var(--q-color-primary-light);
+  color: var(--q-color-primary);
+  font-size: 24rpx;
+}
+
+.state-text {
+  padding: 80rpx 32rpx;
+  text-align: center;
+  color: var(--q-color-text-muted);
+  font-size: 28rpx;
+}
+
+.state-text--error {
+  color: var(--q-color-danger);
+}
+</style>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
+}
+</style>

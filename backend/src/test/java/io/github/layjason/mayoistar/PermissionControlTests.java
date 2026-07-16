@@ -1,5 +1,6 @@
 package io.github.layjason.mayoistar;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -47,6 +48,14 @@ class PermissionControlTests extends AbstractIntegrationTest {
                         String body = result.getResponse().getContentAsString();
                         assert body.contains("\"code\":400") || body.contains("\"code\": 400");
                     });
+        }
+
+        @Test
+        @DisplayName("错误端点无认证不应被安全链二次改写为 401")
+        void errorEndpointWithoutAuth_shouldNotBeInterceptedBySecurity() throws Exception {
+            mockMvc.perform(get("/error"))
+                    .andExpect(result ->
+                            assertThat(result.getResponse().getStatus()).isNotEqualTo(401));
         }
     }
 

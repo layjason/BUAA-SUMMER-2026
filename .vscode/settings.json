@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "manifest.json": "jsonc",
+    "pages.json": "jsonc"
+  }
+}
